@@ -223,7 +223,7 @@ class ServerMessageHandlingMixin:
             if flags & enum_value.number:
                 name = enum_value.name
                 if name.startswith("ServerToAgentFlags_"):
-                    name = name[len("ServerToAgentFlags_") :]
+                    name = name[len("ServerToAgentFlags_"):]
                 flag_names.append(name)
 
         if PB_FLAG_REPORT_FULL_STATE in flag_names:
@@ -387,6 +387,7 @@ class ClientRuntimeMixin:
     _error_status = "error"
     _heartbeat_skew_seconds = 1
     _semaphore_filename = "OpAMPSupervisor.signal"
+    _finalize_started = False
     _key_agent_version = "version"
     _key_agent_edition = "edition"
     _json_key_agent = "agent"
@@ -519,6 +520,11 @@ class ClientRuntimeMixin:
 
     def finalize(self) -> None:
         """Implements `OpAMPClientInterface.finalize` with async-loop fallback."""
+        if self._finalize_started:
+            return
+        self._finalize_started = True
+        if getattr(self, "data", None) is not None:
+            self.data.allow_heartbeat = False
         try:
             loop = asyncio.get_running_loop()
             logging.getLogger(__name__).debug("finalize - got loop")
@@ -540,12 +546,20 @@ class ClientRuntimeMixin:
             thread = threading.Thread(target=_runner, daemon=True)
             thread.start()
         else:
+            if loop.is_closed():
+                return
             loop.create_task(self._send_disconnect_with_timeout())
 
     def __del__(self) -> None:
         """Attempt graceful disconnect/finalize during object destruction."""
-        print("FINALIZER triggered")
-        self.finalize()
+        try:
+            if getattr(self, "data", None) is not None:
+                self.data.allow_heartbeat = False
+            if sys.is_finalizing():
+                return
+            self.finalize()
+        except Exception:
+            return
 
     def _heartbeat_key(self, path: str) -> str:
         """Return the last URL path component as the dictionary key."""

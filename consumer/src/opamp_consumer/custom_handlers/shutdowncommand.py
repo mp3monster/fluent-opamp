@@ -33,6 +33,8 @@ if TYPE_CHECKING:
 SHUTDOWNCOMMAND_CAPABILITY = (
     "org.mp3monster.opamp_provider.command_shutdown_agent"
 )  # Capability routed to shutdown handler.
+DISCONNECT_TIMEOUT_SECONDS = 2.0  # Max time to wait for disconnect send.
+DISCONNECT_JOIN_GRACE_SECONDS = 0.5  # Additional wait for helper-thread shutdown.
 
 
 class ShutdownCommand(CustomMessageHandlerInterface):
@@ -98,21 +100,33 @@ class ShutdownCommand(CustomMessageHandlerInterface):
                 "ShutdownCommand has no client data; proceeding with disconnect"
             )
 
-        disconnect_error: list[Exception] = []
+        disconnect_error: list[BaseException] = []
 
         def _send_disconnect() -> None:
             """Run async disconnect send in a helper thread and capture raised errors."""
             try:
-                asyncio.run(opamp_client.send_disconnect())
-            except Exception as err:  # pragma: no cover - depends on runtime transport
+                asyncio.run(
+                    asyncio.wait_for(
+                        opamp_client.send_disconnect(),
+                        timeout=DISCONNECT_TIMEOUT_SECONDS,
+                    )
+                )
+            except BaseException as err:  # pragma: no cover - depends on runtime transport
                 disconnect_error.append(err)
 
         disconnect_thread = threading.Thread(target=_send_disconnect, daemon=True)
         disconnect_thread.start()
-        disconnect_thread.join()
+        disconnect_thread.join(
+            timeout=DISCONNECT_TIMEOUT_SECONDS + DISCONNECT_JOIN_GRACE_SECONDS
+        )
+        if disconnect_thread.is_alive():
+            raise TimeoutError("shutdown disconnect thread timed out")
 
         if disconnect_error:
-            raise disconnect_error[0]
+            err = disconnect_error[0]
+            if isinstance(err, (TimeoutError, asyncio.TimeoutError)):
+                raise TimeoutError("shutdown disconnect timed out") from err
+            raise err
 
         logger.info("ShutdownCommand sent disconnect; sleeping for 10 seconds")
         time.sleep(10)

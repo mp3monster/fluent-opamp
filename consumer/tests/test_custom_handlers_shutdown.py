@@ -130,3 +130,43 @@ def test_shutdowncommand_execute_action_raises_on_disconnect_error(
     assert data.allow_heartbeat is False
     assert fake_client.disconnect_calls == 1
     assert fake_client.terminate_calls == 0
+
+
+def test_shutdowncommand_execute_action_times_out_on_slow_disconnect(
+    monkeypatch,
+) -> None:
+    """Slow disconnect should time out and avoid indefinite shutdown hangs."""
+
+    class _SlowShutdownClient(_FakeShutdownClient):
+        async def send_disconnect(self) -> None:
+            self.disconnect_calls += 1
+            await __import__("asyncio").sleep(10)
+
+    handler = ShutdownCommand()
+    data = _make_client_data()
+    handler.set_client_data(data)
+    fake_client = _SlowShutdownClient()
+
+    monkeypatch.setattr(
+        "opamp_consumer.custom_handlers.shutdowncommand.DISCONNECT_TIMEOUT_SECONDS",
+        0.01,
+    )
+    monkeypatch.setattr(
+        "opamp_consumer.custom_handlers.shutdowncommand.DISCONNECT_JOIN_GRACE_SECONDS",
+        0.01,
+    )
+    monkeypatch.setattr(
+        "opamp_consumer.custom_handlers.shutdowncommand.time.sleep",
+        lambda _seconds: None,
+    )
+    monkeypatch.setattr(
+        "opamp_consumer.custom_handlers.shutdowncommand.os._exit",
+        lambda _code: None,
+    )
+
+    with pytest.raises(TimeoutError, match="timed out"):
+        handler.execute_action("shutdown", fake_client)
+
+    assert data.allow_heartbeat is False
+    assert fake_client.disconnect_calls == 1
+    assert fake_client.terminate_calls == 0

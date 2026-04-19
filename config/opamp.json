@@ -12,6 +12,7 @@
     "agent_config_path": "./fluent-bit.conf",
     "agent_additional_params": [],
     "heartbeat_frequency": 30,
+    "service_type": "fluentbit",
     "full_update_controller": {
       "fullResendAfter": 1
     },

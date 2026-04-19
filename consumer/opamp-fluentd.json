@@ -13,6 +13,7 @@
     "agent_config_path": "./consumer/fluentd.conf",
     "agent_additional_params": [],
     "heartbeat_frequency": 30,
+    "service_type": "fluentd",
     "full_update_controller": {
       "fullResendAfter": 1
     },

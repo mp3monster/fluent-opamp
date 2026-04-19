@@ -1,0 +1,79 @@
+# Consumer Simulator Launcher
+
+This tool starts/stops batches of OpAMP consumer instances from one config file.
+
+Detailed schema/parameter reference:
+
+- `consumer-sim/consumer_instances.md`
+- `consumer-sim/simulator_design.md` (design intent and server-testing focus)
+
+## Command
+
+```bash
+python consumer-sim/src/consumer_sim_launcher.py start
+python consumer-sim/src/consumer_sim_launcher.py stop
+```
+
+The launcher accepts one positional argument only: `start` or `stop`.
+
+Wrappers are also available:
+
+- Linux/macOS: `scripts/run_consumer_sim_start.sh`, `scripts/run_consumer_sim_stop.sh`
+- Windows: `scripts\run_consumer_sim_start.cmd`, `scripts\run_consumer_sim_stop.cmd`
+
+## Config file
+
+Default config file path:
+
+- `consumer-sim/consumer_instances.json`
+
+Override via environment variable:
+
+- `CONSUMER_SIM_CONFIG=/path/to/file.json`
+
+The default `consumer-sim/consumer_instances.json` includes simulator instance definitions only.
+
+## What `start` does
+
+1. Reads the launch config (`instances` list).
+1. Removes stale `OpAMPSupervisor.signal` files from each instance working directory.
+1. Launches each consumer with:
+   - configured consumer config path (`config_path`)
+   - optional `agent_config_path`
+   - command-line override flags from `overrides`
+1. Logs each launch to console with instance name, PID, working directory, and full command.
+1. Writes launcher state (including process IDs) to:
+   - `consumer-sim/runtime/launcher_state.json` (or `state_file` from config)
+1. Exits after all instances are launched.
+
+## What `stop` does
+
+1. Reads launcher state file.
+1. Marks each simulator record in the launcher state file with status `shutdown`.
+1. Simulators poll that process record every 30 seconds, mark themselves `shuttingdown`, then exit gracefully.
+1. Waits up to 90 seconds for each simulator to exit gracefully.
+1. If graceful stop fails or times out, escalates to brute-force termination.
+1. Removes each stopped process record from the state file immediately.
+1. Removes the state file once all processes have stopped.
+
+During stop, console emphasis markers are used:
+- `----- ... -----` when a simulator is observed changing to `shuttingdown`
+- `====== ... ======` when a simulator process is no longer detected
+
+## Config schema (summary)
+
+Top-level:
+
+- `state_file` (optional string path)
+- `instances` (required array)
+
+Each instance:
+
+- `name` (required)
+- `entrypoint` (optional: `simulator`; default `simulator`)
+- `command` (optional custom command string or argv list; overrides `entrypoint`, but must launch simulator client)
+- `config_path` (required)
+- `agent_config_path` (optional)
+- `overrides` (optional key/value map converted to CLI flags)
+- `env` (optional environment variable map)
+- `working_dir` (optional)

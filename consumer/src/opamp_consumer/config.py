@@ -22,7 +22,8 @@ import sys
 from dataclasses import dataclass
 from typing import Any
 
-ROOT_PATH = pathlib.Path(__file__).resolve().parents[3]  # Repository root for resolving shared imports and defaults.
+ROOT_PATH = pathlib.Path(__file__).resolve().parents[3]
+# Repository root for resolving shared imports and defaults.
 if str(ROOT_PATH) not in sys.path:
     sys.path.insert(0, str(ROOT_PATH))
 
@@ -35,28 +36,40 @@ CFG_CONSUMER = "consumer"  # Top-level JSON section name for consumer settings.
 CFG_SERVER_URL = "server_url"  # Consumer JSON key for provider URL.
 CFG_SERVER_PORT = "server_port"  # Consumer JSON key for provider port.
 CFG_AGENT_CONFIG_PATH = "agent_config_path"  # Consumer JSON key for agent config file path.
-CFG_AGENT_ADDITIONAL_PARAMS = "agent_additional_params"  # Consumer JSON key for extra agent CLI args.
+CFG_AGENT_ADDITIONAL_PARAMS = "agent_additional_params"
+# Consumer JSON key for extra agent CLI args.
 CFG_HEARTBEAT_FREQUENCY = "heartbeat_frequency"  # Consumer JSON key for heartbeat interval seconds.
 CFG_LOG_LEVEL = "log_level"  # Consumer JSON key for logging level override.
 CFG_SERVICE_NAME = "service_name"  # Consumer JSON key for service.name override.
 CFG_SERVICE_NAMESPACE = "service_namespace"  # Consumer JSON key for service.namespace override.
 CFG_TRANSPORT = "transport"  # Consumer JSON key for selected transport mode.
 CFG_TLS = "tls"  # Consumer JSON key for TLS transport settings block.
-CFG_TLS_VERIFY_SERVER = "verify_server"  # Consumer TLS key controlling HTTPS certificate validation.
+CFG_TLS_VERIFY_SERVER = "verify_server"
+# Consumer TLS key controlling HTTPS certificate validation.
 CFG_TLS_CA_FILE = "ca_file"  # Consumer TLS key for custom CA bundle path.
-CFG_SERVER_AUTHORIZATION = "server-authorization"  # Consumer JSON key controlling outbound provider authorization mode.
+CFG_SERVER_AUTHORIZATION = "server-authorization"
+# Consumer JSON key controlling outbound provider authorization mode.
 CFG_OPAMP_TOKEN = "OpAMP-token"  # Consumer JSON key for static OpAMP token value.
 CFG_IDP_TOKEN_URL = "idp-token-url"  # Consumer JSON key for IdP token endpoint URL.
 CFG_IDP_CLIENT_ID = "idp-client-id"  # Consumer JSON key for IdP client ID.
 CFG_IDP_CLIENT_SECRET = "idp-client-secret"  # Consumer JSON key for IdP client secret.
 CFG_IDP_SCOPE = "idp-scope"  # Consumer JSON key for IdP OAuth scope.
 CFG_IDP_GRANT_TYPE = "idp-grant-type"  # Consumer JSON key for IdP OAuth grant type.
-CFG_LOG_AGENT_API_RESPONSES = "log_agent_api_responses"  # Consumer JSON key enabling verbose API logging.
-CFG_ALLOW_CUSTOM_CAPABILITIES = "allow_custom_capabilities"  # Consumer JSON key allowing dynamic custom capabilities.
+CFG_LOG_AGENT_API_RESPONSES = "log_agent_api_responses"
+# Consumer JSON key enabling verbose API logging.
+CFG_ALLOW_CUSTOM_CAPABILITIES = "allow_custom_capabilities"
+# Consumer JSON key allowing dynamic custom capabilities.
 CFG_CLIENT_STATUS_PORT = "client_status_port"  # Consumer JSON key for local status endpoint port.
 CFG_CHAT_OPS_PORT = "chat_ops_port"  # Consumer JSON key for local ChatOps endpoint port.
-CFG_FULL_UPDATE_CONTROLLER = "full_update_controller"  # Consumer JSON key for full-update controller config object.
-CFG_FULL_UPDATE_CONTROLLER_TYPE = "full_update_controller_type"  # Consumer JSON key for full-update controller implementation type.
+CFG_FULL_UPDATE_CONTROLLER = "full_update_controller"
+# Consumer JSON key for full-update controller config object.
+CFG_FULL_UPDATE_CONTROLLER_TYPE = "full_update_controller_type"
+# Consumer JSON key for full-update controller implementation type.
+CFG_SERVICE_TYPE = "service_type"
+# Consumer JSON key selecting the concrete consumer implementation.
+CFG_SIMULATOR_RESPONSES_PATH = "simulator_responses_path"
+# Consumer JSON key for scripted simulator response file path.
+
 HARDWIRED_AGENT_CAPABILITY_NAMES = (  # Built-in capabilities always advertised by this consumer.
     "ReportsStatus",
     "AcceptsRestartCommand",
@@ -64,14 +77,23 @@ HARDWIRED_AGENT_CAPABILITY_NAMES = (  # Built-in capabilities always advertised 
 )
 DEFAULT_LOG_LEVEL = "debug"  # Default consumer log level when unspecified.
 DEFAULT_TLS_VERIFY_SERVER = True  # Default behavior validates provider server certificate.
-DEFAULT_FULL_UPDATE_CONTROLLER: dict[str, int] = {"fullResendAfter": 1}  # Default controller settings payload.
-DEFAULT_FULL_UPDATE_CONTROLLER_TYPE = "SentCount"  # Default full-update controller implementation name.
+DEFAULT_FULL_UPDATE_CONTROLLER: dict[str, int] = {"fullResendAfter": 1}
+# Default controller settings payload.
+DEFAULT_FULL_UPDATE_CONTROLLER_TYPE = "SentCount"
+# Default full-update controller implementation name.
 SERVER_AUTHORIZATION_NONE = "none"  # Disable outbound provider Authorization header usage.
 SERVER_AUTHORIZATION_ENV_VAR = "env-var"  # Read outbound provider token from environment.
 SERVER_AUTHORIZATION_CONFIG_VAR = "config-var"  # Read outbound provider token from config file.
 SERVER_AUTHORIZATION_IDP = "idp"  # Obtain outbound provider token from an IdP token endpoint.
-DEFAULT_SERVER_AUTHORIZATION = SERVER_AUTHORIZATION_NONE  # Default outbound provider authorization mode.
+DEFAULT_SERVER_AUTHORIZATION = SERVER_AUTHORIZATION_NONE
+# Default outbound provider authorization mode.
 DEFAULT_IDP_GRANT_TYPE = "client_credentials"  # Default OAuth grant type for IdP token requests.
+SERVICE_TYPE_FLUENTBIT = "fluentbit"  # Service type value selecting Fluent Bit client behavior.
+SERVICE_TYPE_FLUENTD = "fluentd"
+# Service type value selecting Fluentd client behavior.
+SERVICE_TYPE_SIMULATOR = "simulator"
+# Service type value selecting scripted simulator client behavior.
+DEFAULT_SERVICE_TYPE = SERVICE_TYPE_FLUENTBIT  # Default service type when none is configured.
 
 
 @dataclass
@@ -120,8 +142,10 @@ class ConsumerConfig:
         None  # Service namespace reported in AgentDescription attributes.
     )
     transport: str | None = None  # Active OpAMP transport mode (http or websocket).
-    tls_verify_server: bool = DEFAULT_TLS_VERIFY_SERVER  # Enable outbound HTTPS/WSS certificate verification.
-    tls_ca_file: str | None = None  # Optional custom CA file used for outbound HTTPS/WSS validation.
+    tls_verify_server: bool = DEFAULT_TLS_VERIFY_SERVER
+    # Enable outbound HTTPS/WSS certificate verification.
+    tls_ca_file: str | None = None
+    # Optional custom CA file used for outbound HTTPS/WSS validation.
     server_authorization: str = (
         DEFAULT_SERVER_AUTHORIZATION
         # Outbound provider authorization mode: none | env-var | config-var | idp.
@@ -155,6 +179,11 @@ class ConsumerConfig:
     full_update_controller_type: str = (
         DEFAULT_FULL_UPDATE_CONTROLLER_TYPE
         # Concrete full update controller implementation name.
+    )
+    service_type: str = DEFAULT_SERVICE_TYPE
+    # Selected concrete consumer service implementation type.
+    simulator_responses_path: str | None = (
+        None  # Filesystem path to scripted simulator server-request responses.
     )
 
     def __setitem__(self, key, value):
@@ -333,6 +362,29 @@ def _normalize_server_authorization(value: Any) -> str:
     return DEFAULT_SERVER_AUTHORIZATION
 
 
+def _normalize_service_type(value: Any) -> str:
+    """Normalize configured service type to a supported value."""
+    if value is None:
+        return DEFAULT_SERVICE_TYPE
+    normalized = str(value).strip().lower()
+    if not normalized:
+        return DEFAULT_SERVICE_TYPE
+    if normalized in {
+        SERVICE_TYPE_FLUENTBIT,
+        SERVICE_TYPE_FLUENTD,
+        SERVICE_TYPE_SIMULATOR,
+    }:
+        return normalized
+    logging.getLogger(__name__).warning(
+        "invalid %s.%s value %r; defaulting to %s",
+        CFG_CONSUMER,
+        CFG_SERVICE_TYPE,
+        value,
+        DEFAULT_SERVICE_TYPE,
+    )
+    return DEFAULT_SERVICE_TYPE
+
+
 def _validate_heartbeat_frequency(value: Any) -> int:
     """Validate heartbeat frequency and return normalized integer value."""
     if value is None:
@@ -375,6 +427,19 @@ def load_config() -> ConsumerConfig:
     allow_custom_capabilities = bool(
         consumer_raw.get(CFG_ALLOW_CUSTOM_CAPABILITIES, False)
     )
+    service_type = _normalize_service_type(consumer_raw.get(CFG_SERVICE_TYPE))
+    simulator_responses_path = _validate_optional_file_path(
+        path_value=consumer_raw.get(CFG_SIMULATOR_RESPONSES_PATH),
+        cfg_key=f"{CFG_CONSUMER}.{CFG_SIMULATOR_RESPONSES_PATH}",
+    )
+    if (
+        service_type == SERVICE_TYPE_SIMULATOR
+        and not simulator_responses_path
+    ):
+        raise ValueError(
+            f"{CFG_CONSUMER}.{CFG_SIMULATOR_RESPONSES_PATH} is required when "
+            f"{CFG_CONSUMER}.{CFG_SERVICE_TYPE}={SERVICE_TYPE_SIMULATOR}"
+        )
     mask: None
 
     log_level = consumer_raw.get(CFG_LOG_LEVEL, DEFAULT_LOG_LEVEL) or DEFAULT_LOG_LEVEL
@@ -442,6 +507,11 @@ def load_config() -> ConsumerConfig:
         "loaded consumer allow_custom_capabilities: %s",
         allow_custom_capabilities,
     )
+    logger.info("loaded consumer service_type: %s", service_type)
+    logger.info(
+        "loaded consumer simulator_responses_path: %s",
+        simulator_responses_path,
+    )
     logger.info("loaded consumer agent_config_path: %s", agent_config_path)
     logger.info("loaded consumer agent_additional_params: %s", additional_params)
     logger.info("loaded consumer heartbeat_frequency: %s", heartbeat_frequency)
@@ -478,6 +548,8 @@ def load_config() -> ConsumerConfig:
         idp_grant_type=idp_grant_type,
         log_agent_api_responses=bool(log_agent_api_responses),
         allow_custom_capabilities=allow_custom_capabilities,
+        service_type=service_type,
+        simulator_responses_path=simulator_responses_path,
         client_status_port=(
             int(client_status_port) if client_status_port is not None else None
         ),
@@ -581,6 +653,26 @@ def load_config_with_overrides(
         path_value=tls_raw.get(CFG_TLS_CA_FILE),
         cfg_key=f"{CFG_CONSUMER}.{CFG_TLS}.{CFG_TLS_CA_FILE}",
     )
+    resolved_service_type = _normalize_service_type(
+        _resolve_config_value(
+            mapping=consumer_raw,
+            key=CFG_SERVICE_TYPE,
+            logger=logger,
+            default=DEFAULT_SERVICE_TYPE,
+        )
+    )
+    resolved_simulator_responses_path = _validate_optional_file_path(
+        path_value=consumer_raw.get(CFG_SIMULATOR_RESPONSES_PATH),
+        cfg_key=f"{CFG_CONSUMER}.{CFG_SIMULATOR_RESPONSES_PATH}",
+    )
+    if (
+        resolved_service_type == SERVICE_TYPE_SIMULATOR
+        and not resolved_simulator_responses_path
+    ):
+        raise ValueError(
+            f"{CFG_CONSUMER}.{CFG_SIMULATOR_RESPONSES_PATH} is required when "
+            f"{CFG_CONSUMER}.{CFG_SERVICE_TYPE}={SERVICE_TYPE_SIMULATOR}"
+        )
 
     if not resolved_agent_config_path:
         raise ValueError(f"{CFG_CONSUMER}.{CFG_AGENT_CONFIG_PATH} is required")
@@ -619,6 +711,8 @@ def load_config_with_overrides(
         allow_custom_capabilities=bool(
             consumer_raw.get(CFG_ALLOW_CUSTOM_CAPABILITIES, False)
         ),
+        service_type=resolved_service_type,
+        simulator_responses_path=resolved_simulator_responses_path,
         client_status_port=_coerce_optional_int(
             consumer_raw.get(CFG_CLIENT_STATUS_PORT)
         ),

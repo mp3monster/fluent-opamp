@@ -18,6 +18,7 @@ This document consolidates all consumer configuration options and their CLI over
 - [Installed CLI Commands](#installed-cli-commands)
 - [Fluentd Consumer](#fluentd-consumer)
 - [Required Fluentd Monitor Source](#required-fluentd-monitor-source)
+- [Simulator Consumer](#simulator-consumer)
 
 ## Config Source
 
@@ -55,6 +56,7 @@ Use this minimal config for a fast local startup:
       "verify_server": true
     },
     "server-authorization": "none",
+    "service_type": "fluentbit",
     "agent_config_path": "./fluent-bit.conf",
     "agent_additional_params": [],
     "heartbeat_frequency": 30,
@@ -107,6 +109,7 @@ Graceful stop: create `OpAMPSupervisor.signal` in the supervisor working directo
     "idp-client-secret": "replace-me",
     "idp-scope": "opamp",
     "idp-grant-type": "client_credentials",
+    "service_type": "fluentbit",
     "log_agent_api_responses": false,
     "agent_config_path": "./fluent-bit.conf",
     "agent_additional_params": ["-R"],
@@ -136,6 +139,8 @@ Graceful stop: create `OpAMPSupervisor.signal` in the supervisor working directo
 | `consumer.heartbeat_frequency` | integer | Yes (`--heartbeat-frequency`) | Heartbeat interval in seconds. | `30` |
 | `consumer.full_update_controller` | object | Yes (`--full-update-controller`, JSON string) | Full update controller settings. `fullResendAfter` controls when all reporting flags are reset to `true`. | `{"fullResendAfter":1}` |
 | `consumer.full_update_controller_type` | string | No | Full update controller implementation name (`SentCount`, `AlwaysSend`, `TimeSend`). | `"SentCount"` |
+| `consumer.service_type` | string | No | Concrete consumer implementation (`fluentbit`, `fluentd`, `simulator`). Default `fluentbit`. | `"fluentbit"` |
+| `consumer.simulator_responses_path` | string | No | Required when `service_type=simulator`; path to simulator scripted server-request response JSON. | `"./consumer/simulator-responses.example.json"` |
 | `consumer.log_level` | string | Yes (`--log-level`) | Consumer log level name (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`). Resolved via Python `logging` names. | `"debug"` |
 | `consumer.transport` | string | No | OpAMP transport mode (`http` or `websocket`). | `"http"` |
 | `consumer.tls.verify_server` | boolean | No | Enables HTTPS/WSS certificate validation for provider connections. Default `true`. | `true` |
@@ -240,8 +245,9 @@ For Linux `systemd` and Windows service examples (including required permissions
 
 When installed as a package, console scripts are available:
 
-- `opamp-consumer` -> `opamp_consumer.fluentbit_client:main`
+- `opamp-consumer` -> `opamp_consumer.client:main` (routes by `consumer.service_type`)
 - `opamp-consumer-fluentd` -> `opamp_consumer.fluentd_client:main`
+- `opamp-consumer-simulator` -> `opamp_consumer.simulator_client:main`
 
 ## Fluentd Consumer
 
@@ -273,4 +279,62 @@ python -m opamp_consumer.fluentd_client \
   --config-path ./opamp.json \
   --agent-config-path ./fluentd.conf \
   --server-url http://localhost:4320
+```
+
+## Simulator Consumer
+
+The simulator is a concrete `service_type` that replays scripted actions for each
+incoming `ServerToAgent` request type.
+
+- Set `consumer.service_type` to `simulator`.
+- Set `consumer.simulator_responses_path` to a JSON file.
+- Each request type maps to a non-empty list of actions.
+- Action lists cycle: once the end of a list is reached, the simulator returns to the first entry.
+- Ready-to-run config: `consumer/opamp-simulator.json`
+
+Simulator identity/version overrides can be passed through `--agent-additional-params`
+as a single JSON object string:
+
+```bash
+--agent-additional-params '{"service_instance_uid":"sim-01","client_version":"1.2.3","config_version":"cfg-009"}'
+```
+
+Supported JSON keys:
+- `service_instance_uid` (alias: `service_instance_id`) -> reported as `service.instance.id`
+- `client_version` -> reported as `service.version`
+- `config_version` -> reported as non-identifying attribute `config.version`
+
+Supported request keys:
+- `error_response`
+- `remote_config`
+- `connection_settings`
+- `packages_available`
+- `flags`
+- `capabilities`
+- `agent_identification`
+- `command`
+- `custom_capabilities`
+- `custom_message`
+
+Supported actions:
+- `accept` (run default handler behavior)
+- `ignore` (skip handling)
+- `error` (raise a simulated `AgentException`; optional `message`)
+
+Example simulator responses file:
+
+```json
+{
+  "responses": {
+    "command": ["ignore", "accept"],
+    "remote_config": [
+      "accept",
+      {
+        "action": "error",
+        "message": "simulated remote config rejection"
+      }
+    ],
+    "*": ["accept"]
+  }
+}
 ```

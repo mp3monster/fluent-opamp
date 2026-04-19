@@ -1,0 +1,18 @@
+{
+  "responses": {
+    "command": [
+      "ignore",
+      "accept"
+    ],
+    "remote_config": [
+      "accept",
+      {
+        "action": "error",
+        "message": "simulated remote config rejection"
+      }
+    ],
+    "*": [
+      "accept"
+    ]
+  }
+}

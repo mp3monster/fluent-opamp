@@ -10,6 +10,8 @@ This table lists the helper scripts and their platform-specific names.
 | Run all supervisor launch scripts (each in a new window) | `scripts/run_all_supervisors.sh` | `scripts/run_all_supervisors.cmd` |
 | Start Fluentd directly | `scripts/start_fluentd.sh` | `scripts/start_fluentd.cmd` |
 | Configure local Keycloak for JWT auth testing | `scripts/configure_keycloak.sh` | `scripts/configure_keycloak.cmd` / `scripts/configure_keycloak.ps1` |
+| Start consumer simulator batch launcher | `scripts/run_consumer_sim_start.sh` | `scripts/run_consumer_sim_start.cmd` |
+| Stop consumer simulator batch launcher | `scripts/run_consumer_sim_stop.sh` | `scripts/run_consumer_sim_stop.cmd` |
 | Generate self-signed TLS cert/key for local HTTPS testing | `scripts/generate_self_signed_tls_cert.py` | `scripts\generate_self_signed_tls_cert.py` |
 | Ensure `provider.tls` settings exist in config JSON | `scripts/ensure_provider_tls_config.py` | `scripts\ensure_provider_tls_config.py` |
 | Render Mermaid `.mmd` to PNG (local wrapper) | `scripts/render_mermaid_png.sh` | n/a |

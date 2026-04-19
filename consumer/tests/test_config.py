@@ -50,6 +50,58 @@ def test_allow_custom_capabilities_defaults_false_when_missing(
     assert loaded.allow_custom_capabilities is False
 
 
+def test_service_type_defaults_to_fluentbit_when_missing(tmp_path, monkeypatch) -> None:
+    """Consumer service_type should default to fluentbit when omitted."""
+    config_path = tmp_path / "opamp.json"
+    config_path.write_text(
+        json.dumps(_base_consumer_config(), indent=2),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv(consumer_config.ENV_OPAMP_CONFIG_PATH, str(config_path))
+
+    loaded = consumer_config.load_config()
+
+    assert loaded.service_type == consumer_config.SERVICE_TYPE_FLUENTBIT
+
+
+def test_service_type_simulator_requires_responses_path(tmp_path, monkeypatch) -> None:
+    """Simulator mode must provide consumer.simulator_responses_path."""
+    raw = _base_consumer_config()
+    raw["consumer"]["service_type"] = consumer_config.SERVICE_TYPE_SIMULATOR
+    config_path = tmp_path / "opamp.json"
+    config_path.write_text(json.dumps(raw, indent=2), encoding="utf-8")
+    monkeypatch.setenv(consumer_config.ENV_OPAMP_CONFIG_PATH, str(config_path))
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            "consumer.simulator_responses_path is required when "
+            "consumer.service_type=simulator"
+        ),
+    ):
+        consumer_config.load_config()
+
+
+def test_service_type_simulator_loads_responses_path(tmp_path, monkeypatch) -> None:
+    """Simulator mode should accept a valid scripted responses file path."""
+    raw = _base_consumer_config()
+    responses_path = tmp_path / "simulator-responses.json"
+    responses_path.write_text(
+        json.dumps({"responses": {"remote_config": ["accept"]}}, indent=2),
+        encoding="utf-8",
+    )
+    raw["consumer"]["service_type"] = consumer_config.SERVICE_TYPE_SIMULATOR
+    raw["consumer"]["simulator_responses_path"] = str(responses_path)
+    config_path = tmp_path / "opamp.json"
+    config_path.write_text(json.dumps(raw, indent=2), encoding="utf-8")
+    monkeypatch.setenv(consumer_config.ENV_OPAMP_CONFIG_PATH, str(config_path))
+
+    loaded = consumer_config.load_config()
+
+    assert loaded.service_type == consumer_config.SERVICE_TYPE_SIMULATOR
+    assert loaded.simulator_responses_path == str(responses_path)
+
+
 def test_consumer_tls_defaults_when_missing(tmp_path, monkeypatch) -> None:
     raw = _base_consumer_config()
     config_path = tmp_path / "opamp.json"
@@ -274,3 +326,25 @@ def test_fluentd_test_config_loads_successfully() -> None:
 
     assert loaded.service_name == "Fluentd"
     assert loaded.agent_config_path == "./consumer/fluentd.conf"
+    assert loaded.service_type == consumer_config.SERVICE_TYPE_FLUENTD
+
+
+def test_simulator_test_config_loads_successfully() -> None:
+    """Ensure simulator example config file is valid for consumer config loading."""
+    repo_root = Path(__file__).resolve().parents[2]
+    config_path = repo_root / "consumer" / "opamp-simulator.json"
+
+    loaded = consumer_config.load_config_with_overrides(
+        config_path=config_path,
+        server_url=None,
+        server_port=None,
+        agent_config_path=None,
+        agent_additional_params=None,
+        heartbeat_frequency=None,
+        log_level=None,
+        full_update_controller=None,
+    )
+
+    assert loaded.service_name == "Simulator"
+    assert loaded.service_type == consumer_config.SERVICE_TYPE_SIMULATOR
+    assert loaded.simulator_responses_path == "./consumer/simulator-responses.example.json"
