@@ -1,0 +1,41 @@
+flowchart LR
+    subgraph Browser["Browser Runtime"]
+        HTML["web_ui.html\n- table/header controls\n- filter + column panels\n- modals/context menu"]
+        CSS["web_ui.css\n- layout, visibility states\n- drag visuals\n- filters/columns styling"]
+    end
+
+    subgraph JS["JavaScript Capability Makeup"]
+        STATE["web_ui_state.js\nState + DOM Handles\n- state model\n- element references\n- constants/keys"]
+        FUN["web_ui_functions.js\nBehavior + Data Layer\n- API fetch + auth token\n- filter query composition\n- table render + sorting\n- dynamic column rendering\n- drag/drop reorder logic\n- cookie personalization\n- modal + command actions"]
+        BIND["web_ui_bindings.js\nInteraction Wiring\n- event listeners\n- user action routing\n- init() trigger"]
+    end
+
+    subgraph Personalization["Personalization Capabilities"]
+        PREFLOAD["Load prefs from cookie\n- column order\n- optional column visibility\n- filters collapsed state"]
+        PREFSAVE["Persist prefs to cookie\non toggle/reorder/collapse"]
+    end
+
+    subgraph Backend["Provider API Endpoints"]
+        APICLIENTS["/api/clients\n(filter params + totals)"]
+        APISETTINGS["/api/settings/*\n(comms/client/diagnostic/help)"]
+        APICOMMANDS["/api/commands/custom\n/api/clients/:id/*"]
+        APISHUTDOWN["/api/shutdown"]
+    end
+
+    HTML --> STATE
+    HTML --> BIND
+    CSS --> HTML
+
+    STATE --> FUN
+    STATE --> BIND
+    BIND --> FUN
+
+    FUN --> PREFLOAD
+    FUN --> PREFSAVE
+    PREFLOAD --> STATE
+    PREFSAVE --> STATE
+
+    FUN --> APICLIENTS
+    FUN --> APISETTINGS
+    FUN --> APICOMMANDS
+    FUN --> APISHUTDOWN
