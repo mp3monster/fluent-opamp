@@ -14,6 +14,10 @@ This is intended for server functional testing, workflow validation, and
 operational behavior checks (filtering, command dispatch, status handling,
 state transitions), not performance benchmarking of real telemetry pipelines.
 
+Production scope:
+- Simulator components are non-production tooling and are not intended to be deployed in production environments.
+- Production environments should deploy real consumer agent types (`fluentbit`/`fluentd`) rather than simulator clients.
+
 ## High-Level Approach
 
 The simulator uses the existing consumer architecture with a dedicated

@@ -6,6 +6,14 @@ Detailed schema/parameter reference:
 
 - `consumer-sim/consumer_instances.md`
 - `consumer-sim/simulator_design.md` (design intent and server-testing focus)
+- `consumer-sim/consumer_instances.schema.json` (machine-readable JSON schema)
+
+## Production Scope
+
+The simulator tooling is not intended for production deployment.
+
+- `consumer-sim` launcher/config/docs are for test and validation workflows.
+- Production deployments should run real consumer agent types (`fluentbit` or `fluentd`) and should not deploy simulator instances.
 
 ## Command
 
@@ -36,6 +44,8 @@ The default `consumer-sim/consumer_instances.json` includes simulator instance d
 ## What `start` does
 
 1. Reads the launch config (`instances` list).
+1. Validates launch config against `consumer-sim/consumer_instances.schema.json`.
+1. If schema validation fails, launcher exits immediately with a fatal message that includes config path, schema path, and validation issue locations.
 1. Removes stale `OpAMPSupervisor.signal` files from each instance working directory.
 1. Launches each consumer with:
    - configured consumer config path (`config_path`)

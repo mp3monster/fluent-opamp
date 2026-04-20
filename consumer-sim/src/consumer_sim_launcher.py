@@ -35,6 +35,15 @@ import sys
 import time
 from typing import Any
 
+try:
+    from jsonschema import Draft202012Validator as JSON_SCHEMA_VALIDATOR
+    from jsonschema.exceptions import SchemaError
+except ModuleNotFoundError:  # pragma: no cover - dependency availability varies by env.
+    JSON_SCHEMA_VALIDATOR = None  # type: ignore[assignment]
+
+    class SchemaError(Exception):
+        """Fallback schema error when jsonschema dependency is unavailable."""
+
 ACTION_START = "start"
 ACTION_STOP = "stop"
 VALID_ACTIONS = (ACTION_START, ACTION_STOP)
@@ -66,6 +75,8 @@ GRACEFUL_SHUTDOWN_WAIT_SECONDS = 90.0
 TERMINATE_WAIT_SECONDS = 5.0
 POLL_INTERVAL_SECONDS = 0.25
 SEMAPHORE_FILENAME = "OpAMPSupervisor.signal"
+SCHEMA_FILENAME = "consumer_instances.schema.json"
+SIGKILL_SIGNAL = getattr(signal, "SIGKILL", signal.SIGTERM)
 
 
 def _repo_root() -> pathlib.Path:
@@ -84,6 +95,22 @@ def _resolve_launcher_config_path() -> pathlib.Path:
     if override:
         return pathlib.Path(override).expanduser().resolve()
     return _default_config_path()
+
+
+def _launcher_schema_path() -> pathlib.Path:
+    """Return launcher JSON schema file path."""
+    return (_repo_root() / "consumer-sim" / SCHEMA_FILENAME).resolve()
+
+
+def _json_path(path_parts: list[Any]) -> str:
+    """Convert jsonschema path parts to dotted/jsonpath-like notation."""
+    location = "$"
+    for part in path_parts:
+        if isinstance(part, int):
+            location += f"[{part}]"
+        else:
+            location += f".{part}"
+    return location
 
 
 def _resolve_path(raw: str | None, *, base_dir: pathlib.Path) -> pathlib.Path | None:
@@ -109,6 +136,74 @@ def _load_launcher_payload(config_path: pathlib.Path) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise ValueError("launcher config root must be a JSON object")
     return payload
+
+
+def _validate_payload_against_schema(
+    payload: dict[str, Any],
+    *,
+    config_path: pathlib.Path,
+) -> None:
+    """Validate launcher payload against JSON schema and fail with actionable detail."""
+    if JSON_SCHEMA_VALIDATOR is None:
+        raise RuntimeError(
+            "FATAL: launcher schema validation dependency is missing. "
+            "Install Python package 'jsonschema' before running consumer-sim."
+        )
+
+    schema_path = _launcher_schema_path()
+    if not schema_path.is_file():
+        raise RuntimeError(
+            "FATAL: launcher schema file is missing. "
+            f"Expected schema at: {schema_path}"
+        )
+
+    try:
+        schema_payload = json.loads(schema_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError) as exc:
+        raise RuntimeError(
+            "FATAL: launcher schema file is unreadable or invalid JSON. "
+            f"schema-file={schema_path} error={exc}"
+        ) from exc
+    if not isinstance(schema_payload, dict):
+        raise RuntimeError(
+            "FATAL: launcher schema root must be a JSON object. "
+            f"schema-file={schema_path}"
+        )
+
+    try:
+        JSON_SCHEMA_VALIDATOR.check_schema(schema_payload)
+    except SchemaError as exc:
+        raise RuntimeError(
+            "FATAL: launcher JSON schema is invalid. "
+            f"schema-file={schema_path} issue={exc.message}"
+        ) from exc
+
+    validator = JSON_SCHEMA_VALIDATOR(schema_payload)
+    violations = sorted(
+        validator.iter_errors(payload),
+        key=lambda err: [str(part) for part in err.absolute_path],
+    )
+    if not violations:
+        return
+
+    lines: list[str] = []
+    for index, violation in enumerate(violations[:5], start=1):
+        lines.append(
+            f"{index}. location={_json_path(list(violation.absolute_path))} "
+            f"message={violation.message}"
+        )
+    remaining = len(violations) - len(lines)
+    if remaining > 0:
+        lines.append(f"... and {remaining} additional validation issue(s).")
+
+    raise RuntimeError(
+        "FATAL CONFIG SCHEMA VALIDATION FAILED.\n"
+        f"config-file={config_path}\n"
+        f"schema-file={schema_path}\n"
+        "Fix the configuration file before starting consumer-sim.\n"
+        "Validation issues:\n"
+        + "\n".join(lines)
+    )
 
 
 def _state_file_path(
@@ -272,7 +367,7 @@ def _clear_stale_shutdown_semaphore(*, working_dir: pathlib.Path) -> None:
         return
     try:
         semaphore_file.unlink()
-    except Exception as exc:
+    except OSError as exc:
         raise RuntimeError(
             f"failed to remove stale shutdown semaphore {semaphore_file}: {exc}"
         ) from exc
@@ -318,24 +413,30 @@ def _taskkill(pid: int, *, force: bool) -> None:
     cmd = ["taskkill", "/PID", str(pid), "/T"]
     if force:
         cmd.append("/F")
-    subprocess.run(cmd, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(
+        cmd,
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
 
 
 def _send_forceful_stop(pid: int, process_group_id: int | None) -> None:
     """Escalate to terminate/kill signals when graceful stop fails."""
+    killpg: Any = getattr(os, "killpg", None)
     if os.name == "nt":
         _taskkill(pid, force=True)
         return
-    if process_group_id is not None and process_group_id > 0:
-        os.killpg(process_group_id, signal.SIGTERM)
+    if process_group_id is not None and process_group_id > 0 and killpg is not None:
+        killpg(process_group_id, signal.SIGTERM)  # pylint: disable=not-callable
         if _wait_for_exit(pid, TERMINATE_WAIT_SECONDS):
             return
-        os.killpg(process_group_id, signal.SIGKILL)
+        killpg(process_group_id, SIGKILL_SIGNAL)  # pylint: disable=not-callable
         return
     os.kill(pid, signal.SIGTERM)
     if _wait_for_exit(pid, TERMINATE_WAIT_SECONDS):
         return
-    os.kill(pid, signal.SIGKILL)
+    os.kill(pid, SIGKILL_SIGNAL)
 
 
 def _read_state_file(state_file: pathlib.Path) -> list[dict[str, Any]]:
@@ -344,7 +445,7 @@ def _read_state_file(state_file: pathlib.Path) -> list[dict[str, Any]]:
         return []
     try:
         payload = json.loads(state_file.read_text(encoding="utf-8"))
-    except Exception as exc:
+    except (OSError, ValueError, TypeError) as exc:
         print(f"[consumer-sim] invalid state file {state_file}: {exc}")
         return []
     if not isinstance(payload, dict):
@@ -389,9 +490,10 @@ def _write_state_file(
     state_file.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
-def _start_instances(config_path: pathlib.Path) -> None:
+def _start_instances(config_path: pathlib.Path) -> None:  # pylint: disable=too-many-locals
     """Start all configured consumer instances and record their process IDs."""
     payload = _load_launcher_payload(config_path)
+    _validate_payload_against_schema(payload, config_path=config_path)
     state_file = _state_file_path(config_path, payload)
     existing_state = _read_state_file(state_file)
     running = [
@@ -435,7 +537,10 @@ def _start_instances(config_path: pathlib.Path) -> None:
             else:
                 popen_kwargs["start_new_session"] = True
 
-            process = subprocess.Popen(command, **popen_kwargs)
+            process = subprocess.Popen(  # pylint: disable=consider-using-with
+                command,
+                **popen_kwargs,
+            )
             process_group_id = process.pid if os.name != "nt" else None
             print(
                 "[consumer-sim] launched "
@@ -448,12 +553,17 @@ def _start_instances(config_path: pathlib.Path) -> None:
                     KEY_PROCESS_GROUP_ID: process_group_id,
                     KEY_COMMAND: command,
                     KEY_WORKING_DIR: str(working_dir),
-                    KEY_CONFIG_PATH: str(_resolve_path(raw_instance.get(KEY_CONFIG_PATH), base_dir=base_dir)),
+                    KEY_CONFIG_PATH: str(
+                        _resolve_path(
+                            raw_instance.get(KEY_CONFIG_PATH),
+                            base_dir=base_dir,
+                        )
+                    ),
                     KEY_LAUNCHED_AT: time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                     KEY_STATUS: STATUS_RUNNING,
                 }
             )
-    except Exception:
+    except (OSError, RuntimeError, ValueError, TypeError, subprocess.SubprocessError):
         for launched_instance in launched:
             _stop_single_instance(launched_instance, state_file=state_file)
         raise
@@ -498,11 +608,11 @@ def _stop_single_instance(
         else None
     )
 
-    if pid <= 0:
-        print(f"[consumer-sim] skip invalid pid for {name}: {pid}")
-        return True
-    if not _is_process_running(pid):
-        print(f"[consumer-sim] already stopped name={name} pid={pid}")
+    if pid <= 0 or not _is_process_running(pid):
+        if pid <= 0:
+            print(f"[consumer-sim] skip invalid pid for {name}: {pid}")
+        else:
+            print(f"[consumer-sim] already stopped name={name} pid={pid}")
         return True
 
     print(
@@ -539,7 +649,7 @@ def _stop_single_instance(
     except ProcessLookupError:
         print(f"[consumer-sim] process already exited name={name} pid={pid}")
         return True
-    except Exception as exc:
+    except OSError as exc:
         print(f"[consumer-sim] force stop failed for name={name} pid={pid}: {exc}")
         return False
     if _wait_for_exit(pid, TERMINATE_WAIT_SECONDS):
@@ -552,14 +662,14 @@ def _stop_single_instance(
     return False
 
 
-def _stop_instances(config_path: pathlib.Path) -> None:
+def _stop_instances(config_path: pathlib.Path) -> None:  # pylint: disable=too-many-branches
     """Stop all instances recorded in state file."""
     payload: dict[str, Any] | None = None
     if config_path.is_file():
         try:
             loaded_payload = _load_launcher_payload(config_path)
             payload = loaded_payload if isinstance(loaded_payload, dict) else None
-        except Exception as exc:
+        except (OSError, ValueError, TypeError) as exc:
             print(
                 f"[consumer-sim] failed to load launcher config {config_path}; "
                 f"using default state-file location: {exc}"
@@ -575,7 +685,7 @@ def _stop_instances(config_path: pathlib.Path) -> None:
         instance[KEY_STATUS] = STATUS_SHUTDOWN
     try:
         _write_state_file(state_file, instances)
-    except Exception as exc:
+    except (OSError, ValueError, TypeError) as exc:
         print(
             f"[consumer-sim] failed to persist shutdown requests to {state_file}: {exc}"
         )
@@ -589,7 +699,7 @@ def _stop_instances(config_path: pathlib.Path) -> None:
     for instance in list(remaining_instances):
         try:
             stopped = _stop_single_instance(instance, state_file=state_file)
-        except Exception as exc:
+        except (OSError, RuntimeError, ValueError, TypeError) as exc:
             instance_name = str(instance.get(KEY_NAME, "<unknown>"))
             instance_pid = _coerce_int(instance.get(KEY_PID), default=0)
             print(
@@ -604,7 +714,7 @@ def _stop_instances(config_path: pathlib.Path) -> None:
         if remaining_instances:
             try:
                 _write_state_file(state_file, remaining_instances)
-            except Exception as exc:
+            except (OSError, ValueError, TypeError) as exc:
                 print(
                     "[consumer-sim] failed to persist partial stop state "
                     f"to {state_file}: {exc}"
@@ -617,7 +727,7 @@ def _stop_instances(config_path: pathlib.Path) -> None:
         else:
             try:
                 state_file.unlink(missing_ok=True)
-            except Exception as exc:  # pragma: no cover - best effort cleanup.
+            except OSError as exc:  # pragma: no cover - best effort cleanup.
                 print(f"[consumer-sim] failed to remove state file {state_file}: {exc}")
                 return
             print(f"[consumer-sim] stop complete; removed state file: {state_file}")
@@ -625,7 +735,7 @@ def _stop_instances(config_path: pathlib.Path) -> None:
 
     try:
         _write_state_file(state_file, remaining_instances)
-    except Exception as exc:
+    except (OSError, ValueError, TypeError) as exc:
         print(
             f"[consumer-sim] failed to persist remaining state file {state_file}: {exc}"
         )
@@ -652,16 +762,26 @@ def main(argv: list[str] | None = None) -> int:
     """Program entrypoint."""
     args = _build_parser().parse_args(argv)
     config_path = _resolve_launcher_config_path()
-    if args.action == ACTION_START:
-        _start_instances(config_path)
-    else:
-        _stop_instances(config_path)
+    try:
+        if args.action == ACTION_START:
+            _start_instances(config_path)
+        else:
+            _stop_instances(config_path)
+    except (
+        OSError,
+        RuntimeError,
+        ValueError,
+        TypeError,
+        subprocess.SubprocessError,
+    ) as exc:
+        print(f"[consumer-sim] {exc}", file=sys.stderr)
+        return 1
     return 0
 
 
 if __name__ == "__main__":
     try:
         raise SystemExit(main())
-    except KeyboardInterrupt:
+    except KeyboardInterrupt as exc:
         print("[consumer-sim] interrupted")
-        raise SystemExit(130)
+        raise SystemExit(130) from exc

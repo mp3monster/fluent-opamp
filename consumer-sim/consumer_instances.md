@@ -6,6 +6,18 @@ This document describes all supported parameters in `consumer-sim/consumer_insta
 
 - Default file: `consumer-sim/consumer_instances.json`
 - Override file path with env var: `CONSUMER_SIM_CONFIG=/path/to/file.json`
+- JSON schema: `consumer-sim/consumer_instances.schema.json`
+
+## JSON Schema Validation
+
+On `start`, launcher validates the config file against
+`consumer-sim/consumer_instances.schema.json` before launching any process.
+
+- Validation failure is fatal and startup is aborted.
+- Error output includes:
+  - config file path,
+  - schema file path,
+  - one or more validation issue locations and messages.
 
 ## Top-Level Schema
 
