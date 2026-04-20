@@ -4,21 +4,24 @@ This document consolidates all consumer configuration options and their CLI over
 
 ## Table of Contents
 
-- [Config Source](#config-source)
-- [Override Precedence](#override-precedence)
-- [Quick Start Minimal Config](#quick-start-minimal-config)
-- [Run Scripts](#run-scripts)
-- [Example `opamp.json`](#example-opampjson)
-- [Consumer Config Keys](#consumer-config-keys)
-- [Hardwired Capabilities](#hardwired-capabilities)
-- [Connection Settings](#connection-settings)
-- [Fluent Bit Comment Metadata](#fluent-bit-comment-metadata)
-- [CLI Example](#cli-example)
-- [Running As A Service/Daemon](#running-as-a-servicedaemon)
-- [Installed CLI Commands](#installed-cli-commands)
-- [Fluentd Consumer](#fluentd-consumer)
-- [Required Fluentd Monitor Source](#required-fluentd-monitor-source)
-- [Simulator Consumer](#simulator-consumer)
+- [OpAMP Consumer Configuration](#opamp-consumer-configuration)
+  - [Table of Contents](#table-of-contents)
+  - [Config Source](#config-source)
+  - [Override Precedence](#override-precedence)
+  - [Quick Start Minimal Config](#quick-start-minimal-config)
+  - [Run Scripts](#run-scripts)
+  - [Semaphore Shutdown File](#semaphore-shutdown-file)
+  - [Example `opamp.json`](#example-opampjson)
+  - [Consumer Config Keys](#consumer-config-keys)
+  - [Hardwired Capabilities](#hardwired-capabilities)
+  - [Connection Settings](#connection-settings)
+  - [Fluent Bit Comment Metadata](#fluent-bit-comment-metadata)
+  - [CLI Example](#cli-example)
+  - [Running As A Service/Daemon](#running-as-a-servicedaemon)
+  - [Installed CLI Commands](#installed-cli-commands)
+  - [Fluentd Consumer](#fluentd-consumer)
+    - [Required Fluentd Monitor Source](#required-fluentd-monitor-source)
+  - [Simulator Consumer](#simulator-consumer)
 
 ## Config Source
 
@@ -86,7 +89,30 @@ Default config resolution:
 - Fluentd supervisor: `consumer/opamp-fluentd.json` -> `tests/opamp.json` -> `config/opamp.json`
 - Fluentd runtime config path: `consumer/fluentd.conf`
 
-Graceful stop: create `OpAMPSupervisor.signal` in the supervisor working directory.
+## Semaphore Shutdown File
+
+The agent can be shutdown through the use of a Semaphore file in the event of having problems communicating with the agent properly. The consumer checks for a local semaphore file named:
+
+- `OpAMPSupervisor.signal`
+
+Behavior:
+
+- The check applies to all consumer service types.
+- The file is checked in the consumer process working directory.
+- If present, the consumer sends a disconnect, transitions to shutdown, and exits gracefully.
+
+Operational intent:
+
+- This mechanism is a last-resort emergency stop path and is not recommended for normal production operations.
+- Because it is a shared local file signal, every consumer process that can see this file will stop.
+- In shared development/test working directories, this can stop multiple local agents unintentionally.
+- The server command capability path does not use `OpAMPSupervisor.signal`.
+
+Operational guidance:
+
+- Create the file only when you intend to stop all consumers in that working directory scope.
+- Prefer server command capability for normal controlled shutdown orchestration.
+- Remove stale `OpAMPSupervisor.signal` files after the incident/maintenance window so subsequent starts are not immediately signaled to stop.
 
 ## Example `opamp.json`
 
@@ -283,58 +309,7 @@ python -m opamp_consumer.fluentd_client \
 
 ## Simulator Consumer
 
-The simulator is a concrete `service_type` that replays scripted actions for each
-incoming `ServerToAgent` request type.
+Simulator behavior, response scripting, and request/action reference were moved to:
 
-- Set `consumer.service_type` to `simulator`.
-- Set `consumer.simulator_responses_path` to a JSON file.
-- Each request type maps to a non-empty list of actions.
-- Action lists cycle: once the end of a list is reached, the simulator returns to the first entry.
-- Ready-to-run config: `consumer/opamp-simulator.json`
-
-Simulator identity/version overrides can be passed through `--agent-additional-params`
-as a single JSON object string:
-
-```bash
---agent-additional-params '{"service_instance_uid":"sim-01","client_version":"1.2.3","config_version":"cfg-009"}'
-```
-
-Supported JSON keys:
-- `service_instance_uid` (alias: `service_instance_id`) -> reported as `service.instance.id`
-- `client_version` -> reported as `service.version`
-- `config_version` -> reported as non-identifying attribute `config.version`
-
-Supported request keys:
-- `error_response`
-- `remote_config`
-- `connection_settings`
-- `packages_available`
-- `flags`
-- `capabilities`
-- `agent_identification`
-- `command`
-- `custom_capabilities`
-- `custom_message`
-
-Supported actions:
-- `accept` (run default handler behavior)
-- `ignore` (skip handling)
-- `error` (raise a simulated `AgentException`; optional `message`)
-
-Example simulator responses file:
-
-```json
-{
-  "responses": {
-    "command": ["ignore", "accept"],
-    "remote_config": [
-      "accept",
-      {
-        "action": "error",
-        "message": "simulated remote config rejection"
-      }
-    ],
-    "*": ["accept"]
-  }
-}
-```
+- [consumer-sim/README.md](../consumer-sim/README.md#simulator-client-behavior)
+- [consumer-sim/consumer_instances.md](../consumer-sim/consumer_instances.md)
