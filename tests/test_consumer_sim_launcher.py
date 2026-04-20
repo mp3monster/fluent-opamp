@@ -76,6 +76,54 @@ def test_state_file_path_uses_payload_override(tmp_path: pathlib.Path) -> None:
     assert resolved == (tmp_path / "runtime" / "pids.json").resolve()
 
 
+def test_validate_payload_against_schema_accepts_valid_payload(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Schema validator should accept a minimally valid launcher payload."""
+    payload = {
+        "instances": [
+            {
+                "name": "sim-01",
+                "entrypoint": "simulator",
+                "config_path": "configs/consumer.json",
+            }
+        ]
+    }
+    launcher._validate_payload_against_schema(
+        payload,
+        config_path=tmp_path / "launch.json",
+    )
+
+
+def test_start_instances_fails_fast_on_schema_violation(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Start must fail with a strong, explicit schema-validation message."""
+    config_path = tmp_path / "launch.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "instances": [
+                    {
+                        "name": "sim-01",
+                        "entrypoint": "simulator",
+                        "bad_key": "unexpected",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(RuntimeError, match="FATAL CONFIG SCHEMA VALIDATION FAILED") as exc_info:
+        launcher._start_instances(config_path)
+
+    error_text = str(exc_info.value)
+    assert "config-file=" in error_text
+    assert "schema-file=" in error_text
+    assert "Validation issues:" in error_text
+
+
 def test_build_process_environment_sets_process_record_context() -> None:
     """Launcher should inject process-record file/name for simulator status polling."""
     env = launcher._build_process_environment(
