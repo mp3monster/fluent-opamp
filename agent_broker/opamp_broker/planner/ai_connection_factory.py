@@ -22,6 +22,10 @@ from opamp_broker.planner.constants import (
     DEFAULT_AI_SVC_API_KEY_ENV,
     DEFAULT_AI_SVC_BASE_URL,
     DEFAULT_AI_SVC_PROVIDER,
+    DEFAULT_SLACK_FORMAT_SYSTEM_PROMPT,
+    SLACK_FORMAT_SYSTEM_PROMPT_KEY,
+    SYSTEM_PROMPT_KEY,
+    VERIFICATION_PROMPT_KEY,
 )
 from opamp_broker.planner.openai_compatible_connection import OpenAICompatibleConnection
 from opamp_broker.planner.template_ai_connection import TemplateAIConnection
@@ -36,9 +40,15 @@ _PROVIDER_ALIASES: dict[str, str] = {
 _DEFAULT_MAX_COMPLETION_TOKENS = 1024
 _DEFAULT_VERIFY_MAX_COMPLETION_TOKEN_ATTEMPTS: tuple[int, ...] = (64, 512)
 _DEFAULT_TEMPERATURE = 0.0
+_DEFAULT_REQUEST_TIMEOUT_SECONDS = 30
 
 
 def _normalize_optional_positive_int(value: Any, default: int | None) -> int | None:
+    """Convert a value to a positive int, otherwise fall back to a safe default.
+
+    Why: planner/runtime config comes from JSON and environment overlays, so we
+    defensively normalize types and bounds before creating provider clients.
+    """
     try:
         if value is None:
             return default
@@ -50,7 +60,19 @@ def _normalize_optional_positive_int(value: Any, default: int | None) -> int | N
     return normalized
 
 
+def _normalize_request_timeout_seconds(
+    value: Any,
+    default: int = _DEFAULT_REQUEST_TIMEOUT_SECONDS,
+) -> int:
+    """Return a valid positive timeout in seconds for outbound AI calls."""
+    normalized = _normalize_optional_positive_int(value, default)
+    if isinstance(normalized, int):
+        return normalized
+    return default
+
+
 def _normalize_verify_attempt_tokens(value: Any) -> tuple[int, ...]:
+    """Normalize verification token-attempt list, dropping invalid entries."""
     if not isinstance(value, (list, tuple)):
         return _DEFAULT_VERIFY_MAX_COMPLETION_TOKEN_ATTEMPTS
     normalized: list[int] = []
@@ -67,6 +89,7 @@ def _normalize_verify_attempt_tokens(value: Any) -> tuple[int, ...]:
 
 
 def _normalize_temperature(value: Any, default: float = _DEFAULT_TEMPERATURE) -> float:
+    """Clamp model temperature to provider-safe bounds [0.0, 2.0]."""
     try:
         if value is None:
             return default
@@ -81,18 +104,48 @@ def _normalize_temperature(value: Any, default: float = _DEFAULT_TEMPERATURE) ->
 
 
 def _normalize_provider_name(provider: str | None) -> str:
+    """Normalize provider names and aliases to canonical identifiers."""
     raw_provider = str(provider or DEFAULT_AI_SVC_PROVIDER).strip().lower()
     if not raw_provider:
         raw_provider = DEFAULT_AI_SVC_PROVIDER
     return _PROVIDER_ALIASES.get(raw_provider, raw_provider)
 
 
+def _resolve_prompt_text(prompts_cfg: dict[str, Any], prompt_key: str, default: str = "") -> str:
+    """Resolve prompt text from either direct-string or `{text,description}` formats.
+
+    Why: this keeps planner wiring compatible during prompt-schema migrations
+    while still preferring centrally managed prompt config files.
+    """
+    prompt_value = prompts_cfg.get(prompt_key)
+    if isinstance(prompt_value, dict):
+        return str(prompt_value.get("text", "")).strip() or default
+    if isinstance(prompt_value, str):
+        return prompt_value.strip() or default
+    return default
+
+
+def _resolve_prompt_description(prompts_cfg: dict[str, Any], prompt_key: str) -> str:
+    """Resolve prompt description text when prompt entries use object format."""
+    prompt_value = prompts_cfg.get(prompt_key)
+    if isinstance(prompt_value, dict):
+        return str(prompt_value.get("description", "")).strip()
+    return ""
+
+
 def resolve_ai_runtime_settings(config: dict[str, Any]) -> dict[str, Any]:
-    """Normalize planner runtime settings used by planner and startup checks."""
+    """Normalize planner runtime settings used by planner and startup checks.
+
+    Why this normalization exists:
+    config can arrive from files/env overrides with loose typing, but planner
+    wiring requires a predictable structure and bounded numeric values.
+    """
     planner_cfg = config.get("planner", {}) if isinstance(config, dict) else {}
     model = str(planner_cfg.get("model", "gpt-5.2")).strip() or "gpt-5.2"
     provider = _normalize_provider_name(planner_cfg.get("provider"))
-    timeout_seconds = int(planner_cfg.get("request_timeout_seconds", 30))
+    timeout_seconds = _normalize_request_timeout_seconds(
+        planner_cfg.get("request_timeout_seconds")
+    )
     api_key_env_var = str(
         planner_cfg.get("api_key_env_var", DEFAULT_AI_SVC_API_KEY_ENV)
     ).strip() or DEFAULT_AI_SVC_API_KEY_ENV
@@ -109,8 +162,15 @@ def resolve_ai_runtime_settings(config: dict[str, Any]) -> dict[str, Any]:
     )
     temperature = _normalize_temperature(planner_cfg.get("temperature"))
     prompts_cfg = planner_cfg.get("prompts", {}) if isinstance(planner_cfg, dict) else {}
-    system_prompt = str(prompts_cfg.get("system_prompt", "")).strip()
-    verification_prompt = str(prompts_cfg.get("verification_prompt", "")).strip()
+    if not isinstance(prompts_cfg, dict):
+        prompts_cfg = {}
+    system_prompt = _resolve_prompt_text(prompts_cfg, SYSTEM_PROMPT_KEY)
+    verification_prompt = _resolve_prompt_text(prompts_cfg, VERIFICATION_PROMPT_KEY)
+    slack_format_system_prompt = _resolve_prompt_text(
+        prompts_cfg,
+        SLACK_FORMAT_SYSTEM_PROMPT_KEY,
+        default=DEFAULT_SLACK_FORMAT_SYSTEM_PROMPT,
+    )
     return {
         "llm_enabled": bool(planner_cfg.get("llm_enabled", True)),
         "provider": provider,
@@ -123,6 +183,16 @@ def resolve_ai_runtime_settings(config: dict[str, Any]) -> dict[str, Any]:
         "verify_max_completion_tokens_attempts": verify_max_completion_tokens_attempts,
         "system_prompt": system_prompt,
         "verification_prompt": verification_prompt,
+        "slack_format_system_prompt": slack_format_system_prompt,
+        "prompt_descriptions": {
+            SYSTEM_PROMPT_KEY: _resolve_prompt_description(prompts_cfg, SYSTEM_PROMPT_KEY),
+            VERIFICATION_PROMPT_KEY: _resolve_prompt_description(
+                prompts_cfg, VERIFICATION_PROMPT_KEY
+            ),
+            SLACK_FORMAT_SYSTEM_PROMPT_KEY: _resolve_prompt_description(
+                prompts_cfg, SLACK_FORMAT_SYSTEM_PROMPT_KEY
+            ),
+        },
         "prompts_config_path": str(planner_cfg.get("prompts_config_path", "")).strip(),
         "api_key_present": bool(os.getenv(api_key_env_var)),
     }
@@ -141,7 +211,12 @@ def create_ai_connection(
     ),
     verification_prompt: str = "",
 ) -> AIConnection:
-    """Create the configured AI connection provider instance."""
+    """Create the configured AI connection provider instance.
+
+    Why this factory exists:
+    planner construction should select provider implementations centrally so
+    fail-safe fallback behavior stays consistent across broker startup paths.
+    """
     normalized_provider = _normalize_provider_name(provider)
     if normalized_provider == "openai":
         return OpenAICompatibleConnection(

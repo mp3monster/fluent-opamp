@@ -24,6 +24,15 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any, Dict
 
+from opamp_broker.planner.constants import (
+    SLACK_FORMAT_SYSTEM_PROMPT_KEY,
+    SYSTEM_PROMPT_KEY,
+    VERIFICATION_PROMPT_KEY,
+)
+
+_PROMPT_TEXT_FIELD = "text"
+_PROMPT_DESCRIPTION_FIELD = "description"
+
 DEFAULTS: Dict[str, Any] = {
     "broker": {
         "name": "opamp-conversation-broker",
@@ -77,6 +86,77 @@ DEFAULTS: Dict[str, Any] = {
         "prompts_config_path": "planner_prompts.json",
     },
 }
+
+
+def _parse_prompt_entry(
+    *,
+    prompt_name: str,
+    prompt_entry: Any,
+    prompts_config_path: Path,
+) -> dict[str, str]:
+    """Validate one prompt entry from the prompts config file.
+
+    Why this validation exists:
+    prompts drive planner behavior at runtime, so each prompt must include
+    both human-readable usage documentation and non-empty prompt text.
+    """
+    if not isinstance(prompt_entry, dict):
+        raise ValueError(
+            "planner prompt entry must be an object containing "
+            f"'{_PROMPT_TEXT_FIELD}' and '{_PROMPT_DESCRIPTION_FIELD}': "
+            f"{prompts_config_path} key='{prompt_name}'"
+        )
+
+    prompt_text = str(prompt_entry.get(_PROMPT_TEXT_FIELD, "")).strip()
+    prompt_description = str(prompt_entry.get(_PROMPT_DESCRIPTION_FIELD, "")).strip()
+    if not prompt_text:
+        raise ValueError(
+            "planner prompt entry missing required non-empty text field: "
+            f"{prompts_config_path} key='{prompt_name}.{_PROMPT_TEXT_FIELD}'"
+        )
+    if not prompt_description:
+        raise ValueError(
+            "planner prompt entry missing required non-empty description field: "
+            f"{prompts_config_path} key='{prompt_name}.{_PROMPT_DESCRIPTION_FIELD}'"
+        )
+    return {
+        _PROMPT_TEXT_FIELD: prompt_text,
+        _PROMPT_DESCRIPTION_FIELD: prompt_description,
+    }
+
+
+def _load_planner_prompts(
+    *,
+    prompts_config: Dict[str, Any],
+    prompts_config_path: Path,
+) -> tuple[Dict[str, str], Dict[str, str]]:
+    """Load required planner prompts and their descriptions from config.
+
+    Why this helper exists:
+    centralizing prompt loading keeps planner prompts configurable and ensures
+    every prompt explicitly documents where it is used.
+    """
+    required_prompts = (
+        SYSTEM_PROMPT_KEY,
+        VERIFICATION_PROMPT_KEY,
+        SLACK_FORMAT_SYSTEM_PROMPT_KEY,
+    )
+    prompt_texts: Dict[str, str] = {}
+    prompt_descriptions: Dict[str, str] = {}
+    for prompt_name in required_prompts:
+        if prompt_name not in prompts_config:
+            raise ValueError(
+                "planner prompts config missing required prompt entry: "
+                f"{prompts_config_path} key='{prompt_name}'"
+            )
+        parsed_prompt = _parse_prompt_entry(
+            prompt_name=prompt_name,
+            prompt_entry=prompts_config.get(prompt_name),
+            prompts_config_path=prompts_config_path,
+        )
+        prompt_texts[prompt_name] = parsed_prompt[_PROMPT_TEXT_FIELD]
+        prompt_descriptions[prompt_name] = parsed_prompt[_PROMPT_DESCRIPTION_FIELD]
+    return prompt_texts, prompt_descriptions
 
 
 def _deep_merge(base: Dict[str, Any], overlay: Dict[str, Any]) -> Dict[str, Any]:
@@ -163,22 +243,12 @@ def load_runtime_config(config_path: str | None = None) -> Dict[str, Any]:
                 "planner prompts config must be a JSON object: "
                 f"{prompts_config_path}"
             )
-        system_prompt = str(prompts_config.get("system_prompt", "")).strip()
-        verification_prompt = str(prompts_config.get("verification_prompt", "")).strip()
-        if not system_prompt:
-            raise ValueError(
-                "planner prompts config missing required non-empty "
-                f"'system_prompt': {prompts_config_path}"
-            )
-        if not verification_prompt:
-            raise ValueError(
-                "planner prompts config missing required non-empty "
-                f"'verification_prompt': {prompts_config_path}"
-            )
-        planner_cfg["prompts"] = {
-            "system_prompt": system_prompt,
-            "verification_prompt": verification_prompt,
-        }
+        prompt_texts, prompt_descriptions = _load_planner_prompts(
+            prompts_config=prompts_config,
+            prompts_config_path=prompts_config_path,
+        )
+        planner_cfg["prompts"] = prompt_texts
+        planner_cfg["prompt_descriptions"] = prompt_descriptions
         planner_cfg["prompts_config_path"] = str(prompts_config_path)
         config["planner"] = planner_cfg
 

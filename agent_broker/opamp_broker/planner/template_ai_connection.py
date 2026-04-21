@@ -32,6 +32,7 @@ class TemplateAIConnection:
         verify_max_completion_tokens_attempts: tuple[int, ...] | None = None,
         verification_prompt: str = "",
     ) -> None:
+        """Capture constructor shape expected by planner factory integrations."""
         self.provider = provider
         self.api_key_env_var = api_key_env_var
         self.base_url = base_url.rstrip("/")
@@ -46,7 +47,10 @@ class TemplateAIConnection:
         self.verification_prompt = verification_prompt
 
     def has_api_key(self) -> bool:
-        """Always false so planner factory falls back safely in template mode."""
+        """Always false so planner factory falls back safely in template mode.
+
+        Why: this scaffold must never be accidentally used in production.
+        """
         return False
 
     async def request_json_schema_completion(
@@ -59,14 +63,20 @@ class TemplateAIConnection:
         temperature: float | None = None,
         max_completion_tokens: int | None = None,
     ) -> str:
-        """Raise explicit guidance because this template is intentionally inert."""
+        """Raise explicit guidance because this template is intentionally inert.
+
+        Why: implementers should provide provider-specific request logic before use.
+        """
         raise NotImplementedError(
             "template provider is a scaffold only. "
             "Implement request_json_schema_completion for your target AI API."
         )
 
     async def verify_connection(self, *, model: str) -> dict[str, Any]:
-        """Return a clear non-ok status with guidance for implementers."""
+        """Return a clear non-ok status with guidance for implementers.
+
+        Why: startup checks should clearly show template provider is non-operational.
+        """
         return {
             "ok": False,
             "error": (

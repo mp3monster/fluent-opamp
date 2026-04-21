@@ -18,7 +18,12 @@ from typing import Any, Protocol
 
 
 class AIConnection(Protocol):
-    """Protocol for AI provider transport/auth operations."""
+    """Protocol for AI provider transport/auth operations.
+
+    Why this protocol exists:
+    planner logic depends on stable behaviors (plan request + connectivity
+    verification), while transport details vary per provider.
+    """
 
     provider: str
     api_key_env_var: str
@@ -26,7 +31,11 @@ class AIConnection(Protocol):
     timeout_seconds: int
 
     def has_api_key(self) -> bool:
-        """Return whether required API key material is currently available."""
+        """Return whether required API key material is currently available.
+
+        Why this method exists:
+        planner construction uses it as a fail-safe gate before enabling LLM mode.
+        """
 
     async def request_json_schema_completion(
         self,
@@ -38,7 +47,16 @@ class AIConnection(Protocol):
         temperature: float | None = None,
         max_completion_tokens: int | None = None,
     ) -> str:
-        """Return model output text constrained by the supplied JSON schema."""
+        """Return model output text constrained by the supplied JSON schema.
+
+        Why schema-constrained output is required:
+        graph execution consumes structured plans and must avoid free-text drift.
+        """
 
     async def verify_connection(self, *, model: str) -> dict[str, Any]:
-        """Return provider connectivity/auth status for startup verification."""
+        """Return provider connectivity/auth status for startup verification.
+
+        Why this method exists:
+        broker startup checks should validate provider health without invoking
+        full planner execution paths.
+        """

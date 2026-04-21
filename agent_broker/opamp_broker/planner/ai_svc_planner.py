@@ -26,13 +26,29 @@ from opamp_broker.planner.constants import (
     DEFAULT_AI_SVC_API_KEY_ENV,
     DEFAULT_AI_SVC_BASE_URL,
     DEFAULT_AI_SVC_PROVIDER,
+    DEFAULT_SLACK_FORMAT_SYSTEM_PROMPT,
     REQUIRES_CONFIRMATION_KEY,
     RESPONSE_TEXT_KEY,
+    SLACK_FORMAT_SYSTEM_PROMPT_KEY,
     TOOL_ARGS_KEY,
     TOOL_NAME_KEY,
 )
 
 logger = logging.getLogger(__name__)
+
+SLACK_FORMATTED_TEXT_KEY = "formatted_text"
+SLACK_FORMAT_RESULT_JSON_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        SLACK_FORMATTED_TEXT_KEY: {"type": "string"},
+    },
+    "required": [SLACK_FORMATTED_TEXT_KEY],
+}
+SLACK_FORMAT_TOOL_RESULT_MAX_CHARS = 12000
+COMPONENT_HEALTH_NORMALIZED_KEY = "componenthealth"
+PLANNER_HISTORY_MAX_MESSAGES = 12
+PLANNER_HISTORY_MAX_CONTENT_CHARS = 1000
 
 
 class AISvcPlanner:
@@ -45,14 +61,33 @@ class AISvcPlanner:
         connection: AIConnection,
         system_prompt: str,
         temperature: float,
+        slack_format_system_prompt: str = DEFAULT_SLACK_FORMAT_SYSTEM_PROMPT,
     ) -> None:
+        """Initialize planner with runtime-selected provider connection and prompts.
+
+        Why prompts are constructor parameters:
+        they are loaded centrally from config so operations teams can tune planner
+        behavior without changing code.
+        """
         self.model = model
         self.connection = connection
         self.system_prompt = system_prompt
+        self.slack_format_system_prompt = slack_format_system_prompt
         self.temperature = temperature
 
-    async def plan(self, *, text: str, tools: list[dict[str, Any]]) -> dict[str, Any]:
-        """Create a tool-constrained plan using an AI service JSON schema response."""
+    async def plan(
+        self,
+        *,
+        text: str,
+        tools: list[dict[str, Any]],
+        conversation_history: list[dict[str, str]] | None = None,
+    ) -> dict[str, Any]:
+        """Generate a tool-constrained execution plan from natural-language input.
+
+        Why this method is schema-constrained:
+        planner output is machine-consumed by graph nodes, so strict schema
+        output avoids brittle free-text parsing and unsupported tool calls.
+        """
         allowed_tools = [
             {
                 "name": tool.get("name"),
@@ -69,7 +104,9 @@ class AISvcPlanner:
                 "missing required non-empty system_prompt in planner prompts config"
             )
 
-        user_prompt = {
+        history = _sanitize_conversation_history(conversation_history)
+
+        user_prompt: dict[str, Any] = {
             "request_text": text,
             "available_tools": allowed_tools,
             "output_requirements": {
@@ -77,6 +114,8 @@ class AISvcPlanner:
                 "tool_args_must_match_selected_tool_schema": True,
             },
         }
+        if history:
+            user_prompt["conversation_history"] = history
 
         payload = {
             "model": self.model,
@@ -114,6 +153,137 @@ class AISvcPlanner:
         parsed = json.loads(raw_content)
         return sanitize_plan(parsed=parsed, tools=tools)
 
+    async def format_tool_response_for_slack(
+        self,
+        *,
+        user_text: str,
+        tool_name: str,
+        tool_args: dict[str, Any],
+        tool_result: dict[str, Any],
+        default_response_text: str,
+    ) -> str | None:
+        """Render tool output into concise Slack text using a prompt-configured style.
+
+        Why this is a separate formatter call:
+        tool payloads are often verbose JSON; a dedicated formatting pass keeps
+        end-user Slack responses readable while preserving key facts.
+        """
+        if not isinstance(tool_result, dict) or not tool_result:
+            return None
+
+        formatter_system_prompt = str(self.slack_format_system_prompt).strip()
+        if not formatter_system_prompt:
+            raise RuntimeError(
+                "missing required non-empty "
+                f"{SLACK_FORMAT_SYSTEM_PROMPT_KEY} in planner prompts config"
+            )
+
+        filtered_tool_result = _strip_component_health_fields(tool_result)
+
+        try:
+            serialized_tool_result = json.dumps(
+                filtered_tool_result,
+                ensure_ascii=False,
+                default=str,
+            )
+        except TypeError:
+            serialized_tool_result = str(filtered_tool_result)
+        if len(serialized_tool_result) > SLACK_FORMAT_TOOL_RESULT_MAX_CHARS:
+            omitted = len(serialized_tool_result) - SLACK_FORMAT_TOOL_RESULT_MAX_CHARS
+            serialized_tool_result = (
+                serialized_tool_result[:SLACK_FORMAT_TOOL_RESULT_MAX_CHARS]
+                + f"... [truncated {omitted} chars]"
+            )
+
+        formatter_prompt = {
+            "user_request_text": str(user_text or ""),
+            "tool_name": str(tool_name or ""),
+            "tool_args": tool_args if isinstance(tool_args, dict) else {},
+            "default_response_text": str(default_response_text or ""),
+            "tool_result_json": serialized_tool_result,
+            "instructions": (
+                "Produce a clear Slack-ready response. "
+                "Use bullet points and short headings only when helpful. "
+                "Do not include JSON blobs unless explicitly needed. "
+                "Exclude component health details from status descriptions."
+            ),
+        }
+
+        raw_content = await self.connection.request_json_schema_completion(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": formatter_system_prompt},
+                {
+                    "role": "user",
+                    "content": json.dumps(formatter_prompt, ensure_ascii=False),
+                },
+            ],
+            schema_name="broker_slack_tool_response",
+            schema=SLACK_FORMAT_RESULT_JSON_SCHEMA,
+            temperature=self.temperature,
+        )
+        parsed = json.loads(raw_content)
+        formatted_text = parsed.get(SLACK_FORMATTED_TEXT_KEY)
+        if isinstance(formatted_text, str):
+            cleaned = formatted_text.strip()
+            return cleaned or None
+        return None
+
+
+def _is_component_health_field_name(field_name: str) -> bool:
+    """Identify component-health keys with forgiving normalization.
+
+    Why normalization is needed:
+    upstream payloads may vary by naming style (snake, camel, spaced), but we
+    always want component health excluded from generated summaries.
+    """
+    normalized = re.sub(r"[^a-z0-9]", "", str(field_name).strip().lower())
+    return normalized == COMPONENT_HEALTH_NORMALIZED_KEY
+
+
+def _strip_component_health_fields(value: Any) -> Any:
+    """Recursively remove component-health fields from nested tool payloads."""
+    if isinstance(value, dict):
+        filtered: dict[Any, Any] = {}
+        for key, nested in value.items():
+            if _is_component_health_field_name(str(key)):
+                continue
+            filtered[key] = _strip_component_health_fields(nested)
+        return filtered
+    if isinstance(value, list):
+        return [_strip_component_health_fields(item) for item in value]
+    return value
+
+
+def _sanitize_conversation_history(
+    conversation_history: list[dict[str, str]] | None,
+) -> list[dict[str, str]]:
+    """Trim and validate chat history before sending it to the planner model.
+
+    Why this sanitization exists:
+    keeping history bounded protects token budget and prevents malformed entries
+    from causing planner request failures.
+    """
+    if not isinstance(conversation_history, list):
+        return []
+
+    sanitized: list[dict[str, str]] = []
+    for message in conversation_history:
+        if not isinstance(message, dict):
+            continue
+        role = str(message.get("role", "")).strip().lower()
+        if role not in {"user", "assistant", "system"}:
+            continue
+        content = str(message.get("content", "")).strip()
+        if not content:
+            continue
+        if len(content) > PLANNER_HISTORY_MAX_CONTENT_CHARS:
+            content = content[:PLANNER_HISTORY_MAX_CONTENT_CHARS]
+        sanitized.append({"role": role, "content": content})
+    if len(sanitized) > PLANNER_HISTORY_MAX_MESSAGES:
+        return sanitized[-PLANNER_HISTORY_MAX_MESSAGES:]
+    return sanitized
+
 
 async def verify_ai_svc_connection(
     *,
@@ -127,7 +297,12 @@ async def verify_ai_svc_connection(
     verify_max_completion_tokens_attempts: tuple[int, ...] | None = (64, 512),
     verification_prompt: str = "",
 ) -> dict[str, Any]:
-    """Verify AI service reachability/authentication using a minimal API call."""
+    """Verify provider auth/reachability independently of the planner graph.
+
+    Why this helper exists:
+    startup checks and tests need a lightweight way to validate AI credentials
+    and endpoint access before the broker starts handling traffic.
+    """
     try:
         connection = create_ai_connection(
             provider=provider,
@@ -154,7 +329,12 @@ def sanitize_plan(
     parsed: dict[str, Any],
     tools: list[dict[str, Any]],
 ) -> dict[str, Any]:
-    """Normalize and constrain planner output to discovered tool metadata."""
+    """Normalize and constrain planner output to discovered tool metadata.
+
+    Why sanitization is mandatory:
+    model output can drift (wrong tool names, malformed args), so we gate the
+    final plan to discovered tools and schema-safe argument structures.
+    """
     allowed_names = {str(tool.get("name")) for tool in tools if tool.get("name")}
 
     raw_tool_name = parsed.get(TOOL_NAME_KEY)
@@ -185,9 +365,6 @@ def sanitize_plan(
         response_text = str(response_text)
 
     requires_confirmation = bool(parsed.get(REQUIRES_CONFIRMATION_KEY, False))
-
-    if tool_name and re.search(r"restart|delete", response_text, re.IGNORECASE):
-        requires_confirmation = True
 
     return {
         RESPONSE_TEXT_KEY: response_text.strip(),

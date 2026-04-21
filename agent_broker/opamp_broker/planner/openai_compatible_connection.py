@@ -10,7 +10,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""OpenAI-compatible AI connection implementation."""
+"""OpenAI-compatible AI connection implementation.
+
+This module is intentionally separate from ``ai_connection.py`` because
+``ai_connection.py`` defines the provider-agnostic protocol (interface), while
+this file contains the concrete HTTP behavior for OpenAI-compatible APIs.
+Keeping protocol and implementation separate allows the planner factory to
+swap providers without changing planner/business logic.
+"""
 
 from __future__ import annotations
 
@@ -43,6 +50,7 @@ class OpenAICompatibleConnection:
         ),
         verification_prompt: str = "",
     ) -> None:
+        """Store provider runtime settings for subsequent request/verify calls."""
         self.provider = provider
         self.api_key_env_var = api_key_env_var
         self.base_url = base_url.rstrip("/")
@@ -61,6 +69,7 @@ class OpenAICompatibleConnection:
         return bool(os.getenv(self.api_key_env_var))
 
     def _get_api_key(self) -> str:
+        """Load required API key from the configured environment variable."""
         api_key = os.getenv(self.api_key_env_var)
         if not api_key:
             raise RuntimeError(
@@ -69,6 +78,7 @@ class OpenAICompatibleConnection:
         return api_key
 
     def _headers(self, *, api_key: str) -> dict[str, str]:
+        """Build consistent auth and content-type headers for provider requests."""
         return {
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
@@ -76,6 +86,7 @@ class OpenAICompatibleConnection:
 
     @staticmethod
     def _extract_usage(data: dict[str, Any]) -> dict[str, int | None]:
+        """Extract token usage counters with tolerant type coercion."""
         usage = data.get("usage", {}) if isinstance(data, dict) else {}
         prompt_tokens_raw = usage.get("prompt_tokens")
         completion_tokens_raw = usage.get("completion_tokens")
@@ -110,6 +121,7 @@ class OpenAICompatibleConnection:
         usage: dict[str, int | None],
         max_completion_tokens: int | None,
     ) -> None:
+        """Emit standardized token-usage logs for cost/diagnostic visibility."""
         input_tokens = usage.get("prompt_tokens")
         output_tokens = usage.get("completion_tokens")
         logger.info(
@@ -127,6 +139,7 @@ class OpenAICompatibleConnection:
 
     @staticmethod
     def _summarize_response_error(response: httpx.Response) -> str:
+        """Return concise provider error summary for raised runtime exceptions."""
         response_text = response.text.strip()
         if not response_text:
             return "no response body"
@@ -156,6 +169,39 @@ class OpenAICompatibleConnection:
             return f"{message} ({', '.join(extras)})"[:500]
         return message[:500]
 
+    def _verification_metadata(
+        self,
+        *,
+        model: str,
+        verification_attempt_count: int,
+    ) -> dict[str, Any]:
+        """Build common metadata payload used by all verification outcomes."""
+        return {
+            "provider": self.provider,
+            "model": model,
+            "base_url": self.base_url,
+            "max_completion_tokens": self.max_completion_tokens,
+            "verify_max_completion_tokens_attempts": list(
+                self.verify_max_completion_tokens_attempts
+            ),
+            "verification_attempt_count": verification_attempt_count,
+        }
+
+    def _verification_failure(
+        self,
+        *,
+        model: str,
+        error: str,
+        verification_attempt_count: int,
+    ) -> dict[str, Any]:
+        """Build a consistent non-ok verification payload with context metadata."""
+        result = self._verification_metadata(
+            model=model,
+            verification_attempt_count=verification_attempt_count,
+        )
+        result.update({"ok": False, "error": error})
+        return result
+
     async def request_json_schema_completion(
         self,
         *,
@@ -166,7 +212,11 @@ class OpenAICompatibleConnection:
         temperature: float | None = None,
         max_completion_tokens: int | None = None,
     ) -> str:
-        """Request a JSON-schema constrained completion and return text content."""
+        """Request a JSON-schema constrained completion and return text content.
+
+        Why this method enforces schema mode:
+        planner responses must stay machine-parseable for downstream execution.
+        """
         api_key = self._get_api_key()
         effective_temperature = (
             temperature if temperature is not None else self.temperature
@@ -251,38 +301,31 @@ class OpenAICompatibleConnection:
         return json.dumps(raw_content, ensure_ascii=False)
 
     async def verify_connection(self, *, model: str) -> dict[str, Any]:
-        """Verify provider reachability and auth using a minimal call."""
+        """Verify provider reachability and auth using a minimal call.
+
+        Why verification retries token caps:
+        some providers return output-limit errors for very small budgets, so we
+        retry with configured fallback limits before reporting failure.
+        """
         api_key = os.getenv(self.api_key_env_var)
         if not api_key:
-            return {
-                "ok": False,
-                "error": (
+            return self._verification_failure(
+                model=model,
+                error=(
                     "missing required API key environment variable: "
                     f"{self.api_key_env_var}"
                 ),
-                "provider": self.provider,
-                "model": model,
-                "base_url": self.base_url,
-                "max_completion_tokens": self.max_completion_tokens,
-                "verify_max_completion_tokens_attempts": list(
-                    self.verify_max_completion_tokens_attempts
-                ),
-                "verification_attempt_count": 0,
-            }
+                verification_attempt_count=0,
+            )
         verification_prompt = str(self.verification_prompt).strip()
         if not verification_prompt:
-            return {
-                "ok": False,
-                "error": "missing required non-empty verification_prompt in planner prompts config",
-                "provider": self.provider,
-                "model": model,
-                "base_url": self.base_url,
-                "max_completion_tokens": self.max_completion_tokens,
-                "verify_max_completion_tokens_attempts": list(
-                    self.verify_max_completion_tokens_attempts
+            return self._verification_failure(
+                model=model,
+                error=(
+                    "missing required non-empty verification_prompt in planner prompts config"
                 ),
-                "verification_attempt_count": 0,
-            }
+                verification_attempt_count=0,
+            )
 
         for attempt_index, max_completion_tokens in enumerate(
             self.verify_max_completion_tokens_attempts
@@ -322,60 +365,38 @@ class OpenAICompatibleConnection:
                     and "model output limit was reached" in response_text.lower()
                 ):
                     continue
-                return {
-                    "ok": False,
-                    "error": (
+                return self._verification_failure(
+                    model=model,
+                    error=(
                         f"AI service returned {exc.response.status_code}: "
                         f"{response_text[:500] or 'no response body'}"
                     ),
-                    "provider": self.provider,
-                    "model": model,
-                    "base_url": self.base_url,
-                    "max_completion_tokens": self.max_completion_tokens,
-                    "verify_max_completion_tokens_attempts": list(
-                        self.verify_max_completion_tokens_attempts
-                    ),
-                    "verification_attempt_count": attempt_index + 1,
-                }
+                    verification_attempt_count=attempt_index + 1,
+                )
             except httpx.RequestError as exc:
-                return {
-                    "ok": False,
-                    "error": f"AI service request failed: {exc}",
-                    "provider": self.provider,
-                    "model": model,
-                    "base_url": self.base_url,
-                    "max_completion_tokens": self.max_completion_tokens,
-                    "verify_max_completion_tokens_attempts": list(
-                        self.verify_max_completion_tokens_attempts
-                    ),
-                    "verification_attempt_count": attempt_index + 1,
-                }
+                return self._verification_failure(
+                    model=model,
+                    error=f"AI service request failed: {exc}",
+                    verification_attempt_count=attempt_index + 1,
+                )
             except Exception as exc:  # pragma: no cover - defensive fallback.
-                return {
-                    "ok": False,
-                    "error": f"unexpected AI service verification error: {exc}",
-                    "provider": self.provider,
-                    "model": model,
-                    "base_url": self.base_url,
-                    "max_completion_tokens": self.max_completion_tokens,
-                    "verify_max_completion_tokens_attempts": list(
-                        self.verify_max_completion_tokens_attempts
-                    ),
-                    "verification_attempt_count": attempt_index + 1,
-                }
+                return self._verification_failure(
+                    model=model,
+                    error=f"unexpected AI service verification error: {exc}",
+                    verification_attempt_count=attempt_index + 1,
+                )
 
-        return {
-            "ok": True,
-            "message": "AI service connection verified successfully.",
-            "provider": self.provider,
-            "model": model,
-            "base_url": self.base_url,
-            "temperature": self.temperature,
-            "max_completion_tokens": self.max_completion_tokens,
-            "verify_max_completion_tokens_attempts": list(
-                self.verify_max_completion_tokens_attempts
-            ),
-            "verification_attempt_count": attempt_index + 1,
-            "verification_max_completion_tokens_used": max_completion_tokens,
-            "usage": usage,
-        }
+        result = self._verification_metadata(
+            model=model,
+            verification_attempt_count=attempt_index + 1,
+        )
+        result.update(
+            {
+                "ok": True,
+                "message": "AI service connection verified successfully.",
+                "temperature": self.temperature,
+                "verification_max_completion_tokens_used": max_completion_tokens,
+                "usage": usage,
+            }
+        )
+        return result

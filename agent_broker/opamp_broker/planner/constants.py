@@ -21,9 +21,19 @@ TOOL_ARGS_KEY = "tool_args"
 RESPONSE_TEXT_KEY = "response_text"
 REQUIRES_CONFIRMATION_KEY = "requires_confirmation"
 
+SYSTEM_PROMPT_KEY = "system_prompt"
+VERIFICATION_PROMPT_KEY = "verification_prompt"
+SLACK_FORMAT_SYSTEM_PROMPT_KEY = "slack_format_system_prompt"
+
 DEFAULT_AI_SVC_BASE_URL = "https://api.openai.com/v1"
 DEFAULT_AI_SVC_API_KEY_ENV = "OPENAI_API_KEY"
 DEFAULT_AI_SVC_PROVIDER = "openai"
+DEFAULT_SLACK_FORMAT_SYSTEM_PROMPT = (
+    "You are an assistant that formats OpAMP tool results for Slack. "
+    "Return concise, readable Markdown-like Slack text with short sections and bullets "
+    "when helpful. Preserve factual data and values exactly, do not invent content. "
+    "Never mention component health fields or values in status summaries."
+)
 
 BROKER_PLAN_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",

@@ -18,7 +18,23 @@ from typing import Any, Protocol
 
 
 class Planner(Protocol):
-    """Protocol for converting user text into tool-constrained plans."""
+    """Protocol for converting user text into tool-constrained plans.
 
-    async def plan(self, *, text: str, tools: list[dict[str, Any]]) -> dict[str, Any]:
-        """Return a normalized plan constrained to the supplied tools."""
+    Why this protocol exists:
+    graph nodes can invoke any planner implementation (rule-first or AI-backed)
+    through one interface without runtime branching.
+    """
+
+    async def plan(
+        self,
+        *,
+        text: str,
+        tools: list[dict[str, Any]],
+        conversation_history: list[dict[str, str]] | None = None,
+    ) -> dict[str, Any]:
+        """Return a normalized plan constrained to the supplied tools.
+
+        Why history is optional:
+        deterministic planners ignore it, while AI planners can use it for
+        safer multi-turn planning decisions.
+        """

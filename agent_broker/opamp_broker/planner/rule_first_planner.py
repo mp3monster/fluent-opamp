@@ -40,8 +40,20 @@ AGENT_NOUN_PATTERN = re.compile(r"\b(?:agent|agents|collector|collectors|client|
 class RuleFirstPlanner:
     """Deterministic fallback planner when LLM planning is unavailable."""
 
-    async def plan(self, *, text: str, tools: list[dict[str, Any]]) -> dict[str, Any]:
-        """Create a tool-constrained plan using deterministic keyword rules."""
+    async def plan(
+        self,
+        *,
+        text: str,
+        tools: list[dict[str, Any]],
+        conversation_history: list[dict[str, str]] | None = None,
+    ) -> dict[str, Any]:
+        """Create a tool-constrained plan using deterministic keyword rules.
+
+        Why this planner exists:
+        broker operations must continue even when LLM mode is disabled or not
+        available, so we provide predictable command routing as a safe fallback.
+        """
+        del conversation_history
         tool_names = [str(tool.get("name", "")).strip() for tool in tools]
         tool_lookup = {
             str(tool.get("name", "")).strip(): tool
@@ -64,15 +76,11 @@ class RuleFirstPlanner:
                 direct_target = _extract_direct_target(text=text, tool_name=direct_tool)
                 if direct_target:
                     direct_args = {"target": direct_target}
-            requires_confirmation = any(
-                keyword in direct_tool.lower()
-                for keyword in ("restart", "delete", "remove", "shutdown")
-            )
             return {
                 RESPONSE_TEXT_KEY: "",
                 TOOL_NAME_KEY: direct_tool,
                 TOOL_ARGS_KEY: direct_args,
-                REQUIRES_CONFIRMATION_KEY: requires_confirmation,
+                REQUIRES_CONFIRMATION_KEY: False,
             }
 
         if any(
@@ -117,7 +125,7 @@ class RuleFirstPlanner:
                     RESPONSE_TEXT_KEY: "",
                     TOOL_NAME_KEY: chosen,
                     TOOL_ARGS_KEY: {"target": target} if (chosen and target) else {},
-                    REQUIRES_CONFIRMATION_KEY: prefix in {"restart"},
+                    REQUIRES_CONFIRMATION_KEY: False,
                 }
 
         otel_agents_tool = _find_otel_agents_tool_name(tool_names)
@@ -146,7 +154,10 @@ class RuleFirstPlanner:
 
 
 def _format_tool_catalog(tools: list[dict[str, Any]]) -> str:
-    """Render a human-readable summary of discovered tools."""
+    """Render a human-readable summary of discovered tools.
+
+    Why: users often ask capability questions before issuing commands.
+    """
     usable_tools = [tool for tool in tools if str(tool.get("name", "")).strip()]
     if not usable_tools:
         return (
@@ -165,7 +176,10 @@ def _format_tool_catalog(tools: list[dict[str, Any]]) -> str:
 
 
 def _format_tool_line(tool: dict[str, Any]) -> str:
-    """Render one tool with purpose and argument hints."""
+    """Render one tool with purpose and argument hints.
+
+    Why: concise per-tool hints reduce trial-and-error in chat interactions.
+    """
     name = str(tool.get("name", "")).strip()
     description = str(tool.get("description", "")).strip() or "No description provided."
     args_hint = _format_args_hint(tool.get("inputSchema", {}))
@@ -175,7 +189,10 @@ def _format_tool_line(tool: dict[str, Any]) -> str:
 
 
 def _format_args_hint(input_schema: Any) -> str:
-    """Build concise argument guidance from a JSON Schema-like object."""
+    """Build concise argument guidance from a JSON Schema-like object.
+
+    Why: rule-first help text should reflect live tool schemas, not hardcoded args.
+    """
     if not isinstance(input_schema, dict):
         return ""
     properties = input_schema.get("properties")
@@ -207,7 +224,10 @@ def _format_args_hint(input_schema: Any) -> str:
 
 
 def _find_direct_tool_request(text: str, tool_names: list[str]) -> str | None:
-    """Return explicitly requested tool name when user types a tool identifier."""
+    """Return explicitly requested tool name when user types a tool identifier.
+
+    Why: explicit tool invocations should bypass heuristic intent matching.
+    """
     normalized = text.strip().lower()
     if not normalized:
         return None
@@ -227,7 +247,10 @@ def _find_direct_tool_request(text: str, tool_names: list[str]) -> str | None:
 
 
 def _extract_direct_target(text: str, tool_name: str) -> str | None:
-    """Extract a simple trailing target token from direct tool invocation text."""
+    """Extract a simple trailing target token from direct tool invocation text.
+
+    Why: many operational commands follow `tool_name target` shorthand patterns.
+    """
     pattern = re.compile(rf"^\s*{re.escape(tool_name)}\s+(?P<target>\S+)")
     match = pattern.search(text)
     if not match:
@@ -237,7 +260,10 @@ def _extract_direct_target(text: str, tool_name: str) -> str | None:
 
 
 def _find_otel_agents_tool_name(tool_names: list[str]) -> str | None:
-    """Return the best discovered tool name for listing/filtering agents."""
+    """Return the best discovered tool name for listing/filtering agents.
+
+    Why: deployments may expose different agent-list tool names.
+    """
     for name in tool_names:
         if "otel_agents" in name.lower():
             return name
@@ -249,7 +275,10 @@ def _find_otel_agents_tool_name(tool_names: list[str]) -> str | None:
 
 
 def _looks_like_agent_list_query(text: str) -> bool:
-    """Determine whether free text likely intends an agent listing/filter request."""
+    """Determine whether free text likely intends an agent listing/filter request.
+
+    Why: filtering/listing requests are common and should auto-route correctly.
+    """
     normalized = text.strip().lower()
     if not normalized:
         return False
@@ -302,7 +331,10 @@ def _extract_tool_arguments(
 
 
 def _extract_input_schema_properties(tool: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
-    """Return normalized ``inputSchema.properties`` mapping for a tool."""
+    """Return normalized ``inputSchema.properties`` mapping for a tool.
+
+    Why: schema-aware parsing avoids sending unsupported tool arguments.
+    """
     if not isinstance(tool, dict):
         return {}
     input_schema = tool.get("inputSchema")
@@ -324,7 +356,10 @@ def _extract_key_value_arguments(
     text: str,
     properties: dict[str, dict[str, Any]],
 ) -> dict[str, Any]:
-    """Extract ``key=value`` tokens and coerce values using schema metadata."""
+    """Extract ``key=value`` tokens and coerce values using schema metadata.
+
+    Why: users naturally type CLI-like args in Slack commands and free text.
+    """
     parsed: dict[str, Any] = {}
     for match in ARGUMENT_KEY_VALUE_PATTERN.finditer(text):
         raw_key = str(match.group("key") or "").strip().lstrip("-")
@@ -344,7 +379,10 @@ def _extract_key_value_arguments(
 
 
 def _resolve_argument_key(raw_key: str, properties: dict[str, dict[str, Any]]) -> str | None:
-    """Resolve a user-provided argument name to one schema property key."""
+    """Resolve a user-provided argument name to one schema property key.
+
+    Why: forgiving key matching (hyphen/underscore/case) improves UX.
+    """
     if not properties:
         return raw_key
 
@@ -371,12 +409,18 @@ def _resolve_argument_key(raw_key: str, properties: dict[str, dict[str, Any]]) -
 
 
 def _normalize_argument_name(value: str) -> str:
-    """Normalize argument names for forgiving matching across separators/casing."""
+    """Normalize argument names for forgiving matching across separators/casing.
+
+    Why: argument names from users and schemas may differ in punctuation/case.
+    """
     return re.sub(r"[^a-z0-9]", "", str(value).strip().lower())
 
 
 def _strip_wrapping_quotes(value: str) -> str:
-    """Remove one pair of matching leading/trailing quotes."""
+    """Remove one pair of matching leading/trailing quotes.
+
+    Why: quoted values are common in chat commands with spaces/special chars.
+    """
     stripped = value.strip()
     if len(stripped) < 2:
         return stripped
@@ -389,7 +433,10 @@ def _strip_wrapping_quotes(value: str) -> str:
 
 
 def _coerce_argument_value(raw_value: str, schema: dict[str, Any]) -> Any:
-    """Coerce user text to primitive schema type when safe."""
+    """Coerce user text to primitive schema type when safe.
+
+    Why: tool inputs should preserve intended types (bool/int/float) when possible.
+    """
     arg_type = str(schema.get("type", "")).strip().lower() if schema else ""
     if arg_type == "boolean":
         normalized = raw_value.strip().lower()
@@ -412,7 +459,10 @@ def _coerce_argument_value(raw_value: str, schema: dict[str, Any]) -> Any:
 
 
 def _extract_first_positional_token(text: str) -> str | None:
-    """Return first non-key=value token from a command tail."""
+    """Return first non-key=value token from a command tail.
+
+    Why: many tools accept a primary positional `target` in addition to flags.
+    """
     for token in ARGUMENT_TOKEN_PATTERN.findall(text):
         candidate = _strip_wrapping_quotes(token.strip())
         if not candidate:
