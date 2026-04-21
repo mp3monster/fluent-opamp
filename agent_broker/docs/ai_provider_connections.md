@@ -53,12 +53,16 @@ Token usage logging:
 
 Prompt loading:
 
-1. Prompt strings are loaded from `planner.prompts_config_path`.
-2. Required fields are:
+1. Prompt entries are loaded from `planner.prompts_config_path`.
+2. Each prompt entry must include:
+   - `description` (where the prompt is used)
+   - `text` (the prompt content sent to the model)
+3. Required prompt keys are:
    - `system_prompt`
    - `verification_prompt`
-3. There are no in-code defaults for prompt strings.
-4. Use `system_prompt` to tune conversational behavior (for example, richer capability responses that explain each discovered tool and expected arguments).
+   - `slack_format_system_prompt`
+4. There are no in-code defaults for planner/verification prompt strings.
+5. Use `system_prompt` to tune conversational behavior (for example, richer capability responses that explain each discovered tool and expected arguments).
 
 Template example:
 
