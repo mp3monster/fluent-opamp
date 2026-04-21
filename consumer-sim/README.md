@@ -87,3 +87,61 @@ Each instance:
 - `overrides` (optional key/value map converted to CLI flags)
 - `env` (optional environment variable map)
 - `working_dir` (optional)
+
+## Simulator Client Behavior
+
+The simulator is a concrete `service_type` that replays scripted actions for each
+incoming `ServerToAgent` request type.
+
+- Set `consumer.service_type` to `simulator`.
+- Set `consumer.simulator_responses_path` to a JSON file.
+- Each request type maps to a non-empty list of actions.
+- Action lists cycle: once the end of a list is reached, the simulator returns to the first entry.
+- Ready-to-run config: `consumer/opamp-simulator.json`
+
+Simulator identity/version overrides can be passed through `--agent-additional-params`
+as a single JSON object string:
+
+```bash
+--agent-additional-params '{"service_instance_uid":"sim-01","client_version":"1.2.3","config_version":"cfg-009"}'
+```
+
+Supported JSON keys:
+- `service_instance_uid` (alias: `service_instance_id`) -> reported as `service.instance.id`
+- `client_version` -> reported as `service.version`
+- `config_version` -> reported as non-identifying attribute `config.version`
+
+Supported request keys:
+- `error_response`
+- `remote_config`
+- `connection_settings`
+- `packages_available`
+- `flags`
+- `capabilities`
+- `agent_identification`
+- `command`
+- `custom_capabilities`
+- `custom_message`
+
+Supported actions:
+- `accept` (run default handler behavior)
+- `ignore` (skip handling)
+- `error` (raise a simulated `AgentException`; optional `message`)
+
+Example simulator responses file:
+
+```json
+{
+  "responses": {
+    "command": ["ignore", "accept"],
+    "remote_config": [
+      "accept",
+      {
+        "action": "error",
+        "message": "simulated remote config rejection"
+      }
+    ],
+    "*": ["accept"]
+  }
+}
+```

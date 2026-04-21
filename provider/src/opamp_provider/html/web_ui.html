@@ -37,15 +37,24 @@
       <label>Page size
         <input id="pageSizeInput" class="short-input" type="number" min="5" value="20" />
       </label>
-      <span style="color: var(--muted);">Click headers to sort.</span>
-      <button
-        id="toggleFiltersBtn"
-        class="filter-toggle-btn"
-        type="button"
-        aria-expanded="true"
-        aria-controls="filterControls"
-      >Hide Filters</button>
-      <div id="filterControls" class="filter-controls" role="group" aria-label="Client filters">
+      <span style="color: var(--muted);">Click headers to sort. Drag headers to reorder.</span>
+      <div class="controls-toggle-actions">
+        <button
+          id="toggleFiltersBtn"
+          class="filter-toggle-btn"
+          type="button"
+          aria-expanded="false"
+          aria-controls="filterControls"
+        >Show Filters</button>
+        <button
+          id="toggleColumnsBtn"
+          class="column-toggle-btn"
+          type="button"
+          aria-expanded="false"
+          aria-controls="columnControls"
+        >Show Columns</button>
+      </div>
+      <div id="filterControls" class="filter-controls collapsed" role="group" aria-label="Client filters">
         <input
           id="filterServiceInstanceInput"
           type="text"
@@ -81,10 +90,33 @@
           Filters: none
         </span>
       </div>
+      <div id="columnControls" class="column-controls collapsed" role="group" aria-label="Optional table columns">
+        <span class="column-controls-title">Optional Columns:</span>
+        <label class="column-toggle-option">
+          <input type="checkbox" data-column-toggle="client_version" />
+          Client Version
+        </label>
+        <label class="column-toggle-option">
+          <input type="checkbox" data-column-toggle="host_type" />
+          Host Type
+        </label>
+        <label class="column-toggle-option">
+          <input type="checkbox" data-column-toggle="host_version" />
+          Host Version
+        </label>
+        <label class="column-toggle-option">
+          <input type="checkbox" data-column-toggle="host_name" />
+          Host Name
+        </label>
+        <label class="column-toggle-option">
+          <input type="checkbox" data-column-toggle="host_ip" />
+          Host IP
+        </label>
+      </div>
     </div>
     <table class="table fade-in">
       <thead>
-        <tr>
+        <tr id="clientTableHeaderRow">
           <th data-sort="client_id">Service Instance ID</th>
           <th data-sort="client_id">Instance UID</th>
           <th data-sort="status">Status</th>

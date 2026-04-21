@@ -31,8 +31,11 @@
         hostName: "",
         hostIp: "",
         invertFilter: false,
-        collapsed: false,
+        collapsed: true,
       },
+      columnOrder: [],
+      visibleColumns: {},
+      columnControlsCollapsed: true,
       authToken: "",
       timer: null,
     };
@@ -50,7 +53,13 @@
     const refreshInput = document.getElementById("refreshInput");
     const pageSizeInput = document.getElementById("pageSizeInput");
     const toggleFiltersBtn = document.getElementById("toggleFiltersBtn");
+    const toggleColumnsBtn = document.getElementById("toggleColumnsBtn");
     const filterControls = document.getElementById("filterControls");
+    const columnControls = document.getElementById("columnControls");
+    const columnToggleInputs = Array.from(
+      document.querySelectorAll("input[data-column-toggle]")
+    );
+    const clientTableHeaderRow = document.getElementById("clientTableHeaderRow");
     const filterServiceInstanceInput = document.getElementById(
       "filterServiceInstanceInput"
     );
@@ -210,12 +219,16 @@
       },
     ];
     const AUTH_TOKEN_STORAGE_KEY = "opamp_ui_bearer_token";
+    const UI_PREFS_COOKIE_NAME = "opamp_ui_prefs";
+    const UI_PREFS_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 
     let activeClient = null;
     let contextClient = null;
     let pendingApprovalDecisions = {};
     let activeHelpPopover = null;
     let activeHelpIcon = null;
+    let draggingColumnKey = "";
+    let skipSortClickForColumn = "";
     const DEFAULT_GLOBAL_SETTINGS_HELP = {
       delayed_comms_seconds: {
         label: "Delayed Communications Threshold (seconds)",

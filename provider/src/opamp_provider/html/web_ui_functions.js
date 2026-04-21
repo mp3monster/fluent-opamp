@@ -1,3 +1,36 @@
+    const TABLE_COLUMN_DEFINITIONS = Object.freeze({
+      service_instance_id: { label: "Service Instance ID", sortKey: "service_instance_id" },
+      instance_uid: { label: "Instance UID", sortKey: "client_id" },
+      status: { label: "Status", sortKey: "status" },
+      last_seen: { label: "Last Seen", sortKey: "last_communication" },
+      config_version: { label: "Config Version", sortKey: "current_config_version" },
+      client_version: { label: "Client Version", sortKey: "client_version" },
+      host_type: { label: "Host Type", sortKey: "host_type" },
+      host_version: { label: "Host Version", sortKey: "host_version" },
+      host_name: { label: "Host Name", sortKey: "host_name" },
+      host_ip: { label: "Host IP", sortKey: "host_ip" },
+    });
+    const TABLE_COLUMN_KEYS = Object.freeze(Object.keys(TABLE_COLUMN_DEFINITIONS));
+    const OPTIONAL_TABLE_COLUMNS = Object.freeze([
+      "client_version",
+      "host_type",
+      "host_version",
+      "host_name",
+      "host_ip",
+    ]);
+    const DEFAULT_VISIBLE_COLUMNS = Object.freeze({
+      service_instance_id: true,
+      instance_uid: true,
+      status: true,
+      last_seen: true,
+      config_version: true,
+      client_version: false,
+      host_type: false,
+      host_version: false,
+      host_name: false,
+      host_ip: false,
+    });
+
     async function fetchSettings() {
       const resp = await apiFetch("/api/settings/comms");
       if (!resp.ok) return;
@@ -293,6 +326,291 @@
       }
     }
 
+    function defaultColumnOrder() {
+      return [...TABLE_COLUMN_KEYS];
+    }
+
+    function defaultVisibleColumns() {
+      return { ...DEFAULT_VISIBLE_COLUMNS };
+    }
+
+    function sanitizeColumnOrder(rawOrder) {
+      const incoming = Array.isArray(rawOrder) ? rawOrder : [];
+      const unique = [];
+      incoming.forEach(key => {
+        const normalized = String(key || "").trim();
+        if (!TABLE_COLUMN_KEYS.includes(normalized)) return;
+        if (unique.includes(normalized)) return;
+        unique.push(normalized);
+      });
+      TABLE_COLUMN_KEYS.forEach(key => {
+        if (!unique.includes(key)) unique.push(key);
+      });
+      return unique;
+    }
+
+    function sanitizeVisibleColumns(rawVisible) {
+      const visible = defaultVisibleColumns();
+      if (!rawVisible || typeof rawVisible !== "object") {
+        return visible;
+      }
+      OPTIONAL_TABLE_COLUMNS.forEach(key => {
+        if (Object.prototype.hasOwnProperty.call(rawVisible, key)) {
+          visible[key] = rawVisible[key] === true;
+        }
+      });
+      return visible;
+    }
+
+    function readCookieValue(name) {
+      const encodedName = `${encodeURIComponent(name)}=`;
+      const parts = String(document.cookie || "").split(";");
+      for (const part of parts) {
+        const trimmed = part.trim();
+        if (!trimmed.startsWith(encodedName)) continue;
+        return decodeURIComponent(trimmed.slice(encodedName.length));
+      }
+      return "";
+    }
+
+    function writeCookieValue(name, value) {
+      document.cookie = [
+        `${encodeURIComponent(name)}=${encodeURIComponent(value)}`,
+        `max-age=${UI_PREFS_COOKIE_MAX_AGE_SECONDS}`,
+        "path=/",
+        "samesite=lax",
+      ].join("; ");
+    }
+
+    function persistUiPreferencesToCookie() {
+      const payload = {
+        v: 1,
+        columnOrder: sanitizeColumnOrder(state.columnOrder),
+        visibleColumns: sanitizeVisibleColumns(state.visibleColumns),
+        filtersCollapsed: state.filters.collapsed === true,
+      };
+      try {
+        writeCookieValue(UI_PREFS_COOKIE_NAME, JSON.stringify(payload));
+      } catch (_error) {
+        // Ignore cookie failures and continue with in-memory preferences.
+      }
+    }
+
+    function loadUiPreferencesFromCookie() {
+      state.columnOrder = defaultColumnOrder();
+      state.visibleColumns = defaultVisibleColumns();
+      state.columnControlsCollapsed = true;
+      state.filters.collapsed = true;
+
+      try {
+        const raw = readCookieValue(UI_PREFS_COOKIE_NAME);
+        if (!raw) return;
+        const payload = JSON.parse(raw);
+        if (!payload || typeof payload !== "object") return;
+        state.columnOrder = sanitizeColumnOrder(payload.columnOrder);
+        state.visibleColumns = sanitizeVisibleColumns(payload.visibleColumns);
+        if (Object.prototype.hasOwnProperty.call(payload, "filtersCollapsed")) {
+          state.filters.collapsed = payload.filtersCollapsed === true;
+        }
+      } catch (_error) {
+        // Ignore malformed cookie payloads and fall back to defaults.
+      }
+    }
+
+    function setColumnsCollapsed(collapsed) {
+      const isCollapsed = collapsed === true;
+      state.columnControlsCollapsed = isCollapsed;
+      columnControls.classList.toggle("collapsed", isCollapsed);
+      toggleColumnsBtn.textContent = isCollapsed ? "Show Columns" : "Hide Columns";
+      toggleColumnsBtn.setAttribute("aria-expanded", isCollapsed ? "false" : "true");
+      toggleColumnsBtn.classList.toggle("closed", isCollapsed);
+    }
+
+    function visibleOptionalColumnCount() {
+      return OPTIONAL_TABLE_COLUMNS.filter(key => state.visibleColumns[key] === true).length;
+    }
+
+    function updateColumnsButtonState() {
+      const visibleCount = visibleOptionalColumnCount();
+      toggleColumnsBtn.classList.toggle(
+        "columns-active",
+        state.columnControlsCollapsed === true && visibleCount > 0
+      );
+    }
+
+    function writeColumnControlsToInputs() {
+      columnToggleInputs.forEach(input => {
+        const key = String(input.dataset.columnToggle || "").trim();
+        if (!key) return;
+        input.checked = state.visibleColumns[key] === true;
+      });
+      setColumnsCollapsed(state.columnControlsCollapsed);
+      updateColumnsButtonState();
+    }
+
+    function syncColumnSelectionFromInputs() {
+      OPTIONAL_TABLE_COLUMNS.forEach(key => {
+        const input = columnToggleInputs.find(
+          item => String(item.dataset.columnToggle || "").trim() === key
+        );
+        if (!input) return;
+        state.visibleColumns[key] = input.checked === true;
+      });
+      state.visibleColumns = sanitizeVisibleColumns(state.visibleColumns);
+    }
+
+    function toggleColumnsPanel() {
+      setColumnsCollapsed(state.columnControlsCollapsed !== true);
+      updateColumnsButtonState();
+    }
+
+    function getVisibleOrderedColumnKeys() {
+      return sanitizeColumnOrder(state.columnOrder).filter(
+        key => state.visibleColumns[key] === true
+      );
+    }
+
+    function moveColumnRelativeToTarget(dragKey, targetKey, placeAfter) {
+      const normalizedDrag = String(dragKey || "").trim();
+      const normalizedTarget = String(targetKey || "").trim();
+      if (!normalizedDrag || !normalizedTarget) return false;
+      if (normalizedDrag === normalizedTarget) return false;
+      const current = sanitizeColumnOrder(state.columnOrder);
+      const withoutDrag = current.filter(key => key !== normalizedDrag);
+      const targetIndex = withoutDrag.indexOf(normalizedTarget);
+      if (targetIndex < 0) return false;
+      const insertIndex = placeAfter ? targetIndex + 1 : targetIndex;
+      withoutDrag.splice(insertIndex, 0, normalizedDrag);
+      state.columnOrder = sanitizeColumnOrder(withoutDrag);
+      return true;
+    }
+
+    function getClientHostMetadata(client) {
+      const agentDesc = client && client.agent_description ? String(client.agent_description) : "";
+      const hostType = extractAgentField(agentDesc, "os_type");
+      const hostVersion = extractAgentField(agentDesc, "os_version");
+      const hostName = extractAgentField(agentDesc, "hostname");
+      const reportedIpAddress =
+        extractAgentField(agentDesc, "ip_address")
+        || extractAgentField(agentDesc, "ip")
+        || extractAgentField(agentDesc, "host.ip");
+      const sourceIpAddress = client && client.remote_addr ? String(client.remote_addr) : "";
+      return {
+        hostType: String(hostType || "").trim(),
+        hostVersion: String(hostVersion || "").trim(),
+        hostName: String(hostName || "").trim(),
+        hostIp: String(reportedIpAddress || sourceIpAddress || "").trim(),
+      };
+    }
+
+    function toComparableValue(value) {
+      if (typeof value === "number") return value;
+      return String(value || "").toLowerCase();
+    }
+
+    function getSortValue(client, sortKey) {
+      const key = String(sortKey || "").trim();
+      if (key === "service_instance_id") {
+        return toComparableValue(getClientDisplayId(client));
+      }
+      if (key === "status") {
+        const status = computeStatus(client);
+        if (status.cls === "late-red") return 3;
+        if (status.cls === "late-amber") return 2;
+        if (status.cls === "disconnected") return 1;
+        if (status.label === "ok") return 0;
+        return -1;
+      }
+      if (key === "last_communication") {
+        const rawDate = client && client.last_communication
+          ? new Date(client.last_communication).getTime()
+          : 0;
+        return Number.isNaN(rawDate) ? 0 : rawDate;
+      }
+      if (key === "host_type" || key === "host_version" || key === "host_name" || key === "host_ip") {
+        const hostMeta = getClientHostMetadata(client);
+        if (key === "host_type") return toComparableValue(hostMeta.hostType);
+        if (key === "host_version") return toComparableValue(hostMeta.hostVersion);
+        if (key === "host_name") return toComparableValue(hostMeta.hostName);
+        return toComparableValue(hostMeta.hostIp);
+      }
+      return toComparableValue(client && client[key] !== undefined ? client[key] : "");
+    }
+
+    function toggleSortByKey(key) {
+      const normalizedKey = String(key || "").trim();
+      if (!normalizedKey) return;
+      if (state.sortKey === normalizedKey) {
+        state.sortDir = state.sortDir === "asc" ? "desc" : "asc";
+      } else {
+        state.sortKey = normalizedKey;
+        state.sortDir = "asc";
+      }
+      renderTable();
+    }
+
+    function renderClientTableHeader() {
+      if (!clientTableHeaderRow) return;
+      const visibleColumns = getVisibleOrderedColumnKeys();
+      clientTableHeaderRow.innerHTML = "";
+      visibleColumns.forEach(columnKey => {
+        const columnMeta = TABLE_COLUMN_DEFINITIONS[columnKey];
+        if (!columnMeta) return;
+        const th = document.createElement("th");
+        th.className = "column-header";
+        th.draggable = true;
+        th.dataset.columnKey = columnKey;
+        th.dataset.sort = columnMeta.sortKey;
+        th.title = `${columnMeta.label} (click to sort, drag to reorder)`;
+        th.textContent = columnMeta.label;
+        th.addEventListener("click", () => {
+          if (skipSortClickForColumn && skipSortClickForColumn === columnKey) {
+            skipSortClickForColumn = "";
+            return;
+          }
+          toggleSortByKey(columnMeta.sortKey);
+        });
+        th.addEventListener("dragstart", event => {
+          draggingColumnKey = columnKey;
+          th.classList.add("dragging");
+          if (event.dataTransfer) {
+            event.dataTransfer.effectAllowed = "move";
+            event.dataTransfer.setData("text/plain", columnKey);
+          }
+        });
+        th.addEventListener("dragover", event => {
+          if (!draggingColumnKey || draggingColumnKey === columnKey) return;
+          event.preventDefault();
+          th.classList.add("drag-over");
+          if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+        });
+        th.addEventListener("dragleave", () => {
+          th.classList.remove("drag-over");
+        });
+        th.addEventListener("drop", event => {
+          event.preventDefault();
+          th.classList.remove("drag-over");
+          const dragKey = draggingColumnKey;
+          if (!dragKey || dragKey === columnKey) return;
+          const rect = th.getBoundingClientRect();
+          const placeAfter = (event.clientX - rect.left) > (rect.width / 2);
+          const moved = moveColumnRelativeToTarget(dragKey, columnKey, placeAfter);
+          if (!moved) return;
+          skipSortClickForColumn = columnKey;
+          persistUiPreferencesToCookie();
+          renderTable();
+        });
+        th.addEventListener("dragend", () => {
+          draggingColumnKey = "";
+          th.classList.remove("dragging");
+          clientTableHeaderRow.querySelectorAll(".drag-over").forEach(item => {
+            item.classList.remove("drag-over");
+          });
+        });
+        clientTableHeaderRow.appendChild(th);
+      });
+    }
+
     function normalizeFilterValue(value) {
       return String(value || "").trim();
     }
@@ -311,6 +629,7 @@
       toggleFiltersBtn.textContent = isCollapsed ? "Show Filters" : "Hide Filters";
       toggleFiltersBtn.setAttribute("aria-expanded", isCollapsed ? "false" : "true");
       toggleFiltersBtn.classList.toggle("closed", isCollapsed);
+      persistUiPreferencesToCookie();
     }
 
     function setClientFilterState(filters = {}) {
@@ -439,6 +758,14 @@
       updateActiveFiltersIndicator();
     }
 
+    function applyOptionalColumnSelection() {
+      syncColumnSelectionFromInputs();
+      persistUiPreferencesToCookie();
+      state.page = 1;
+      renderTable();
+      updateColumnsButtonState();
+    }
+
     async function fetchClients() {
       const query = buildClientFilterQueryString();
       const endpoint = query ? `/api/clients?${query}` : "/api/clients";
@@ -486,11 +813,62 @@
       return hasConfig || hasCommand;
     }
 
+    function renderCellForColumn(client, status, columnKey) {
+      const td = document.createElement("td");
+      const hostMeta = getClientHostMetadata(client);
+      if (columnKey === "service_instance_id") {
+        td.textContent = getClientDisplayId(client);
+        return td;
+      }
+      if (columnKey === "instance_uid") {
+        td.textContent = String(client.client_id ?? "--");
+        return td;
+      }
+      if (columnKey === "status") {
+        td.innerHTML = `<span class="status-dot ${status.cls}"><span class="dot"></span>${status.label}</span>`;
+        return td;
+      }
+      if (columnKey === "last_seen") {
+        td.textContent = client.last_communication
+          ? new Date(client.last_communication).toLocaleString()
+          : "--";
+        return td;
+      }
+      if (columnKey === "config_version") {
+        td.textContent = String(client.current_config_version ?? "--");
+        return td;
+      }
+      if (columnKey === "client_version") {
+        td.textContent = String(client.client_version ?? "--");
+        return td;
+      }
+      if (columnKey === "host_type") {
+        td.textContent = hostMeta.hostType || "--";
+        return td;
+      }
+      if (columnKey === "host_version") {
+        td.textContent = hostMeta.hostVersion || "--";
+        return td;
+      }
+      if (columnKey === "host_name") {
+        td.textContent = hostMeta.hostName || "--";
+        return td;
+      }
+      if (columnKey === "host_ip") {
+        td.textContent = hostMeta.hostIp || "--";
+        return td;
+      }
+      td.textContent = "--";
+      return td;
+    }
+
     function renderTable() {
+      renderClientTableHeader();
+      updateColumnsButtonState();
       const sorted = [...state.clients].sort((a, b) => {
         const dir = state.sortDir === "asc" ? 1 : -1;
-        const av = a[state.sortKey] ?? "";
-        const bv = b[state.sortKey] ?? "";
+        const av = getSortValue(a, state.sortKey);
+        const bv = getSortValue(b, state.sortKey);
         return av > bv ? dir : av < bv ? -dir : 0;
       });
 
@@ -502,6 +880,7 @@
       if (state.page > total) state.page = total;
       const start = (state.page - 1) * state.pageSize;
       const pageItems = sorted.slice(start, start + state.pageSize);
+      const visibleColumns = getVisibleOrderedColumnKeys();
 
       let amber = 0;
       let red = 0;
@@ -527,15 +906,9 @@
           contextMenu.classList.add("open");
         });
 
-        const displayId = getClientDisplayId(client);
-        tr.innerHTML = `
-          <td>${displayId}</td>
-          <td>${client.client_id ?? "--"}</td>
-          <td><span class="status-dot ${status.cls}"><span class="dot"></span>${status.label}</span></td>
-          <td>${client.last_communication ? new Date(client.last_communication).toLocaleString() : "--"}</td>
-          <td>${client.current_config_version ?? "--"}</td>
-          <td>${client.client_version ?? "--"}</td>
-        `;
+        visibleColumns.forEach(columnKey => {
+          tr.appendChild(renderCellForColumn(client, status, columnKey));
+        });
         clientBody.appendChild(tr);
       });
 
@@ -1899,8 +2272,11 @@
 
     async function init() {
       initializeAuthToken();
+      loadUiPreferencesFromCookie();
       setClientFilterState(state.filters);
       writeClientFiltersToInputs();
+      writeColumnControlsToInputs();
+      renderClientTableHeader();
       updateActiveFiltersIndicator();
       await fetchGlobalSettingsHelp();
       await fetchSettings();

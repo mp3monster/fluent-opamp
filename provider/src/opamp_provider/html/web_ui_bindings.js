@@ -1,16 +1,3 @@
-    document.querySelectorAll("th[data-sort]").forEach(th => {
-      th.addEventListener("click", () => {
-        const key = th.dataset.sort;
-        if (state.sortKey === key) {
-          state.sortDir = state.sortDir === "asc" ? "desc" : "asc";
-        } else {
-          state.sortKey = key;
-          state.sortDir = "asc";
-        }
-        renderTable();
-      });
-    });
-
     document.getElementById("prevBtn").addEventListener("click", () => {
       state.page = Math.max(1, state.page - 1);
       renderTable();
@@ -51,6 +38,14 @@
     });
     toggleFiltersBtn.addEventListener("click", () => {
       toggleFiltersPanel();
+    });
+    toggleColumnsBtn.addEventListener("click", () => {
+      toggleColumnsPanel();
+    });
+    columnToggleInputs.forEach(input => {
+      input.addEventListener("change", () => {
+        applyOptionalColumnSelection();
+      });
     });
     clearFiltersBtn.addEventListener("click", () => {
       void clearClientFilters();
