@@ -21,6 +21,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+from collections.abc import Awaitable, Callable
 from typing import Any, Final
 
 try:
@@ -29,7 +30,9 @@ except Exception:  # pragma: no cover - fallback for minimal runtime environment
     pd = None  # type: ignore[assignment]
 
 from opamp_broker.graph.state import (
+    STATE_KEY_API_COMMAND_MODE,
     STATE_KEY_COMMAND,
+    STATE_KEY_CONVERSATION_HISTORY,
     STATE_KEY_INTENT,
     STATE_KEY_NORMALIZED_TEXT,
     STATE_KEY_REQUIRES_CONFIRMATION,
@@ -42,12 +45,13 @@ from opamp_broker.graph.state import (
     STATE_KEY_TOOLS_AVAILABLE,
     BrokerState,
 )
+from opamp_broker.graph.slash_commands import apply_slash_command_overrides
+from opamp_broker.graph.table_rendering import render_fixed_width_table
 from opamp_broker.mcp.tools import MCPToolRegistry
 from opamp_broker.mcp.client import MCPServerUnavailableError
 from opamp_broker.planner.engine import (
     Planner,
     RESPONSE_TEXT_KEY,
-    REQUIRES_CONFIRMATION_KEY,
     TOOL_ARGS_KEY,
     TOOL_NAME_KEY,
 )
@@ -110,7 +114,12 @@ OPENAPI_SCHEMA_KEY: Final[str] = "schema"
 OPENAPI_SCHEMA_REF_KEY: Final[str] = "$ref"
 OPENAPI_REF_PREFIX: Final[str] = "#/components/schemas/"
 MARKDOWN_BULLET: Final[str] = "- "
-
+COMPONENT_HEALTH_NORMALIZED_KEY: Final[str] = "componenthealth"
+AGENT_TABLE_ATTRIBUTE_HEADER: Final[str] = "attribute"
+AGENT_TABLE_MISSING_VALUE: Final[str] = "-"
+AGENT_TABLE_MAX_ATTRIBUTE_COLUMN_WIDTH: Final[int] = 24
+AGENT_TABLE_MAX_AGENT_COLUMN_WIDTH: Final[int] = 36
+AGENT_TABLE_FALLBACK_LABEL_PREFIX: Final[str] = "agent-"
 AGENT_LABEL_KEYS: Final[tuple[str, ...]] = (
     PAYLOAD_KEY_ID,
     PAYLOAD_KEY_NAME,
@@ -161,8 +170,81 @@ AGENT_CORE_DETAIL_FIELDS: Final[tuple[str, ...]] = (
     "host.mac",
     AGENT_SOURCE_REMOTE_ADDR_KEY,
 )
+PLANNER_MAX_EXECUTION_STEPS_DEFAULT: Final[int] = 4
+PLANNER_MAX_EXECUTION_STEPS_HARD_LIMIT: Final[int] = 8
+PLANNER_FOLLOW_UP_SUMMARY_MAX_CHARS: Final[int] = 1200
+PLANNER_FOLLOW_UP_ARGS_MAX_CHARS: Final[int] = 400
 
 logger = logging.getLogger(__name__)
+
+ToolResponseFormatter = Callable[
+    [str, str, dict[str, Any], dict[str, Any], str],
+    Awaitable[str | None],
+]
+
+
+def _normalize_tool_args(raw_tool_args: Any) -> dict[str, Any]:
+    """Return normalized tool args as a dictionary.
+
+    Why this helper exists:
+    planner output can contain malformed types; execution paths should always
+    handle arguments as a dict to keep tool calls predictable.
+    """
+    if isinstance(raw_tool_args, dict):
+        return raw_tool_args
+    return {}
+
+
+def _normalize_planner_step_limit(max_planning_steps: int) -> int:
+    """Clamp configured planner step count to a safe bounded range."""
+    try:
+        normalized = int(max_planning_steps)
+    except (TypeError, ValueError):
+        return PLANNER_MAX_EXECUTION_STEPS_DEFAULT
+    if normalized <= 0:
+        return 1
+    if normalized > PLANNER_MAX_EXECUTION_STEPS_HARD_LIMIT:
+        return PLANNER_MAX_EXECUTION_STEPS_HARD_LIMIT
+    return normalized
+
+
+def _build_follow_up_planner_text(
+    *,
+    user_text: str,
+    tool_name: str,
+    tool_args: dict[str, Any],
+    tool_summary: str,
+) -> str:
+    """Build follow-up planner prompt text after one tool execution.
+
+    Why this helper exists:
+    multi-step planning needs explicit context from the latest tool execution so
+    the LLM can decide whether to stop or select the next tool call.
+    """
+    try:
+        rendered_args = json.dumps(tool_args, ensure_ascii=False, default=str)
+    except TypeError:
+        rendered_args = str(tool_args)
+    if len(rendered_args) > PLANNER_FOLLOW_UP_ARGS_MAX_CHARS:
+        rendered_args = rendered_args[:PLANNER_FOLLOW_UP_ARGS_MAX_CHARS] + "..."
+
+    summary = str(tool_summary).strip()
+    if len(summary) > PLANNER_FOLLOW_UP_SUMMARY_MAX_CHARS:
+        omitted = len(summary) - PLANNER_FOLLOW_UP_SUMMARY_MAX_CHARS
+        summary = (
+            summary[:PLANNER_FOLLOW_UP_SUMMARY_MAX_CHARS]
+            + f"... [truncated {omitted} chars]"
+        )
+
+    return (
+        "Continue this request if needed.\n"
+        f"Original user request: {user_text}\n"
+        f"Latest executed tool: {tool_name}\n"
+        f"Latest tool args: {rendered_args}\n"
+        f"Latest tool result summary: {summary}\n"
+        "If the request is complete, set tool_name to null and provide final response_text. "
+        "If another tool call is required, choose exactly one next tool."
+    )
 
 
 def _strip_bot_mention(text: str) -> str:
@@ -242,6 +324,12 @@ def _parse_content_payload(content: Any) -> Any:
 
 
 def _extract_agent_labels(agents: list[Any]) -> list[str]:
+    """Extract stable human-readable labels from agent payload entries.
+
+    Why this helper exists:
+    summary responses need deterministic labels even when payloads vary across
+    provider versions and tool implementations.
+    """
     labels: list[str] = []
     for agent in agents:
         if isinstance(agent, dict):
@@ -256,6 +344,12 @@ def _extract_agent_labels(agents: list[Any]) -> list[str]:
 
 
 def _summarize_agents_payload(payload: dict[str, Any]) -> str:
+    """Build a concise natural-language summary for an agents tool payload.
+
+    Why this helper exists:
+    agent list results can be large; we provide a compact summary/table preview
+    for Slack-friendly responses.
+    """
     agents_raw = payload.get(PAYLOAD_KEY_AGENTS, [])
     if not isinstance(agents_raw, list):
         return "I checked the agents list, but the payload was invalid."
@@ -268,28 +362,18 @@ def _summarize_agents_payload(payload: dict[str, Any]) -> str:
     if total <= 0:
         return "I checked and found no OpenTelemetry agents."
 
-    openapi_spec = payload.get(PAYLOAD_KEY_OPENAPI_SPEC)
-    field_descriptions = _resolve_agent_field_descriptions(openapi_spec)
-    short_rich_text = _render_agents_short_rich_text(agents_raw)
-    detailed_rich_text = _render_agents_detailed_rich_text(
-        agents_raw,
-        field_descriptions=field_descriptions,
-    )
-    if short_rich_text or detailed_rich_text:
+    summary_table = _render_agents_summary_table(agents_raw)
+    if summary_table:
         shown = min(len(agents_raw), AGENT_TABLE_MAX_ROWS)
         suffix = (
             f"\nShowing first {shown} agent(s)."
             if total > shown or len(agents_raw) > shown
             else ""
         )
-        sections: list[str] = []
-        if short_rich_text:
-            sections.append(f"Short view:\n{short_rich_text}")
-        if detailed_rich_text:
-            sections.append(f"Detailed view:\n{detailed_rich_text}")
         return (
             f"I found {total} OpenTelemetry agent(s).{suffix}\n\n"
-            + "\n\n".join(sections)
+            "Summary view (attributes x agents):\n"
+            f"```\n{summary_table}\n```"
         )
 
     labels = _extract_agent_labels(agents_raw)
@@ -301,6 +385,7 @@ def _summarize_agents_payload(payload: dict[str, Any]) -> str:
 
 
 def _render_agents_short_rich_text(agents: list[Any]) -> str:
+    """Render a short bullet list view of agents and key identifying fields."""
     rendered: list[str] = []
     for agent in agents[:AGENT_TABLE_MAX_ROWS]:
         if not isinstance(agent, dict):
@@ -311,7 +396,43 @@ def _render_agents_short_rich_text(agents: list[Any]) -> str:
     return "\n".join(rendered)
 
 
+def _render_agents_summary_table(agents: list[Any]) -> str | None:
+    """Render a fixed-width attribute-vs-agent summary table.
+
+    Why this helper exists:
+    tabular output makes cross-agent comparisons easier than paragraph text.
+    """
+    table_agents = [agent for agent in agents[:AGENT_TABLE_MAX_ROWS] if isinstance(agent, dict)]
+    if not table_agents:
+        return None
+
+    headers = [AGENT_TABLE_ATTRIBUTE_HEADER]
+    agent_values: list[dict[str, str]] = []
+    for index, agent in enumerate(table_agents):
+        labels = _extract_agent_labels([agent])
+        fallback_label = f"{AGENT_TABLE_FALLBACK_LABEL_PREFIX}{index + 1}"
+        headers.append(labels[0] if labels else fallback_label)
+        agent_values.append(_extract_agent_attribute_values(agent))
+
+    rows: list[list[str]] = []
+    for label, candidates in AGENT_SHORT_RICH_TEXT_FIELDS:
+        row = [label]
+        for values in agent_values:
+            row.append(
+                _first_non_empty_attribute(values, candidates)
+                or AGENT_TABLE_MISSING_VALUE
+            )
+        rows.append(row)
+    return render_fixed_width_table(
+        headers,
+        rows,
+        first_column_max_width=AGENT_TABLE_MAX_ATTRIBUTE_COLUMN_WIDTH,
+        data_column_max_width=AGENT_TABLE_MAX_AGENT_COLUMN_WIDTH,
+    )
+
+
 def _render_agent_short_rich_text(agent: dict[str, Any]) -> str:
+    """Render one agent as compact `key=value` text for quick previews."""
     values = _extract_agent_attribute_values(agent)
     parts: list[str] = []
     for label, candidates in AGENT_SHORT_RICH_TEXT_FIELDS:
@@ -336,6 +457,12 @@ def _render_agents_detailed_rich_text(
     *,
     field_descriptions: dict[str, str],
 ) -> str:
+    """Render detailed markdown bullets for multiple agents.
+
+    Why this helper exists:
+    detailed views are useful for diagnostics while still enforcing response
+    size limits for chat surfaces.
+    """
     rendered: list[str] = []
     count = 0
     for agent in agents:
@@ -359,6 +486,7 @@ def _render_agent_long_rich_text(
     *,
     field_descriptions: dict[str, str],
 ) -> str:
+    """Render one agent with ordered attributes and optional field descriptions."""
     values = _extract_agent_attribute_values(agent)
     if not values:
         return f"{MARKDOWN_BULLET}No attributes reported."
@@ -392,6 +520,7 @@ def _render_agent_long_rich_txt(
 
 
 def _order_agent_attribute_keys(values: dict[str, str]) -> list[str]:
+    """Order attributes with core diagnostic keys first, then alphabetical extras."""
     core_keys = [key for key in AGENT_CORE_DETAIL_FIELDS if key in values]
     remaining = sorted(
         key for key in values if key not in set(AGENT_CORE_DETAIL_FIELDS)
@@ -400,6 +529,7 @@ def _order_agent_attribute_keys(values: dict[str, str]) -> list[str]:
 
 
 def _extract_agent_attribute_values(agent: dict[str, Any]) -> dict[str, str]:
+    """Normalize a raw agent object into flattened, display-ready string attributes."""
     values: dict[str, str] = {}
     for key, value in agent.items():
         if str(key) == AGENT_SOURCE_AGENT_DESCRIPTION_KEY:
@@ -425,6 +555,7 @@ def _extract_agent_attribute_values(agent: dict[str, Any]) -> dict[str, str]:
 
 
 def _parse_agent_description_attributes(agent_description: str) -> dict[str, str]:
+    """Extract key/value attributes from proto-like `agent_description` text blocks."""
     attributes: dict[str, str] = {}
     if not agent_description.strip():
         return attributes
@@ -452,6 +583,7 @@ def _parse_agent_description_attributes(agent_description: str) -> dict[str, str
 
 
 def _parse_proto_scalar(line: str) -> str:
+    """Parse a simple proto scalar line into a cleaned string value."""
     _, _, raw = line.partition(":")
     candidate = raw.strip()
     if candidate.startswith('"') and candidate.endswith('"') and len(candidate) >= 2:
@@ -460,6 +592,7 @@ def _parse_proto_scalar(line: str) -> str:
 
 
 def _extract_inline_proto_value(line: str) -> str:
+    """Extract inline proto `*_value` tokens from a single text line."""
     for prefix in (
         AGENT_DESCRIPTION_STRING_VALUE_PREFIX,
         AGENT_DESCRIPTION_BOOL_VALUE_PREFIX,
@@ -486,6 +619,7 @@ def _first_non_empty_attribute(
     values: dict[str, str],
     keys: tuple[str, ...],
 ) -> str | None:
+    """Return the first non-empty value for a prioritized set of attribute keys."""
     for key in keys:
         value = values.get(key)
         if value is not None and str(value).strip():
@@ -494,6 +628,7 @@ def _first_non_empty_attribute(
 
 
 def _resolve_agent_field_descriptions(openapi_spec: Any) -> dict[str, str]:
+    """Merge default field descriptions with OpenAPI-derived schema descriptions."""
     descriptions: dict[str, str] = dict(AGENT_FIELD_DESCRIPTION_DEFAULTS)
     schema_descriptions = _extract_agent_field_descriptions_from_spec(openapi_spec)
     descriptions.update(schema_descriptions)
@@ -501,6 +636,7 @@ def _resolve_agent_field_descriptions(openapi_spec: Any) -> dict[str, str]:
 
 
 def _extract_agent_field_descriptions_from_spec(openapi_spec: Any) -> dict[str, str]:
+    """Extract attribute descriptions for `OtelAgent` fields from OpenAPI spec."""
     if not isinstance(openapi_spec, dict):
         return {}
 
@@ -522,6 +658,7 @@ def _extract_agent_field_descriptions_from_spec(openapi_spec: Any) -> dict[str, 
 
 
 def _resolve_otel_agent_schema_from_spec(openapi_spec: dict[str, Any]) -> dict[str, Any] | None:
+    """Resolve the effective `OtelAgent` schema from components or response refs."""
     components = openapi_spec.get(OPENAPI_COMPONENTS_KEY)
     if not isinstance(components, dict):
         return None
@@ -584,6 +721,12 @@ def _resolve_otel_agent_schema_from_spec(openapi_spec: dict[str, Any]) -> dict[s
 
 
 def _render_agents_table(agents: list[Any]) -> str | None:
+    """Render a pandas-based normalized agent table when pandas is available.
+
+    Why this helper exists:
+    this path provides a broad dynamic table view for debugging environments,
+    while fixed-width summary rendering is used for regular user responses.
+    """
     if pd is None:
         return None
 
@@ -616,12 +759,14 @@ def _render_agents_table(agents: list[Any]) -> str | None:
 
 
 def _ordered_agent_columns(columns: list[str]) -> list[str]:
+    """Order table columns with priority identifiers first, then alphabetical."""
     preferred = [col for col in AGENT_TABLE_PRIORITY_COLUMNS if col in columns]
     remaining = sorted(col for col in columns if col not in preferred)
     return preferred + remaining
 
 
 def _stringify_table_value(value: Any) -> Any:
+    """Convert nested values into compact JSON strings for tabular rendering."""
     if isinstance(value, (dict, list)):
         try:
             return json.dumps(value, sort_keys=True)
@@ -631,6 +776,7 @@ def _stringify_table_value(value: Any) -> Any:
 
 
 def _summarize_commands_payload(payload: dict[str, Any]) -> str:
+    """Summarize command-catalog payloads into concise user-facing text."""
     commands_raw = payload.get(PAYLOAD_KEY_COMMANDS, [])
     if not isinstance(commands_raw, list):
         return "I checked the command catalog, but the payload was invalid."
@@ -652,6 +798,7 @@ def _summarize_commands_payload(payload: dict[str, Any]) -> str:
 
 
 def _extract_command_labels(commands: list[Any]) -> list[str]:
+    """Extract display labels for command definitions with graceful fallbacks."""
     labels: list[str] = []
     for command in commands:
         if not isinstance(command, dict):
@@ -672,6 +819,7 @@ def _extract_command_labels(commands: list[Any]) -> list[str]:
 
 
 def _summarize_openapi_payload(payload: dict[str, Any]) -> str:
+    """Summarize OpenAPI path metadata with bounded preview output."""
     paths_raw = payload.get(PAYLOAD_KEY_PATHS)
     if not isinstance(paths_raw, dict):
         return "I checked the OpenAPI spec, but no paths were available."
@@ -685,6 +833,7 @@ def _summarize_openapi_payload(payload: dict[str, Any]) -> str:
 
 
 def _summarize_queue_result(payload: dict[str, Any]) -> str:
+    """Summarize queued-operation acknowledgements for command dispatch tools."""
     client_id = str(payload.get(PAYLOAD_KEY_CLIENT_ID, "")).strip() or UNKNOWN_CLIENT_LABEL
     classifier = str(payload.get(PAYLOAD_KEY_CLASSIFIER, "")).strip()
     action = str(payload.get(PAYLOAD_KEY_ACTION, "")).strip()
@@ -696,11 +845,14 @@ def _summarize_queue_result(payload: dict[str, Any]) -> str:
 
 
 def _summarize_mapping(payload: dict[str, Any]) -> str:
+    """Summarize generic mapping payloads while skipping component health noise."""
     if not payload:
         return "The tool returned an empty result."
     pairs: list[str] = []
     for key, value in payload.items():
         key_name = str(key).strip() or "value"
+        if _is_component_health_field_name(key_name):
+            continue
         if isinstance(value, list):
             if not value:
                 pairs.append(f"{key_name} is empty")
@@ -715,7 +867,11 @@ def _summarize_mapping(payload: dict[str, Any]) -> str:
                 pairs.append(f"{key_name} contains {len(value)} structured item(s)")
             continue
         if isinstance(value, dict):
-            nested_keys = [str(nested).strip() for nested in value.keys()]
+            nested_keys = [
+                str(nested).strip()
+                for nested in value.keys()
+                if not _is_component_health_field_name(str(nested).strip())
+            ]
             preview = ", ".join(item for item in nested_keys[:5] if item)
             suffix = "" if len(nested_keys) <= 5 else ", ..."
             if preview:
@@ -726,7 +882,15 @@ def _summarize_mapping(payload: dict[str, Any]) -> str:
                 pairs.append(f"{key_name} contains structured data")
             continue
         pairs.append(f"{key_name} is {value}")
+    if not pairs:
+        return "The tool returned details, but no reportable status fields."
     return "Tool result: " + "; ".join(pairs) + "."
+
+
+def _is_component_health_field_name(field_name: str) -> bool:
+    """Identify component-health fields across naming variations."""
+    normalized = re.sub(r"[^a-z0-9]", "", str(field_name).strip().lower())
+    return normalized == COMPONENT_HEALTH_NORMALIZED_KEY
 
 
 def normalize_input(state: BrokerState) -> BrokerState:
@@ -752,8 +916,8 @@ def classify_intent(state: BrokerState) -> BrokerState:
     """Classify message intent and whether explicit confirmation is required.
 
     Why this approach:
-    destructive operations are conservatively flagged for confirmation while
-    read-only status/help flows continue immediately.
+    lightweight intent labels remain useful for diagnostics and session context
+    without imposing execution control decisions at this stage.
 
     Args:
         state: Mutable broker state containing normalized user text.
@@ -770,7 +934,6 @@ def classify_intent(state: BrokerState) -> BrokerState:
         state[STATE_KEY_INTENT] = "help"
     elif any(word in text for word in ["restart", "delete"]):
         state[STATE_KEY_INTENT] = "action"
-        state[STATE_KEY_REQUIRES_CONFIRMATION] = True
     elif any(word in text for word in ["status", "health", "config", "tools", "help", "diff"]):
         state[STATE_KEY_INTENT] = "query"
     else:
@@ -826,16 +989,33 @@ async def plan_action(
     state[STATE_KEY_TOOLS_AVAILABLE] = tool_names
     state[STATE_KEY_TOOL_NAME] = None
     state[STATE_KEY_TOOL_ARGS] = {}
+    if apply_slash_command_overrides(state, tool_names):
+        return state
+
+    conversation_history_raw = state.get(STATE_KEY_CONVERSATION_HISTORY, [])
+    conversation_history = (
+        conversation_history_raw
+        if isinstance(conversation_history_raw, list)
+        else []
+    )
 
     try:
-        plan = await planner.plan(text=text, tools=tools)
+        plan = await planner.plan(
+            text=text,
+            tools=tools,
+            conversation_history=conversation_history,
+        )
     except Exception as exc:
         logger.exception(
             "Planner failed; falling back to rule-first planning. error=%s",
             exc,
         )
         try:
-            plan = await RuleFirstPlanner().plan(text=text, tools=tools)
+            plan = await RuleFirstPlanner().plan(
+                text=text,
+                tools=tools,
+                conversation_history=conversation_history,
+            )
         except Exception:
             logger.exception("Fallback planner failed unexpectedly.")
             state[STATE_KEY_TOOL_NAME] = None
@@ -857,7 +1037,7 @@ async def plan_action(
 
     state[STATE_KEY_TOOL_NAME] = chosen_tool
     state[STATE_KEY_TOOL_ARGS] = chosen_args
-    state[STATE_KEY_REQUIRES_CONFIRMATION] = bool(plan.get(REQUIRES_CONFIRMATION_KEY, False))
+    state[STATE_KEY_REQUIRES_CONFIRMATION] = False
 
     response_text = plan.get(RESPONSE_TEXT_KEY, "")
     if isinstance(response_text, str) and response_text.strip():
@@ -880,6 +1060,9 @@ async def execute_or_summarize(
     state: BrokerState,
     tool_registry: MCPToolRegistry,
     offline_message: str = DEFAULT_MCP_SERVER_OFFLINE_MESSAGE,
+    tool_response_formatter: ToolResponseFormatter | None = None,
+    planner: Planner | None = None,
+    max_planning_steps: int = PLANNER_MAX_EXECUTION_STEPS_DEFAULT,
 ) -> BrokerState:
     """Execute the selected tool call or produce a user-facing fallback message.
 
@@ -894,8 +1077,13 @@ async def execute_or_summarize(
     Returns:
         BrokerState: Updated state containing tool results and response text.
     """
-    tool_name = state.get(STATE_KEY_TOOL_NAME)
-    if not tool_name:
+    current_tool_name_raw = state.get(STATE_KEY_TOOL_NAME)
+    current_tool_name = (
+        str(current_tool_name_raw).strip()
+        if isinstance(current_tool_name_raw, str)
+        else ""
+    )
+    if not current_tool_name:
         if STATE_KEY_RESPONSE_TEXT not in state:
             state[STATE_KEY_RESPONSE_TEXT] = (
                 "I couldn't map that to a known MCP tool yet. "
@@ -903,30 +1091,158 @@ async def execute_or_summarize(
             )
         return state
 
-    if state.get(STATE_KEY_REQUIRES_CONFIRMATION):
-        target = state.get(STATE_KEY_TARGET)
-        state[STATE_KEY_RESPONSE_TEXT] = (
-            f"I can run `{tool_name}` for `{target}` but I need confirmation first. "
-            "Reply with `confirm` or `cancel`."
-        )
-        return state
+    current_tool_args = _normalize_tool_args(state.get(STATE_KEY_TOOL_ARGS, {}))
+    state[STATE_KEY_TOOL_ARGS] = current_tool_args
 
-    try:
-        result = await tool_registry.call_tool(
-            tool_name,
-            state.get(STATE_KEY_TOOL_ARGS, {}),
-        )
-    except MCPServerUnavailableError as exc:
-        logger.error(
-            "MCP server unavailable while calling tool %s: %s",
-            tool_name,
-            exc,
-            exc_info=True,
-        )
-        state[STATE_KEY_TOOL_RESULT] = {PAYLOAD_KEY_ERROR: str(exc)}
-        state[STATE_KEY_RESPONSE_TEXT] = offline_message
-        return state
+    normalized_user_text = str(state.get(STATE_KEY_NORMALIZED_TEXT, "")).strip()
+    replanning_enabled = (
+        planner is not None
+        and not bool(state.get(STATE_KEY_API_COMMAND_MODE, False))
+    )
+    known_tool_names: set[str] = set()
+    if replanning_enabled:
+        available_tool_names = state.get(STATE_KEY_TOOLS_AVAILABLE, [])
+        if not isinstance(available_tool_names, list):
+            available_tool_names = []
+        known_tool_names = {
+            str(name).strip()
+            for name in available_tool_names
+            if str(name).strip()
+        }
+        if not known_tool_names and hasattr(tool_registry, "list_names"):
+            try:
+                known_tool_names = {
+                    str(name).strip()
+                    for name in tool_registry.list_names()
+                    if str(name).strip()
+                }
+            except Exception:
+                logger.exception("Failed listing tools for follow-up planning.")
+        if not known_tool_names:
+            known_tool_names = {current_tool_name}
 
-    state[STATE_KEY_TOOL_RESULT] = result
-    state[STATE_KEY_RESPONSE_TEXT] = _format_tool_response(str(tool_name), result)
+    max_steps = _normalize_planner_step_limit(max_planning_steps)
+    step_count = 0
+    final_result: dict[str, Any] = {}
+    final_default_response_text = ""
+    while True:
+        step_count += 1
+        try:
+            result = await tool_registry.call_tool(
+                current_tool_name,
+                current_tool_args,
+            )
+        except MCPServerUnavailableError as exc:
+            logger.error(
+                "MCP server unavailable while calling tool %s: %s",
+                current_tool_name,
+                exc,
+                exc_info=True,
+            )
+            state[STATE_KEY_TOOL_RESULT] = {PAYLOAD_KEY_ERROR: str(exc)}
+            state[STATE_KEY_RESPONSE_TEXT] = offline_message
+            return state
+
+        final_result = result
+        final_default_response_text = _format_tool_response(
+            current_tool_name,
+            result,
+        )
+
+        state[STATE_KEY_TOOL_NAME] = current_tool_name
+        state[STATE_KEY_TOOL_ARGS] = current_tool_args
+        state[STATE_KEY_TOOL_RESULT] = result
+        state[STATE_KEY_RESPONSE_TEXT] = final_default_response_text
+
+        if not replanning_enabled or step_count >= max_steps:
+            break
+
+        tools_for_replanning = [
+            tool_registry.get(name) or {PAYLOAD_KEY_NAME: name}
+            for name in sorted(known_tool_names)
+        ]
+        follow_up_text = _build_follow_up_planner_text(
+            user_text=normalized_user_text,
+            tool_name=current_tool_name,
+            tool_args=current_tool_args,
+            tool_summary=final_default_response_text,
+        )
+        conversation_history_raw = state.get(STATE_KEY_CONVERSATION_HISTORY, [])
+        conversation_history = (
+            conversation_history_raw
+            if isinstance(conversation_history_raw, list)
+            else []
+        )
+        try:
+            follow_up_plan = await planner.plan(
+                text=follow_up_text,
+                tools=tools_for_replanning,
+                conversation_history=conversation_history,
+            )
+        except Exception:
+            logger.exception(
+                "Planner follow-up step failed after tool execution; "
+                "returning latest tool response."
+            )
+            break
+
+        next_tool_name_raw = follow_up_plan.get(TOOL_NAME_KEY)
+        next_tool_name = (
+            str(next_tool_name_raw).strip()
+            if isinstance(next_tool_name_raw, str)
+            else ""
+        )
+        next_response_text_raw = follow_up_plan.get(RESPONSE_TEXT_KEY, "")
+        next_response_text = (
+            str(next_response_text_raw).strip()
+            if isinstance(next_response_text_raw, str)
+            else str(next_response_text_raw).strip()
+        )
+        if not next_tool_name:
+            if next_response_text:
+                state[STATE_KEY_RESPONSE_TEXT] = next_response_text
+            break
+
+        if next_tool_name not in known_tool_names:
+            if next_response_text:
+                state[STATE_KEY_RESPONSE_TEXT] = next_response_text
+            else:
+                state[STATE_KEY_RESPONSE_TEXT] = (
+                    f"I couldn't execute follow-up tool `{next_tool_name}` because "
+                    "it is not currently available."
+                )
+            break
+
+        next_tool_args = _normalize_tool_args(
+            follow_up_plan.get(TOOL_ARGS_KEY, {}),
+        )
+        if (
+            next_tool_name == current_tool_name
+            and next_tool_args == current_tool_args
+        ):
+            if next_response_text:
+                state[STATE_KEY_RESPONSE_TEXT] = next_response_text
+            break
+
+        current_tool_name = next_tool_name
+        current_tool_args = next_tool_args
+        next_target = current_tool_args.get(STATE_KEY_TARGET)
+        if next_target is not None:
+            state[STATE_KEY_TARGET] = str(next_target)
+
+    if tool_response_formatter is not None and final_result:
+        try:
+            formatted_response = await tool_response_formatter(
+                user_text=normalized_user_text,
+                tool_name=current_tool_name,
+                tool_args=current_tool_args,
+                tool_result=final_result,
+                default_response_text=final_default_response_text,
+            )
+            if isinstance(formatted_response, str) and formatted_response.strip():
+                state[STATE_KEY_RESPONSE_TEXT] = formatted_response.strip()
+        except Exception:
+            logger.exception(
+                "AI formatter failed; returning default tool response text."
+            )
     return state

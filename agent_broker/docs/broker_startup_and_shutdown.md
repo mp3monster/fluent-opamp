@@ -338,9 +338,15 @@ Token settings:
 Prompt configuration:
 
 1. Prompt text is loaded from the JSON file referenced by `planner.prompts_config_path`.
-2. Required keys in that file are `system_prompt` and `verification_prompt`.
-3. Prompt strings do not have code defaults; if the prompt file is missing or invalid, broker startup fails with a configuration error.
-4. `system_prompt` controls response style. The bundled prompt is tuned so capability questions like `tools` / `what can you do` return tool descriptions and argument hints, not only tool names.
+2. Each required prompt entry must be an object with:
+   - `description` (documents where the prompt is used)
+   - `text` (the actual prompt content)
+3. Required prompt keys are:
+   - `system_prompt`
+   - `verification_prompt`
+   - `slack_format_system_prompt`
+4. Prompt strings do not have code defaults; if the prompt file is missing or invalid, broker startup fails with a configuration error.
+5. `system_prompt` controls response style. The bundled prompt is tuned so capability questions like `tools` / `what can you do` return tool descriptions and argument hints, not only tool names.
 
 For extension details, see:
 

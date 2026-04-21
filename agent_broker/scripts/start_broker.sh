@@ -4,7 +4,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 VENV_DIR="${ROOT_DIR}/.venv"
+LINUX_VENV_DIR="${ROOT_DIR}/.venv-linux"
 SERVICE_MODE=0
+PYTHON_CMD=""
 
 if [[ "${1:-}" == "--service" ]]; then
   SERVICE_MODE=1
@@ -24,11 +26,26 @@ if [[ ! -d "${VENV_DIR}" ]]; then
   python3 -m venv "${VENV_DIR}"
 fi
 
-source "${VENV_DIR}/bin/activate"
-pip install -r "${ROOT_DIR}/requirements.txt"
+if [[ -x "${VENV_DIR}/bin/python" ]]; then
+  PYTHON_CMD="${VENV_DIR}/bin/python"
+else
+  # A Windows-created .venv may not be usable from WSL/Linux shells.
+  if [[ ! -x "${LINUX_VENV_DIR}/bin/python" ]]; then
+    python3 -m venv "${LINUX_VENV_DIR}"
+  fi
+  if [[ -x "${LINUX_VENV_DIR}/bin/python" ]]; then
+    PYTHON_CMD="${LINUX_VENV_DIR}/bin/python"
+  else
+    echo "Unable to locate a runnable broker virtualenv Python."
+    echo "Checked: ${VENV_DIR}/bin/python and ${LINUX_VENV_DIR}/bin/python"
+    exit 1
+  fi
+fi
+
+"${PYTHON_CMD}" -m pip install -r "${ROOT_DIR}/requirements.txt"
 
 if [[ "${SERVICE_MODE}" -eq 0 ]]; then
-  exec python -m opamp_broker.broker_app
+  exec "${PYTHON_CMD}" -m opamp_broker.broker_app
 fi
 
 RUNTIME_DIR="${BROKER_RUNTIME_DIR:-${ROOT_DIR}/.broker}"
@@ -47,7 +64,7 @@ if [[ -f "${PID_FILE}" ]]; then
   rm -f "${PID_FILE}"
 fi
 
-nohup python -m opamp_broker.broker_app >>"${LOG_FILE}" 2>&1 &
+nohup "${PYTHON_CMD}" -m opamp_broker.broker_app >>"${LOG_FILE}" 2>&1 &
 broker_pid=$!
 echo "${broker_pid}" >"${PID_FILE}"
 

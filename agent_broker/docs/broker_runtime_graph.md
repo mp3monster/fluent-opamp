@@ -2,15 +2,32 @@
 
 This diagram shows the active LangGraph pipeline assembled in
 `opamp_broker/graph/graph.py`, plus the runtime planner/formatter selection
-used by `plan_action` and `execute_or_summarize`.
+used by `plan_action` and `execute_or_summarize`, including bounded
+multi-step LLM/tool iteration in AI mode.
 
 ```mermaid
 flowchart TD
     Start([Inbound Slack message or slash command]) --> Normalize["normalize_input"]
     Normalize --> Classify["classify_intent"]
     Classify --> Plan["plan_action"]
-    Plan --> Execute["execute_or_summarize"]
-    Execute --> End([response_text returned to Slack adapter])
+    Plan --> HasTool{"tool_name selected?"}
+    HasTool -- No --> NoTool["response_text fallback"]
+    NoTool --> End([response_text returned to Slack adapter])
+    HasTool -- Yes --> Execute["execute_or_summarize"]
+
+    Execute --> CallTool["call_tool(tool_name, tool_args)"]
+    CallTool --> ToolOffline{"MCP unavailable?"}
+    ToolOffline -- Yes --> Offline["response_text = offline_message"]
+    Offline --> End
+    ToolOffline -- No --> Summarize["summarize latest tool result"]
+    Summarize --> ReplanGate{"replanning enabled?\nplanner present && !api_command_mode &&\nstep < planner.max_execution_steps"}
+    ReplanGate -- No --> FormatGate
+    ReplanGate -- Yes --> FollowUpPlan["planner.plan(follow-up context)"]
+    FollowUpPlan --> NextTool{"next tool selected and valid?"}
+    NextTool -- No --> FormatGate
+    NextTool -- Yes --> RepeatGuard{"same tool + args as prior step?"}
+    RepeatGuard -- Yes --> FormatGate
+    RepeatGuard -- No --> CallTool
 
     subgraph PlannerSelection["Planner selection inside plan_action"]
         PlanGate{"ai_enabled && ai_planner available?"}
@@ -18,7 +35,7 @@ flowchart TD
         PlanGate -- No --> RuleFirst["RuleFirstPlanner"]
     end
 
-    subgraph FormatterSelection["Formatter selection inside execute_or_summarize"]
+    subgraph FormatterSelection["Formatter selection after final step"]
         FormatGate{"ai_enabled && ai_planner available?"}
         FormatGate -- Yes --> AIFormat["ai_planner.format_tool_response_for_slack"]
         FormatGate -- No --> DefaultFormat["default response formatting path"]
@@ -26,8 +43,9 @@ flowchart TD
 
     AISvc -. selected planner .-> Plan
     RuleFirst -. selected planner .-> Plan
-    AIFormat -. selected formatter .-> Execute
-    DefaultFormat -. selected formatter .-> Execute
+    AISvc -. selected follow-up planner .-> FollowUpPlan
+    AIFormat --> End
+    DefaultFormat --> End
 ```
 
 ## Source

@@ -26,6 +26,9 @@ STATE_KEY_THREAD_TS: Final[str] = "thread_ts"
 STATE_KEY_USER_ID: Final[str] = "user_id"
 STATE_KEY_TEXT: Final[str] = "text"
 STATE_KEY_NORMALIZED_TEXT: Final[str] = "normalized_text"
+STATE_KEY_CONVERSATION_HISTORY: Final[str] = "conversation_history"
+STATE_KEY_AI_ENABLED: Final[str] = "ai_enabled"
+STATE_KEY_API_COMMAND_MODE: Final[str] = "api_command_mode"
 STATE_KEY_COMMAND: Final[str] = "command"
 STATE_KEY_TARGET: Final[str] = "target"
 STATE_KEY_ENVIRONMENT: Final[str] = "environment"
@@ -34,6 +37,9 @@ STATE_KEY_RESPONSE_TEXT: Final[str] = "response_text"
 STATE_KEY_REQUIRES_CONFIRMATION: Final[str] = "requires_confirmation"
 STATE_KEY_TOOL_NAME: Final[str] = "tool_name"
 STATE_KEY_TOOL_ARGS: Final[str] = "tool_args"
+STATE_KEY_DIRECT_TOOL_NAME: Final[str] = "direct_tool_name"
+STATE_KEY_DIRECT_TOOL_ARGS: Final[str] = "direct_tool_args"
+STATE_KEY_PENDING_ACTION: Final[str] = "pending_action"
 STATE_KEY_TOOL_RESULT: Final[str] = "tool_result"
 STATE_KEY_TOOLS_AVAILABLE: Final[str] = "tools_available"
 
@@ -51,6 +57,9 @@ class BrokerState(TypedDict, total=False):
     user_id: str
     text: str
     normalized_text: str
+    conversation_history: list[dict[str, str]]
+    ai_enabled: bool
+    api_command_mode: bool
     command: str
     target: str | None
     environment: str | None
@@ -59,5 +68,8 @@ class BrokerState(TypedDict, total=False):
     requires_confirmation: bool
     tool_name: str | None
     tool_args: dict[str, Any]
+    direct_tool_name: str | None
+    direct_tool_args: dict[str, Any]
+    pending_action: dict[str, Any] | None
     tool_result: dict[str, Any]
     tools_available: list[str]

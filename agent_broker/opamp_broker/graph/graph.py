@@ -30,14 +30,17 @@ from opamp_broker.graph.constants import (
 )
 from opamp_broker.graph.nodes import (
     DEFAULT_MCP_SERVER_OFFLINE_MESSAGE,
+    PLANNER_MAX_EXECUTION_STEPS_DEFAULT,
     classify_intent,
     execute_or_summarize,
     normalize_input,
     plan_action,
 )
-from opamp_broker.graph.state import BrokerState
+from opamp_broker.graph.state import BrokerState, STATE_KEY_AI_ENABLED
 from opamp_broker.mcp.tools import MCPToolRegistry
 from opamp_broker.planner import create_planner
+from opamp_broker.planner.ai_svc_planner import AISvcPlanner
+from opamp_broker.planner.rule_first_planner import RuleFirstPlanner
 
 
 def build_graph(
@@ -59,6 +62,18 @@ def build_graph(
     """
     cfg = config or {}
     planner = create_planner(cfg)
+    ai_planner = planner if isinstance(planner, AISvcPlanner) else None
+    rule_planner = RuleFirstPlanner()
+    planner_cfg = cfg.get("planner", {}) if isinstance(cfg, dict) else {}
+    max_execution_steps_raw = (
+        planner_cfg.get("max_execution_steps")
+        if isinstance(planner_cfg, dict)
+        else None
+    )
+    try:
+        max_execution_steps = int(max_execution_steps_raw)
+    except (TypeError, ValueError):
+        max_execution_steps = PLANNER_MAX_EXECUTION_STEPS_DEFAULT
     offline_message = (
         cfg.get("messages", {}).get("server_offline")
         if isinstance(cfg, dict)
@@ -73,19 +88,30 @@ def build_graph(
 
     async def _plan_action_node(state: BrokerState) -> BrokerState:
         """Bridge injected planner dependencies into async plan node."""
+        ai_enabled = bool(state.get(STATE_KEY_AI_ENABLED, True))
+        planner_impl = ai_planner if (ai_planner is not None and ai_enabled) else rule_planner
         return await plan_action(
             state,
             tool_registry,
-            planner,
+            planner_impl,
             offline_message,
         )
 
     async def _execute_or_summarize_node(state: BrokerState) -> BrokerState:
         """Bridge injected MCP dependencies into async execution node."""
+        formatter = None
+        planner_impl = None
+        ai_enabled = bool(state.get(STATE_KEY_AI_ENABLED, True))
+        if ai_planner is not None and ai_enabled:
+            formatter = ai_planner.format_tool_response_for_slack
+            planner_impl = ai_planner
         return await execute_or_summarize(
             state,
             tool_registry,
             offline_message,
+            tool_response_formatter=formatter,
+            planner=planner_impl,
+            max_planning_steps=max_execution_steps,
         )
 
     graph.add_node(

@@ -46,6 +46,8 @@ class ConversationSession:
     last_summary: str | None = None
     pending_action: dict[str, Any] | None = None
     recent_tool_results: list[dict[str, Any]] = field(default_factory=list)
+    conversation_history: list[dict[str, str]] = field(default_factory=list)
+    ai_enabled: bool = True
     status: str = "active"
 
 
@@ -59,6 +61,7 @@ class SessionManager:
             None: Creates in-memory storage primitives for broker runtime use.
         """
         self._sessions: dict[str, ConversationSession] = {}
+        self._client_ai_mode: dict[str, bool] = {}
         self._lock = asyncio.Lock()
 
     @staticmethod
@@ -78,6 +81,11 @@ class SessionManager:
             str: Composite session key used in the in-memory index.
         """
         return f"{team_id}:{channel_id}:{thread_ts}"
+
+    @staticmethod
+    def build_client_key(team_id: str, user_id: str) -> str:
+        """Create a per-client preference key from team and user identifiers."""
+        return f"{team_id}:{user_id}"
 
     async def upsert(
         self,
@@ -103,6 +111,16 @@ class SessionManager:
         """
         async with self._lock:
             key = self.build_key(team_id, channel_id, thread_ts)
+            client_key = (
+                self.build_client_key(team_id, user_id)
+                if user_id
+                else None
+            )
+            ai_enabled = (
+                self._client_ai_mode.get(client_key, True)
+                if client_key
+                else True
+            )
             session = self._sessions.get(key)
             if session is None:
                 session = ConversationSession(
@@ -111,12 +129,14 @@ class SessionManager:
                     channel_id=channel_id,
                     thread_ts=thread_ts,
                     user_id=user_id,
+                    ai_enabled=ai_enabled,
                 )
                 self._sessions[key] = session
             else:
                 session.last_activity_at = time.time()
                 if user_id:
                     session.user_id = user_id
+                    session.ai_enabled = ai_enabled
             return session
 
     async def get(self, key: str) -> ConversationSession | None:
@@ -151,6 +171,9 @@ class SessionManager:
                 return None
             for k, v in kwargs.items():
                 setattr(session, k, v)
+            if "ai_enabled" in kwargs and session.user_id:
+                client_key = self.build_client_key(session.team_id, session.user_id)
+                self._client_ai_mode[client_key] = bool(session.ai_enabled)
             session.last_activity_at = time.time()
             return session
 

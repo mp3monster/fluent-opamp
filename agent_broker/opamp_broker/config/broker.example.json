@@ -48,6 +48,7 @@
     "base_url": "https://api.openai.com/v1",
     "max_completion_tokens": 1024,
     "verify_max_completion_tokens_attempts": [64, 512],
+    "max_execution_steps": 4,
     "prompts_config_path": "planner_prompts.json"
   }
 }
