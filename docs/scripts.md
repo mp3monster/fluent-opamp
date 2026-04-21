@@ -5,6 +5,8 @@ This table lists the helper scripts and their platform-specific names.
 | Purpose | Linux / macOS | Windows |
 | --- | --- | --- |
 | Run the OpAMP server (provider) | `scripts/run_opamp_server.sh` | `scripts/run_opamp_server.cmd` |
+| Run the OpAMP broker | `scripts/run_opamp_broker.sh` | `scripts/run_opamp_broker.cmd` |
+| Stop OpAMP broker service mode | `scripts/run_opamp_broker_stop.sh` | `scripts/run_opamp_broker_stop.cmd` |
 | Run the OpAMP supervisor (consumer) | `scripts/run_fluentbit_supervisor.sh` | `scripts/run_fluentbit_supervisor.cmd` |
 | Run the OpAMP supervisor (Fluentd consumer) | `scripts/run_fluentd_supervisor.sh` | `scripts/run_fluentd_supervisor.cmd` |
 | Run all supervisor launch scripts (each in a new window) | `scripts/run_all_supervisors.sh` | `scripts/run_all_supervisors.cmd` |

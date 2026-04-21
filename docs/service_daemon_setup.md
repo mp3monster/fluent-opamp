@@ -162,5 +162,8 @@ For the user account running the consumer service:
 
 - The provider does not launch Fluent Bit or Fluentd; this permission requirement is consumer-specific.
 - For Fluentd deployments, include a `monitor_agent` source in `fluentd.conf`; the consumer relies on it for local status polling.
+- Consumer supports a semaphore shutdown file named `OpAMPSupervisor.signal` in the service working directory; this applies to all consumer service types (`fluentbit`, `fluentd`, `simulator`).
+- Semaphore shutdown is a last-resort emergency path and is not recommended for normal production shutdown workflows; any consumer process that can see the semaphore file will stop.
+- Server command capability shutdown flow does not use `OpAMPSupervisor.signal`.
 - If you bind provider to a privileged Linux port (<1024), you need root or `CAP_NET_BIND_SERVICE`.
 - If bearer auth is enabled, configure environment variables in the unit/service environment as documented in `docs/authentication.md`.
