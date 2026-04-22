@@ -25,7 +25,7 @@ Important API key mapping note:
 
 Optional runtime/config values:
 
-- `BROKER_CONFIG_PATH` (defaults to `./opamp_broker/config/broker.example.json` when using `start_broker` scripts)
+- `BROKER_CONFIG_PATH` (defaults to `./opamp_broker/config/broker.ui_responses.json` when using `start_broker` scripts)
 
 Use the helper setup script if needed:
 
@@ -62,6 +62,7 @@ Typical `broker.json` values:
 - `messages.help`
 - `messages.server_offline`
 - `messages.slack_error_reply`
+- `messages.ai_mode_off_ack_text`
 - `mcp.request_timeout_seconds`
 - `mcp.connection_mode`
 - `mcp.startup_discovery_max_attempts`
@@ -80,7 +81,7 @@ The broker runtime config file is JSON and is loaded in this order:
 
 1. `--config-path` CLI value (if provided)
 2. `BROKER_CONFIG_PATH` environment variable (if set)
-3. bundled default file: `opamp_broker/config/broker.example.json`
+3. bundled default file: `opamp_broker/config/broker.ui_responses.json`
 
 The file is merged with internal defaults, so you can provide a full file or a partial override.
 
@@ -128,8 +129,9 @@ Example `broker.json`:
     "shutdown_goodbye": "I'm going to bed now, so I'm clearing my working context for this thread. When I wake up, please remind me what you want to do.",
     "restart_notice": "I'm awake again, but I don't have my earlier working context for this thread. Tell me what you want to check.",
     "server_offline": "The OpAMP server is currently offline. Please try again shortly.",
-    "slack_error_reply": "soory a bit dizzy at the moment",
-    "help": "Try `/opamp status collector-a`, `/opamp health collector-a`, or mention me with a question like `@OpAMP why is collector-a unhealthy?`"
+    "slack_error_reply": "sorry, I stumbled, you might want to try that again",
+    "ai_mode_off_ack_text": "Affirmative, Dave. I read you.",
+    "help": "Try `/opamp help`, `/opamp tools`, `/opamp opstate`, or mention me with a question."
   },
   "paths": {
     "opamp_project_root": "../fluent-opamp",
@@ -170,7 +172,9 @@ Field reference:
 3. `social_collaboration`
    Which social adapter to use at startup.
 4. `messages`
-   User-facing text for help, offline behavior, lifecycle messages, and Slack error fallback responses (`messages.slack_error_reply`).
+   User-facing text for help, offline behavior, and lifecycle messages.
+   `messages.ai_mode_off_ack_text` controls the response text for exact `AI Off` commands.
+   `messages.slack_error_reply` is retained for config compatibility, but the broker now returns a fixed fallback sentence for unhandled exceptions: `sorry, I stumbled, you might want to try that again`.
 5. `paths`
    File locations used to discover OpAMP provider/consumer settings. `paths.opamp_config_path` is the key value for deriving MCP route URLs.
 6. `mcp`
@@ -244,7 +248,7 @@ Command format:
 
 1. `--config-path <path>`
    Use an explicit runtime config file instead of `BROKER_CONFIG_PATH` or bundled defaults.
-   Example: `--config-path ./opamp_broker/config/broker.example.json`
+   Example: `--config-path ./opamp_broker/config/broker.ui_responses.json`
 2. `--social-collaboration <name>`
    Selects the social collaboration adapter implementation.
    Default: `slack`
@@ -278,7 +282,7 @@ Command format:
 - Start with explicit adapter:
   `python -m opamp_broker.broker_app --social-collaboration slack`
 - Start with explicit runtime config:
-  `python -m opamp_broker.broker_app --config-path ./opamp_broker/config/broker.example.json`
+  `python -m opamp_broker.broker_app --config-path ./opamp_broker/config/broker.ui_responses.json`
 - Check social adapter connectivity only:
   `python -m opamp_broker.broker_app --verify-startup social`
 - Check AI service connectivity only:

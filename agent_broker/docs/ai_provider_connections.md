@@ -96,7 +96,7 @@ planner traffic. It exists as a safe starting point.
    - Extend `create_ai_connection(...)` with the new concrete class.
 3. Add/update defaults as needed:
    - `opamp_broker/config/loader.py`
-   - `opamp_broker/config/broker.example.json`
+   - `opamp_broker/config/broker.ui_responses.json`
 4. Add tests:
    - Factory provider selection and unsupported-provider handling.
    - Connection verification behavior.

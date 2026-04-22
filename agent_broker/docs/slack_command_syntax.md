@@ -14,6 +14,7 @@ LLM-driven multi-step execution.
 - Supported explicit verbs:
   - `help`
   - `tools`
+  - `opstate`
   - `call`
 - Compatibility aliases still accepted:
   - `/opamp api <verb> ...`
@@ -36,6 +37,7 @@ General form:
 /opamp help
 /opamp help syntax
 /opamp help tools
+/opamp help opstate
 /opamp help call
 /opamp help <tool_name>
 ```
@@ -79,12 +81,24 @@ Examples:
 /opamp call tool_status --json '{"target":"collector-a"}'
 ```
 
+### 4) Broker Opstate/Connectivity Check
+
+```text
+/opamp opstate
+```
+
+Behavior:
+
+- Returns whether AI mode is currently ON/OFF for this client session.
+- Performs an HTTP probe to the OpAMP server and reports the returned HTTP
+  status code as server connectivity validation.
+
 ## Processing Model
 
 ### 1) Route Detection
 
 - If text starts with `/opamp` (or compatibility aliases) and uses a supported
-  explicit verb (`help|tools|call`), route to strict command parser.
+  explicit verb (`help|tools|opstate|call`), route to strict command parser.
 - Do not send strict command syntax through natural-language planner routing.
 
 ### 2) Parse
@@ -109,14 +123,14 @@ Internal model shape:
 
 Validation checks:
 
-1. verb is supported (`help|tools|call`)
+1. verb is supported (`help|tools|opstate|call`)
 2. tool exists for `call`
 3. arguments are valid JSON or valid `key=value` tokens
 4. reject unknown syntax with deterministic help text
 
 ### 4) Execute (Strict Command Mode)
 
-For explicit command mode (`/opamp help|tools|call`):
+For explicit command mode (`/opamp help|tools|opstate|call`):
 
 - Execute a deterministic single operation path.
 - Do not trigger iterative LLM re-planning.
@@ -129,6 +143,8 @@ Response contract:
 - success: concise result summary + tool name
 - validation error: exact syntax issue + one correction example
 - unknown tool: suggest `/opamp tools`
+- unhandled command execution: return `I couldn't complete that /opamp command. Run /opamp help for syntax.`
+- unhandled exceptions: log internally and return `sorry, I stumbled, you might want to try that again`
 
 ## Conversational Multi-Step Flow (AI Mode)
 
@@ -172,7 +188,8 @@ and status workflows:
 1. one-line purpose
 2. grammar
 3. examples for `help`, `tools`, and `call`
-4. reminder that strict command mode is deterministic
+4. example for `opstate`
+5. reminder that strict command mode is deterministic
 
 Suggested footer:
 
