@@ -36,6 +36,7 @@ def test_session_manager_defaults_ai_enabled_to_true() -> None:
         )
     )
 
+    assert session.ai_mode == session_manager_module.AI_MODE_ON
     assert session.ai_enabled is True
 
 
@@ -50,12 +51,14 @@ def test_session_manager_applies_ai_mode_per_client_across_threads() -> None:
             user_id="U123",
         )
     )
+    assert first_session.ai_mode == session_manager_module.AI_MODE_ON
     assert first_session.ai_enabled is True
 
     updated_session = asyncio.run(
         manager.update(first_session.key, ai_enabled=False)
     )
     assert updated_session is not None
+    assert updated_session.ai_mode == session_manager_module.AI_MODE_OFF
     assert updated_session.ai_enabled is False
 
     second_session_same_client = asyncio.run(
@@ -66,6 +69,7 @@ def test_session_manager_applies_ai_mode_per_client_across_threads() -> None:
             user_id="U123",
         )
     )
+    assert second_session_same_client.ai_mode == session_manager_module.AI_MODE_OFF
     assert second_session_same_client.ai_enabled is False
 
     third_session_different_client = asyncio.run(
@@ -76,4 +80,28 @@ def test_session_manager_applies_ai_mode_per_client_across_threads() -> None:
             user_id="U999",
         )
     )
+    assert third_session_different_client.ai_mode == session_manager_module.AI_MODE_ON
     assert third_session_different_client.ai_enabled is True
+
+
+def test_session_manager_can_default_to_disabled_mode_and_blocks_ai_enabled_toggle() -> None:
+    manager = session_manager_module.SessionManager(
+        default_ai_mode=session_manager_module.AI_MODE_DISABLED
+    )
+    session = asyncio.run(
+        manager.upsert(
+            team_id="T123",
+            channel_id="C123",
+            thread_ts="111.1",
+            user_id="U123",
+        )
+    )
+    assert session.ai_mode == session_manager_module.AI_MODE_DISABLED
+    assert session.ai_enabled is False
+
+    updated_session = asyncio.run(
+        manager.update(session.key, ai_enabled=True)
+    )
+    assert updated_session is not None
+    assert updated_session.ai_mode == session_manager_module.AI_MODE_DISABLED
+    assert updated_session.ai_enabled is False

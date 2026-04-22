@@ -46,16 +46,19 @@ handlers = importlib.import_module("opamp_broker.slack.handlers")
 
 
 def test_extract_ai_mode_directive_handles_ai_off_with_and_without_remainder() -> None:
-    assert handlers._extract_ai_mode_directive("AI Off") == (False, "")
+    assert handlers._extract_ai_mode_directive("AI Off") == (
+        handlers.AI_MODE_OFF,
+        "",
+    )
     assert handlers._extract_ai_mode_directive("AI Off status collector-a") == (
-        False,
+        handlers.AI_MODE_OFF,
         "status collector-a",
     )
 
 
 def test_extract_ai_mode_directive_handles_ai_on_and_non_directive_text() -> None:
     assert handlers._extract_ai_mode_directive("AI On, status collector-a") == (
-        True,
+        handlers.AI_MODE_ON,
         "status collector-a",
     )
     assert handlers._extract_ai_mode_directive("status collector-a") == (
@@ -71,6 +74,31 @@ def test_normalize_mode_command_text_removes_mentions_and_normalizes_spacing() -
 
 def test_ai_off_ack_text_matches_required_response() -> None:
     assert handlers.AI_MODE_OFF_ACK_TEXT == "Affirmative, Dave. I read you."
+
+
+def test_resolve_ai_mode_off_ack_text_uses_configured_value() -> None:
+    configured = handlers._resolve_ai_mode_off_ack_text(
+        {
+            handlers.MESSAGE_KEY_AI_MODE_OFF_ACK_TEXT: "custom off ack",
+        }
+    )
+    assert configured == "custom off ack"
+
+
+def test_resolve_ai_mode_off_ack_text_falls_back_to_default() -> None:
+    configured = handlers._resolve_ai_mode_off_ack_text({})
+    assert configured == handlers.AI_MODE_OFF_ACK_TEXT
+
+
+def test_build_ai_mode_changed_text_supports_disabled_mode() -> None:
+    assert (
+        handlers._build_ai_mode_changed_text(handlers.AI_MODE_DISABLED)
+        == handlers.AI_MODE_DISABLED_LOCK_TEXT
+    )
+
+
+def test_disabled_mode_blocks_ui_switches() -> None:
+    assert handlers._is_ai_mode_ui_switch_allowed(handlers.AI_MODE_DISABLED) is False
 
 
 def test_parse_api_command_requires_leading_slash() -> None:

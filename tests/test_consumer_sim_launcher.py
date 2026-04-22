@@ -162,6 +162,14 @@ def test_build_entrypoint_command_supports_simulator() -> None:
     assert command == [sys.executable, "-m", "opamp_consumer.simulator_client"]
 
 
+def test_build_parser_includes_component_version(monkeypatch) -> None:
+    """CLI parser should surface component version in description and --version flag."""
+    monkeypatch.setattr(launcher, "component_version_text", lambda: "test-version")
+    parser = launcher._build_parser()
+    assert "test-version" in str(parser.description)
+    assert any("--version" in action.option_strings for action in parser._actions)
+
+
 def test_build_entrypoint_command_rejects_non_simulator() -> None:
     """Verify non-simulator entrypoints are rejected."""
     with pytest.raises(ValueError, match="supports 'simulator' only"):
