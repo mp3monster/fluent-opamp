@@ -12,4 +12,9 @@ if (Test-Path $ZipPath) {
     Remove-Item -Path $ZipPath -Force
 }
 
+$RepoRoot = Split-Path -Parent $RootDir
+$VersionScript = Join-Path $RepoRoot "scripts\update_component_versions.py"
+Write-Host "Refreshing component version metadata from git HEAD..."
+python $VersionScript --repo-root $RepoRoot
+
 Compress-Archive -Path $PackageDir -DestinationPath $ZipPath -Force
