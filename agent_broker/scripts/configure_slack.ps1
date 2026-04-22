@@ -199,7 +199,7 @@ if (-not [string]::IsNullOrWhiteSpace($SigningSecret)) {
 if (-not [string]::IsNullOrWhiteSpace($AppToken)) {
   Set-EnvValue -Path $EnvFile -Key "SLACK_APP_TOKEN" -Value $AppToken
 }
-Set-EnvValue -Path $EnvFile -Key "BROKER_CONFIG_PATH" -Value "./opamp_broker/config/broker.example.json"
+Set-EnvValue -Path $EnvFile -Key "BROKER_CONFIG_PATH" -Value "./opamp_broker/config/broker.ui_responses.json"
 
 Write-Host ""
 Write-Host "Slack setup files prepared."

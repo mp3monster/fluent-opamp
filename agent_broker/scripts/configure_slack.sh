@@ -231,7 +231,7 @@ fi
 if [[ -n "${SLACK_APP_TOKEN}" ]]; then
   set_env_var "${ENV_FILE}" "SLACK_APP_TOKEN" "${SLACK_APP_TOKEN}"
 fi
-set_env_var "${ENV_FILE}" "BROKER_CONFIG_PATH" "./opamp_broker/config/broker.example.json"
+set_env_var "${ENV_FILE}" "BROKER_CONFIG_PATH" "./opamp_broker/config/broker.ui_responses.json"
 
 cat <<EOF
 

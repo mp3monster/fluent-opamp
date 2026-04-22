@@ -20,7 +20,7 @@ if [[ $# -gt 0 ]]; then
 fi
 
 export PYTHONUNBUFFERED="${PYTHONUNBUFFERED:-1}"
-export BROKER_CONFIG_PATH="${BROKER_CONFIG_PATH:-${ROOT_DIR}/opamp_broker/config/broker.example.json}"
+export BROKER_CONFIG_PATH="${BROKER_CONFIG_PATH:-${ROOT_DIR}/opamp_broker/config/broker.ui_responses.json}"
 
 if [[ ! -d "${VENV_DIR}" ]]; then
   python3 -m venv "${VENV_DIR}"

@@ -14,7 +14,7 @@ if (-not $env:PYTHONUNBUFFERED) {
     $env:PYTHONUNBUFFERED = "1"
 }
 if (-not $env:BROKER_CONFIG_PATH) {
-    $env:BROKER_CONFIG_PATH = Join-Path $RootDir "opamp_broker\config\broker.example.json"
+    $env:BROKER_CONFIG_PATH = Join-Path $RootDir "opamp_broker\config\broker.ui_responses.json"
 }
 
 if (-not (Test-Path $VenvDir)) {
