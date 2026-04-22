@@ -51,21 +51,35 @@ SIMULATOR_ACTION_ACCEPT = "accept"  # Action indicating the default handler shou
 SIMULATOR_ACTION_IGNORE = "ignore"  # Action indicating the request should be ignored.
 SIMULATOR_ACTION_ERROR = "error"  # Action indicating simulated request failure.
 SIMULATOR_REQUEST_FALLBACK_KEY = "*"  # Optional catch-all request key in simulator config.
-SIMULATOR_CONFIG_RESPONSES_KEY = "responses"  # Optional top-level key wrapping scripted response lists.
+SIMULATOR_CONFIG_RESPONSES_KEY = "responses"
+# Optional top-level key wrapping scripted response lists.
 SIMULATOR_VALUE_AGENT_TYPE = "simulator"  # service.type value exposed by simulator client.
-SIMULATOR_METADATA_SERVICE_INSTANCE_UID = "service_instance_uid"  # JSON key for simulator service instance id passed via --agent-additional-params.
-SIMULATOR_METADATA_SERVICE_INSTANCE_ID = "service_instance_id"  # Alternate JSON key for simulator service instance id.
-SIMULATOR_METADATA_CLIENT_VERSION = "client_version"  # JSON key for simulator client version override.
-SIMULATOR_METADATA_CONFIG_VERSION = "config_version"  # JSON key for simulator config version metadata.
-SIMULATOR_ATTRIBUTE_CONFIG_VERSION = "config.version"  # AgentDescription non-identifying metadata key for simulator config version.
-SIMULATOR_PROCESS_RECORD_FILE_ENV = "OPAMP_SIM_PROCESS_RECORD_FILE"  # Environment variable carrying launcher process record state-file path.
-SIMULATOR_PROCESS_RECORD_NAME_ENV = "OPAMP_SIM_PROCESS_RECORD_NAME"  # Environment variable carrying launcher process record instance name.
+SIMULATOR_METADATA_SERVICE_INSTANCE_UID = "service_instance_uid"
+# JSON key for simulator service instance id passed via --agent-additional-params.
+SIMULATOR_METADATA_SERVICE_INSTANCE_ID = "service_instance_id"
+# Alternate JSON key for simulator service instance id.
+SIMULATOR_METADATA_CLIENT_VERSION = "client_version"
+# JSON key for simulator client version override.
+SIMULATOR_METADATA_CONFIG_VERSION = "config_version"
+# JSON key for simulator config version metadata.
+SIMULATOR_ATTRIBUTE_CONFIG_VERSION = "config.version"
+# AgentDescription non-identifying metadata key for simulator config version.
+SIMULATOR_PROCESS_RECORD_FILE_ENV = "OPAMP_SIM_PROCESS_RECORD_FILE"
+# Environment variable carrying launcher process record state-file path.
+SIMULATOR_PROCESS_RECORD_NAME_ENV = "OPAMP_SIM_PROCESS_RECORD_NAME"
+# Environment variable carrying launcher process record instance name.
 SIMULATOR_STATUS_CHECK_SECONDS = 30.0  # Poll interval for process record shutdown status checks.
 PROCESS_RECORD_KEY_INSTANCES = "instances"  # Launcher state file instances key.
 PROCESS_RECORD_KEY_NAME = "name"  # Launcher state file instance name key.
 PROCESS_RECORD_KEY_STATUS = "status"  # Launcher state file status key.
-PROCESS_RECORD_STATUS_SHUTDOWN = "shutdown"  # Launcher state status requesting graceful simulator shutdown.
-PROCESS_RECORD_STATUS_SHUTTING_DOWN = "shuttingdown"  # Launcher state status set by simulator once shutdown has been acknowledged.
+PROCESS_RECORD_STATUS_SHUTDOWN = "shutdown"
+# Launcher state status requesting graceful simulator shutdown.
+PROCESS_RECORD_STATUS_SHUTTING_DOWN = "shuttingdown"
+# Launcher state status set by simulator once shutdown has been acknowledged.
+ENV_APP_ENABLE_DEV_FEATURES = "APP_ENABLE_DEV_FEATURES"
+# Required startup flag that explicitly enables simulator runtime in development environments.
+_TRUE_FLAG_VALUES = {"1", "true", "yes", "on"}
+# Accepted truthy values for dev feature flag checks.
 
 REQUEST_ERROR_RESPONSE = "error_response"
 REQUEST_REMOTE_CONFIG = "remote_config"
@@ -96,6 +110,40 @@ _VALID_SIMULATOR_ACTIONS = {
     SIMULATOR_ACTION_IGNORE,
     SIMULATOR_ACTION_ERROR,
 }
+
+
+def _is_dev_features_enabled(flag_value: str | None) -> bool:
+    """Return whether the simulator dev-features flag value is enabled."""
+    if flag_value is None:
+        return False
+    return str(flag_value).strip().lower() in _TRUE_FLAG_VALUES
+
+
+def _validate_simulator_dev_features_flag(logger: logging.Logger) -> bool:
+    """Validate required simulator startup flag and log failures consistently.
+
+    Why this gate exists:
+    simulator workloads are development-only; this explicit opt-in prevents
+    accidental startup in environments where simulator traffic is not expected.
+    """
+    raw_value = os.getenv(ENV_APP_ENABLE_DEV_FEATURES)
+    if _is_dev_features_enabled(raw_value):
+        return True
+    if raw_value is None:
+        logger.error(
+            "simulator startup blocked: required environment flag %s is not set",
+            ENV_APP_ENABLE_DEV_FEATURES,
+        )
+    else:
+        logger.error(
+            "simulator startup blocked: required environment flag %s must be true but was '%s'",
+            ENV_APP_ENABLE_DEV_FEATURES,
+            raw_value,
+        )
+    logger.error(
+        "simulator shutting down gracefully before sending any details to the server"
+    )
+    return False
 
 
 @dataclass(frozen=True)
@@ -331,7 +379,7 @@ class SimulatorOpAMPClient(AbstractOpAMPClient):
             return None
         try:
             payload = json.loads(self._process_record_file.read_text(encoding="utf-8"))
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-except
             logging.getLogger(__name__).warning(
                 "failed reading simulator process record file %s: %s",
                 self._process_record_file,
@@ -605,6 +653,8 @@ def main() -> None:
                 "client_status_port must be set for simulator runtime normalization"
             ),
         )
+        if not _validate_simulator_dev_features_flag(logger):
+            return
 
         logger.debug("setting up OpAMP simulator client")
         client = SimulatorOpAMPClient(config.server_url, config)
@@ -618,7 +668,7 @@ def main() -> None:
         print("... simulator keyboard\n %s", keyboard_interrupt)
     except SystemExit as system_exit:
         print("... simulator brutal exit\n %s", system_exit)
-    except Exception as err:
+    except Exception as err: # pylint: disable=broad-except
         print("... simulator bzzzzzzzzzzz \n %s \n %s", err, traceback.format_exc())
 
 
