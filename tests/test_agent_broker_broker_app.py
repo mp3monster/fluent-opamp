@@ -123,6 +123,7 @@ def _base_config(send_shutdown_goodbye: bool) -> dict[str, Any]:
         },
         "slack": {"command_name": "/opamp"},
         "social_collaboration": {"implementation": "slack"},
+        "planner": {"llm_enabled": True, "AIState": "on"},
     }
 
 
@@ -131,6 +132,9 @@ async def _run_main_with_fakes(
     *,
     refresh_raises: Exception | None = None,
     send_shutdown_goodbye: bool = True,
+    llm_enabled: bool | None = None,
+    ai_state: str | None = None,
+    ai_config_complete: bool = True,
     social_collaboration_implementation: str | None = None,
     verify_startup: str = "none",
     social_verify_result: dict[str, Any] | None = None,
@@ -138,6 +142,10 @@ async def _run_main_with_fakes(
 ) -> dict[str, Any]:
     captured: dict[str, Any] = {"register_handlers_calls": []}
     config = _base_config(send_shutdown_goodbye=send_shutdown_goodbye)
+    if llm_enabled is not None:
+        config["planner"]["llm_enabled"] = llm_enabled
+    if ai_state is not None:
+        config["planner"]["AIState"] = ai_state
 
     class FakeLogger:
         def __init__(self) -> None:
@@ -188,7 +196,8 @@ async def _run_main_with_fakes(
     class FakeSessionManager:
         instances: list[FakeSessionManager] = []
 
-        def __init__(self) -> None:
+        def __init__(self, default_ai_mode: str = "on") -> None:
+            self.default_ai_mode = default_ai_mode
             self.deleted: list[str] = []
             self.sessions = [
                 SimpleNamespace(
@@ -296,12 +305,18 @@ async def _run_main_with_fakes(
             return social_verify_result or {"ok": True, "message": "social ok"}
 
     class FakeAIConnection:
+        def __init__(self, has_api_key: bool) -> None:
+            self._has_api_key = has_api_key
+
+        def has_api_key(self) -> bool:
+            return self._has_api_key
+
         async def verify_connection(self, *, model: str) -> dict[str, Any]:
             return ai_svc_verify_result or {"ok": True, "message": "ai svc ok", "model": model}
 
     def fake_create_ai_connection(**kwargs: Any) -> FakeAIConnection:
         captured["ai_connection_factory_kwargs"] = kwargs
-        return FakeAIConnection()
+        return FakeAIConnection(ai_config_complete)
 
     def fake_create_social_collaboration_adapter(
         implementation: str,
@@ -410,6 +425,57 @@ def test_main_uses_cli_social_collaboration_override(
         )
     )
     assert captured["social_collaboration_implementation"] == "slack"
+
+
+def test_main_sets_disabled_default_ai_mode_when_llm_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured = asyncio.run(
+        _run_main_with_fakes(
+            monkeypatch,
+            llm_enabled=False,
+        )
+    )
+    assert captured["session_manager"].default_ai_mode == broker_app.AI_MODE_DISABLED
+
+
+def test_main_uses_configured_ai_state_off_when_ai_is_ready(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured = asyncio.run(
+        _run_main_with_fakes(
+            monkeypatch,
+            ai_state="off",
+            ai_config_complete=True,
+        )
+    )
+    assert captured["session_manager"].default_ai_mode == broker_app.AI_MODE_OFF
+
+
+def test_main_uses_configured_ai_state_disabled_even_when_ai_is_ready(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured = asyncio.run(
+        _run_main_with_fakes(
+            monkeypatch,
+            ai_state="disabled",
+            ai_config_complete=True,
+        )
+    )
+    assert captured["session_manager"].default_ai_mode == broker_app.AI_MODE_DISABLED
+
+
+def test_main_forces_disabled_when_ai_config_incomplete(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured = asyncio.run(
+        _run_main_with_fakes(
+            monkeypatch,
+            ai_state="on",
+            ai_config_complete=False,
+        )
+    )
+    assert captured["session_manager"].default_ai_mode == broker_app.AI_MODE_DISABLED
 
 
 def test_main_startup_verification_all_success(

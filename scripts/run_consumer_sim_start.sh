@@ -13,4 +13,6 @@ if [ -f "${REPO_ROOT}/.venv/bin/activate" ]; then
   source "${REPO_ROOT}/.venv/bin/activate"
 fi
 
+export APP_ENABLE_DEV_FEATURES=true
+
 python3 "${REPO_ROOT}/consumer-sim/src/consumer_sim_launcher.py" start "$@"

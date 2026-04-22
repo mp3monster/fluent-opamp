@@ -18,6 +18,7 @@ This table lists the helper scripts and their platform-specific names.
 | Ensure `provider.tls` settings exist in config JSON | `scripts/ensure_provider_tls_config.py` | `scripts\ensure_provider_tls_config.py` |
 | Render Mermaid `.mmd` to PNG (local wrapper) | `scripts/render_mermaid_png.sh` | n/a |
 | Request server shutdown via API | `scripts/shutdown_opamp_server.sh` | `scripts/shutdown_opamp_server.cmd` |
+| Install repo git hooks path (`core.hooksPath=.githooks`) | `scripts/install_git_hooks.sh` | `scripts/install_git_hooks.cmd` |
 | Build deployable Python artifacts (provider + consumer) | `scripts/build_artifacts.sh` | `scripts/build_artifacts.cmd` |
 | Build wheel artifacts and optionally publish to GitHub release assets | `scripts/build_and_publish_wheels.py` | `scripts\build_and_publish_wheels.py` |
 | Configure MCP for Claude Desktop (wrapper) | `mcp/configure-claude-desktop-fastmcp.sh` | `mcp\configure-claude-desktop-fastmcp.ps1` |
@@ -76,6 +77,7 @@ That guide includes:
 The scripts:
 
 - activate `.venv` when present
+- refresh git-derived component version metadata via `scripts/update_component_versions.py`
 - ensure the `build` package is installed
 - clear old files in target artifact folders before building
 

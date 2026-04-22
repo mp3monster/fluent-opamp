@@ -12,22 +12,33 @@ if [ -f "${REPO_ROOT}/.venv/bin/activate" ]; then
   source "${REPO_ROOT}/.venv/bin/activate"
 fi
 
+PYTHON_BIN="python3"
+if ! command -v "${PYTHON_BIN}" >/dev/null 2>&1; then
+  PYTHON_BIN="python"
+fi
+if ! command -v "${PYTHON_BIN}" >/dev/null 2>&1; then
+  echo "Python runtime not found (expected python3 or python)." >&2
+  exit 1
+fi
+
+echo "Refreshing component version metadata from git HEAD..."
+"${PYTHON_BIN}" "${REPO_ROOT}/scripts/update_component_versions.py"
+
 echo "Ensuring Python build tooling is available..."
-python3 -m pip show build >/dev/null 2>&1 || python3 -m pip install build
+"${PYTHON_BIN}" -m pip show build >/dev/null 2>&1 || "${PYTHON_BIN}" -m pip install build
 
 echo "Preparing artifact directories..."
 mkdir -p "${PROVIDER_DIST}" "${CONSUMER_DIST}"
 rm -f "${PROVIDER_DIST}"/* "${CONSUMER_DIST}"/*
 
 echo "Building provider artifacts..."
-python3 -m build --sdist --wheel --outdir "${PROVIDER_DIST}" "${REPO_ROOT}/provider"
+"${PYTHON_BIN}" -m build --sdist --wheel --outdir "${PROVIDER_DIST}" "${REPO_ROOT}/provider"
 
 echo "Building consumer artifacts..."
-python3 -m build --sdist --wheel --outdir "${CONSUMER_DIST}" "${REPO_ROOT}/consumer"
+"${PYTHON_BIN}" -m build --sdist --wheel --outdir "${CONSUMER_DIST}" "${REPO_ROOT}/consumer"
 
 echo "Build complete."
 echo "Provider artifacts:"
 ls -1 "${PROVIDER_DIST}"
 echo "Consumer artifacts:"
 ls -1 "${CONSUMER_DIST}"
-

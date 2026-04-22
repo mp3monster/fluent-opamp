@@ -43,6 +43,13 @@ Installed CLI command:
 opamp-provider --config-path ./config/opamp.json --port 4320
 ```
 
+Version/help:
+
+```bash
+opamp-provider --version
+opamp-provider --help
+```
+
 ## Run scripts
 
 Helper scripts live in `scripts/` at the repo root:
@@ -242,6 +249,7 @@ For Linux `systemd` and Windows service examples for provider and consumer deplo
 
 - Console: `http://localhost:8080/ui`
 - Help: `http://localhost:8080/help`
+- The help page includes the server component version generated from git commit/date metadata.
 - Latest docs redirect: `http://localhost:8080/doc-set`
 
 The UI includes a shutdown button that prompts for confirmation and calls the shutdown API.

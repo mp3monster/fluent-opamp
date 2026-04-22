@@ -25,6 +25,7 @@ from typing import Any
 
 from opamp_provider import config as provider_config
 from opamp_provider.app import app, set_state_restore_status
+from opamp_provider.component_version import component_version_text
 from opamp_provider.state import STORE
 from opamp_provider.state_persistence import (
     RESTORE_AUTO,
@@ -122,7 +123,10 @@ def _provider_tls_run_kwargs(config: provider_config.ProviderConfig) -> dict[str
 
 def main() -> None:
     """Load config overrides and start the Quart app."""
-    parser = argparse.ArgumentParser()
+    version_text = component_version_text()
+    parser = argparse.ArgumentParser(
+        description=f"OpAMP provider server. Version: {version_text}"
+    )
     parser.add_argument("--config-path", type=str)
     # Intentionally omitted from CLI help/documentation.
     parser.add_argument("--diagnostic", action="store_true", help=argparse.SUPPRESS)
@@ -144,6 +148,11 @@ def main() -> None:
         default=None,
         metavar="SNAPSHOT_FILE",
         help="restore persisted provider state from latest snapshot or explicit file path",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {version_text}",
     )
     args = parser.parse_args()
     _configure_logging("INFO")

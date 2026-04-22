@@ -44,6 +44,7 @@ from opamp_provider.commands import (
     get_command_metadata,
     get_custom_capabilities_list,
 )
+from opamp_provider.component_version import component_version_text
 from opamp_provider.exceptions import ServerToAgentException
 from opamp_provider.mcptool import register_mcp_transport, register_tool_routes
 from opamp_provider.opamp_protocol import (
@@ -2175,6 +2176,10 @@ async def help_page() -> Response:
         .replace(
             "__HELP_DEFAULT_HEARTBEAT_FREQUENCY__",
             GLOBAL_SETTINGS_HELP["default_heartbeat_frequency"]["tooltip"],
+        )
+        .replace(
+            "__SERVER_COMPONENT_VERSION__",
+            component_version_text(),
         )
     )
     return Response(html, content_type="text/html; charset=utf-8")

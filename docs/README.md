@@ -121,6 +121,7 @@ python3 -m opamp_consumer.fluentbit_client --config-path config/opamp.json
 - Provider/server diagram walkthrough (rendered PNGs): `docs/provider_server_diagrams.md`
 - Optional bearer auth setup (disabled/static/jwt): see `docs/authentication.md`
 - MCP client setup scripts (Claude/Codex/canonical), command-line parameters, FastMCP usage, required server parameters, and config verification commands: see `../mcp/README.md`
+- Git-derived component version metadata and hook/build integration: see `component_versioning.md`
 - Provider state persistence/restore and snapshot retention details: see `provider/README.md#state-persistence-and-restore`
 - Recommended API gateway hardening and internal vs external client profiles: see `docs/api_gateway_requirements.md`
 - Running as a Linux daemon or Windows service (including consumer permissions to launch Fluent Bit/Fluentd): see `docs/service_daemon_setup.md`

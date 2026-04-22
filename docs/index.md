@@ -28,12 +28,18 @@ Welcome to the Fluent Bit & Fluentd OpAMP implementation docs. This page links t
 - [Agent broker README](../agent_broker/README.md) — optional standalone conversation broker overview and run steps.
 - [Agent broker docs index](../agent_broker/docs/README.md) — broker runbooks (startup/shutdown/logging, Slack setup, architecture notes).
 - [Scripts](scripts.md) — script reference table by platform.
+- [Component Versioning](component_versioning.md) — git commit/date version metadata and where it appears in CLI/UI help.
 
 ## Optional components
 
 - `agent_broker` is optional and runs as a separate process.
 - Provider/server and consumer/client do not require the broker to run.
 - If used, start and stop the broker independently from provider and consumer.
+
+## Documentation Rules
+
+- Treat `dev-notes/` as internal working notes only.
+- Do not cross reference `dev-notes/` content from formal project documentation (`README.md`, `docs/`, component READMEs, broker docs, or UI help pages).
 
 ## Project layout (quick view)
 

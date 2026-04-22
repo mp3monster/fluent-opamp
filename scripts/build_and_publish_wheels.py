@@ -50,6 +50,19 @@ def _ensure_python_build(repo_root: Path, python_exe: str) -> None:
     _run([python_exe, "-m", "pip", "install", "build"], cwd=repo_root)
 
 
+def _update_component_versions(repo_root: Path, python_exe: str) -> None:
+    """Refresh component version metadata from git before packaging."""
+    _run(
+        [
+            python_exe,
+            str(repo_root / "scripts" / "update_component_versions.py"),
+            "--repo-root",
+            str(repo_root),
+        ],
+        cwd=repo_root,
+    )
+
+
 def _clean_dir(path: Path) -> None:
     """Remove files from one directory, creating it when absent."""
     path.mkdir(parents=True, exist_ok=True)
@@ -509,6 +522,7 @@ def main() -> int:
     provider_dist = dist_root / "provider"
     consumer_dist = dist_root / "consumer"
 
+    _update_component_versions(repo_root, args.python)
     _ensure_python_build(repo_root, args.python)
     provider_wheel = _build_component_wheel(
         repo_root=repo_root,

@@ -1,0 +1,47 @@
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant H as web_ui.html
+    participant B as web_ui_bindings.js
+    participant F as web_ui_functions.js
+    participant S as web_ui_state.js
+    participant C as Browser Cookie (opamp_ui_prefs)
+    participant A as Provider API
+
+    U->>H: Open Server Console
+    H->>B: Load JS modules
+    B->>F: init()
+    F->>C: read cookie (UI prefs)
+    C-->>F: columnOrder + visibleColumns + filtersCollapsed
+    F->>S: apply defaults + cookie overrides
+    F->>F: write filter/column controls to DOM
+    F->>F: render dynamic table header
+    F->>A: GET /api/clients (with active filters)
+    A-->>F: client list + totals
+    F->>H: render table rows using visible ordered columns
+
+    U->>H: Toggle optional column (e.g. Host Name)
+    H->>B: change event
+    B->>F: applyOptionalColumnSelection()
+    F->>S: update visibleColumns
+    F->>C: persist prefs cookie
+    F->>H: re-render header + table
+
+    U->>H: Drag column header to new position
+    H->>B: drag/drop events
+    B->>F: moveColumnRelativeToTarget()
+    F->>S: update columnOrder
+    F->>C: persist prefs cookie
+    F->>H: re-render header + table
+
+    U->>H: Toggle filters panel (collapsed/expanded)
+    H->>B: click event
+    B->>F: toggleFiltersPanel()
+    F->>S: update filters.collapsed
+    F->>C: persist prefs cookie
+
+    U->>H: Return in later session
+    B->>F: init()
+    F->>C: read cookie again
+    C-->>F: restored personalization
+    F->>H: apply same columns/order/panel state

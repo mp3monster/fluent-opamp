@@ -9,6 +9,10 @@ set CONSUMER_DIST=%DIST_ROOT%\consumer
 
 if exist "%REPO_ROOT%\.venv\Scripts\activate.bat" call "%REPO_ROOT%\.venv\Scripts\activate.bat"
 
+echo Refreshing component version metadata from git HEAD...
+python "%REPO_ROOT%\scripts\update_component_versions.py"
+if errorlevel 1 exit /b 1
+
 echo Ensuring Python build tooling is available...
 python -m pip show build >nul 2>&1 || python -m pip install build
 
@@ -31,4 +35,3 @@ echo Provider artifacts:
 dir /b "%PROVIDER_DIST%"
 echo Consumer artifacts:
 dir /b "%CONSUMER_DIST%"
-

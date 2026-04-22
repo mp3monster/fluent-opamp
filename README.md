@@ -30,6 +30,7 @@ The documentation includes background such as the implementation philosophies th
 - [docs/features.md](docs/features.md) — feature notes and design direction.
 - [mcp/README.md](mcp/README.md) — MCP setup wrappers/canonical script behavior, FastMCP client role, command-line parameters, and verification.
 - [docs/scripts.md](docs/scripts.md) — script reference table by platform.
+- [docs/component_versioning.md](docs/component_versioning.md) — git-derived component version metadata, help/UI exposure, and hook/build integration.
 - [consumer/README.md](consumer/README.md) — consumer configuration and CLI usage.
 - [provider/README.md](provider/README.md) — provider configuration and web UI notes.
 - [agent_broker/README.md](agent_broker/README.md) — optional conversation broker overview, setup, and run modes.
