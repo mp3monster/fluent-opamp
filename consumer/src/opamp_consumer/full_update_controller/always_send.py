@@ -10,7 +10,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Always-send full update controller."""
+"""Always-send full update controller. This ensures everytime we contact the server
+   a full status update is provided."""
 
 from __future__ import annotations
 

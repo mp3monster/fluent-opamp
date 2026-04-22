@@ -10,7 +10,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Sent-count based full update controller."""
+"""Sent-count based full update controller.
+
+This controller increments a counter on each outbound update and requests a
+full-state resend whenever the configured threshold is reached.
+"""
 
 from __future__ import annotations
 
