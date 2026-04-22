@@ -103,9 +103,8 @@ class RuleFirstPlanner:
         if "help" in normalized or not normalized:
             return {
                 RESPONSE_TEXT_KEY: (
-                    "Try `/opamp status collector-a`, `/opamp health collector-a`, "
-                    "`/opamp config collector-a`, or filter agents with "
-                    "`/opamp tool_otel_agents host_name=alpha-node client_version=1.2.3`."
+                    "Try `/opamp help`, `/opamp tools`, `/opamp opstate`, or use "
+                    "`/opamp call <tool_name> [key=value ...]` to run a specific tool."
                 ),
                 TOOL_NAME_KEY: None,
                 TOOL_ARGS_KEY: {},

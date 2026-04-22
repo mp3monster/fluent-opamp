@@ -23,6 +23,21 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
+AI_MODE_ON = "on"
+AI_MODE_OFF = "off"
+AI_MODE_DISABLED = "disabled"
+_VALID_AI_MODES = {AI_MODE_ON, AI_MODE_OFF, AI_MODE_DISABLED}
+SESSION_FIELD_AI_MODE = "ai_mode"
+SESSION_FIELD_AI_ENABLED = "ai_enabled"
+
+
+def _normalize_ai_mode(value: Any, default: str = AI_MODE_ON) -> str:
+    """Return a validated AI mode value, falling back to a safe default."""
+    candidate = str(value or "").strip().lower()
+    if candidate in _VALID_AI_MODES:
+        return candidate
+    return default
+
 
 @dataclass
 class ConversationSession:
@@ -47,6 +62,7 @@ class ConversationSession:
     pending_action: dict[str, Any] | None = None
     recent_tool_results: list[dict[str, Any]] = field(default_factory=list)
     conversation_history: list[dict[str, str]] = field(default_factory=list)
+    ai_mode: str = AI_MODE_ON
     ai_enabled: bool = True
     status: str = "active"
 
@@ -54,14 +70,15 @@ class ConversationSession:
 class SessionManager:
     """Concurrency-safe CRUD interface for ``ConversationSession`` objects."""
 
-    def __init__(self) -> None:
+    def __init__(self, default_ai_mode: str = AI_MODE_ON) -> None:
         """Initialize an empty session map protected by an async lock.
 
         Returns:
             None: Creates in-memory storage primitives for broker runtime use.
         """
         self._sessions: dict[str, ConversationSession] = {}
-        self._client_ai_mode: dict[str, bool] = {}
+        self._default_ai_mode = _normalize_ai_mode(default_ai_mode, AI_MODE_ON)
+        self._client_ai_mode: dict[str, str] = {}
         self._lock = asyncio.Lock()
 
     @staticmethod
@@ -116,11 +133,12 @@ class SessionManager:
                 if user_id
                 else None
             )
-            ai_enabled = (
-                self._client_ai_mode.get(client_key, True)
+            ai_mode = (
+                self._client_ai_mode.get(client_key, self._default_ai_mode)
                 if client_key
-                else True
+                else self._default_ai_mode
             )
+            ai_enabled = ai_mode == AI_MODE_ON
             session = self._sessions.get(key)
             if session is None:
                 session = ConversationSession(
@@ -129,6 +147,7 @@ class SessionManager:
                     channel_id=channel_id,
                     thread_ts=thread_ts,
                     user_id=user_id,
+                    ai_mode=ai_mode,
                     ai_enabled=ai_enabled,
                 )
                 self._sessions[key] = session
@@ -136,6 +155,7 @@ class SessionManager:
                 session.last_activity_at = time.time()
                 if user_id:
                     session.user_id = user_id
+                    session.ai_mode = ai_mode
                     session.ai_enabled = ai_enabled
             return session
 
@@ -169,11 +189,47 @@ class SessionManager:
             session = self._sessions.get(key)
             if session is None:
                 return None
-            for k, v in kwargs.items():
-                setattr(session, k, v)
-            if "ai_enabled" in kwargs and session.user_id:
+            if SESSION_FIELD_AI_MODE in kwargs:
+                normalized_mode = _normalize_ai_mode(
+                    kwargs.get(SESSION_FIELD_AI_MODE),
+                    default=session.ai_mode,
+                )
+                kwargs[SESSION_FIELD_AI_MODE] = normalized_mode
+                kwargs[SESSION_FIELD_AI_ENABLED] = normalized_mode == AI_MODE_ON
+            elif SESSION_FIELD_AI_ENABLED in kwargs:
+                # Preserve disabled lock semantics unless caller explicitly sets
+                # `ai_mode`.
+                if session.ai_mode == AI_MODE_DISABLED:
+                    kwargs[SESSION_FIELD_AI_MODE] = AI_MODE_DISABLED
+                    kwargs[SESSION_FIELD_AI_ENABLED] = False
+                else:
+                    kwargs[SESSION_FIELD_AI_ENABLED] = bool(
+                        kwargs.get(SESSION_FIELD_AI_ENABLED)
+                    )
+                    kwargs[SESSION_FIELD_AI_MODE] = (
+                        AI_MODE_ON
+                        if kwargs[SESSION_FIELD_AI_ENABLED]
+                        else AI_MODE_OFF
+                    )
+
+            for field_name, field_value in kwargs.items():
+                setattr(session, field_name, field_value)
+            if (
+                SESSION_FIELD_AI_MODE in kwargs
+                or SESSION_FIELD_AI_ENABLED in kwargs
+            ) and session.user_id:
                 client_key = self.build_client_key(session.team_id, session.user_id)
-                self._client_ai_mode[client_key] = bool(session.ai_enabled)
+                default_mode = (
+                    AI_MODE_OFF if not session.ai_enabled else AI_MODE_ON
+                )
+                self._client_ai_mode[client_key] = _normalize_ai_mode(
+                    getattr(
+                        session,
+                        SESSION_FIELD_AI_MODE,
+                        default_mode,
+                    ),
+                    default=default_mode,
+                )
             session.last_activity_at = time.time()
             return session
 

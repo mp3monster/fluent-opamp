@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+from datetime import datetime, timezone
 import json
 import logging
 import logging.config
@@ -36,6 +37,7 @@ from typing import Any
 from dotenv import load_dotenv
 
 from opamp_broker.config.loader import load_runtime_config
+from opamp_broker.component_version import component_version_text
 from opamp_broker.graph.graph import build_graph
 from opamp_broker.mcp.client import MCPClient
 from opamp_broker.mcp.tools import MCPToolRegistry
@@ -43,7 +45,15 @@ from opamp_broker.planner.ai_connection_factory import (
     create_ai_connection,
     resolve_ai_runtime_settings,
 )
-from opamp_broker.session.manager import SessionManager
+from opamp_broker.planner.openai_compatible_connection import (
+    OpenAICompatibleConnection,
+)
+from opamp_broker.session.manager import (
+    AI_MODE_DISABLED,
+    AI_MODE_OFF,
+    AI_MODE_ON,
+    SessionManager,
+)
 from opamp_broker.session.sweeper import SessionSweeper
 from opamp_broker.social_collaboration.factory import (
     create_social_collaboration_adapter,
@@ -53,6 +63,9 @@ ENV_BROKER_LOGGING_CONFIG_PATH = "OPAMP_BROKER_LOGGING_CONFIG"
 DEFAULT_BROKER_LOGGING_CONFIG_FILENAME = "broker_logging.json"
 DEFAULT_SOCIAL_COLLABORATION_IMPLEMENTATION = "slack"
 STARTUP_VERIFICATION_CHOICES = ("none", "social", "ai_svc", "all")
+AI_STATE_CONFIG_KEY = "AIState"
+AI_STATE_CONFIG_KEY_ALT = "ai_state"
+AI_STATE_ALLOWED_VALUES = (AI_MODE_ON, AI_MODE_OFF, AI_MODE_DISABLED)
 
 
 def _normalize_log_level_name(log_level: str | int | None) -> str:
@@ -164,7 +177,10 @@ logger = logging.getLogger(__name__)
 
 def _build_cli_parser() -> argparse.ArgumentParser:
     """Build broker CLI parser for runtime config and adapter selection."""
-    parser = argparse.ArgumentParser()
+    version_text = component_version_text()
+    parser = argparse.ArgumentParser(
+        description=f"OpAMP conversation broker runtime. Version: {version_text}"
+    )
     parser.add_argument(
         "--config-path",
         type=str,
@@ -192,6 +208,11 @@ def _build_cli_parser() -> argparse.ArgumentParser:
             "Options: none, social, ai_svc, all"
         ),
     )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {version_text}",
+    )
     return parser
 
 
@@ -218,6 +239,112 @@ def _is_startup_verification_enabled(mode: str) -> bool:
 def _resolve_planner_runtime_settings(config: dict[str, Any]) -> dict[str, Any]:
     """Resolve planner runtime settings and key-presence diagnostics."""
     return resolve_ai_runtime_settings(config)
+
+
+def _normalize_ai_state(value: Any) -> str:
+    """Normalize configured AI state values with a safe default."""
+    candidate = str(value or "").strip().lower()
+    if candidate in AI_STATE_ALLOWED_VALUES:
+        return candidate
+    return AI_MODE_ON
+
+
+def _resolve_configured_ai_state(config: dict[str, Any]) -> str:
+    """Resolve configured initial AI state from runtime config."""
+    planner_cfg = config.get("planner", {}) if isinstance(config, dict) else {}
+    if not isinstance(planner_cfg, dict):
+        return AI_MODE_ON
+    configured_state = planner_cfg.get(
+        AI_STATE_CONFIG_KEY,
+        planner_cfg.get(AI_STATE_CONFIG_KEY_ALT, AI_MODE_ON),
+    )
+    return _normalize_ai_state(configured_state)
+
+
+def _build_ai_connection_for_runtime_settings(
+    runtime_settings: dict[str, Any],
+):
+    """Create AI transport from normalized runtime settings."""
+    return create_ai_connection(
+        provider=str(runtime_settings["provider"]),
+        api_key_env_var=str(runtime_settings["api_key_env_var"]),
+        base_url=str(runtime_settings["base_url"]),
+        timeout_seconds=int(runtime_settings["timeout_seconds"]),
+        temperature=float(runtime_settings["temperature"]),
+        max_completion_tokens=(
+            int(runtime_settings["max_completion_tokens"])
+            if runtime_settings["max_completion_tokens"] is not None
+            else None
+        ),
+        verify_max_completion_tokens_attempts=tuple(
+            int(value)
+            for value in runtime_settings["verify_max_completion_tokens_attempts"]
+        ),
+        verification_prompt=str(runtime_settings["verification_prompt"]),
+    )
+
+
+def _resolve_default_client_ai_mode(config: dict[str, Any]) -> str:
+    """Resolve initial per-client AI mode from config and AI readiness checks.
+
+    Rules:
+    1. `planner.AIState=disabled` always wins and locks mode.
+    2. If AI config is incomplete, mode is forced to `disabled`.
+    3. Otherwise `planner.AIState` (`on` or `off`) is used as the initial mode.
+    """
+    configured_ai_state = _resolve_configured_ai_state(config)
+    if configured_ai_state == AI_MODE_DISABLED:
+        return AI_MODE_DISABLED
+
+    planner_settings = _resolve_planner_runtime_settings(config)
+    if not bool(planner_settings.get("llm_enabled", True)):
+        logger.warning(
+            "AI mode forced to DISABLED because planner.llm_enabled is false.",
+            extra={
+                "event": "broker.ai_mode.forced_disabled",
+                "context": {
+                    "reason": "planner.llm_enabled=false",
+                    "configured_ai_state": configured_ai_state,
+                },
+            },
+        )
+        return AI_MODE_DISABLED
+
+    try:
+        ai_connection = _build_ai_connection_for_runtime_settings(planner_settings)
+    except Exception as exc:
+        logger.warning(
+            "AI mode forced to DISABLED because AI config is incomplete: %s",
+            str(exc),
+            extra={
+                "event": "broker.ai_mode.forced_disabled",
+                "context": {
+                    "reason": str(exc),
+                    "configured_ai_state": configured_ai_state,
+                },
+            },
+        )
+        return AI_MODE_DISABLED
+
+    if not ai_connection.has_api_key():
+        reason = (
+            "missing API key value for env var "
+            f"{planner_settings['api_key_env_var']}"
+        )
+        logger.warning(
+            "AI mode forced to DISABLED because AI config is incomplete: %s",
+            reason,
+            extra={
+                "event": "broker.ai_mode.forced_disabled",
+                "context": {
+                    "reason": reason,
+                    "configured_ai_state": configured_ai_state,
+                },
+            },
+        )
+        return AI_MODE_DISABLED
+
+    return configured_ai_state if configured_ai_state in {AI_MODE_ON, AI_MODE_OFF} else AI_MODE_ON
 
 
 def _resolve_mcp_retry_settings(config: dict[str, Any]) -> dict[str, Any]:
@@ -431,25 +558,7 @@ async def _run_startup_verification(
             },
         )
         try:
-            ai_connection = create_ai_connection(
-                provider=str(planner_settings["provider"]),
-                api_key_env_var=str(planner_settings["api_key_env_var"]),
-                base_url=str(planner_settings["base_url"]),
-                timeout_seconds=int(planner_settings["timeout_seconds"]),
-                temperature=float(planner_settings["temperature"]),
-                max_completion_tokens=(
-                    int(planner_settings["max_completion_tokens"])
-                    if planner_settings["max_completion_tokens"] is not None
-                    else None
-                ),
-                verify_max_completion_tokens_attempts=tuple(
-                    int(value)
-                    for value in planner_settings[
-                        "verify_max_completion_tokens_attempts"
-                    ]
-                ),
-                verification_prompt=str(planner_settings["verification_prompt"]),
-            )
+            ai_connection = _build_ai_connection_for_runtime_settings(planner_settings)
         except Exception as exc:
             ai_svc_result = {"ok": False, "error": str(exc)}
         else:
@@ -506,6 +615,7 @@ async def main(
         bool: ``True`` on successful startup flow/verification, else ``False``.
     """
     load_dotenv()
+    broker_started_at_utc = datetime.now(timezone.utc).isoformat()
     config = load_runtime_config(config_path)
     configure_logging(config["broker"]["log_level"])
     selected_social_collaboration_implementation = (
@@ -569,7 +679,8 @@ async def main(
         )
 
     graph = build_graph(tool_registry, config)
-    session_manager = SessionManager()
+    default_ai_mode = _resolve_default_client_ai_mode(config)
+    session_manager = SessionManager(default_ai_mode=default_ai_mode)
     social_collaboration_adapter = create_social_collaboration_adapter(
         selected_social_collaboration_implementation
     )
@@ -638,6 +749,21 @@ async def main(
                         text=config["messages"]["shutdown_goodbye"],
                     )
                 await session_manager.delete(session.key)
+        cumulative_tokens = OpenAICompatibleConnection.get_cumulative_tokens_since_startup()
+        logger.info(
+            "AI token totals since startup input_tokens=%s output_tokens=%s total_tokens=%s broker_started_at_utc=%s",
+            cumulative_tokens["input_tokens"],
+            cumulative_tokens["output_tokens"],
+            cumulative_tokens["total_tokens"],
+            broker_started_at_utc,
+            extra={
+                "event": "broker.shutdown.ai_token_totals",
+                "context": {
+                    **cumulative_tokens,
+                    "broker_started_at_utc": broker_started_at_utc,
+                },
+            },
+        )
         await mcp_client.close()
         stop_event.set()
 

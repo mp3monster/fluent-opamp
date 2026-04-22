@@ -19,12 +19,15 @@ and emits thread responses with a consistent output contract.
 from __future__ import annotations
 
 from contextlib import suppress
+from datetime import datetime, timezone
 import json
 import logging
+import random
 import re
 import shlex
 from typing import Any
 
+import httpx
 from slack_bolt.async_app import AsyncApp
 
 from opamp_broker.graph.state import (
@@ -41,14 +44,24 @@ from opamp_broker.graph.state import (
     STATE_KEY_THREAD_TS,
     STATE_KEY_USER_ID,
 )
-from opamp_broker.session.manager import SessionManager
+from opamp_broker.planner.openai_compatible_connection import (
+    OpenAICompatibleConnection,
+)
+from opamp_broker.session.manager import (
+    AI_MODE_DISABLED,
+    AI_MODE_OFF,
+    AI_MODE_ON,
+    SessionManager,
+)
 
 logger = logging.getLogger(__name__)
 CONFIG_KEY_MESSAGES = "messages"
 CONFIG_KEY_SLACK = "slack"
 CONFIG_KEY_COMMAND_NAME = "command_name"
 MESSAGE_KEY_HELP = "help"
+MESSAGE_KEY_IMMEDIATE_ACK_MESSAGES = "immediate_ack_messages"
 MESSAGE_KEY_SLACK_ERROR_REPLY = "slack_error_reply"
+MESSAGE_KEY_AI_MODE_OFF_ACK_TEXT = "ai_mode_off_ack_text"
 SLACK_KEY_EVENT = "event"
 SLACK_KEY_TEAM_ID = "team_id"
 SLACK_KEY_TEAM = "team"
@@ -69,10 +82,12 @@ SLACK_KEY_UNKNOWN = "unknown"
 SLACK_KEY_NO_THREAD = "no-thread"
 SLACK_KEY_IN_CHANNEL = "in_channel"
 SLACK_CHANNEL_TYPE_IM = "im"
-AI_MODE_ENABLED_TEXT = "on"
 AI_MODE_OFF_EXACT_COMMAND = "ai off"
 AI_MODE_ON_EXACT_COMMAND = "ai on"
 AI_MODE_OFF_ACK_TEXT = "Affirmative, Dave. I read you."
+AI_MODE_DISABLED_LOCK_TEXT = (
+    "AI is disabled and can't be changed."
+)
 AI_MODE_PREFIX_PATTERN = re.compile(r"^\s*ai\s+(on|off)\b[:\s,-]*(.*)$", re.IGNORECASE)
 SLASH_PREFIX = "/"
 API_ROOT_OPAMP = "/opamp"
@@ -81,6 +96,7 @@ API_LEGACY_NAMESPACE = "api"
 API_VERB_HELP = "help"
 API_VERB_TOOLS = "tools"
 API_VERB_CALL = "call"
+API_VERB_OPSTATE = "opstate"
 LOG_KEY_EVENT = "event"
 LOG_KEY_CONTEXT = "context"
 LOG_KEY_COMMAND = "command"
@@ -89,6 +105,27 @@ CONVERSATION_HISTORY_MAX_MESSAGES = 12
 HISTORY_ROLE_USER = "user"
 HISTORY_ROLE_ASSISTANT = "assistant"
 HISTORY_ROLE_SYSTEM = "system"
+PROVIDER_HTTP_PROBE_TIMEOUT_SECONDS = 5
+DEFAULT_PROCESSING_ACK_MESSAGES = (
+    "ok",
+    "let me think",
+    "hmmmm",
+    "ack",
+    "working on it",
+)
+API_COMMAND_UNHANDLED_MESSAGE = (
+    "I couldn't complete that `/opamp` command. Run `/opamp help` for syntax."
+)
+USER_FACING_STUMBLE_REPLY = "sorry, I stumbled, you might want to try that again"
+BROKER_STARTED_AT_UTC_ISO = datetime.now(timezone.utc).isoformat()
+API_USAGE_TEXT = (
+    "Usage:\n"
+    "`/opamp help [syntax|tools|call|opstate|<tool_name>]`\n"
+    "`/opamp tools [filter_text]`\n"
+    "`/opamp opstate`\n"
+    "`/opamp call <tool_name> [key=value ...]`\n"
+    "`/opamp call <tool_name> --json '{\"key\":\"value\"}'`"
+)
 
 
 def _build_non_thread_session_scope(user_id: str | None) -> str:
@@ -108,10 +145,10 @@ def _derive_session_thread_ts(
         return normalized_thread_ts
     return _build_non_thread_session_scope(user_id)
 
-
 def _normalize_conversation_history(
     history_raw: Any,
 ) -> list[dict[str, str]]:
+    """Return validated bounded conversation history entries for planner context."""
     if not isinstance(history_raw, list):
         return []
 
@@ -132,6 +169,7 @@ def _normalize_conversation_history(
 
 
 def _build_planner_history(session: Any) -> list[dict[str, str]]:
+    """Extract normalized planner history payload from one session object."""
     return _normalize_conversation_history(
         getattr(session, "conversation_history", []),
     )
@@ -143,6 +181,7 @@ def _append_conversation_turn(
     user_text: str,
     assistant_text: str,
 ) -> list[dict[str, str]]:
+    """Append a user/assistant turn pair and enforce max retained history length."""
     updated = list(history)
     normalized_user_text = str(user_text).strip()
     normalized_assistant_text = str(assistant_text).strip()
@@ -182,7 +221,7 @@ def _log_selected_route(
     )
 
 
-def _extract_ai_mode_directive(text: str) -> tuple[bool | None, str]:
+def _extract_ai_mode_directive(text: str) -> tuple[str | None, str]:
     """Parse optional `AI On`/`AI Off` prefix and return remaining text."""
     candidate = str(text).strip()
     if not candidate:
@@ -190,7 +229,11 @@ def _extract_ai_mode_directive(text: str) -> tuple[bool | None, str]:
     match = AI_MODE_PREFIX_PATTERN.match(candidate)
     if match is None:
         return None, candidate
-    toggle = str(match.group(1)).strip().lower() == AI_MODE_ENABLED_TEXT
+    toggle = (
+        AI_MODE_ON
+        if str(match.group(1)).strip().lower() == AI_MODE_ON
+        else AI_MODE_OFF
+    )
     remainder = str(match.group(2)).strip()
     return toggle, remainder
 
@@ -200,34 +243,70 @@ def _normalize_mode_command_text(text: str) -> str:
     return " ".join(candidate.split()).strip().lower()
 
 
-def _build_ai_mode_changed_text(ai_enabled: bool) -> str:
-    if ai_enabled:
+def _resolve_session_ai_mode(session: Any) -> str:
+    """Return normalized session AI mode with compatibility fallback."""
+    ai_mode = str(getattr(session, "ai_mode", "")).strip().lower()
+    if ai_mode in {AI_MODE_ON, AI_MODE_OFF, AI_MODE_DISABLED}:
+        return ai_mode
+    return AI_MODE_ON if bool(getattr(session, "ai_enabled", True)) else AI_MODE_OFF
+
+
+def _is_ai_mode_ui_switch_allowed(ai_mode: str) -> bool:
+    """Return whether UI mode switches are allowed for the current mode."""
+    return ai_mode != AI_MODE_DISABLED
+
+
+def _build_ai_mode_changed_text(ai_mode: str) -> str:
+    if ai_mode == AI_MODE_ON:
         return (
             "AI mode is now ON for this client. "
             "Subsequent messages will use the LLM path."
         )
+    if ai_mode == AI_MODE_DISABLED:
+        return AI_MODE_DISABLED_LOCK_TEXT
     return (
         "AI mode is now OFF for this client. "
         "Subsequent messages will use the non-AI path."
     )
 
 
-def _api_usage_text() -> str:
-    return (
-        "Usage:\n"
-        "`/opamp help [syntax|tools|call|<tool_name>]`\n"
-        "`/opamp tools [filter_text]`\n"
-        "`/opamp call <tool_name> [key=value ...]`\n"
-        "`/opamp call <tool_name> --json '{\"key\":\"value\"}'`"
-    )
+def _resolve_processing_ack_messages(
+    message_config: dict[str, Any],
+) -> tuple[str, ...]:
+    """Return configured immediate ack phrases with a safe default fallback."""
+    configured_value = message_config.get(MESSAGE_KEY_IMMEDIATE_ACK_MESSAGES, [])
+    if isinstance(configured_value, list):
+        normalized = tuple(
+            str(item).strip()
+            for item in configured_value
+            if str(item).strip()
+        )
+        if normalized:
+            return normalized
+    return DEFAULT_PROCESSING_ACK_MESSAGES
 
+
+def _build_processing_ack_text(processing_ack_messages: tuple[str, ...]) -> str:
+    """Return a short randomized acknowledgement for inbound requests."""
+    return random.choice(processing_ack_messages)
+
+
+def _resolve_ai_mode_off_ack_text(message_config: dict[str, Any]) -> str:
+    """Return configured AI-off acknowledgement text with safe fallback."""
+    configured_value = str(
+        message_config.get(
+            MESSAGE_KEY_AI_MODE_OFF_ACK_TEXT,
+            AI_MODE_OFF_ACK_TEXT,
+        )
+    ).strip()
+    return configured_value or AI_MODE_OFF_ACK_TEXT
 
 def _build_api_help_text(topic: str | None = None) -> str:
     topic_normalized = str(topic or "").strip().lower()
     if topic_normalized in {"syntax", ""}:
         return (
-            "Strict API command mode for OpAMP.\n"
-            f"{_api_usage_text()}\n"
+            "Strict slash-command mode for OpAMP.\n"
+            f"{API_USAGE_TEXT}\n"
             "Tip: run `/opamp tools` to discover callable tool names."
         )
     if topic_normalized == API_VERB_TOOLS:
@@ -241,10 +320,16 @@ def _build_api_help_text(topic: str | None = None) -> str:
             "`/opamp call <tool_name> --json '{\"key\":\"value\"}'`\n"
             "Use either key/value tokens or --json, not both."
         )
+    if topic_normalized == API_VERB_OPSTATE:
+        return (
+            "`/opamp opstate`\n"
+            "Shows whether AI mode is ON/OFF/DISABLED for this client and checks "
+            "server reachability using the returned HTTP status code."
+        )
     return (
         f"Help for `{topic_normalized}`: run `/opamp tools {topic_normalized}` "
         "to locate the tool, then call it using `/opamp call ...`.\n"
-        f"{_api_usage_text()}"
+        f"{API_USAGE_TEXT}"
     )
 
 
@@ -313,7 +398,7 @@ def _parse_api_command(text: str) -> dict[str, Any] | None:
     if not tokens:
         return {
             "api_mode": True,
-            "error": _api_usage_text(),
+            "error": API_USAGE_TEXT,
         }
 
     first = tokens[0].strip().lower()
@@ -326,7 +411,7 @@ def _parse_api_command(text: str) -> dict[str, Any] | None:
     else:
         return {
             "api_mode": True,
-            "error": "Unsupported slash syntax. Use `/opamp <help|tools|call> ...`.",
+            "error": "Unsupported slash syntax. Use `/opamp <help|tools|opstate|call> ...`.",
         }
 
     if len(tokens) <= index:
@@ -344,29 +429,37 @@ def _parse_api_command(text: str) -> dict[str, Any] | None:
             "immediate_response": _build_api_help_text(topic),
         }
     if verb == API_VERB_TOOLS:
+        # Normalize bare `/opamp tools` to the same internal shape as a
+        # trailing-space form (`/opamp tools `) so both inputs behave identically.
+        tools_filter = " ".join(tail).strip() if tail else " "
         return {
             "api_mode": True,
             "verb": API_VERB_TOOLS,
             "planner_text": "tools",
-            "tools_filter": " ".join(tail).strip(),
+            "tools_filter": tools_filter,
+        }
+    if verb == API_VERB_OPSTATE:
+        return {
+            "api_mode": True,
+            "verb": API_VERB_OPSTATE,
         }
     if verb == API_VERB_CALL:
         if not tail:
             return {
                 "api_mode": True,
-                "error": "Missing tool name.\n" + _api_usage_text(),
+                "error": "Missing tool name.\n" + API_USAGE_TEXT,
             }
         tool_name = str(tail[0]).strip()
         if not tool_name:
             return {
                 "api_mode": True,
-                "error": "Missing tool name.\n" + _api_usage_text(),
+                "error": "Missing tool name.\n" + API_USAGE_TEXT,
             }
         tool_args, parse_error = _parse_api_call_args(tail[1:])
         if parse_error:
             return {
                 "api_mode": True,
-                "error": f"{parse_error}\n{_api_usage_text()}",
+                "error": f"{parse_error}\n{API_USAGE_TEXT}",
             }
         return {
             "api_mode": True,
@@ -377,7 +470,7 @@ def _parse_api_command(text: str) -> dict[str, Any] | None:
         }
     return {
         "api_mode": True,
-        "error": f"Unsupported verb `{verb}`.\n{_api_usage_text()}",
+        "error": f"Unsupported verb `{verb}`.\n{API_USAGE_TEXT}",
     }
 
 
@@ -410,16 +503,85 @@ def register_handlers(
     help_text = str(
         message_config.get(
             MESSAGE_KEY_HELP,
-            "Try `/opamp status collector-a`, `/opamp health collector-a`, "
+            "Try `/opamp help`, `/opamp tools`, `/opamp opstate`, "
             "or mention me with a question.",
         )
     )
     slack_error_reply = str(
         message_config.get(
             MESSAGE_KEY_SLACK_ERROR_REPLY,
-            "sorry a bit dizzy at the moment",
+            USER_FACING_STUMBLE_REPLY,
         )
-    ).strip() or "sorry a bit dizzy at the moment"
+    ).strip() or USER_FACING_STUMBLE_REPLY
+    processing_ack_messages = _resolve_processing_ack_messages(message_config)
+    ai_mode_off_ack_text = _resolve_ai_mode_off_ack_text(message_config)
+    # Always return one consistent fallback sentence for unhandled exceptions.
+    # Keep `slack_error_reply` loaded for config compatibility, but don't expose
+    # exception details or variable wording to end users.
+    del slack_error_reply
+    provider_routes = (
+        config.get("derived", {}).get("provider_routes", {})
+        if isinstance(config.get("derived", {}), dict)
+        else {}
+    )
+    provider_base_url = (
+        str(provider_routes.get("base_url", "")).strip().rstrip("/")
+        if isinstance(provider_routes, dict)
+        else ""
+    )
+    provider_probe_url = f"{provider_base_url}/tool" if provider_base_url else ""
+
+    async def _probe_provider_http_status() -> tuple[int | None, str | None]:
+        """Return provider HTTP status code to validate broker-to-server reachability."""
+        if not provider_probe_url:
+            return None, "provider base URL is not configured"
+        try:
+            async with httpx.AsyncClient(
+                timeout=PROVIDER_HTTP_PROBE_TIMEOUT_SECONDS,
+                follow_redirects=True,
+            ) as client:
+                response = await client.get(provider_probe_url)
+            return int(response.status_code), None
+        except httpx.RequestError as exc:
+            logger.exception(
+                "provider connectivity probe failed for url=%s",
+                provider_probe_url,
+                exc_info=exc,
+            )
+            return None, None
+
+    def _build_opstate_status_response_text(
+        *,
+        ai_mode: str,
+        http_status_code: int | None,
+        http_error: str | None,
+    ) -> str:
+        """Build strict command-mode status output for `/opamp opstate`."""
+        lines = [
+            "Broker opstate status:",
+            f"- AI mode (per client): {str(ai_mode or AI_MODE_OFF).upper()}",
+            f"- Broker started at (UTC): {BROKER_STARTED_AT_UTC_ISO}",
+        ]
+        if ai_mode == AI_MODE_DISABLED:
+            lines.append("- AI mode controls via UI: locked while DISABLED")
+        if ai_mode == AI_MODE_ON:
+            cumulative_tokens = (
+                OpenAICompatibleConnection.get_cumulative_tokens_since_startup()
+            )
+            lines.append(
+                "- AI cumulative tokens since startup: "
+                f"input={cumulative_tokens['input_tokens']}, "
+                f"output={cumulative_tokens['output_tokens']}"
+            )
+        if http_status_code is not None:
+            lines.append(
+                f"- Server connectivity: reachable (HTTP {http_status_code})"
+            )
+        else:
+            lines.append("- Server connectivity: unreachable")
+            if http_error:
+                lines.append(f"- Connectivity error: {http_error}")
+        return "\n".join(lines)
 
     async def _invoke_graph_and_update_session(
         *,
@@ -431,6 +593,7 @@ def register_handlers(
     ) -> str:
         """Invoke the graph and persist the resulting session state."""
         session = await session_manager.upsert(team_id, channel_id, thread_ts, user_id)
+        session_ai_mode = _resolve_session_ai_mode(session)
         simple_mode_command = _normalize_mode_command_text(user_text)
         if simple_mode_command in {AI_MODE_OFF_EXACT_COMMAND, AI_MODE_ON_EXACT_COMMAND}:
             _log_selected_route(
@@ -440,16 +603,25 @@ def register_handlers(
                 thread_ts=thread_ts,
                 user_id=user_id,
             )
-            ai_enabled = simple_mode_command == AI_MODE_ON_EXACT_COMMAND
-            await session_manager.update(
-                session.key,
-                ai_enabled=ai_enabled,
+            requested_ai_mode = (
+                AI_MODE_ON
+                if simple_mode_command == AI_MODE_ON_EXACT_COMMAND
+                else AI_MODE_OFF
             )
-            session = await session_manager.upsert(team_id, channel_id, thread_ts, user_id)
+            if _is_ai_mode_ui_switch_allowed(session_ai_mode):
+                await session_manager.update(
+                    session.key,
+                    ai_mode=requested_ai_mode,
+                )
+                session = await session_manager.upsert(
+                    team_id, channel_id, thread_ts, user_id
+                )
+                session_ai_mode = _resolve_session_ai_mode(session)
             response_text = (
-                AI_MODE_OFF_ACK_TEXT
-                if not ai_enabled
-                else _build_ai_mode_changed_text(ai_enabled)
+                ai_mode_off_ack_text
+                if requested_ai_mode == AI_MODE_OFF
+                and _is_ai_mode_ui_switch_allowed(session_ai_mode)
+                else _build_ai_mode_changed_text(session_ai_mode)
             )
             session_history = _normalize_conversation_history(session.conversation_history)
             updated_history = _append_conversation_turn(
@@ -468,6 +640,19 @@ def register_handlers(
             return response_text
 
         api_request = _parse_api_command(user_text)
+        if api_request is None:
+            normalized_user_text = str(user_text).strip()
+            if normalized_user_text and not normalized_user_text.startswith(SLASH_PREFIX):
+                first_token = normalized_user_text.split()[0].strip().lower()
+                if first_token in {
+                    API_VERB_HELP,
+                    API_VERB_TOOLS,
+                    API_VERB_OPSTATE,
+                    API_VERB_CALL,
+                }:
+                    api_request = _parse_api_command(
+                        f"{API_ROOT_OPAMP} {normalized_user_text}"
+                    )
         if api_request is not None:
             _log_selected_route(
                 route="api.slash_command_mode",
@@ -477,7 +662,15 @@ def register_handlers(
                 user_id=user_id,
             )
             session_history = _normalize_conversation_history(session.conversation_history)
-            if isinstance(api_request.get("error"), str) and api_request.get("error"):
+            verb = str(api_request.get("verb", "")).strip().lower()
+            if verb == API_VERB_OPSTATE:
+                status_code, status_error = await _probe_provider_http_status()
+                response_text = _build_opstate_status_response_text(
+                    ai_mode=_resolve_session_ai_mode(session),
+                    http_status_code=status_code,
+                    http_error=status_error,
+                )
+            elif isinstance(api_request.get("error"), str) and api_request.get("error"):
                 response_text = str(api_request["error"]).strip()
             elif isinstance(
                 api_request.get("immediate_response"),
@@ -500,8 +693,10 @@ def register_handlers(
                         STATE_KEY_DIRECT_TOOL_ARGS: api_request.get("direct_tool_args", {}),
                     }
                 )
-                response_text = str(result.get(SLACK_KEY_RESPONSE_TEXT, help_text))
-                if str(api_request.get("verb", "")).strip().lower() == API_VERB_TOOLS:
+                response_text = str(result.get(SLACK_KEY_RESPONSE_TEXT, "")).strip()
+                if not response_text:
+                    response_text = API_COMMAND_UNHANDLED_MESSAGE
+                if verb == API_VERB_TOOLS:
                     response_text = _filter_tools_response(
                         response_text,
                         str(api_request.get("tools_filter", "")).strip(),
@@ -523,14 +718,44 @@ def register_handlers(
             return response_text
 
         ai_mode_override, planner_text = _extract_ai_mode_directive(user_text)
-        ai_enabled = bool(session.ai_enabled)
+        ai_mode = _resolve_session_ai_mode(session)
         if ai_mode_override is not None:
-            ai_enabled = bool(ai_mode_override)
-            await session_manager.update(
-                session.key,
-                ai_enabled=ai_enabled,
-            )
-            session = await session_manager.upsert(team_id, channel_id, thread_ts, user_id)
+            if not _is_ai_mode_ui_switch_allowed(ai_mode):
+                _log_selected_route(
+                    route="control.ai_mode_change_blocked_disabled",
+                    team_id=team_id,
+                    channel_id=channel_id,
+                    thread_ts=thread_ts,
+                    user_id=user_id,
+                )
+                response_text = _build_ai_mode_changed_text(ai_mode)
+                session_history = _normalize_conversation_history(
+                    session.conversation_history
+                )
+                updated_history = _append_conversation_turn(
+                    session_history,
+                    user_text=user_text,
+                    assistant_text=response_text,
+                )
+                await session_manager.update(
+                    session.key,
+                    current_target=None,
+                    environment=None,
+                    intent="control",
+                    last_summary=response_text,
+                    conversation_history=updated_history,
+                )
+                return response_text
+            if _is_ai_mode_ui_switch_allowed(ai_mode):
+                ai_mode = ai_mode_override
+                await session_manager.update(
+                    session.key,
+                    ai_mode=ai_mode,
+                )
+                session = await session_manager.upsert(
+                    team_id, channel_id, thread_ts, user_id
+                )
+                ai_mode = _resolve_session_ai_mode(session)
         if not planner_text and ai_mode_override is not None:
             _log_selected_route(
                 route="control.ai_mode_directive_only",
@@ -539,7 +764,7 @@ def register_handlers(
                 thread_ts=thread_ts,
                 user_id=user_id,
             )
-            response_text = _build_ai_mode_changed_text(ai_enabled)
+            response_text = _build_ai_mode_changed_text(ai_mode)
             session_history = _normalize_conversation_history(session.conversation_history)
             updated_history = _append_conversation_turn(
                 session_history,
@@ -556,6 +781,7 @@ def register_handlers(
             )
             return response_text
 
+        ai_enabled = ai_mode == AI_MODE_ON
         session_history = _normalize_conversation_history(session.conversation_history)
         planner_history = _build_planner_history(session)
         _log_selected_route(
@@ -604,7 +830,13 @@ def register_handlers(
         response_type: str | None = None,
     ) -> None:
         """Send a Slack response."""
-        payload: dict[str, Any] = {SLACK_KEY_TEXT: response_text}
+        payload: dict[str, Any] = {
+            SLACK_KEY_TEXT: response_text,
+            # Disable unfurling so route-like text (for example `/api/...`) does
+            # not become auto-expanded links that can render as confusing 404s.
+            "unfurl_links": False,
+            "unfurl_media": False,
+        }
         if thread_ts:
             payload[SLACK_KEY_THREAD_TS] = thread_ts
         if response_type:
@@ -628,6 +860,12 @@ def register_handlers(
             user_id=event.get(SLACK_KEY_USER) or body.get(SLACK_KEY_USER_ID),
         )
         user_id = event.get(SLACK_KEY_USER) or body.get(SLACK_KEY_USER_ID)
+        with suppress(Exception):
+            await _reply(
+                say,
+                response_text=_build_processing_ack_text(processing_ack_messages),
+                thread_ts=reply_thread_ts,
+            )
         try:
             response_text = await _invoke_graph_and_update_session(
                 team_id=team_id,
@@ -655,9 +893,16 @@ def register_handlers(
             )
             with suppress(Exception):
                 if reply_thread_ts:
-                    await say(text=slack_error_reply, thread_ts=reply_thread_ts)
+                    await _reply(
+                        say,
+                        response_text=USER_FACING_STUMBLE_REPLY,
+                        thread_ts=reply_thread_ts,
+                    )
                 else:
-                    await say(text=slack_error_reply)
+                    await _reply(
+                        say,
+                        response_text=USER_FACING_STUMBLE_REPLY,
+                    )
 
     @app.command(config[CONFIG_KEY_SLACK][CONFIG_KEY_COMMAND_NAME])
     async def handle_command(ack: Any, body: dict[str, Any], respond: Any) -> None:
@@ -689,6 +934,12 @@ def register_handlers(
             reply_thread_ts=raw_thread_ts,
             user_id=user_id,
         )
+        with suppress(Exception):
+            await _reply(
+                respond,
+                response_text=_build_processing_ack_text(processing_ack_messages),
+                response_type=SLACK_KEY_IN_CHANNEL,
+            )
         try:
             response_text = await _invoke_graph_and_update_session(
                 team_id=team_id,
@@ -716,7 +967,11 @@ def register_handlers(
                 },
             )
             with suppress(Exception):
-                await respond(text=slack_error_reply, response_type=SLACK_KEY_IN_CHANNEL)
+                await _reply(
+                    respond,
+                    response_text=USER_FACING_STUMBLE_REPLY,
+                    response_type=SLACK_KEY_IN_CHANNEL,
+                )
 
     @app.event("app_mention")
     async def handle_mention(body: dict[str, Any], say: Any) -> None:

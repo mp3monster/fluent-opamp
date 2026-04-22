@@ -853,6 +853,8 @@ def _summarize_mapping(payload: dict[str, Any]) -> str:
         key_name = str(key).strip() or "value"
         if _is_component_health_field_name(key_name):
             continue
+        if _is_null_like_scalar(value):
+            continue
         if isinstance(value, list):
             if not value:
                 pairs.append(f"{key_name} is empty")
@@ -891,6 +893,15 @@ def _is_component_health_field_name(field_name: str) -> bool:
     """Identify component-health fields across naming variations."""
     normalized = re.sub(r"[^a-z0-9]", "", str(field_name).strip().lower())
     return normalized == COMPONENT_HEALTH_NORMALIZED_KEY
+
+
+def _is_null_like_scalar(value: Any) -> bool:
+    """Return True when scalar payload values should be omitted from summaries."""
+    if value is None:
+        return True
+    if isinstance(value, str) and value.strip().lower() in {"", "none", "null"}:
+        return True
+    return False
 
 
 def normalize_input(state: BrokerState) -> BrokerState:

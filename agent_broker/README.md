@@ -74,7 +74,7 @@ existing `fluent-opamp` MCP-enabled service.
 
 ## Quick start
 
-1. Copy `opamp_broker/config/broker.example.json` to a runtime file, or rely on defaults.
+1. Copy `opamp_broker/config/broker.ui_responses.json` to a runtime file, or rely on defaults.
 2. Point `paths.opamp_config_path` at the existing `fluent-opamp/config/opamp.json`.
 3. Configure Slack and env values:
    - Linux/macOS: `./scripts/configure_slack.sh`
@@ -100,6 +100,7 @@ existing `fluent-opamp` MCP-enabled service.
      - Linux/macOS: `./scripts/stop_broker_service.sh`
      - Windows PowerShell: `.\scripts\stop_broker_service.ps1`
    - Optional explicit adapter selection: `python -m opamp_broker.broker_app --social-collaboration slack`
+   - Show broker version metadata: `python -m opamp_broker.broker_app --version`
    - Optional startup verification only: `python -m opamp_broker.broker_app --verify-startup social`
    - Optional AI service verification only: `python -m opamp_broker.broker_app --verify-startup ai_svc`
    - Optional full startup verification: `python -m opamp_broker.broker_app --verify-startup all`

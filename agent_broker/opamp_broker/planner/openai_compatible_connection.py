@@ -24,6 +24,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import threading
 from typing import Any
 
 import httpx
@@ -35,6 +36,10 @@ _VERIFY_MAX_COMPLETION_TOKEN_ATTEMPTS: tuple[int, ...] = (64, 512)
 
 class OpenAICompatibleConnection:
     """AI connection for OpenAI-compatible `/chat/completions` APIs."""
+
+    _cumulative_token_lock = threading.Lock()
+    _cumulative_input_tokens_since_startup = 0
+    _cumulative_output_tokens_since_startup = 0
 
     def __init__(
         self,
@@ -124,8 +129,15 @@ class OpenAICompatibleConnection:
         """Emit standardized token-usage logs for cost/diagnostic visibility."""
         input_tokens = usage.get("prompt_tokens")
         output_tokens = usage.get("completion_tokens")
+        (
+            cumulative_input_tokens,
+            cumulative_output_tokens,
+        ) = self._update_cumulative_tokens_since_startup(
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+        )
         logger.info(
-            "AI token usage call_type=%s provider=%s model=%s input_tokens=%s output_tokens=%s prompt_tokens=%s completion_tokens=%s total_tokens=%s max_completion_tokens=%s",
+            "AI token usage call_type=%s provider=%s model=%s input_tokens=%s output_tokens=%s prompt_tokens=%s completion_tokens=%s total_tokens=%s max_completion_tokens=%s cumulative_input_tokens_since_startup=%s cumulative_output_tokens_since_startup=%s",
             call_type,
             self.provider,
             model,
@@ -135,7 +147,44 @@ class OpenAICompatibleConnection:
             usage.get("completion_tokens"),
             usage.get("total_tokens"),
             max_completion_tokens,
+            cumulative_input_tokens,
+            cumulative_output_tokens,
         )
+
+    @classmethod
+    def _update_cumulative_tokens_since_startup(
+        cls,
+        *,
+        input_tokens: int | None,
+        output_tokens: int | None,
+    ) -> tuple[int, int]:
+        """Accumulate process-lifetime input/output token totals.
+
+        Why class-level accumulation:
+        a process can create multiple connection instances during startup and
+        runtime; counting at class scope tracks overall usage since server start.
+        """
+        with cls._cumulative_token_lock:
+            if isinstance(input_tokens, int) and input_tokens >= 0:
+                cls._cumulative_input_tokens_since_startup += input_tokens
+            if isinstance(output_tokens, int) and output_tokens >= 0:
+                cls._cumulative_output_tokens_since_startup += output_tokens
+            return (
+                cls._cumulative_input_tokens_since_startup,
+                cls._cumulative_output_tokens_since_startup,
+            )
+
+    @classmethod
+    def get_cumulative_tokens_since_startup(cls) -> dict[str, int]:
+        """Return process-lifetime input/output token totals."""
+        with cls._cumulative_token_lock:
+            input_tokens = cls._cumulative_input_tokens_since_startup
+            output_tokens = cls._cumulative_output_tokens_since_startup
+        return {
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "total_tokens": input_tokens + output_tokens,
+        }
 
     @staticmethod
     def _summarize_response_error(response: httpx.Response) -> str:

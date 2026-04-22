@@ -55,8 +55,16 @@ DEFAULTS: Dict[str, Any] = {
         "shutdown_goodbye": "I'm going to bed now, so I'm clearing my working context for this thread. When I wake up, please remind me what you want to do.",
         "restart_notice": "I'm awake again, but I don't have my earlier working context for this thread. Tell me what you want to check.",
         "server_offline": "The OpAMP server is currently offline. Please try again shortly.",
-        "slack_error_reply": "soory a bit dizzy at the moment",
-        "help": "Try `/opamp status collector-a`, `/opamp health collector-a`, or mention me with a question like `@OpAMP why is collector-a unhealthy?`",
+        "immediate_ack_messages": [
+            "ok",
+            "let me think",
+            "hmmmm",
+            "ack",
+            "working on it",
+        ],
+        "slack_error_reply": "sorry, I stumbled, you might want to try that again",
+        "ai_mode_off_ack_text": "Affirmative, Dave. I read you.",
+        "help": "Try `/opamp help`, `/opamp tools`, `/opamp opstate`, or mention me with a question.",
     },
     "paths": {
         "opamp_project_root": "../fluent-opamp",
@@ -75,6 +83,7 @@ DEFAULTS: Dict[str, Any] = {
     "planner": {
         "mode": "rule-first",
         "llm_enabled": True,
+        "AIState": "on",
         "provider": "openai",
         "model": "gpt-5.2",
         "request_timeout_seconds": 30,
@@ -219,7 +228,7 @@ def load_runtime_config(config_path: str | None = None) -> Dict[str, Any]:
     runtime_path = Path(
         config_path
         or os.getenv("BROKER_CONFIG_PATH")
-        or Path(__file__).with_name("broker.example.json")
+        or Path(__file__).with_name("broker.ui_responses.json")
     ).resolve()
 
     config = deepcopy(DEFAULTS)

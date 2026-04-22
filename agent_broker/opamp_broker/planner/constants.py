@@ -32,7 +32,8 @@ DEFAULT_SLACK_FORMAT_SYSTEM_PROMPT = (
     "You are an assistant that formats OpAMP tool results for Slack. "
     "Return concise, readable Markdown-like Slack text with short sections and bullets "
     "when helpful. Preserve factual data and values exactly, do not invent content. "
-    "Never mention component health fields or values in status summaries."
+    "Never mention component health fields or values in status summaries. "
+    "Omit fields where values are null, None, or empty."
 )
 
 BROKER_PLAN_JSON_SCHEMA: dict[str, Any] = {

@@ -179,6 +179,7 @@ class AISvcPlanner:
             )
 
         filtered_tool_result = _strip_component_health_fields(tool_result)
+        filtered_tool_result = _strip_null_fields(filtered_tool_result)
 
         try:
             serialized_tool_result = json.dumps(
@@ -205,7 +206,8 @@ class AISvcPlanner:
                 "Produce a clear Slack-ready response. "
                 "Use bullet points and short headings only when helpful. "
                 "Do not include JSON blobs unless explicitly needed. "
-                "Exclude component health details from status descriptions."
+                "Exclude component health details from status descriptions. "
+                "Omit fields when the value is null, None, or empty."
             ),
         }
 
@@ -253,6 +255,38 @@ def _strip_component_health_fields(value: Any) -> Any:
     if isinstance(value, list):
         return [_strip_component_health_fields(item) for item in value]
     return value
+
+
+def _strip_null_fields(value: Any) -> Any:
+    """Recursively remove null-like values from nested tool payloads.
+
+    Why this helper exists:
+    Slack responses are easier to read when missing values are omitted instead
+    of rendered as `null`/empty placeholder lines.
+    """
+    if isinstance(value, dict):
+        filtered: dict[Any, Any] = {}
+        for key, nested in value.items():
+            cleaned = _strip_null_fields(nested)
+            if _is_null_like_value(cleaned):
+                continue
+            filtered[key] = cleaned
+        return filtered
+    if isinstance(value, list):
+        cleaned_items = [_strip_null_fields(item) for item in value]
+        return [item for item in cleaned_items if not _is_null_like_value(item)]
+    return value
+
+
+def _is_null_like_value(value: Any) -> bool:
+    """Return True when a value should be omitted from user-facing formatting."""
+    if value is None:
+        return True
+    if isinstance(value, str) and value.strip().lower() in {"", "none", "null"}:
+        return True
+    if isinstance(value, (dict, list)) and not value:
+        return True
+    return False
 
 
 def _sanitize_conversation_history(
