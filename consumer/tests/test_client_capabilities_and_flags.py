@@ -73,6 +73,7 @@ def test_get_config_parameters_includes_docs_url() -> None:
     config_params = instance.get_config_parameters()
     assert config_params["server_url"] == "http://localhost"
     assert config_params["documentation_url"] == CONFIG_DOCS_URL
+    assert isinstance(config_params["component_version"], str)
 
 
 def test_reporting_flags_default_to_true() -> None:

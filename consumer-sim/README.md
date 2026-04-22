@@ -20,14 +20,36 @@ The simulator tooling is not intended for production deployment.
 ```bash
 python consumer-sim/src/consumer_sim_launcher.py start
 python consumer-sim/src/consumer_sim_launcher.py stop
+python consumer-sim/src/consumer_sim_launcher.py --help
+python consumer-sim/src/consumer_sim_launcher.py --version
 ```
 
 The launcher accepts one positional argument only: `start` or `stop`.
+`--help` and `--version` include git commit/date derived component version metadata.
 
 Wrappers are also available:
 
 - Linux/macOS: `scripts/run_consumer_sim_start.sh`, `scripts/run_consumer_sim_stop.sh`
 - Windows: `scripts\run_consumer_sim_start.cmd`, `scripts\run_consumer_sim_stop.cmd`
+
+## Required Dev Flag
+
+Simulator startup is gated by environment flag `APP_ENABLE_DEV_FEATURES`.
+
+- If `APP_ENABLE_DEV_FEATURES` is unset or false-like, simulator startup is blocked.
+- The simulator logs the startup failure and exits gracefully before sending any details to the server.
+- `scripts/run_consumer_sim_start.sh` and `scripts/run_consumer_sim_start.cmd` set this flag to `true` automatically.
+- If you launch the simulator directly (without wrappers), set it explicitly:
+
+```bash
+export APP_ENABLE_DEV_FEATURES=true
+python consumer-sim/src/consumer_sim_launcher.py start
+```
+
+```cmd
+set APP_ENABLE_DEV_FEATURES=true
+python consumer-sim\src\consumer_sim_launcher.py start
+```
 
 ## Config file
 

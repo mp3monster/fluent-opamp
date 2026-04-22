@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 
 import pytest
@@ -232,3 +233,50 @@ def test_simulator_checks_process_record_status_and_marks_shuttingdown(
     assert should_shutdown is True
     payload = json.loads(state_file.read_text(encoding="utf-8"))
     assert payload["instances"][0]["status"] == "shuttingdown"
+
+
+def test_validate_simulator_dev_features_flag_missing_env_logs_and_blocks(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    monkeypatch.delenv(simulator_client.ENV_APP_ENABLE_DEV_FEATURES, raising=False)
+    caplog.set_level(logging.ERROR)
+
+    allowed = simulator_client._validate_simulator_dev_features_flag(
+        logging.getLogger("test.simulator")
+    )
+
+    assert allowed is False
+    assert (
+        f"required environment flag {simulator_client.ENV_APP_ENABLE_DEV_FEATURES} is not set"
+        in caplog.text
+    )
+    assert "shutting down gracefully before sending any details to the server" in caplog.text
+
+
+def test_validate_simulator_dev_features_flag_false_logs_and_blocks(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    monkeypatch.setenv(simulator_client.ENV_APP_ENABLE_DEV_FEATURES, "false")
+    caplog.set_level(logging.ERROR)
+
+    allowed = simulator_client._validate_simulator_dev_features_flag(
+        logging.getLogger("test.simulator")
+    )
+
+    assert allowed is False
+    assert (
+        f"required environment flag {simulator_client.ENV_APP_ENABLE_DEV_FEATURES} must be true"
+        in caplog.text
+    )
+
+
+def test_validate_simulator_dev_features_flag_true_allows_startup(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(simulator_client.ENV_APP_ENABLE_DEV_FEATURES, "true")
+    allowed = simulator_client._validate_simulator_dev_features_flag(
+        logging.getLogger("test.simulator")
+    )
+    assert allowed is True

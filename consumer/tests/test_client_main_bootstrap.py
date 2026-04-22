@@ -50,6 +50,7 @@ def test_main_help_prints_config_parameters_and_skips_client(
     payload = json.loads(out[json_start:])
     assert payload["server_url"] == "http://localhost"
     assert payload["documentation_url"] == CONFIG_DOCS_URL
+    assert isinstance(payload["component_version"], str)
 
 
 def test_common_parser_accepts_canonical_agent_args() -> None:

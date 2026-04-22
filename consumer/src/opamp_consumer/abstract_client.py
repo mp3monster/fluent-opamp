@@ -28,7 +28,11 @@ from dataclasses import asdict, dataclass, field
 import httpx
 
 from opamp_consumer import config as consumer_config
-from opamp_consumer.client_bootstrap import resolve_service_instance_id_template_with_values
+from opamp_consumer.client_bootstrap import (
+    _get_local_ip,
+    _get_local_mac,
+    resolve_service_instance_id_template_with_values,
+)
 from opamp_consumer.client_message_builder import (
     parse_fluentbit_metrics_health,
     populate_agent_to_server,
@@ -39,6 +43,7 @@ from opamp_consumer.client_transport import (
     send_http_message,
     send_websocket_message,
 )
+from opamp_consumer.component_version import component_version_text
 from opamp_consumer.config import ConsumerConfig
 from opamp_consumer.custom_handlers import build_factory_lookup, create_handler  # noqa: F401
 from opamp_consumer.full_update_controller import (
@@ -95,6 +100,7 @@ def _config_parameters_payload(config: ConsumerConfig) -> dict[str, object]:
     """
     config_params: dict[str, object] = asdict(config)
     config_params["documentation_url"] = CONFIG_DOCS_URL
+    config_params["component_version"] = component_version_text()
     return config_params
 
 
@@ -775,21 +781,6 @@ class AbstractOpAMPClient(
             HOST_META_KEY_HOSTNAME: socket.gethostname(),
             HOST_META_KEY_MAC_ADDRESS: _get_local_mac(),
         }
-
-
-def _get_local_ip() -> str:
-    """Return a best-effort local host IP address."""
-    try:
-        return socket.gethostbyname(socket.gethostname())
-    except Exception:
-        return "127.0.0.1"
-
-
-def _get_local_mac() -> str:
-    """Return local MAC address in colon-delimited lower-case format."""
-    node = int(uuid.getnode())
-    return ":".join(f"{(node >> shift) & 0xFF:02x}" for shift in range(40, -1, -8))
-
 
 def resolve_service_instance_id_template(value: str | None) -> str | None:
     """Resolve service_instance_id template tokens into runtime host values."""

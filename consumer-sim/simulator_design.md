@@ -31,6 +31,18 @@ Key components:
 The launcher starts many simulator instances, each with its own process, config,
 and metadata overrides, so the provider stores them as independent agents.
 
+## Startup Safety Gate
+
+Simulator runtime is protected by development-flag gating:
+
+- Required flag: `APP_ENABLE_DEV_FEATURES=true`
+- If missing or false, simulator startup is blocked.
+- On block, the simulator logs the reason and exits gracefully before reporting any agent details to the server.
+
+Operational note:
+- Wrapper scripts (`scripts/run_consumer_sim_start.sh` and `.cmd`) set this flag automatically.
+- Direct/manual simulator launches must set the flag explicitly.
+
 ## Identity And Version Simulation
 
 Each simulator instance can declare unique identity/version data via

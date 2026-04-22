@@ -35,6 +35,8 @@ import sys
 import time
 from typing import Any
 
+from component_version import component_version_text
+
 try:
     from jsonschema import Draft202012Validator as JSON_SCHEMA_VALIDATOR
     from jsonschema.exceptions import SchemaError
@@ -748,13 +750,20 @@ def _stop_instances(config_path: pathlib.Path) -> None:  # pylint: disable=too-m
 
 def _build_parser() -> argparse.ArgumentParser:
     """Create action-only CLI parser."""
+    version_text = component_version_text()
     parser = argparse.ArgumentParser(
         description=(
             "Start or stop batches of OpAMP consumer instances defined in "
-            "consumer-sim/consumer_instances.json"
+            "consumer-sim/consumer_instances.json. "
+            f"Version: {version_text}"
         )
     )
     parser.add_argument("action", choices=VALID_ACTIONS)
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {version_text}",
+    )
     return parser
 
 

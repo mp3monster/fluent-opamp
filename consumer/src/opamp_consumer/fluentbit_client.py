@@ -47,6 +47,12 @@ from opamp_consumer.abstract_client import (
     _config_parameters_payload,
 )
 from opamp_consumer.client_bootstrap import (
+    _get_local_ip as _bootstrap_get_local_ip,
+)
+from opamp_consumer.client_bootstrap import (
+    _get_local_mac as _bootstrap_get_local_mac,
+)
+from opamp_consumer.client_bootstrap import (
     build_minimal_agent as _bootstrap_build_minimal_agent,
 )
 from opamp_consumer.client_bootstrap import (
@@ -132,21 +138,6 @@ class OpAMPClient(AbstractOpAMPClient):
         """Return the default handler folder used by the Fluent Bit client."""
         return pathlib.Path(__file__).resolve().parent / "custom_handlers"
 
-
-def _get_local_ip() -> str:
-    """Return a best-effort local host IP address."""
-    try:
-        return socket.gethostbyname(socket.gethostname())
-    except Exception:
-        return "127.0.0.1"
-
-
-def _get_local_mac() -> str:
-    """Return local MAC address in colon-delimited lower-case format."""
-    node = int(uuid.getnode())
-    return ":".join(f"{(node >> shift) & 0xFF:02x}" for shift in range(40, -1, -8))
-
-
 def resolve_service_instance_id_template(value: str | None) -> str | None:
     """Resolve service_instance_id tokens for Fluent Bit-style config comments.
 
@@ -156,8 +147,8 @@ def resolve_service_instance_id_template(value: str | None) -> str | None:
     return resolve_service_instance_id_template_with_values(
         value=value,
         hostname=socket.gethostname(),
-        ip_address=_get_local_ip(),
-        mac_address=_get_local_mac(),
+        ip_address=_bootstrap_get_local_ip(),
+        mac_address=_bootstrap_get_local_mac(),
     )
 
 

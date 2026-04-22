@@ -77,6 +77,7 @@ DEFAULT_CONSUMER_LOGGING_CONFIG_FILENAME = "consumer_logging.json"
 
 def _default_logging_config(level_name: str) -> dict[str, object]:
     """Return fallback logging dictConfig when no config file exists."""
+    # Kept local to bootstrap so consumer startup keeps one fallback path.
     return {
         "version": 1,
         "disable_existing_loggers": False,
@@ -152,7 +153,6 @@ def build_common_cli_parser(
         help='JSON string for full update controller (for example {"fullResendAfter":1})',
     )
     return parser
-
 
 def load_config_from_cli_args(args: argparse.Namespace) -> ConsumerConfig:
     """Load consumer config using values parsed by `build_common_cli_parser`.
@@ -397,7 +397,7 @@ def _get_local_ip() -> str:
     """Return a best-effort local host IP address."""
     try:
         return socket.gethostbyname(socket.gethostname())
-    except Exception:
+    except Exception: # pylint: disable=broad-except
         return "127.0.0.1"
 
 

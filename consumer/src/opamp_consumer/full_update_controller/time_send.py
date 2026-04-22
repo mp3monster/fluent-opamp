@@ -23,6 +23,8 @@ from opamp_consumer.full_update_controller.update_interface import (
     FullUpdateControllerInterface,
 )
 
+MILLISECONDS_PER_SECOND = 1000
+
 
 class TimeSend(FullUpdateControllerInterface):
     """Trigger full reporting when a configured time window has elapsed."""
@@ -74,8 +76,8 @@ class TimeSend(FullUpdateControllerInterface):
     def update_sent(self, ms_from_epoch: int | None = None) -> None:
         """Trigger full reporting when `last_full_update + interval < now`."""
         if ms_from_epoch is None:
-            ms_from_epoch = int(time.time() * 1000)
-        threshold_ms = self.full_update_after_seconds * 1000
+            ms_from_epoch = int(time.time() * MILLISECONDS_PER_SECOND)
+        threshold_ms = self.full_update_after_seconds * MILLISECONDS_PER_SECOND
         should_trigger = (self.last_full_update_ms + threshold_ms) < ms_from_epoch
         logging.getLogger(__name__).info(
             (

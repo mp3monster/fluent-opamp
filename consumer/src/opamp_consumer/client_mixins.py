@@ -645,7 +645,7 @@ class ClientRuntimeMixin:
                 logging.getLogger(__name__).warning(
                     "failed to parse Agent version response: %s", parse_error
                 )
-        except Exception as error:  # pragma: no cover - error path varies by env
+        except Exception as error:  # pragma: no cover # pylint: disable=broad-exception-caught
             logging.getLogger(__name__).warning(
                 "failed to parse Agent version response: %s", error
             )
