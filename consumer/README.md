@@ -275,6 +275,9 @@ When installed as a package, console scripts are available:
 - `opamp-consumer-fluentd` -> `opamp_consumer.fluentd_client:main`
 - `opamp-consumer-simulator` -> `opamp_consumer.simulator_client:main`
 
+Each consumer `--help` response prints JSON config/help content and includes
+`component_version` (git commit/date derived version metadata).
+
 ## Fluentd Consumer
 
 An alternate concrete consumer implementation is available for Fluentd use cases.

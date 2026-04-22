@@ -43,4 +43,7 @@ opamp-consumer-simulator = "opamp_consumer.simulator_client:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/opamp_consumer"]
-include = ["src/opamp_consumer/consumer_logging.json"]
+include = [
+  "src/opamp_consumer/consumer_logging.json",
+  "src/opamp_consumer/version.json",
+]
