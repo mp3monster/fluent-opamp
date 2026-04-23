@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -21,6 +22,16 @@ COMPONENT_VERSION_TARGETS: dict[str, str] = {
 }
 
 UNKNOWN_VALUE = "unknown"
+SEMVER_LABEL_PATTERN = re.compile(
+    r"^(?P<prefix>v?)"
+    r"(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)"
+    r"(?:-(?P<prerelease>[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?"
+    r"(?:\+(?P<build>[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$"
+)
+MAJOR_MINOR_LABEL_PATTERN = re.compile(
+    r"^(?P<prefix>v?)"
+    r"(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)$"
+)
 
 
 def _run_git_command(repo_root: Path, args: list[str]) -> str | None:
@@ -54,6 +65,41 @@ def _resolve_git_commit_date(repo_root: Path) -> str:
 def _resolve_latest_git_label(repo_root: Path) -> str:
     """Return latest reachable git tag label or empty string when unavailable."""
     label = _run_git_command(repo_root, ["describe", "--tags", "--abbrev=0"])
+    return str(label or "").strip()
+
+
+def _increment_patch_semver_label(label: str) -> str | None:
+    """Return patch-incremented label when input is semver, else ``None``.
+
+    Supported labels include optional leading ``v`` and optional prerelease/build
+    suffixes. Incremented labels intentionally emit plain ``MAJOR.MINOR.PATCH``
+    (plus optional ``v`` prefix) without prerelease/build suffixes.
+    """
+    candidate = str(label or "").strip()
+    if not candidate:
+        return None
+    match = SEMVER_LABEL_PATTERN.fullmatch(candidate)
+    if match is not None:
+        prefix = str(match.group("prefix") or "")
+        major = int(match.group("major"))
+        minor = int(match.group("minor"))
+        patch = int(match.group("patch")) + 1
+        return f"{prefix}{major}.{minor}.{patch}"
+    major_minor_match = MAJOR_MINOR_LABEL_PATTERN.fullmatch(candidate)
+    if major_minor_match is not None:
+        # `major.minor` labels are treated as `<major>.<minor>.0`, then patch-advanced.
+        prefix = str(major_minor_match.group("prefix") or "")
+        major = int(major_minor_match.group("major"))
+        minor = int(major_minor_match.group("minor"))
+        return f"{prefix}{major}.{minor}.1"
+    return None
+
+
+def _resolve_effective_label(label: str) -> str:
+    """Return semver-patch-incremented label, or the original label when not semver."""
+    bumped = _increment_patch_semver_label(label)
+    if bumped is not None:
+        return bumped
     return str(label or "").strip()
 
 
@@ -102,15 +148,17 @@ def _build_version_payload(
     label: str,
 ) -> dict[str, str]:
     """Build stable version payload shape used across all components."""
+    effective_label = _resolve_effective_label(label)
     commit_date_friendly = _friendly_datetime_text(commit_date)
     version_text = _build_version_text(
-        label=label,
+        label=effective_label,
         commit=commit,
         commit_date_friendly=commit_date_friendly,
     )
     return {
         "component": component,
         "git_label": label,
+        "effective_label": effective_label,
         "git_commit": commit,
         "git_commit_date": commit_date,
         "git_commit_date_friendly": commit_date_friendly,
