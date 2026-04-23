@@ -319,41 +319,53 @@ def _client_matches_otel_agents_filters(
     has_active_filters: bool,
 ) -> bool:
     """Evaluate whether one client satisfies requested /tool/otelAgents filters."""
-    matches = True
+    active_checks = [
+        _matches_disconnect_filter(client=client, mdisconnected=mdisconnected),
+        _matches_text(client.agent_description, agent_description),
+        _matches_text(client.client_id, client_id),
+        _matches_text(client.client_version, client_version),
+        _any_matches_text(_record_service_instance_ids(client), service_instance_id),
+        _any_matches_text(_record_host_names(client), host_name),
+        _any_matches_text(_record_host_ips(client), host_ip),
+        _record_supports_command(client, supports_command_name),
+        _matches_communication_window(
+            client=client,
+            communication_before=communication_before,
+            communication_since=communication_since,
+        ),
+    ]
+    matches = all(active_checks)
+    return (not matches) if (invert_filter and has_active_filters) else matches
+
+
+def _matches_disconnect_filter(
+    *,
+    client: ClientRecord,
+    mdisconnected: bool | None,
+) -> bool:
+    """Apply disconnected filter semantics to one client record."""
     if mdisconnected is None:
-        if client.disconnected:
-            matches = False
-    elif client.disconnected is not mdisconnected:
-        matches = False
+        return not client.disconnected
+    return client.disconnected is mdisconnected
 
-    if not _matches_text(client.agent_description, agent_description):
-        matches = False
-    if not _matches_text(client.client_id, client_id):
-        matches = False
-    if not _matches_text(client.client_version, client_version):
-        matches = False
-    if not _any_matches_text(_record_service_instance_ids(client), service_instance_id):
-        matches = False
-    if not _any_matches_text(_record_host_names(client), host_name):
-        matches = False
-    if not _any_matches_text(_record_host_ips(client), host_ip):
-        matches = False
-    if not _record_supports_command(client, supports_command_name):
-        matches = False
 
-    if communication_before is not None:
-        if client.last_communication is None:
-            matches = False
-        elif _as_utc(client.last_communication) >= communication_before:
-            matches = False
-    if communication_since is not None:
-        if client.last_communication is None:
-            matches = False
-        elif _as_utc(client.last_communication) <= communication_since:
-            matches = False
-    if invert_filter and has_active_filters:
-        return not matches
-    return matches
+def _matches_communication_window(
+    *,
+    client: ClientRecord,
+    communication_before: datetime | None,
+    communication_since: datetime | None,
+) -> bool:
+    """Return whether client.last_communication falls within requested bounds."""
+    if communication_before is None and communication_since is None:
+        return True
+    if client.last_communication is None:
+        return False
+    last_communication = _as_utc(client.last_communication)
+    if communication_before is not None and last_communication >= communication_before:
+        return False
+    if communication_since is not None and last_communication <= communication_since:
+        return False
+    return True
 
 
 def _list_connected_otel_agents_payload(

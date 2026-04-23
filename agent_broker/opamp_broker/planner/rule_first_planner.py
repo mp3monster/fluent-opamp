@@ -54,102 +54,182 @@ class RuleFirstPlanner:
         available, so we provide predictable command routing as a safe fallback.
         """
         del conversation_history
-        tool_names = [str(tool.get("name", "")).strip() for tool in tools]
-        tool_lookup = {
-            str(tool.get("name", "")).strip(): tool
-            for tool in tools
-            if str(tool.get("name", "")).strip()
-        }
+        tool_names, tool_lookup = _build_tool_index(tools)
         normalized = text.strip().lower()
-        parts = text.split()
-        target = parts[-1] if len(parts) > 1 else None
+        target = _extract_default_target(text)
 
-        direct_tool = _find_direct_tool_request(text=text, tool_names=tool_names)
-        if direct_tool is not None:
-            direct_args = _extract_tool_arguments(
-                text=text,
-                tool_name=direct_tool,
-                tool=tool_lookup.get(direct_tool),
-                scoped_to_direct_invocation=True,
-            )
-            if not direct_args:
-                direct_target = _extract_direct_target(text=text, tool_name=direct_tool)
-                if direct_target:
-                    direct_args = {"target": direct_target}
-            return {
-                RESPONSE_TEXT_KEY: "",
-                TOOL_NAME_KEY: direct_tool,
-                TOOL_ARGS_KEY: direct_args,
-                REQUIRES_CONFIRMATION_KEY: False,
-            }
-
-        if any(
-            phrase in normalized
-            for phrase in (
-                "tools",
-                "available tools",
-                "what can you do",
-                "capabilities",
-                "commands",
-            )
-        ):
-            return {
-                RESPONSE_TEXT_KEY: _format_tool_catalog(tools),
-                TOOL_NAME_KEY: None,
-                TOOL_ARGS_KEY: {},
-                REQUIRES_CONFIRMATION_KEY: False,
-            }
-
-        if "help" in normalized or not normalized:
-            return {
-                RESPONSE_TEXT_KEY: (
-                    "Try `/opamp help`, `/opamp tools`, `/opamp opstate`, or use "
-                    "`/opamp call <tool_name> [key=value ...]` to run a specific tool."
-                ),
-                TOOL_NAME_KEY: None,
-                TOOL_ARGS_KEY: {},
-                REQUIRES_CONFIRMATION_KEY: False,
-            }
-
-        for prefix, tool_hint in [
-            ("status", "status"),
-            ("health", "health"),
-            ("config", "config"),
-            ("diff", "diff"),
-            ("restart", "restart"),
-        ]:
-            if normalized.startswith(prefix):
-                chosen = next((name for name in tool_names if tool_hint in name.lower()), None)
-                return {
-                    RESPONSE_TEXT_KEY: "",
-                    TOOL_NAME_KEY: chosen,
-                    TOOL_ARGS_KEY: {"target": target} if (chosen and target) else {},
-                    REQUIRES_CONFIRMATION_KEY: False,
-                }
-
-        otel_agents_tool = _find_otel_agents_tool_name(tool_names)
-        if otel_agents_tool and _looks_like_agent_list_query(text):
-            return {
-                RESPONSE_TEXT_KEY: "",
-                TOOL_NAME_KEY: otel_agents_tool,
-                TOOL_ARGS_KEY: _extract_tool_arguments(
-                    text=text,
-                    tool_name=otel_agents_tool,
-                    tool=tool_lookup.get(otel_agents_tool),
-                    scoped_to_direct_invocation=False,
-                ),
-                REQUIRES_CONFIRMATION_KEY: False,
-            }
-
-        chosen = next((name for name in tool_names if "health" in name.lower()), None) or next(
-            (name for name in tool_names if "status" in name.lower()), None
+        direct_plan = _plan_for_direct_tool(
+            text=text,
+            tool_names=tool_names,
+            tool_lookup=tool_lookup,
         )
-        return {
-            RESPONSE_TEXT_KEY: "",
-            TOOL_NAME_KEY: chosen,
-            TOOL_ARGS_KEY: {"target": target} if (chosen and target) else {},
-            REQUIRES_CONFIRMATION_KEY: False,
-        }
+        if direct_plan is not None:
+            return direct_plan
+
+        if _is_tool_catalog_request(normalized):
+            return _build_response_only_plan(_format_tool_catalog(tools))
+        if _is_help_request(normalized):
+            return _build_response_only_plan(_default_help_text())
+
+        prefix_plan = _plan_for_prefixed_action(
+            normalized=normalized,
+            tool_names=tool_names,
+            target=target,
+        )
+        if prefix_plan is not None:
+            return prefix_plan
+
+        otel_plan = _plan_for_otel_agent_listing(
+            text=text,
+            tool_names=tool_names,
+            tool_lookup=tool_lookup,
+        )
+        if otel_plan is not None:
+            return otel_plan
+
+        return _build_default_status_plan(tool_names=tool_names, target=target)
+
+
+def _build_tool_index(tools: list[dict[str, Any]]) -> tuple[list[str], dict[str, dict[str, Any]]]:
+    """Build ordered tool names plus lookup map for normalized planner access."""
+    tool_names = [str(tool.get("name", "")).strip() for tool in tools]
+    tool_lookup = {
+        str(tool.get("name", "")).strip(): tool
+        for tool in tools
+        if str(tool.get("name", "")).strip()
+    }
+    return tool_names, tool_lookup
+
+
+def _extract_default_target(text: str) -> str | None:
+    """Extract fallback target as final token when present."""
+    parts = text.split()
+    return parts[-1] if len(parts) > 1 else None
+
+
+def _plan_for_direct_tool(
+    *,
+    text: str,
+    tool_names: list[str],
+    tool_lookup: dict[str, dict[str, Any]],
+) -> dict[str, Any] | None:
+    """Plan explicit direct tool invocation when user references tool name."""
+    direct_tool = _find_direct_tool_request(text=text, tool_names=tool_names)
+    if direct_tool is None:
+        return None
+    direct_args = _extract_tool_arguments(
+        text=text,
+        tool_name=direct_tool,
+        tool=tool_lookup.get(direct_tool),
+        scoped_to_direct_invocation=True,
+    )
+    if not direct_args:
+        direct_target = _extract_direct_target(text=text, tool_name=direct_tool)
+        if direct_target:
+            direct_args = {"target": direct_target}
+    return _build_tool_plan(tool_name=direct_tool, tool_args=direct_args)
+
+
+def _is_tool_catalog_request(normalized: str) -> bool:
+    """Return True when user asks for available tools/capabilities."""
+    return any(
+        phrase in normalized
+        for phrase in (
+            "tools",
+            "available tools",
+            "what can you do",
+            "capabilities",
+            "commands",
+        )
+    )
+
+
+def _is_help_request(normalized: str) -> bool:
+    """Return True for help or blank requests."""
+    return "help" in normalized or not normalized
+
+
+def _default_help_text() -> str:
+    """Return static help guidance for fallback planner responses."""
+    return (
+        "Try `/opamp help`, `/opamp tools`, `/opamp opstate`, or use "
+        "`/opamp call <tool_name> [key=value ...]` to run a specific tool."
+    )
+
+
+def _plan_for_prefixed_action(
+    *,
+    normalized: str,
+    tool_names: list[str],
+    target: str | None,
+) -> dict[str, Any] | None:
+    """Resolve prefix-led requests like `status ...` or `restart ...`."""
+    for prefix, tool_hint in [
+        ("status", "status"),
+        ("health", "health"),
+        ("config", "config"),
+        ("diff", "diff"),
+        ("restart", "restart"),
+    ]:
+        if not normalized.startswith(prefix):
+            continue
+        chosen = next((name for name in tool_names if tool_hint in name.lower()), None)
+        return _build_tool_plan(
+            tool_name=chosen,
+            tool_args={"target": target} if (chosen and target) else {},
+        )
+    return None
+
+
+def _plan_for_otel_agent_listing(
+    *,
+    text: str,
+    tool_names: list[str],
+    tool_lookup: dict[str, dict[str, Any]],
+) -> dict[str, Any] | None:
+    """Resolve natural-language list/find agent requests to otel agents tool."""
+    otel_agents_tool = _find_otel_agents_tool_name(tool_names)
+    if not otel_agents_tool or not _looks_like_agent_list_query(text):
+        return None
+    tool_args = _extract_tool_arguments(
+        text=text,
+        tool_name=otel_agents_tool,
+        tool=tool_lookup.get(otel_agents_tool),
+        scoped_to_direct_invocation=False,
+    )
+    return _build_tool_plan(tool_name=otel_agents_tool, tool_args=tool_args)
+
+
+def _build_default_status_plan(*, tool_names: list[str], target: str | None) -> dict[str, Any]:
+    """Build fallback plan preferring health then status tools."""
+    chosen = next((name for name in tool_names if "health" in name.lower()), None) or next(
+        (name for name in tool_names if "status" in name.lower()),
+        None,
+    )
+    return _build_tool_plan(
+        tool_name=chosen,
+        tool_args={"target": target} if (chosen and target) else {},
+    )
+
+
+def _build_response_only_plan(response_text: str) -> dict[str, Any]:
+    """Build a planner result that only returns text (no tool execution)."""
+    return {
+        RESPONSE_TEXT_KEY: response_text,
+        TOOL_NAME_KEY: None,
+        TOOL_ARGS_KEY: {},
+        REQUIRES_CONFIRMATION_KEY: False,
+    }
+
+
+def _build_tool_plan(*, tool_name: str | None, tool_args: dict[str, Any]) -> dict[str, Any]:
+    """Build a planner result that executes a tool."""
+    return {
+        RESPONSE_TEXT_KEY: "",
+        TOOL_NAME_KEY: tool_name,
+        TOOL_ARGS_KEY: tool_args,
+        REQUIRES_CONFIRMATION_KEY: False,
+    }
 
 
 def _format_tool_catalog(tools: list[dict[str, Any]]) -> str:

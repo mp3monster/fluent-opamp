@@ -369,61 +369,138 @@ def evaluate_required_bearer_auth(
 ) -> AuthDecision:
     """Authorize a request using bearer validation without protected-path gating."""
     settings = jwt_settings or AUTH_SETTINGS
-    if method.upper() == "OPTIONS":
-        return AuthDecision(allowed=True)
-    if mode == AUTH_MODE_DISABLED:
+    if _skip_bearer_auth(mode=mode, method=method):
         return AuthDecision(allowed=True)
 
     token = _extract_bearer_token(authorization_header)
     if token is None:
+        return _reject_missing_token(
+            mode=mode,
+            path=path,
+            method=method,
+            remote_addr=remote_addr,
+        )
+
+    if mode == AUTH_MODE_STATIC:
+        return _evaluate_static_bearer_auth(
+            token=token,
+            mode=mode,
+            path=path,
+            method=method,
+            remote_addr=remote_addr,
+            static_token=static_token,
+            settings=settings,
+        )
+
+    if mode == AUTH_MODE_JWT:
+        return _evaluate_jwt_bearer_auth(
+            token=token,
+            mode=mode,
+            path=path,
+            method=method,
+            remote_addr=remote_addr,
+            settings=settings,
+        )
+
+    return _reject_unsupported_auth_mode(
+        mode=mode,
+        path=path,
+        method=method,
+        remote_addr=remote_addr,
+    )
+
+
+def _skip_bearer_auth(*, mode: str, method: str) -> bool:
+    """Return True when auth checks should be bypassed for the current request."""
+    return method.upper() == "OPTIONS" or mode == AUTH_MODE_DISABLED
+
+
+def _reject_missing_token(
+    *,
+    mode: str,
+    path: str,
+    method: str,
+    remote_addr: str | None,
+) -> AuthDecision:
+    """Build the standard missing-token rejection response."""
+    return _reject(
+        status_code=HTTPStatus.UNAUTHORIZED,
+        error="missing bearer token",
+        reason="authorization header missing or malformed",
+        path=path,
+        method=method,
+        remote_addr=str(remote_addr or ""),
+        mode=mode,
+    )
+
+
+def _evaluate_static_bearer_auth(
+    *,
+    token: str,
+    mode: str,
+    path: str,
+    method: str,
+    remote_addr: str | None,
+    static_token: str | None,
+    settings: AuthSettings,
+) -> AuthDecision:
+    """Authorize one request in static-token mode."""
+    expected_token = static_token if static_token is not None else settings.static_token
+    if not expected_token:
         return _reject(
-            status_code=HTTPStatus.UNAUTHORIZED,
-            error="missing bearer token",
-            reason="authorization header missing or malformed",
+            status_code=HTTPStatus.SERVICE_UNAVAILABLE,
+            error="static auth token is not configured",
+            reason=f"{settings.static_token_env_var} not set",
             path=path,
             method=method,
             remote_addr=str(remote_addr or ""),
             mode=mode,
         )
+    if not hmac.compare_digest(token, expected_token):
+        return _reject(
+            status_code=HTTPStatus.UNAUTHORIZED,
+            error="invalid bearer token",
+            reason="static token mismatch",
+            path=path,
+            method=method,
+            remote_addr=str(remote_addr or ""),
+            mode=mode,
+        )
+    return AuthDecision(allowed=True)
 
-    if mode == AUTH_MODE_STATIC:
-        expected_token = static_token if static_token is not None else settings.static_token
-        if not expected_token:
-            return _reject(
-                status_code=HTTPStatus.SERVICE_UNAVAILABLE,
-                error="static auth token is not configured",
-                reason=f"{settings.static_token_env_var} not set",
-                path=path,
-                method=method,
-                remote_addr=str(remote_addr or ""),
-                mode=mode,
-            )
-        if not hmac.compare_digest(token, expected_token):
-            return _reject(
-                status_code=HTTPStatus.UNAUTHORIZED,
-                error="invalid bearer token",
-                reason="static token mismatch",
-                path=path,
-                method=method,
-                remote_addr=str(remote_addr or ""),
-                mode=mode,
-            )
-        return AuthDecision(allowed=True)
 
-    if mode == AUTH_MODE_JWT:
-        validation_error = _validate_jwt_token(token, settings)
-        if validation_error:
-            return _reject(
-                status_code=HTTPStatus.UNAUTHORIZED,
-                error="invalid bearer token",
-                reason=validation_error,
-                path=path,
-                method=method,
-                remote_addr=str(remote_addr or ""),
-                mode=mode,
-            )
-        return AuthDecision(allowed=True)
+def _evaluate_jwt_bearer_auth(
+    *,
+    token: str,
+    mode: str,
+    path: str,
+    method: str,
+    remote_addr: str | None,
+    settings: AuthSettings,
+) -> AuthDecision:
+    """Authorize one request in JWT validation mode."""
+    validation_error = _validate_jwt_token(token, settings)
+    if validation_error:
+        return _reject(
+            status_code=HTTPStatus.UNAUTHORIZED,
+            error="invalid bearer token",
+            reason=validation_error,
+            path=path,
+            method=method,
+            remote_addr=str(remote_addr or ""),
+            mode=mode,
+        )
+    return AuthDecision(allowed=True)
 
+
+def _reject_unsupported_auth_mode(
+    *,
+    mode: str,
+    path: str,
+    method: str,
+    remote_addr: str | None,
+) -> AuthDecision:
+    """Build a rejection for invalid/unknown authentication mode values."""
     return _reject(
         status_code=HTTPStatus.SERVICE_UNAVAILABLE,
         error="invalid auth mode configuration",

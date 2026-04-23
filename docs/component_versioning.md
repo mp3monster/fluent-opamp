@@ -8,6 +8,7 @@ Component version metadata is derived from the current git `HEAD` commit, commit
 - `git_label`: latest reachable label/tag from `git describe --tags --abbrev=0` (empty when no label is available)
 - `effective_label`: label used in rendered `version` text:
   - semver labels (for example `1.2.3` or `v1.2.3`) are patch-incremented to `1.2.4` / `v1.2.4`
+  - `major.minor` labels (for example `1.2` or `v1.2`) are normalized and patch-advanced to `1.2.1` / `v1.2.1`
   - non-semver labels are used unchanged
 - `version`: formatted as:
   - `<effective_label> <git_commit> (<git_commit_date_friendly>)` when a label exists

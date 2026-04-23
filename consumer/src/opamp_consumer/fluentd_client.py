@@ -121,56 +121,78 @@ def _find_monitor_agent_source_bind_and_port(
 
     for raw_line in lines:
         if _FLUENTD_SOURCE_START.match(raw_line):
-            in_source = True
-            monitor_agent_source = False
-            bind = None
-            port = None
+            in_source, monitor_agent_source, bind, port = True, False, None, None
             continue
-
         if not in_source:
             continue
-
         if _FLUENTD_SOURCE_END.match(raw_line):
             if monitor_agent_source:
                 return bind, port
             in_source = False
             continue
-
-        stripped_line = raw_line.strip()
-        if not stripped_line or stripped_line.startswith("#"):
+        if _is_ignorable_fluentd_line(raw_line):
             continue
-
-        source_type_match = _FLUENTD_SOURCE_TYPE.match(raw_line)
-        if source_type_match is not None:
-            monitor_agent_source = (
-                source_type_match.group("value").strip().lower()
-                == VALUE_MONITOR_AGENT_TYPE
-            )
-            continue
-
+        monitor_agent_source = _update_monitor_agent_source_flag(
+            raw_line=raw_line,
+            current_value=monitor_agent_source,
+        )
         if not monitor_agent_source:
             continue
-
-        source_kv_match = _FLUENTD_SOURCE_KV.match(raw_line)
-        if source_kv_match is None:
-            continue
-
-        key = source_kv_match.group("key").lower()
-        value = source_kv_match.group("value").strip()
-        if key == KEY_FLUENTD_BIND:
-            bind = value
-        elif key == KEY_FLUENTD_PORT:
-            try:
-                port = int(value)
-            except ValueError:
-                logger.warning(
-                    "invalid monitor_agent port value in Fluentd config: %s",
-                    value,
-                )
+        bind, port = _update_monitor_agent_bind_port(
+            raw_line=raw_line,
+            bind=bind,
+            port=port,
+            logger=logger,
+        )
 
     if in_source and monitor_agent_source:
         return bind, port
     return None, None
+
+
+def _is_ignorable_fluentd_line(raw_line: str) -> bool:
+    """Return True for empty/comment Fluentd config lines."""
+    stripped_line = raw_line.strip()
+    return not stripped_line or stripped_line.startswith("#")
+
+
+def _update_monitor_agent_source_flag(
+    *,
+    raw_line: str,
+    current_value: bool,
+) -> bool:
+    """Update monitor_agent source flag when @type lines are encountered."""
+    source_type_match = _FLUENTD_SOURCE_TYPE.match(raw_line)
+    if source_type_match is None:
+        return current_value
+    return source_type_match.group("value").strip().lower() == VALUE_MONITOR_AGENT_TYPE
+
+
+def _update_monitor_agent_bind_port(
+    *,
+    raw_line: str,
+    bind: str | None,
+    port: int | None,
+    logger: logging.Logger,
+) -> tuple[str | None, int | None]:
+    """Apply one Fluentd source key/value line to monitor_agent bind/port state."""
+    source_kv_match = _FLUENTD_SOURCE_KV.match(raw_line)
+    if source_kv_match is None:
+        return bind, port
+    key = source_kv_match.group("key").lower()
+    value = source_kv_match.group("value").strip()
+    if key == KEY_FLUENTD_BIND:
+        return value, port
+    if key != KEY_FLUENTD_PORT:
+        return bind, port
+    try:
+        return bind, int(value)
+    except ValueError:
+        logger.warning(
+            "invalid monitor_agent port value in Fluentd config: %s",
+            value,
+        )
+        return bind, port
 
 
 def _iter_nested_mappings(payload: Any) -> list[dict[str, Any]]:
@@ -229,56 +251,109 @@ def _find_monitor_agent_source_bind_and_port_yaml_fallback(
     PyYAML is unavailable.
     """
     logger = logging.getLogger(__name__)
-    in_monitor_agent_mapping = False
-    monitor_agent_indent = -1
-    bind: str | None = None
-    port: int | None = None
-
+    state = _YamlFallbackState()
     for raw_line in lines:
-        stripped_line = raw_line.strip()
-        if not stripped_line or stripped_line.startswith("#"):
+        if _is_ignorable_fluentd_line(raw_line):
             continue
-
         line_indent = len(raw_line) - len(raw_line.lstrip(" "))
         key_value_match = _YAML_KEY_VALUE.match(raw_line)
         if key_value_match is None:
-            if in_monitor_agent_mapping and line_indent <= monitor_agent_indent:
-                if bind is not None or port is not None:
-                    return bind, port
-                in_monitor_agent_mapping = False
+            if _yaml_mapping_closed(state=state, line_indent=line_indent):
+                return state.bind, state.port
             continue
-
         key = key_value_match.group("key").strip().lower()
         value = key_value_match.group("value").strip().strip("'\"")
-
         if key in {"@type", "type"}:
-            if in_monitor_agent_mapping and (bind is not None or port is not None):
-                return bind, port
-            in_monitor_agent_mapping = value.lower() == VALUE_MONITOR_AGENT_TYPE
-            monitor_agent_indent = line_indent
-            bind = None
-            port = None
+            if _yaml_type_switch_returns_previous(state=state):
+                return state.bind, state.port
+            _yaml_reset_for_type(
+                state=state,
+                value=value,
+                line_indent=line_indent,
+            )
             continue
-
-        if not in_monitor_agent_mapping:
+        if not _yaml_accepts_value_line(state=state, line_indent=line_indent):
             continue
-        if line_indent <= monitor_agent_indent:
-            in_monitor_agent_mapping = False
-            continue
-
-        if key == KEY_FLUENTD_BIND:
-            bind = value
-        elif key == KEY_FLUENTD_PORT:
-            try:
-                port = int(value)
-            except ValueError:
-                logger.warning(
-                    "invalid monitor_agent port value in Fluentd YAML config: %s",
-                    value,
-                )
-    if in_monitor_agent_mapping and (bind is not None or port is not None):
-        return bind, port
+        state.bind, state.port = _update_yaml_bind_port(
+            key=key,
+            value=value,
+            bind=state.bind,
+            port=state.port,
+            logger=logger,
+        )
+    if state.in_monitor_agent_mapping and (state.bind is not None or state.port is not None):
+        return state.bind, state.port
     return None, None
+
+
+class _YamlFallbackState:
+    """State holder for monitor_agent YAML fallback parsing."""
+
+    def __init__(self) -> None:
+        self.in_monitor_agent_mapping = False
+        self.monitor_agent_indent = -1
+        self.bind: str | None = None
+        self.port: int | None = None
+
+
+def _yaml_mapping_closed(*, state: _YamlFallbackState, line_indent: int) -> bool:
+    """Return True when monitor_agent mapping scope closed with discovered values."""
+    if state.in_monitor_agent_mapping and line_indent <= state.monitor_agent_indent:
+        if state.bind is not None or state.port is not None:
+            return True
+        state.in_monitor_agent_mapping = False
+    return False
+
+
+def _yaml_type_switch_returns_previous(*, state: _YamlFallbackState) -> bool:
+    """Return True when a new @type/type begins after finding prior monitor values."""
+    return state.in_monitor_agent_mapping and (state.bind is not None or state.port is not None)
+
+
+def _yaml_reset_for_type(
+    *,
+    state: _YamlFallbackState,
+    value: str,
+    line_indent: int,
+) -> None:
+    """Reset parsing state for a new YAML type mapping declaration."""
+    state.in_monitor_agent_mapping = value.lower() == VALUE_MONITOR_AGENT_TYPE
+    state.monitor_agent_indent = line_indent
+    state.bind = None
+    state.port = None
+
+
+def _yaml_accepts_value_line(*, state: _YamlFallbackState, line_indent: int) -> bool:
+    """Return whether a key/value line belongs to current monitor_agent mapping."""
+    if not state.in_monitor_agent_mapping:
+        return False
+    if line_indent <= state.monitor_agent_indent:
+        state.in_monitor_agent_mapping = False
+        return False
+    return True
+
+
+def _update_yaml_bind_port(
+    *,
+    key: str,
+    value: str,
+    bind: str | None,
+    port: int | None,
+    logger: logging.Logger,
+) -> tuple[str | None, int | None]:
+    """Apply one YAML key/value pair to monitor_agent bind/port state."""
+    if key == KEY_FLUENTD_BIND:
+        return value, port
+    if key != KEY_FLUENTD_PORT:
+        return bind, port
+    try:
+        return bind, int(value)
+    except ValueError:
+        logger.warning(
+            "invalid monitor_agent port value in Fluentd YAML config: %s",
+            value,
+        )
+        return bind, port
 
 
 def _find_monitor_agent_source_bind_and_port_yaml(

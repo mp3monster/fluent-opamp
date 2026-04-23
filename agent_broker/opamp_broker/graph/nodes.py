@@ -263,42 +263,48 @@ def _strip_bot_mention(text: str) -> str:
     return re.sub(r"<@[^>]+>", "", text).strip()
 
 
+def _format_tool_response_from_mapping(
+    tool_name: str,
+    parsed_content: dict[str, Any],
+) -> str:
+    """Render mapping payloads with domain-aware shortcuts before generic summary."""
+    error = parsed_content.get(PAYLOAD_KEY_ERROR)
+    if isinstance(error, str) and error.strip():
+        return f"The tool `{tool_name}` returned an error: {error.strip()}"
+
+    if PAYLOAD_KEY_AGENTS in parsed_content and isinstance(parsed_content[PAYLOAD_KEY_AGENTS], list):
+        return _summarize_agents_payload(parsed_content)
+
+    if PAYLOAD_KEY_COMMANDS in parsed_content and isinstance(parsed_content[PAYLOAD_KEY_COMMANDS], list):
+        return _summarize_commands_payload(parsed_content)
+
+    if PAYLOAD_KEY_PATHS in parsed_content and isinstance(parsed_content[PAYLOAD_KEY_PATHS], dict):
+        return _summarize_openapi_payload(parsed_content)
+
+    if str(parsed_content.get(PAYLOAD_KEY_STATUS, "")).strip().lower() == PAYLOAD_STATUS_QUEUED:
+        return _summarize_queue_result(parsed_content)
+    return _summarize_mapping(parsed_content)
+
+
+def _format_tool_response_from_list(parsed_content: list[Any]) -> str:
+    """Render list payloads with bounded previews for user-facing output."""
+    if not parsed_content:
+        return "The tool returned an empty result."
+    preview = ", ".join(str(item) for item in parsed_content[:RESPONSE_PREVIEW_ITEM_LIMIT])
+    suffix = "" if len(parsed_content) <= RESPONSE_PREVIEW_ITEM_LIMIT else ", ..."
+    return f"The tool returned {len(parsed_content)} item(s): {preview}{suffix}"
+
+
 def _format_tool_response(tool_name: str, result: dict[str, Any]) -> str:
     """Convert MCP tool output into a concise user-facing explanation."""
     content = result.get(PAYLOAD_KEY_CONTENT)
     parsed_content = _parse_content_payload(content)
 
     if isinstance(parsed_content, dict):
-        error = parsed_content.get(PAYLOAD_KEY_ERROR)
-        if isinstance(error, str) and error.strip():
-            return f"The tool `{tool_name}` returned an error: {error.strip()}"
-
-        if PAYLOAD_KEY_AGENTS in parsed_content and isinstance(parsed_content[PAYLOAD_KEY_AGENTS], list):
-            return _summarize_agents_payload(parsed_content)
-
-        if PAYLOAD_KEY_COMMANDS in parsed_content and isinstance(parsed_content[PAYLOAD_KEY_COMMANDS], list):
-            return _summarize_commands_payload(parsed_content)
-
-        if PAYLOAD_KEY_PATHS in parsed_content and isinstance(parsed_content[PAYLOAD_KEY_PATHS], dict):
-            return _summarize_openapi_payload(parsed_content)
-
-        if str(parsed_content.get(PAYLOAD_KEY_STATUS, "")).strip().lower() == PAYLOAD_STATUS_QUEUED:
-            return _summarize_queue_result(parsed_content)
-
-        return _summarize_mapping(parsed_content)
+        return _format_tool_response_from_mapping(tool_name, parsed_content)
 
     if isinstance(parsed_content, list):
-        if not parsed_content:
-            return "The tool returned an empty result."
-        preview = ", ".join(
-            str(item) for item in parsed_content[:RESPONSE_PREVIEW_ITEM_LIMIT]
-        )
-        suffix = (
-            ""
-            if len(parsed_content) <= RESPONSE_PREVIEW_ITEM_LIMIT
-            else ", ..."
-        )
-        return f"The tool returned {len(parsed_content)} item(s): {preview}{suffix}"
+        return _format_tool_response_from_list(parsed_content)
 
     text = str(parsed_content).strip()
     if text:
@@ -657,12 +663,49 @@ def _extract_agent_field_descriptions_from_spec(openapi_spec: Any) -> dict[str, 
     return descriptions
 
 
+def _nested_dict_lookup(root: Any, *path: str) -> Any:
+    """Resolve a nested dictionary path and return None when any hop is invalid."""
+    current = root
+    for key in path:
+        if not isinstance(current, dict):
+            return None
+        current = current.get(key)
+    return current
+
+
+def _resolve_schema_from_ref(
+    schemas: dict[str, Any],
+    schema_ref: Any,
+) -> dict[str, Any] | None:
+    """Resolve a `#/components/schemas/...` ref to a schema object."""
+    ref = str(schema_ref or "").strip()
+    if not ref.startswith(OPENAPI_REF_PREFIX):
+        return None
+    schema_name = ref[len(OPENAPI_REF_PREFIX) :]
+    schema = schemas.get(schema_name)
+    return schema if isinstance(schema, dict) else None
+
+
+def _extract_otel_agents_response_schema_ref(openapi_spec: dict[str, Any]) -> Any:
+    """Extract the `/tool/otelAgents` 200 JSON schema ref from OpenAPI payload."""
+    schema = _nested_dict_lookup(
+        openapi_spec,
+        OPENAPI_PATHS_KEY,
+        OPENAPI_TOOL_OTEL_AGENTS_PATH_KEY,
+        OPENAPI_GET_KEY,
+        OPENAPI_RESPONSES_KEY,
+        OPENAPI_RESPONSE_200_KEY,
+        OPENAPI_CONTENT_KEY,
+        OPENAPI_APPLICATION_JSON_KEY,
+        OPENAPI_SCHEMA_KEY,
+    )
+    return schema.get(OPENAPI_SCHEMA_REF_KEY) if isinstance(schema, dict) else None
+
+
 def _resolve_otel_agent_schema_from_spec(openapi_spec: dict[str, Any]) -> dict[str, Any] | None:
     """Resolve the effective `OtelAgent` schema from components or response refs."""
     components = openapi_spec.get(OPENAPI_COMPONENTS_KEY)
-    if not isinstance(components, dict):
-        return None
-    schemas = components.get(OPENAPI_SCHEMAS_KEY)
+    schemas = components.get(OPENAPI_SCHEMAS_KEY) if isinstance(components, dict) else None
     if not isinstance(schemas, dict):
         return None
 
@@ -670,36 +713,9 @@ def _resolve_otel_agent_schema_from_spec(openapi_spec: dict[str, Any]) -> dict[s
     if isinstance(direct_schema, dict):
         return direct_schema
 
-    paths = openapi_spec.get(OPENAPI_PATHS_KEY)
-    if not isinstance(paths, dict):
-        return None
-    otel_agents_path = paths.get(OPENAPI_TOOL_OTEL_AGENTS_PATH_KEY)
-    if not isinstance(otel_agents_path, dict):
-        return None
-    get_operation = otel_agents_path.get(OPENAPI_GET_KEY)
-    if not isinstance(get_operation, dict):
-        return None
-    responses = get_operation.get(OPENAPI_RESPONSES_KEY)
-    if not isinstance(responses, dict):
-        return None
-    ok_response = responses.get(OPENAPI_RESPONSE_200_KEY)
-    if not isinstance(ok_response, dict):
-        return None
-    content = ok_response.get(OPENAPI_CONTENT_KEY)
-    if not isinstance(content, dict):
-        return None
-    app_json = content.get(OPENAPI_APPLICATION_JSON_KEY)
-    if not isinstance(app_json, dict):
-        return None
-    schema = app_json.get(OPENAPI_SCHEMA_KEY)
-    if not isinstance(schema, dict):
-        return None
-    schema_ref = str(schema.get(OPENAPI_SCHEMA_REF_KEY, "")).strip()
-    if not schema_ref.startswith(OPENAPI_REF_PREFIX):
-        return None
-    schema_name = schema_ref[len(OPENAPI_REF_PREFIX):]
-    response_schema = schemas.get(schema_name)
-    if not isinstance(response_schema, dict):
+    schema_ref = _extract_otel_agents_response_schema_ref(openapi_spec)
+    response_schema = _resolve_schema_from_ref(schemas, schema_ref)
+    if response_schema is None:
         return None
     response_properties = response_schema.get(OPENAPI_PROPERTIES_KEY)
     if not isinstance(response_properties, dict):
@@ -710,14 +726,7 @@ def _resolve_otel_agent_schema_from_spec(openapi_spec: dict[str, Any]) -> dict[s
     items = agents_property.get("items")
     if not isinstance(items, dict):
         return None
-    item_ref = str(items.get(OPENAPI_SCHEMA_REF_KEY, "")).strip()
-    if not item_ref.startswith(OPENAPI_REF_PREFIX):
-        return None
-    item_schema_name = item_ref[len(OPENAPI_REF_PREFIX):]
-    item_schema = schemas.get(item_schema_name)
-    if isinstance(item_schema, dict):
-        return item_schema
-    return None
+    return _resolve_schema_from_ref(schemas, items.get(OPENAPI_SCHEMA_REF_KEY))
 
 
 def _render_agents_table(agents: list[Any]) -> str | None:
@@ -844,46 +853,54 @@ def _summarize_queue_result(payload: dict[str, Any]) -> str:
     return f"Queued command for client `{client_id}`."
 
 
+def _summarize_mapping_list_field(key_name: str, value: list[Any]) -> str:
+    """Render summary text for list-valued mapping fields."""
+    if not value:
+        return f"{key_name} is empty"
+    if all(not isinstance(item, (dict, list)) for item in value):
+        preview = ", ".join(str(item) for item in value[:5])
+        suffix = "" if len(value) <= 5 else ", ..."
+        return f"{key_name} has {len(value)} item(s): {preview}{suffix}"
+    return f"{key_name} contains {len(value)} structured item(s)"
+
+
+def _summarize_mapping_dict_field(key_name: str, value: dict[str, Any]) -> str:
+    """Render summary text for dict-valued mapping fields."""
+    nested_keys = [
+        str(nested).strip()
+        for nested in value.keys()
+        if not _is_component_health_field_name(str(nested).strip())
+    ]
+    preview = ", ".join(item for item in nested_keys[:5] if item)
+    suffix = "" if len(nested_keys) <= 5 else ", ..."
+    if preview:
+        return f"{key_name} includes {len(nested_keys)} field(s): {preview}{suffix}"
+    return f"{key_name} contains structured data"
+
+
+def _summarize_mapping_field(key: Any, value: Any) -> str | None:
+    """Summarize one generic mapping field while omitting null/health noise."""
+    key_name = str(key).strip() or "value"
+    if _is_component_health_field_name(key_name):
+        return None
+    if _is_null_like_scalar(value):
+        return None
+    if isinstance(value, list):
+        return _summarize_mapping_list_field(key_name, value)
+    if isinstance(value, dict):
+        return _summarize_mapping_dict_field(key_name, value)
+    return f"{key_name} is {value}"
+
+
 def _summarize_mapping(payload: dict[str, Any]) -> str:
     """Summarize generic mapping payloads while skipping component health noise."""
     if not payload:
         return "The tool returned an empty result."
     pairs: list[str] = []
     for key, value in payload.items():
-        key_name = str(key).strip() or "value"
-        if _is_component_health_field_name(key_name):
-            continue
-        if _is_null_like_scalar(value):
-            continue
-        if isinstance(value, list):
-            if not value:
-                pairs.append(f"{key_name} is empty")
-                continue
-            if all(not isinstance(item, (dict, list)) for item in value):
-                preview = ", ".join(str(item) for item in value[:5])
-                suffix = "" if len(value) <= 5 else ", ..."
-                pairs.append(
-                    f"{key_name} has {len(value)} item(s): {preview}{suffix}"
-                )
-            else:
-                pairs.append(f"{key_name} contains {len(value)} structured item(s)")
-            continue
-        if isinstance(value, dict):
-            nested_keys = [
-                str(nested).strip()
-                for nested in value.keys()
-                if not _is_component_health_field_name(str(nested).strip())
-            ]
-            preview = ", ".join(item for item in nested_keys[:5] if item)
-            suffix = "" if len(nested_keys) <= 5 else ", ..."
-            if preview:
-                pairs.append(
-                    f"{key_name} includes {len(nested_keys)} field(s): {preview}{suffix}"
-                )
-            else:
-                pairs.append(f"{key_name} contains structured data")
-            continue
-        pairs.append(f"{key_name} is {value}")
+        summary = _summarize_mapping_field(key, value)
+        if summary:
+            pairs.append(summary)
     if not pairs:
         return "The tool returned details, but no reportable status fields."
     return "Tool result: " + "; ".join(pairs) + "."
@@ -952,6 +969,105 @@ def classify_intent(state: BrokerState) -> BrokerState:
     return state
 
 
+async def _refresh_tool_registry_names(
+    *,
+    state: BrokerState,
+    tool_registry: MCPToolRegistry,
+    offline_message: str,
+) -> list[str] | None:
+    """Return available tool names, handling registry refresh and offline fallbacks."""
+    tool_names = tool_registry.list_names()
+    if tool_names:
+        return tool_names
+    try:
+        await tool_registry.refresh()
+    except MCPServerUnavailableError as exc:
+        logger.error(
+            "MCP server unavailable during tool discovery: %s",
+            exc,
+            exc_info=True,
+        )
+        state[STATE_KEY_TOOLS_AVAILABLE] = []
+        state[STATE_KEY_TOOL_NAME] = None
+        state[STATE_KEY_TOOL_ARGS] = {}
+        state[STATE_KEY_RESPONSE_TEXT] = offline_message
+        return None
+    except Exception:
+        logger.exception("Unexpected error during MCP tool discovery refresh.")
+    return tool_registry.list_names()
+
+
+def _planner_tools(
+    tool_registry: MCPToolRegistry,
+    tool_names: list[str],
+) -> list[dict[str, Any]]:
+    """Build planner-visible tool metadata from the registry and discovered names."""
+    return [
+        tool_registry.get(name) or {PAYLOAD_KEY_NAME: name}
+        for name in tool_names
+    ]
+
+
+def _conversation_history(state: BrokerState) -> list[Any]:
+    """Normalize conversation history payload from broker state."""
+    history = state.get(STATE_KEY_CONVERSATION_HISTORY, [])
+    return history if isinstance(history, list) else []
+
+
+async def _plan_with_rule_fallback(
+    *,
+    planner: Planner,
+    text: str,
+    tools: list[dict[str, Any]],
+    conversation_history: list[Any],
+) -> dict[str, Any] | None:
+    """Run the configured planner and fall back to rule-first planning on failures."""
+    try:
+        return await planner.plan(
+            text=text,
+            tools=tools,
+            conversation_history=conversation_history,
+        )
+    except Exception as exc:
+        logger.exception(
+            "Planner failed; falling back to rule-first planning. error=%s",
+            exc,
+        )
+    try:
+        return await RuleFirstPlanner().plan(
+            text=text,
+            tools=tools,
+            conversation_history=conversation_history,
+        )
+    except Exception:
+        logger.exception("Fallback planner failed unexpectedly.")
+        return None
+
+
+def _normalize_plan_selection(
+    *,
+    plan: dict[str, Any],
+    tool_names: list[str],
+    text: str,
+) -> tuple[str | None, dict[str, Any], str | None, str | None]:
+    """Normalize planner output into validated tool, args, and optional response text."""
+    chosen_tool_raw = plan.get(TOOL_NAME_KEY)
+    chosen_tool = str(chosen_tool_raw).strip() if isinstance(chosen_tool_raw, str) else ""
+    if chosen_tool and chosen_tool not in tool_names:
+        chosen_tool = ""
+    chosen_args = _normalize_tool_args(plan.get(TOOL_ARGS_KEY, {}))
+    if not chosen_tool:
+        chosen_args = {}
+    response_text_raw = plan.get(RESPONSE_TEXT_KEY, "")
+    response_text = str(response_text_raw).strip() if isinstance(response_text_raw, str) else ""
+    target = chosen_args.get(STATE_KEY_TARGET)
+    if target is None:
+        parts = text.split()
+        target = parts[-1] if len(parts) > 1 else None
+    normalized_target = str(target) if target is not None else None
+    return (chosen_tool or None), chosen_args, (response_text or None), normalized_target
+
+
 async def plan_action(
     state: BrokerState,
     tool_registry: MCPToolRegistry,
@@ -973,29 +1089,14 @@ async def plan_action(
         BrokerState: Updated state with response text and/or planned tool call.
     """
     text = state.get(STATE_KEY_NORMALIZED_TEXT, "")
-    tool_names = tool_registry.list_names()
-    if not tool_names:
-        try:
-            await tool_registry.refresh()
-        except MCPServerUnavailableError as exc:
-            logger.error(
-                "MCP server unavailable during tool discovery: %s",
-                exc,
-                exc_info=True,
-            )
-            state[STATE_KEY_TOOLS_AVAILABLE] = []
-            state[STATE_KEY_TOOL_NAME] = None
-            state[STATE_KEY_TOOL_ARGS] = {}
-            state[STATE_KEY_RESPONSE_TEXT] = offline_message
-            return state
-        except Exception:
-            logger.exception("Unexpected error during MCP tool discovery refresh.")
-        tool_names = tool_registry.list_names()
-
-    tools = [
-        tool_registry.get(name) or {PAYLOAD_KEY_NAME: name}
-        for name in tool_names
-    ]
+    tool_names = await _refresh_tool_registry_names(
+        state=state,
+        tool_registry=tool_registry,
+        offline_message=offline_message,
+    )
+    if tool_names is None:
+        return state
+    tools = _planner_tools(tool_registry, tool_names)
 
     state[STATE_KEY_TOOLS_AVAILABLE] = tool_names
     state[STATE_KEY_TOOL_NAME] = None
@@ -1003,68 +1104,149 @@ async def plan_action(
     if apply_slash_command_overrides(state, tool_names):
         return state
 
-    conversation_history_raw = state.get(STATE_KEY_CONVERSATION_HISTORY, [])
-    conversation_history = (
-        conversation_history_raw
-        if isinstance(conversation_history_raw, list)
-        else []
+    plan = await _plan_with_rule_fallback(
+        planner=planner,
+        text=text,
+        tools=tools,
+        conversation_history=_conversation_history(state),
     )
-
-    try:
-        plan = await planner.plan(
-            text=text,
-            tools=tools,
-            conversation_history=conversation_history,
+    if plan is None:
+        state[STATE_KEY_TOOL_NAME] = None
+        state[STATE_KEY_TOOL_ARGS] = {}
+        state[STATE_KEY_RESPONSE_TEXT] = (
+            "I hit an internal planning issue. Please try again in a moment."
         )
-    except Exception as exc:
-        logger.exception(
-            "Planner failed; falling back to rule-first planning. error=%s",
-            exc,
-        )
-        try:
-            plan = await RuleFirstPlanner().plan(
-                text=text,
-                tools=tools,
-                conversation_history=conversation_history,
-            )
-        except Exception:
-            logger.exception("Fallback planner failed unexpectedly.")
-            state[STATE_KEY_TOOL_NAME] = None
-            state[STATE_KEY_TOOL_ARGS] = {}
-            state[STATE_KEY_RESPONSE_TEXT] = (
-                "I hit an internal planning issue. Please try again in a moment."
-            )
-            return state
+        return state
 
-    chosen_tool = plan.get(TOOL_NAME_KEY)
-    if chosen_tool and chosen_tool not in tool_names:
-        chosen_tool = None
-
-    chosen_args = plan.get(TOOL_ARGS_KEY, {})
-    if not isinstance(chosen_args, dict):
-        chosen_args = {}
-    if not chosen_tool:
-        chosen_args = {}
-
+    chosen_tool, chosen_args, response_text, target = _normalize_plan_selection(
+        plan=plan,
+        tool_names=tool_names,
+        text=text,
+    )
     state[STATE_KEY_TOOL_NAME] = chosen_tool
     state[STATE_KEY_TOOL_ARGS] = chosen_args
     state[STATE_KEY_REQUIRES_CONFIRMATION] = False
 
-    response_text = plan.get(RESPONSE_TEXT_KEY, "")
-    if isinstance(response_text, str) and response_text.strip():
-        state[STATE_KEY_RESPONSE_TEXT] = response_text.strip()
+    if response_text:
+        state[STATE_KEY_RESPONSE_TEXT] = response_text
     elif not chosen_tool:
         state[STATE_KEY_RESPONSE_TEXT] = (
             "I couldn't map that to a known MCP tool yet. "
             "Ask for `tools` to see what I discovered."
         )
-
-    target = chosen_args.get(STATE_KEY_TARGET)
-    if target is None:
-        parts = text.split()
-        target = parts[-1] if len(parts) > 1 else None
-    state[STATE_KEY_TARGET] = str(target) if target is not None else None
+    state[STATE_KEY_TARGET] = target
     return state
+
+
+def _ensure_initial_tool_name(state: BrokerState) -> str:
+    """Extract and normalize the current selected tool name from state."""
+    raw_value = state.get(STATE_KEY_TOOL_NAME)
+    return str(raw_value).strip() if isinstance(raw_value, str) else ""
+
+
+def _seed_unknown_tool_response(state: BrokerState) -> None:
+    """Populate default unknown-tool response text when planner did not provide one."""
+    if STATE_KEY_RESPONSE_TEXT not in state:
+        state[STATE_KEY_RESPONSE_TEXT] = (
+            "I couldn't map that to a known MCP tool yet. "
+            "Ask for `tools` to see what I discovered."
+        )
+
+
+def _resolve_known_tool_names(
+    *,
+    state: BrokerState,
+    tool_registry: MCPToolRegistry,
+    current_tool_name: str,
+) -> set[str]:
+    """Resolve known tool names for follow-up planning with safe fallbacks."""
+    available_tool_names = state.get(STATE_KEY_TOOLS_AVAILABLE, [])
+    if not isinstance(available_tool_names, list):
+        available_tool_names = []
+    known_tool_names = {
+        str(name).strip()
+        for name in available_tool_names
+        if str(name).strip()
+    }
+    if known_tool_names:
+        return known_tool_names
+    if not hasattr(tool_registry, "list_names"):
+        return {current_tool_name}
+    try:
+        return {
+            str(name).strip()
+            for name in tool_registry.list_names()
+            if str(name).strip()
+        } or {current_tool_name}
+    except Exception:
+        logger.exception("Failed listing tools for follow-up planning.")
+        return {current_tool_name}
+
+
+async def _execute_tool_step(
+    *,
+    state: BrokerState,
+    tool_registry: MCPToolRegistry,
+    tool_name: str,
+    tool_args: dict[str, Any],
+    offline_message: str,
+) -> tuple[bool, dict[str, Any], str]:
+    """Execute one tool call and write default state updates for the returned result."""
+    try:
+        result = await tool_registry.call_tool(tool_name, tool_args)
+    except MCPServerUnavailableError as exc:
+        logger.error(
+            "MCP server unavailable while calling tool %s: %s",
+            tool_name,
+            exc,
+            exc_info=True,
+        )
+        state[STATE_KEY_TOOL_RESULT] = {PAYLOAD_KEY_ERROR: str(exc)}
+        state[STATE_KEY_RESPONSE_TEXT] = offline_message
+        return False, {}, ""
+    default_response_text = _format_tool_response(tool_name, result)
+    state[STATE_KEY_TOOL_NAME] = tool_name
+    state[STATE_KEY_TOOL_ARGS] = tool_args
+    state[STATE_KEY_TOOL_RESULT] = result
+    state[STATE_KEY_RESPONSE_TEXT] = default_response_text
+    return True, result, default_response_text
+
+
+def _normalize_optional_text(value: Any) -> str:
+    """Normalize optional planner values into trimmed text."""
+    return str(value).strip() if isinstance(value, str) else str(value or "").strip()
+
+
+def _apply_follow_up_plan(
+    *,
+    state: BrokerState,
+    follow_up_plan: dict[str, Any],
+    known_tool_names: set[str],
+    current_tool_name: str,
+    current_tool_args: dict[str, Any],
+) -> tuple[bool, str, dict[str, Any]]:
+    """Apply a follow-up plan and return whether execution should continue."""
+    next_tool_name = _normalize_optional_text(follow_up_plan.get(TOOL_NAME_KEY))
+    next_response_text = _normalize_optional_text(follow_up_plan.get(RESPONSE_TEXT_KEY, ""))
+    if not next_tool_name:
+        if next_response_text:
+            state[STATE_KEY_RESPONSE_TEXT] = next_response_text
+        return False, current_tool_name, current_tool_args
+    if next_tool_name not in known_tool_names:
+        state[STATE_KEY_RESPONSE_TEXT] = (
+            next_response_text
+            or f"I couldn't execute follow-up tool `{next_tool_name}` because it is not currently available."
+        )
+        return False, current_tool_name, current_tool_args
+    next_tool_args = _normalize_tool_args(follow_up_plan.get(TOOL_ARGS_KEY, {}))
+    if next_tool_name == current_tool_name and next_tool_args == current_tool_args:
+        if next_response_text:
+            state[STATE_KEY_RESPONSE_TEXT] = next_response_text
+        return False, current_tool_name, current_tool_args
+    next_target = next_tool_args.get(STATE_KEY_TARGET)
+    if next_target is not None:
+        state[STATE_KEY_TARGET] = str(next_target)
+    return True, next_tool_name, next_tool_args
 
 
 async def execute_or_summarize(
@@ -1088,18 +1270,9 @@ async def execute_or_summarize(
     Returns:
         BrokerState: Updated state containing tool results and response text.
     """
-    current_tool_name_raw = state.get(STATE_KEY_TOOL_NAME)
-    current_tool_name = (
-        str(current_tool_name_raw).strip()
-        if isinstance(current_tool_name_raw, str)
-        else ""
-    )
+    current_tool_name = _ensure_initial_tool_name(state)
     if not current_tool_name:
-        if STATE_KEY_RESPONSE_TEXT not in state:
-            state[STATE_KEY_RESPONSE_TEXT] = (
-                "I couldn't map that to a known MCP tool yet. "
-                "Ask for `tools` to see what I discovered."
-            )
+        _seed_unknown_tool_response(state)
         return state
 
     current_tool_args = _normalize_tool_args(state.get(STATE_KEY_TOOL_ARGS, {}))
@@ -1110,27 +1283,15 @@ async def execute_or_summarize(
         planner is not None
         and not bool(state.get(STATE_KEY_API_COMMAND_MODE, False))
     )
-    known_tool_names: set[str] = set()
-    if replanning_enabled:
-        available_tool_names = state.get(STATE_KEY_TOOLS_AVAILABLE, [])
-        if not isinstance(available_tool_names, list):
-            available_tool_names = []
-        known_tool_names = {
-            str(name).strip()
-            for name in available_tool_names
-            if str(name).strip()
-        }
-        if not known_tool_names and hasattr(tool_registry, "list_names"):
-            try:
-                known_tool_names = {
-                    str(name).strip()
-                    for name in tool_registry.list_names()
-                    if str(name).strip()
-                }
-            except Exception:
-                logger.exception("Failed listing tools for follow-up planning.")
-        if not known_tool_names:
-            known_tool_names = {current_tool_name}
+    known_tool_names = (
+        _resolve_known_tool_names(
+            state=state,
+            tool_registry=tool_registry,
+            current_tool_name=current_tool_name,
+        )
+        if replanning_enabled
+        else set()
+    )
 
     max_steps = _normalize_planner_step_limit(max_planning_steps)
     step_count = 0
@@ -1138,57 +1299,33 @@ async def execute_or_summarize(
     final_default_response_text = ""
     while True:
         step_count += 1
-        try:
-            result = await tool_registry.call_tool(
-                current_tool_name,
-                current_tool_args,
-            )
-        except MCPServerUnavailableError as exc:
-            logger.error(
-                "MCP server unavailable while calling tool %s: %s",
-                current_tool_name,
-                exc,
-                exc_info=True,
-            )
-            state[STATE_KEY_TOOL_RESULT] = {PAYLOAD_KEY_ERROR: str(exc)}
-            state[STATE_KEY_RESPONSE_TEXT] = offline_message
-            return state
-
-        final_result = result
-        final_default_response_text = _format_tool_response(
-            current_tool_name,
-            result,
+        executed, result, default_response_text = await _execute_tool_step(
+            state=state,
+            tool_registry=tool_registry,
+            tool_name=current_tool_name,
+            tool_args=current_tool_args,
+            offline_message=offline_message,
         )
-
-        state[STATE_KEY_TOOL_NAME] = current_tool_name
-        state[STATE_KEY_TOOL_ARGS] = current_tool_args
-        state[STATE_KEY_TOOL_RESULT] = result
-        state[STATE_KEY_RESPONSE_TEXT] = final_default_response_text
+        if not executed:
+            return state
+        final_result = result
+        final_default_response_text = default_response_text
 
         if not replanning_enabled or step_count >= max_steps:
             break
 
-        tools_for_replanning = [
-            tool_registry.get(name) or {PAYLOAD_KEY_NAME: name}
-            for name in sorted(known_tool_names)
-        ]
+        tools_for_replanning = _planner_tools(tool_registry, sorted(known_tool_names))
         follow_up_text = _build_follow_up_planner_text(
             user_text=normalized_user_text,
             tool_name=current_tool_name,
             tool_args=current_tool_args,
             tool_summary=final_default_response_text,
         )
-        conversation_history_raw = state.get(STATE_KEY_CONVERSATION_HISTORY, [])
-        conversation_history = (
-            conversation_history_raw
-            if isinstance(conversation_history_raw, list)
-            else []
-        )
         try:
             follow_up_plan = await planner.plan(
                 text=follow_up_text,
                 tools=tools_for_replanning,
-                conversation_history=conversation_history,
+                conversation_history=_conversation_history(state),
             )
         except Exception:
             logger.exception(
@@ -1197,49 +1334,17 @@ async def execute_or_summarize(
             )
             break
 
-        next_tool_name_raw = follow_up_plan.get(TOOL_NAME_KEY)
-        next_tool_name = (
-            str(next_tool_name_raw).strip()
-            if isinstance(next_tool_name_raw, str)
-            else ""
+        should_continue, next_tool_name, next_tool_args = _apply_follow_up_plan(
+            state=state,
+            follow_up_plan=follow_up_plan,
+            known_tool_names=known_tool_names,
+            current_tool_name=current_tool_name,
+            current_tool_args=current_tool_args,
         )
-        next_response_text_raw = follow_up_plan.get(RESPONSE_TEXT_KEY, "")
-        next_response_text = (
-            str(next_response_text_raw).strip()
-            if isinstance(next_response_text_raw, str)
-            else str(next_response_text_raw).strip()
-        )
-        if not next_tool_name:
-            if next_response_text:
-                state[STATE_KEY_RESPONSE_TEXT] = next_response_text
+        if not should_continue:
             break
-
-        if next_tool_name not in known_tool_names:
-            if next_response_text:
-                state[STATE_KEY_RESPONSE_TEXT] = next_response_text
-            else:
-                state[STATE_KEY_RESPONSE_TEXT] = (
-                    f"I couldn't execute follow-up tool `{next_tool_name}` because "
-                    "it is not currently available."
-                )
-            break
-
-        next_tool_args = _normalize_tool_args(
-            follow_up_plan.get(TOOL_ARGS_KEY, {}),
-        )
-        if (
-            next_tool_name == current_tool_name
-            and next_tool_args == current_tool_args
-        ):
-            if next_response_text:
-                state[STATE_KEY_RESPONSE_TEXT] = next_response_text
-            break
-
         current_tool_name = next_tool_name
         current_tool_args = next_tool_args
-        next_target = current_tool_args.get(STATE_KEY_TARGET)
-        if next_target is not None:
-            state[STATE_KEY_TARGET] = str(next_target)
 
     if tool_response_formatter is not None and final_result:
         try:

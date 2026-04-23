@@ -105,87 +105,30 @@ def queue_command_from_payload(
 ) -> CommandRecord:
     """Validate and queue a command payload from `/api/clients/<id>/commands`."""
     logger.debug("queue_command request client_id=%s payload=%s", client_id, payload)
-    pairs = None
-    if isinstance(payload, list):
-        pairs = payload
-    elif isinstance(payload, dict):
-        if isinstance(payload.get("pairs"), list):
-            pairs = payload["pairs"]
-    if not isinstance(pairs, list) or not pairs:
-        raise QueueCommandRequestError(
-            {"error": "pairs array is required"},
-            HTTPStatus.BAD_REQUEST,
-        )
+    pairs = _extract_queue_payload_pairs(payload)
+    if not pairs:
+        raise QueueCommandRequestError({"error": "pairs array is required"}, HTTPStatus.BAD_REQUEST)
     logger.debug("queue_command parsed pairs client_id=%s pairs=%s", client_id, pairs)
 
-    normalized_pairs: list[dict[str, str]] = []
-    values: dict[str, str] = {}
-    for pair in pairs:
-        if not isinstance(pair, dict) or "key" not in pair or "value" not in pair:
-            raise QueueCommandRequestError(
-                {"error": "each pair must include key and value"},
-                HTTPStatus.BAD_REQUEST,
-            )
-        key = str(pair["key"]).strip()
-        value = str(pair["value"]).strip()
-        if not key:
-            raise QueueCommandRequestError(
-                {"error": "pair key cannot be empty"},
-                HTTPStatus.BAD_REQUEST,
-            )
-        normalized_pairs.append({"key": key, "value": value})
-        values[key.lower()] = value
-
-    classifier = values.get("classifier", "").strip().lower()
-    operation = values.get("operation", "").strip().lower()
-    action = values.get("action", "").strip().lower()
-    routing_action = operation or action
+    normalized_pairs, values = _normalize_queue_pairs(pairs)
+    classifier, routing_action = _extract_routing_fields(values)
     logger.debug(
         "queue_command routing fields client_id=%s classifier=%s operation=%s action=%s routing_action=%s",
         client_id,
         classifier,
-        operation,
-        action,
+        values.get("operation", "").strip().lower(),
+        values.get("action", "").strip().lower(),
         routing_action,
     )
 
-    if classifier not in {
-        CLASSIFIER_COMMAND,
-        CLASSIFIER_CUSTOM_COMMAND,
-        CLASSIFIER_CUSTOM,
-    }:
-        raise QueueCommandRequestError(
-            {
-                "error": "classifier must be command, custom, or custom_command",
-                "classifier": classifier,
-            },
-            HTTPStatus.BAD_REQUEST,
-        )
-    if not routing_action:
-        raise QueueCommandRequestError(
-            {"error": "operation is required"},
-            HTTPStatus.BAD_REQUEST,
-        )
-
-    if (classifier, routing_action) not in command_builders and (
-        classifier,
-        "*",
-    ) not in command_builders:
-        logger.debug(
-            "queue_command unsupported mapping client_id=%s classifier=%s routing_action=%s builders=%s",
-            client_id,
-            classifier,
-            routing_action,
-            sorted(command_builders.keys()),
-        )
-        raise QueueCommandRequestError(
-            {
-                "error": "unsupported classifier/action",
-                "classifier": classifier,
-                "action": routing_action,
-            },
-            HTTPStatus.BAD_REQUEST,
-        )
+    _validate_routing_fields(classifier=classifier, routing_action=routing_action)
+    _validate_builder_support(
+        client_id=client_id,
+        classifier=classifier,
+        routing_action=routing_action,
+        command_builders=command_builders,
+        logger=logger,
+    )
 
     # Build a command object when a concrete class exists for the operation.
     key_value_dict = {pair["key"]: pair["value"] for pair in normalized_pairs}
@@ -193,75 +136,14 @@ def queue_command_from_payload(
     if classifier == CLASSIFIER_COMMAND and routing_action == COMMAND_FORCE_RESYNC:
         event_description = "Force Resync"
 
-    command_obj = None
-    if classifier == CLASSIFIER_COMMAND and routing_action == COMMAND_RESTART:
-        logger.debug(
-            "queue_command building command object client_id=%s classifier=%s routing_action=%s key_values=%s",
-            client_id,
-            classifier,
-            routing_action,
-            key_value_dict,
-        )
-        command_obj = command_object_factory(
-            classifier=classifier,
-            key_values=key_value_dict,
-        )
-        command_obj.set_key_value_dictionary(key_value_dict)
-        classifier = command_obj.get_command_classifier()
-        routing_action = str(routing_action).strip().lower()
-        event_description = command_obj.get_command_description()
-        logger.debug(
-            "queue_command built command object client_id=%s object_type=%s classifier=%s routing_action=%s",
-            client_id,
-            command_obj.__class__.__name__,
-            classifier,
-            routing_action,
-        )
-    elif classifier == CLASSIFIER_CUSTOM:
-        # Design intent: keep wildcard routing for extensibility, but still reject
-        # unknown custom operations early so typos do not queue opaque payloads.
-        logger.debug(
-            "queue_command validating custom command object client_id=%s classifier=%s routing_action=%s key_values=%s",
-            client_id,
-            classifier,
-            routing_action,
-            key_value_dict,
-        )
-        try:
-            command_obj = command_object_factory(
-                classifier=classifier,
-                key_values=key_value_dict,
-            )
-        except ValueError:
-            logger.debug(
-                "queue_command rejected unknown custom command mapping client_id=%s classifier=%s routing_action=%s",
-                client_id,
-                classifier,
-                routing_action,
-            )
-            raise QueueCommandRequestError(
-                {
-                    "error": "unsupported custom command mapping",
-                    "classifier": classifier,
-                    "action": routing_action,
-                },
-                HTTPStatus.BAD_REQUEST,
-            ) from None
-
-        command_obj.set_key_value_dictionary(key_value_dict)
-        classifier = command_obj.get_command_classifier().strip().lower()
-        normalized_command_values = command_obj.get_key_value_dictionary()
-        routing_action = str(
-            normalized_command_values.get("action", routing_action) or routing_action
-        ).strip().lower()
-        event_description = command_obj.get_command_description()
-        logger.debug(
-            "queue_command validated custom command object client_id=%s object_type=%s classifier=%s routing_action=%s",
-            client_id,
-            command_obj.__class__.__name__,
-            classifier,
-            routing_action,
-        )
+    classifier, routing_action, event_description, command_obj = _build_queue_command_object(
+        client_id=client_id,
+        classifier=classifier,
+        routing_action=routing_action,
+        key_value_dict=key_value_dict,
+        event_description=event_description,
+        logger=logger,
+    )
 
     cmd = store.queue_command(
         client_id,
@@ -286,6 +168,205 @@ def queue_command_from_payload(
         cmd.received_at,
     )
     return cmd
+
+
+def _extract_queue_payload_pairs(payload: Any) -> list[Any]:
+    """Extract raw `pairs` list from queue payload envelope."""
+    if isinstance(payload, list):
+        return payload
+    if isinstance(payload, dict) and isinstance(payload.get("pairs"), list):
+        return payload["pairs"]
+    return []
+
+
+def _normalize_queue_pairs(pairs: list[Any]) -> tuple[list[dict[str, str]], dict[str, str]]:
+    """Normalize pair objects into canonical key/value dictionaries."""
+    normalized_pairs: list[dict[str, str]] = []
+    values: dict[str, str] = {}
+    for pair in pairs:
+        if not isinstance(pair, dict) or "key" not in pair or "value" not in pair:
+            raise QueueCommandRequestError(
+                {"error": "each pair must include key and value"},
+                HTTPStatus.BAD_REQUEST,
+            )
+        key = str(pair["key"]).strip()
+        value = str(pair["value"]).strip()
+        if not key:
+            raise QueueCommandRequestError(
+                {"error": "pair key cannot be empty"},
+                HTTPStatus.BAD_REQUEST,
+            )
+        normalized_pairs.append({"key": key, "value": value})
+        values[key.lower()] = value
+    return normalized_pairs, values
+
+
+def _extract_routing_fields(values: dict[str, str]) -> tuple[str, str]:
+    """Extract `(classifier, routing_action)` from normalized values."""
+    classifier = values.get("classifier", "").strip().lower()
+    operation = values.get("operation", "").strip().lower()
+    action = values.get("action", "").strip().lower()
+    return classifier, operation or action
+
+
+def _validate_routing_fields(*, classifier: str, routing_action: str) -> None:
+    """Validate classifier/action presence and supported classifier values."""
+    if classifier not in {CLASSIFIER_COMMAND, CLASSIFIER_CUSTOM_COMMAND, CLASSIFIER_CUSTOM}:
+        raise QueueCommandRequestError(
+            {
+                "error": "classifier must be command, custom, or custom_command",
+                "classifier": classifier,
+            },
+            HTTPStatus.BAD_REQUEST,
+        )
+    if not routing_action:
+        raise QueueCommandRequestError(
+            {"error": "operation is required"},
+            HTTPStatus.BAD_REQUEST,
+        )
+
+
+def _validate_builder_support(
+    *,
+    client_id: str,
+    classifier: str,
+    routing_action: str,
+    command_builders: Mapping[tuple[str, str], Callable[[Any, CommandRecord], Any]],
+    logger: logging.Logger,
+) -> None:
+    """Ensure the requested classifier/action has a registered command builder."""
+    if (classifier, routing_action) in command_builders or (classifier, "*") in command_builders:
+        return
+    logger.debug(
+        "queue_command unsupported mapping client_id=%s classifier=%s routing_action=%s builders=%s",
+        client_id,
+        classifier,
+        routing_action,
+        sorted(command_builders.keys()),
+    )
+    raise QueueCommandRequestError(
+        {
+            "error": "unsupported classifier/action",
+            "classifier": classifier,
+            "action": routing_action,
+        },
+        HTTPStatus.BAD_REQUEST,
+    )
+
+
+def _build_queue_command_object(
+    *,
+    client_id: str,
+    classifier: str,
+    routing_action: str,
+    key_value_dict: dict[str, str],
+    event_description: str,
+    logger: logging.Logger,
+) -> tuple[str, str, str, Any]:
+    """Create and normalize command object metadata for queueing."""
+    command_obj = None
+    if classifier == CLASSIFIER_COMMAND and routing_action == COMMAND_RESTART:
+        return _build_restart_command_object(
+            client_id=client_id,
+            classifier=classifier,
+            routing_action=routing_action,
+            key_value_dict=key_value_dict,
+            logger=logger,
+        )
+    if classifier == CLASSIFIER_CUSTOM:
+        return _build_custom_command_object(
+            client_id=client_id,
+            classifier=classifier,
+            routing_action=routing_action,
+            key_value_dict=key_value_dict,
+            logger=logger,
+        )
+    return classifier, routing_action, event_description, command_obj
+
+
+def _build_restart_command_object(
+    *,
+    client_id: str,
+    classifier: str,
+    routing_action: str,
+    key_value_dict: dict[str, str],
+    logger: logging.Logger,
+) -> tuple[str, str, str, Any]:
+    """Build normalized command object details for standard restart requests."""
+    logger.debug(
+        "queue_command building command object client_id=%s classifier=%s routing_action=%s key_values=%s",
+        client_id,
+        classifier,
+        routing_action,
+        key_value_dict,
+    )
+    command_obj = command_object_factory(classifier=classifier, key_values=key_value_dict)
+    command_obj.set_key_value_dictionary(key_value_dict)
+    normalized_classifier = command_obj.get_command_classifier()
+    normalized_action = str(routing_action).strip().lower()
+    event_description = command_obj.get_command_description()
+    logger.debug(
+        "queue_command built command object client_id=%s object_type=%s classifier=%s routing_action=%s",
+        client_id,
+        command_obj.__class__.__name__,
+        normalized_classifier,
+        normalized_action,
+    )
+    return normalized_classifier, normalized_action, event_description, command_obj
+
+
+def _build_custom_command_object(
+    *,
+    client_id: str,
+    classifier: str,
+    routing_action: str,
+    key_value_dict: dict[str, str],
+    logger: logging.Logger,
+) -> tuple[str, str, str, Any]:
+    """Build normalized command object details for custom-command requests."""
+    logger.debug(
+        "queue_command validating custom command object client_id=%s classifier=%s routing_action=%s key_values=%s",
+        client_id,
+        classifier,
+        routing_action,
+        key_value_dict,
+    )
+    try:
+        command_obj = command_object_factory(
+            classifier=classifier,
+            key_values=key_value_dict,
+        )
+    except ValueError:
+        logger.debug(
+            "queue_command rejected unknown custom command mapping client_id=%s classifier=%s routing_action=%s",
+            client_id,
+            classifier,
+            routing_action,
+        )
+        raise QueueCommandRequestError(
+            {
+                "error": "unsupported custom command mapping",
+                "classifier": classifier,
+                "action": routing_action,
+            },
+            HTTPStatus.BAD_REQUEST,
+        ) from None
+
+    command_obj.set_key_value_dictionary(key_value_dict)
+    normalized_classifier = command_obj.get_command_classifier().strip().lower()
+    normalized_command_values = command_obj.get_key_value_dictionary()
+    normalized_action = str(
+        normalized_command_values.get("action", routing_action) or routing_action
+    ).strip().lower()
+    event_description = command_obj.get_command_description()
+    logger.debug(
+        "queue_command validated custom command object client_id=%s object_type=%s classifier=%s routing_action=%s",
+        client_id,
+        command_obj.__class__.__name__,
+        normalized_classifier,
+        normalized_action,
+    )
+    return normalized_classifier, normalized_action, event_description, command_obj
 
 
 def queue_custom_command_from_mcp(

@@ -135,27 +135,16 @@ class MCPClient:
     ) -> dict[str, Any]:
         """Send one JSON-RPC request and return the ``result`` payload."""
         request_id = str(uuid.uuid4())
-        payload = {
-            "jsonrpc": "2.0",
-            "id": request_id,
-            "method": method,
-            "params": params or {},
-        }
+        payload = self._build_rpc_payload(
+            request_id=request_id,
+            method=method,
+            params=params,
+        )
         resolved_protocol_version = protocol_version or self._mcp_protocol_version
-        headers = {
-            "Accept": (
-                "application/json, text/event-stream"
-                if self._connection_mode == MCP_CONNECTION_MODE_AUTO
-                else (
-                    "application/json"
-                    if self._connection_mode == MCP_CONNECTION_MODE_JSON
-                    else "text/event-stream"
-                )
-            ),
-            "MCP-Protocol-Version": resolved_protocol_version,
-        }
-        if include_session_header and self._mcp_session_id:
-            headers["MCP-Session-Id"] = self._mcp_session_id
+        headers = self._build_rpc_headers(
+            resolved_protocol_version=resolved_protocol_version,
+            include_session_header=include_session_header,
+        )
         try:
             async with self._client.stream(
                 "POST",
@@ -163,115 +152,19 @@ class MCPClient:
                 json=payload,
                 headers=headers,
             ) as response:
-                data: dict[str, Any] | None = None
-                response_session_id = (
-                    response.headers.get("MCP-Session-Id")
-                    or response.headers.get("mcp-session-id")
+                self._capture_session_header(response)
+                await self._raise_for_status(method=method, response=response)
+                data = await self._decode_rpc_response(
+                    method=method,
+                    request_id=request_id,
+                    response=response,
                 )
-                if response_session_id:
-                    self._mcp_session_id = response_session_id
-
-                try:
-                    response.raise_for_status()
-                except httpx.HTTPStatusError as exc:
-                    status_code = exc.response.status_code
-                    response_body = (await response.aread()).decode(
-                        exc.response.encoding or "utf-8",
-                        errors="replace",
-                    ).strip()
-                    response_body_summary = (
-                        response_body[:500] if response_body else "<empty>"
-                    )
-                    if status_code >= 500:
-                        raise MCPServerUnavailableError(
-                            f"MCP server returned {status_code} for {method}: "
-                            f"{response_body_summary}"
-                        ) from exc
-                    raise
-
-                content_type = str(response.headers.get("content-type", "")).lower()
-                if self._connection_mode == MCP_CONNECTION_MODE_SSE or (
-                    self._connection_mode == MCP_CONNECTION_MODE_AUTO
-                    and "text/event-stream" in content_type
-                ):
-                    latest_payload: dict[str, Any] | None = None
-                    data_lines: list[str] = []
-
-                    async for raw_line in response.aiter_lines():
-                        line = raw_line.rstrip("\r")
-                        if line == "":
-                            if data_lines:
-                                parsed = _parse_sse_event_payload(
-                                    "\n".join(data_lines)
-                                )
-                                data_lines = []
-                                if parsed is None:
-                                    continue
-                                if str(parsed.get("id", "")) == request_id:
-                                    data = parsed
-                                    break
-                                latest_payload = parsed
-                            continue
-                        if line.startswith("data:"):
-                            data_lines.append(line[5:].lstrip())
-                    else:
-                        if data_lines:
-                            parsed = _parse_sse_event_payload("\n".join(data_lines))
-                            if parsed is not None:
-                                if str(parsed.get("id", "")) == request_id:
-                                    data = parsed
-                                else:
-                                    latest_payload = parsed
-                        if data is None and latest_payload is not None:
-                            data = latest_payload
-                        if data is None:
-                            raise RuntimeError(
-                                "MCP response decode failed for "
-                                f"{method}: content_type={content_type} "
-                                "body=<no decodable SSE data payload>"
-                            )
-                elif self._connection_mode in {
-                    MCP_CONNECTION_MODE_AUTO,
-                    MCP_CONNECTION_MODE_JSON,
-                }:
-                    raw_body = await response.aread()
-                    body_text = raw_body.decode(
-                        response.encoding or "utf-8",
-                        errors="replace",
-                    )
-                    try:
-                        parsed_data = json.loads(body_text)
-                    except json.JSONDecodeError as exc:
-                        body_summary = body_text.strip()[:500] if body_text.strip() else "<empty>"
-                        raise RuntimeError(
-                            f"MCP response decode failed for {method}: "
-                            f"content_type={content_type or '<unknown>'} "
-                            f"body={body_summary}"
-                        ) from exc
-                    if isinstance(parsed_data, dict):
-                        data = parsed_data
-                    else:
-                        raise RuntimeError(
-                            f"MCP response is not a JSON object for {method}: "
-                            f"{type(parsed_data).__name__}"
-                        )
-                else:
-                    raise RuntimeError(
-                        "MCP response decode failed for "
-                        f"{method}: unsupported connection mode {self._connection_mode}"
-                    )
         except httpx.RequestError as exc:
             raise MCPServerUnavailableError(
                 f"unable to reach MCP server at {self.mcp_url}: {exc}"
             ) from exc
 
-        if data is None:
-            raise RuntimeError(f"MCP response is empty for {method}")
-        if not isinstance(data, dict):
-            raise RuntimeError(
-                f"MCP response is not a JSON object for {method}: "
-                f"{type(data).__name__}"
-            )
+        data = self._validate_response_envelope(method=method, data=data)
         logger.debug(
             "MCP response envelope method=%s payload=%s",
             method,
@@ -286,6 +179,191 @@ class MCPClient:
             self._debug_payload_preview(result),
         )
         return result
+
+    @staticmethod
+    def _build_rpc_payload(
+        *,
+        request_id: str,
+        method: str,
+        params: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        """Build standard JSON-RPC request envelope."""
+        return {
+            "jsonrpc": "2.0",
+            "id": request_id,
+            "method": method,
+            "params": params or {},
+        }
+
+    def _build_rpc_headers(
+        self,
+        *,
+        resolved_protocol_version: str,
+        include_session_header: bool,
+    ) -> dict[str, str]:
+        """Build MCP request headers for current connection mode."""
+        headers = {
+            "Accept": self._resolve_accept_header(),
+            "MCP-Protocol-Version": resolved_protocol_version,
+        }
+        if include_session_header and self._mcp_session_id:
+            headers["MCP-Session-Id"] = self._mcp_session_id
+        return headers
+
+    def _resolve_accept_header(self) -> str:
+        """Return HTTP Accept header value based on connection mode."""
+        if self._connection_mode == MCP_CONNECTION_MODE_AUTO:
+            return "application/json, text/event-stream"
+        if self._connection_mode == MCP_CONNECTION_MODE_JSON:
+            return "application/json"
+        return "text/event-stream"
+
+    def _capture_session_header(self, response: httpx.Response) -> None:
+        """Persist MCP session id header when present on response."""
+        response_session_id = (
+            response.headers.get("MCP-Session-Id")
+            or response.headers.get("mcp-session-id")
+        )
+        if response_session_id:
+            self._mcp_session_id = response_session_id
+
+    async def _raise_for_status(self, *, method: str, response: httpx.Response) -> None:
+        """Raise typed errors for unsuccessful HTTP status responses."""
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            status_code = exc.response.status_code
+            response_body = (await response.aread()).decode(
+                exc.response.encoding or "utf-8",
+                errors="replace",
+            ).strip()
+            response_body_summary = response_body[:500] if response_body else "<empty>"
+            if status_code >= 500:
+                raise MCPServerUnavailableError(
+                    f"MCP server returned {status_code} for {method}: "
+                    f"{response_body_summary}"
+                ) from exc
+            raise
+
+    async def _decode_rpc_response(
+        self,
+        *,
+        method: str,
+        request_id: str,
+        response: httpx.Response,
+    ) -> dict[str, Any]:
+        """Decode JSON or SSE response envelope for one MCP RPC request."""
+        content_type = str(response.headers.get("content-type", "")).lower()
+        if self._should_decode_as_sse(content_type):
+            return await self._decode_sse_response(
+                method=method,
+                request_id=request_id,
+                content_type=content_type,
+                response=response,
+            )
+        if self._should_decode_as_json():
+            return await self._decode_json_response(
+                method=method,
+                content_type=content_type,
+                response=response,
+            )
+        raise RuntimeError(
+            "MCP response decode failed for "
+            f"{method}: unsupported connection mode {self._connection_mode}"
+        )
+
+    def _should_decode_as_sse(self, content_type: str) -> bool:
+        """Return whether response should be decoded as SSE event stream."""
+        if self._connection_mode == MCP_CONNECTION_MODE_SSE:
+            return True
+        return self._connection_mode == MCP_CONNECTION_MODE_AUTO and "text/event-stream" in content_type
+
+    def _should_decode_as_json(self) -> bool:
+        """Return whether response should be decoded as JSON body."""
+        return self._connection_mode in {MCP_CONNECTION_MODE_AUTO, MCP_CONNECTION_MODE_JSON}
+
+    async def _decode_sse_response(
+        self,
+        *,
+        method: str,
+        request_id: str,
+        content_type: str,
+        response: httpx.Response,
+    ) -> dict[str, Any]:
+        """Decode SSE payload stream into a JSON-RPC response envelope."""
+        data: dict[str, Any] | None = None
+        latest_payload: dict[str, Any] | None = None
+        data_lines: list[str] = []
+
+        async for raw_line in response.aiter_lines():
+            line = raw_line.rstrip("\r")
+            if line == "":
+                parsed = _parse_sse_event_payload("\n".join(data_lines)) if data_lines else None
+                data_lines = []
+                if parsed is None:
+                    continue
+                if str(parsed.get("id", "")) == request_id:
+                    data = parsed
+                    break
+                latest_payload = parsed
+                continue
+            if line.startswith("data:"):
+                data_lines.append(line[5:].lstrip())
+        else:
+            trailing = _parse_sse_event_payload("\n".join(data_lines)) if data_lines else None
+            if trailing is not None:
+                if str(trailing.get("id", "")) == request_id:
+                    data = trailing
+                else:
+                    latest_payload = trailing
+            if data is None and latest_payload is not None:
+                data = latest_payload
+
+        if data is None:
+            raise RuntimeError(
+                "MCP response decode failed for "
+                f"{method}: content_type={content_type} "
+                "body=<no decodable SSE data payload>"
+            )
+        return data
+
+    async def _decode_json_response(
+        self,
+        *,
+        method: str,
+        content_type: str,
+        response: httpx.Response,
+    ) -> dict[str, Any]:
+        """Decode standard JSON response body into a response envelope."""
+        raw_body = await response.aread()
+        body_text = raw_body.decode(response.encoding or "utf-8", errors="replace")
+        try:
+            parsed_data = json.loads(body_text)
+        except json.JSONDecodeError as exc:
+            body_summary = body_text.strip()[:500] if body_text.strip() else "<empty>"
+            raise RuntimeError(
+                f"MCP response decode failed for {method}: "
+                f"content_type={content_type or '<unknown>'} "
+                f"body={body_summary}"
+            ) from exc
+        if not isinstance(parsed_data, dict):
+            raise RuntimeError(
+                f"MCP response is not a JSON object for {method}: "
+                f"{type(parsed_data).__name__}"
+            )
+        return parsed_data
+
+    @staticmethod
+    def _validate_response_envelope(*, method: str, data: dict[str, Any] | None) -> dict[str, Any]:
+        """Validate decoded response envelope shape."""
+        if data is None:
+            raise RuntimeError(f"MCP response is empty for {method}")
+        if not isinstance(data, dict):
+            raise RuntimeError(
+                f"MCP response is not a JSON object for {method}: "
+                f"{type(data).__name__}"
+            )
+        return data
 
     async def discover_tools(self) -> list[dict[str, Any]]:
         """Initialize provider MCP and return discovered tool definitions."""

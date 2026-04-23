@@ -1058,6 +1058,299 @@ def _build_error(
     return response
 
 
+def _unsupported_agent_fields(agent_msg: opamp_pb2.AgentToServer) -> list[str]:
+    """Return unsupported top-level AgentToServer fields currently rejected by server."""
+    unsupported: list[str] = []
+    if agent_msg.HasField(PB_FIELD_PACKAGE_STATUSES):
+        unsupported.append(PB_FIELD_PACKAGE_STATUSES)
+    if agent_msg.HasField(PB_FIELD_CONNECTION_SETTINGS_REQUEST):
+        unsupported.append(PB_FIELD_CONNECTION_SETTINGS_REQUEST)
+    return unsupported
+
+
+def _build_http_auth_error_response(
+    *,
+    agent_msg: opamp_pb2.AgentToServer,
+    auth_decision: provider_auth.AuthDecision,
+) -> Response:
+    """Build an OpAMP HTTP auth error response with expected headers and type."""
+    response_headers: dict[str, str] = {}
+    if auth_decision.status_code == HTTPStatus.UNAUTHORIZED:
+        response_headers["WWW-Authenticate"] = (
+            provider_auth.WWW_AUTHENTICATE_BEARER
+        )
+    error_type = (
+        opamp_pb2.ServerErrorResponseType.ServerErrorResponseType_Unavailable
+        if auth_decision.status_code >= HTTPStatus.INTERNAL_SERVER_ERROR
+        else opamp_pb2.ServerErrorResponseType.ServerErrorResponseType_BadRequest
+    )
+    return _build_opamp_http_error_response(
+        instance_uid=agent_msg.instance_uid if agent_msg.instance_uid else None,
+        status_code=auth_decision.status_code,
+        error_message=auth_decision.error or ERR_AGENT_AUTH_FAILED,
+        headers=response_headers,
+        error_type=error_type,
+    )
+
+
+def _build_http_unsupported_fields_response(
+    *,
+    agent_msg: opamp_pb2.AgentToServer,
+    unsupported_fields: list[str],
+) -> Response:
+    """Build a protobuf HTTP bad-request response for unsupported AgentToServer fields."""
+    response_msg = opamp_pb2.ServerToAgent()
+    response_msg.instance_uid = agent_msg.instance_uid
+    response_msg = _build_error(
+        error_type=opamp_pb2.ServerErrorResponseType.ServerErrorResponseType_BadRequest,
+        error_message=(f"unsupported fields: {', '.join(unsupported_fields)}"),
+        msg=response_msg,
+    )
+    return Response(
+        response_msg.SerializeToString(),
+        content_type=CONTENT_TYPE_PROTO,
+        status=HTTPStatus.BAD_REQUEST,
+    )
+
+
+def _http_human_in_loop_gate_response(
+    *,
+    agent_msg: opamp_pb2.AgentToServer,
+    client_id: str | None,
+    known_client: ClientRecord | None,
+    request_headers: dict[str, str],
+    remote_addr: str | None,
+) -> Response | None:
+    """Return an approval-gate response when the agent is not yet approved."""
+    if not provider_config.CONFIG.human_in_loop_approval:
+        return None
+    if not client_id:
+        return _build_opamp_http_error_response(
+            instance_uid=None,
+            status_code=HTTPStatus.BAD_REQUEST,
+            error_message="instance_uid is required when human_in_loop_approval is enabled",
+        )
+    if known_client is not None:
+        return None
+    if STORE.get_pending_approval(client_id) is None:
+        try:
+            STORE.add_pending_approval_from_agent_msg(
+                agent_msg,
+                channel=CHANNEL_HTTP,
+                remote_addr=remote_addr,
+            )
+            logger.info(
+                "agent moved to pending approval client_id=%s remote_addr=%s",
+                client_id,
+                remote_addr or "unknown",
+            )
+        except Exception as approval_error:
+            STORE.block_agent(
+                client_id,
+                reason=f"failed pending approval payload transformation: {approval_error}",
+                headers=request_headers,
+                ip=remote_addr,
+            )
+            logger.exception(
+                "failed to transform pending approval payload; client blocked client_id=%s",
+                client_id,
+                exc_info=approval_error,
+            )
+            return _build_opamp_http_error_response(
+                instance_uid=agent_msg.instance_uid if agent_msg.instance_uid else None,
+                status_code=HTTPStatus.FORBIDDEN,
+                error_message=ERR_AGENT_BLOCKED,
+                error_type=opamp_pb2.ServerErrorResponseType.ServerErrorResponseType_BadRequest,
+            )
+    return _build_opamp_http_error_response(
+        instance_uid=agent_msg.instance_uid if agent_msg.instance_uid else None,
+        status_code=HTTPStatus.FORBIDDEN,
+        error_message=ERR_AGENT_PENDING_APPROVAL,
+        error_type=opamp_pb2.ServerErrorResponseType.ServerErrorResponseType_BadRequest,
+    )
+
+
+def _build_http_success_response(
+    *,
+    agent_msg: opamp_pb2.AgentToServer,
+    remote_addr: str | None,
+) -> Response:
+    """Persist one HTTP agent message, build response, and mark commands sent."""
+    client = STORE.upsert_from_agent_msg(
+        agent_msg,
+        channel=CHANNEL_HTTP,
+        remote_addr=remote_addr,
+    )
+    if not _is_heartbeat_only_message(agent_msg):
+        _note_non_heartbeat_state_change_and_maybe_autosave()
+    pending_command = STORE.next_pending_command(client.client_id)
+    response_msg = _build_response(
+        agent_msg,
+        pending_command,
+        client=client,
+        channel=CHANNEL_HTTP,
+    )
+    if pending_command is not None and _has_dispatched_command_payload(
+        response_msg
+    ):
+        STORE.mark_command_sent(client.client_id, pending_command)
+        logger.info(LOG_SEND_COMMAND, client.client_id, datetime.now(timezone.utc))
+    return Response(response_msg.SerializeToString(), content_type=CONTENT_TYPE_PROTO)
+
+
+def _build_websocket_auth_error_message(
+    auth_decision: provider_auth.AuthDecision,
+) -> opamp_pb2.ServerToAgent:
+    """Build an auth error ServerToAgent message for websocket handshakes."""
+    error_type = (
+        opamp_pb2.ServerErrorResponseType.ServerErrorResponseType_Unavailable
+        if auth_decision.status_code >= HTTPStatus.INTERNAL_SERVER_ERROR
+        else opamp_pb2.ServerErrorResponseType.ServerErrorResponseType_BadRequest
+    )
+    return _build_error_message(
+        instance_uid=None,
+        error_type=error_type,
+        error_message=auth_decision.error or ERR_AGENT_AUTH_FAILED,
+    )
+
+
+async def _send_websocket_error_and_close(
+    response_msg: opamp_pb2.ServerToAgent,
+) -> None:
+    """Send one websocket error response and close with policy-violation code."""
+    await websocket.send(encode_message(response_msg.SerializeToString()))
+    await websocket.close(code=1008)
+
+
+def _websocket_human_in_loop_gate(
+    *,
+    agent_msg: opamp_pb2.AgentToServer,
+    client_id: str | None,
+    known_client: ClientRecord | None,
+    ws_headers: dict[str, str],
+    remote_addr: str | None,
+) -> tuple[opamp_pb2.ServerToAgent | None, bool]:
+    """Evaluate websocket approval gate and return response + close flag when blocked."""
+    if not provider_config.CONFIG.human_in_loop_approval:
+        return None, False
+    if not client_id:
+        return (
+            _build_error_message(
+                instance_uid=None,
+                error_type=opamp_pb2.ServerErrorResponseType.ServerErrorResponseType_BadRequest,
+                error_message="instance_uid is required when human_in_loop_approval is enabled",
+            ),
+            True,
+        )
+    if known_client is not None:
+        return None, False
+    if STORE.get_pending_approval(client_id) is None:
+        try:
+            STORE.add_pending_approval_from_agent_msg(
+                agent_msg,
+                channel=CHANNEL_WEBSOCKET,
+                remote_addr=remote_addr,
+            )
+            logger.info(
+                "agent moved to pending approval client_id=%s remote_addr=%s",
+                client_id,
+                remote_addr or "unknown",
+            )
+        except Exception as approval_error:
+            STORE.block_agent(
+                client_id,
+                reason=(
+                    "failed pending approval payload "
+                    f"transformation: {approval_error}"
+                ),
+                headers=ws_headers,
+                ip=remote_addr,
+            )
+            logger.exception(
+                (
+                    "failed to transform pending approval payload; "
+                    "client blocked client_id=%s"
+                ),
+                client_id,
+                exc_info=approval_error,
+            )
+            return (
+                _build_error_message(
+                    instance_uid=agent_msg.instance_uid if agent_msg.instance_uid else None,
+                    error_type=opamp_pb2.ServerErrorResponseType.ServerErrorResponseType_BadRequest,
+                    error_message=ERR_AGENT_BLOCKED,
+                ),
+                True,
+            )
+    return (
+        _build_error_message(
+            instance_uid=agent_msg.instance_uid if agent_msg.instance_uid else None,
+            error_type=opamp_pb2.ServerErrorResponseType.ServerErrorResponseType_BadRequest,
+            error_message=ERR_AGENT_PENDING_APPROVAL,
+        ),
+        True,
+    )
+
+
+def _process_websocket_agent_message(
+    *,
+    agent_msg: opamp_pb2.AgentToServer,
+    ws_headers: dict[str, str],
+    remote_addr: str | None,
+) -> tuple[opamp_pb2.ServerToAgent, CommandRecord | None, ClientRecord | None, bool]:
+    """Process one decoded websocket AgentToServer message and return response context."""
+    pending_command = None
+    client = None
+    close_after_send = False
+    client_id = _extract_client_id(agent_msg)
+
+    if client_id and STORE.is_blocked_agent(client_id):
+        _log_blocked_agent_attempt(
+            client_id=client_id,
+            channel=CHANNEL_WEBSOCKET,
+            headers=ws_headers,
+            remote_addr=remote_addr,
+        )
+        return (
+            _build_error_message(
+                instance_uid=agent_msg.instance_uid if agent_msg.instance_uid else None,
+                error_type=opamp_pb2.ServerErrorResponseType.ServerErrorResponseType_BadRequest,
+                error_message=ERR_AGENT_BLOCKED,
+            ),
+            pending_command,
+            client,
+            True,
+        )
+
+    known_client = STORE.get(client_id) if client_id else None
+    approval_response, close_after_send = _websocket_human_in_loop_gate(
+        agent_msg=agent_msg,
+        client_id=client_id,
+        known_client=known_client,
+        ws_headers=ws_headers,
+        remote_addr=remote_addr,
+    )
+    if approval_response is not None:
+        return approval_response, pending_command, client, close_after_send
+
+    client = STORE.upsert_from_agent_msg(
+        agent_msg,
+        channel=CHANNEL_WEBSOCKET,
+        remote_addr=remote_addr,
+    )
+    if not _is_heartbeat_only_message(agent_msg):
+        _note_non_heartbeat_state_change_and_maybe_autosave()
+    _WEBSOCKET_CLIENTS[websocket] = client.client_id
+    pending_command = STORE.next_pending_command(client.client_id)
+    response_msg = _build_response(
+        agent_msg,
+        pending_command,
+        client=client,
+        channel=CHANNEL_WEBSOCKET,
+    )
+    return response_msg, pending_command, client, False
+
+
 @app.post(OPAMP_HTTP_PATH)
 async def opamp_http() -> Response:
     """Handle OpAMP HTTP POST requests."""
@@ -1092,112 +1385,32 @@ async def opamp_http() -> Response:
             channel=CHANNEL_HTTP,
         )
         if not opamp_auth_decision.allowed:
-            response_headers: dict[str, str] = {}
-            if opamp_auth_decision.status_code == HTTPStatus.UNAUTHORIZED:
-                response_headers["WWW-Authenticate"] = (
-                    provider_auth.WWW_AUTHENTICATE_BEARER
-                )
-            error_type = (
-                opamp_pb2.ServerErrorResponseType.ServerErrorResponseType_Unavailable
-                if opamp_auth_decision.status_code >= HTTPStatus.INTERNAL_SERVER_ERROR
-                else opamp_pb2.ServerErrorResponseType.ServerErrorResponseType_BadRequest
-            )
-            return _build_opamp_http_error_response(
-                instance_uid=agent_msg.instance_uid if agent_msg.instance_uid else None,
-                status_code=opamp_auth_decision.status_code,
-                error_message=opamp_auth_decision.error or ERR_AGENT_AUTH_FAILED,
-                headers=response_headers,
-                error_type=error_type,
+            return _build_http_auth_error_response(
+                agent_msg=agent_msg,
+                auth_decision=opamp_auth_decision,
             )
 
         known_client = STORE.get(client_id) if client_id else None
-        if provider_config.CONFIG.human_in_loop_approval:
-            if not client_id:
-                return _build_opamp_http_error_response(
-                    instance_uid=None,
-                    status_code=HTTPStatus.BAD_REQUEST,
-                    error_message="instance_uid is required when human_in_loop_approval is enabled",
-                )
-            if known_client is None:
-                if STORE.get_pending_approval(client_id) is None:
-                    try:
-                        STORE.add_pending_approval_from_agent_msg(
-                            agent_msg,
-                            channel=CHANNEL_HTTP,
-                            remote_addr=remote_addr,
-                        )
-                        logger.info(
-                            "agent moved to pending approval client_id=%s remote_addr=%s",
-                            client_id,
-                            remote_addr or "unknown",
-                        )
-                    except Exception as approval_error:
-                        STORE.block_agent(
-                            client_id,
-                            reason=f"failed pending approval payload transformation: {approval_error}",
-                            headers=request_headers,
-                            ip=remote_addr,
-                        )
-                        logger.exception(
-                            "failed to transform pending approval payload; client blocked client_id=%s",
-                            client_id,
-                            exc_info=approval_error,
-                        )
-                        return _build_opamp_http_error_response(
-                            instance_uid=(
-                                agent_msg.instance_uid if agent_msg.instance_uid else None
-                            ),
-                            status_code=HTTPStatus.FORBIDDEN,
-                            error_message=ERR_AGENT_BLOCKED,
-                            error_type=opamp_pb2.ServerErrorResponseType.ServerErrorResponseType_BadRequest,
-                        )
-                return _build_opamp_http_error_response(
-                    instance_uid=agent_msg.instance_uid if agent_msg.instance_uid else None,
-                    status_code=HTTPStatus.FORBIDDEN,
-                    error_message=ERR_AGENT_PENDING_APPROVAL,
-                    error_type=opamp_pb2.ServerErrorResponseType.ServerErrorResponseType_BadRequest,
-                )
-
-        unsupported = []
-        if agent_msg.HasField(PB_FIELD_PACKAGE_STATUSES):
-            unsupported.append(PB_FIELD_PACKAGE_STATUSES)
-        if agent_msg.HasField(PB_FIELD_CONNECTION_SETTINGS_REQUEST):
-            unsupported.append(PB_FIELD_CONNECTION_SETTINGS_REQUEST)
-        if unsupported:
-            response_msg = opamp_pb2.ServerToAgent()
-            response_msg.instance_uid = agent_msg.instance_uid
-            response_msg = _build_error(
-                error_type=opamp_pb2.ServerErrorResponseType.ServerErrorResponseType_BadRequest,
-                error_message=(f"unsupported fields: {', '.join(unsupported)}"),
-                msg=response_msg,
-            )
-            payload = response_msg.SerializeToString()
-            return Response(
-                payload,
-                content_type=CONTENT_TYPE_PROTO,
-                status=HTTPStatus.BAD_REQUEST,
-            )
-        client = STORE.upsert_from_agent_msg(
-            agent_msg,
-            channel=CHANNEL_HTTP,
+        approval_response = _http_human_in_loop_gate_response(
+            agent_msg=agent_msg,
+            client_id=client_id,
+            known_client=known_client,
+            request_headers=request_headers,
             remote_addr=remote_addr,
         )
-        if not _is_heartbeat_only_message(agent_msg):
-            _note_non_heartbeat_state_change_and_maybe_autosave()
-        pending_command = STORE.next_pending_command(client.client_id)
-        response_msg = _build_response(
-            agent_msg,
-            pending_command,
-            client=client,
-            channel=CHANNEL_HTTP,
+        if approval_response is not None:
+            return approval_response
+
+        unsupported = _unsupported_agent_fields(agent_msg)
+        if unsupported:
+            return _build_http_unsupported_fields_response(
+                agent_msg=agent_msg,
+                unsupported_fields=unsupported,
+            )
+        return _build_http_success_response(
+            agent_msg=agent_msg,
+            remote_addr=remote_addr,
         )
-        payload = response_msg.SerializeToString()
-        if pending_command is not None and _has_dispatched_command_payload(
-            response_msg
-        ):
-            STORE.mark_command_sent(client.client_id, pending_command)
-            logger.info(LOG_SEND_COMMAND, client.client_id, datetime.now(timezone.utc))
-        return Response(payload, content_type=CONTENT_TYPE_PROTO)
     except Exception as exc:
         logger.exception("Unhandled HTTP error - %s", exc_info=exc)
         response_msg = _build_error_message(
@@ -1226,24 +1439,16 @@ async def opamp_websocket() -> None:
             channel=CHANNEL_WEBSOCKET,
         )
         if not opamp_auth_decision.allowed:
-            error_type = (
-                opamp_pb2.ServerErrorResponseType.ServerErrorResponseType_Unavailable
-                if opamp_auth_decision.status_code >= HTTPStatus.INTERNAL_SERVER_ERROR
-                else opamp_pb2.ServerErrorResponseType.ServerErrorResponseType_BadRequest
+            await _send_websocket_error_and_close(
+                _build_websocket_auth_error_message(opamp_auth_decision)
             )
-            response_msg = _build_error_message(
-                instance_uid=None,
-                error_type=error_type,
-                error_message=opamp_auth_decision.error or ERR_AGENT_AUTH_FAILED,
-            )
-            await websocket.send(encode_message(response_msg.SerializeToString()))
-            await websocket.close(code=1008)
             return
 
         while True:
             pending_command = None
             client = None
             close_after_send = False
+            agent_msg = opamp_pb2.AgentToServer()
             data = await websocket.receive()
             if isinstance(data, str):
                 data = data.encode(UTF8_ENCODING)
@@ -1256,116 +1461,24 @@ async def opamp_websocket() -> None:
                         error_message=ERR_UNSUPPORTED_HEADER,
                     )
                 else:
-                    agent_msg = opamp_pb2.AgentToServer()
                     if payload:
                         agent_msg.ParseFromString(payload)
                     logger.info(LOG_WS_MSG, text_format.MessageToString(agent_msg))
-                    client_id = _extract_client_id(agent_msg)
-
-                    if client_id and STORE.is_blocked_agent(client_id):
-                        _log_blocked_agent_attempt(
-                            client_id=client_id,
-                            channel=CHANNEL_WEBSOCKET,
-                            headers=ws_headers,
-                            remote_addr=remote_addr,
-                        )
-                        response_msg = _build_error_message(
-                            instance_uid=(
-                                agent_msg.instance_uid if agent_msg.instance_uid else None
-                            ),
-                            error_type=opamp_pb2.ServerErrorResponseType.ServerErrorResponseType_BadRequest,
-                            error_message=ERR_AGENT_BLOCKED,
-                        )
-                        close_after_send = True
-                    else:
-                        known_client = STORE.get(client_id) if client_id else None
-                        if provider_config.CONFIG.human_in_loop_approval:
-                            if not client_id:
-                                response_msg = _build_error_message(
-                                    instance_uid=None,
-                                    error_type=opamp_pb2.ServerErrorResponseType.ServerErrorResponseType_BadRequest,
-                                    error_message=(
-                                        "instance_uid is required when "
-                                        "human_in_loop_approval is enabled"
-                                    ),
-                                )
-                                close_after_send = True
-                            elif known_client is None:
-                                if STORE.get_pending_approval(client_id) is None:
-                                    try:
-                                        STORE.add_pending_approval_from_agent_msg(
-                                            agent_msg,
-                                            channel=CHANNEL_WEBSOCKET,
-                                            remote_addr=remote_addr,
-                                        )
-                                        logger.info(
-                                            "agent moved to pending approval client_id=%s remote_addr=%s",
-                                            client_id,
-                                            remote_addr or "unknown",
-                                        )
-                                    except Exception as approval_error:
-                                        STORE.block_agent(
-                                            client_id,
-                                            reason=(
-                                                "failed pending approval payload "
-                                                f"transformation: {approval_error}"
-                                            ),
-                                            headers=ws_headers,
-                                            ip=remote_addr,
-                                        )
-                                        logger.exception(
-                                            (
-                                                "failed to transform pending approval payload; "
-                                                "client blocked client_id=%s"
-                                            ),
-                                            client_id,
-                                            exc_info=approval_error,
-                                        )
-                                        response_msg = _build_error_message(
-                                            instance_uid=(
-                                                agent_msg.instance_uid
-                                                if agent_msg.instance_uid
-                                                else None
-                                            ),
-                                            error_type=opamp_pb2.ServerErrorResponseType.ServerErrorResponseType_BadRequest,
-                                            error_message=ERR_AGENT_BLOCKED,
-                                        )
-                                        close_after_send = True
-                                if not close_after_send:
-                                    response_msg = _build_error_message(
-                                        instance_uid=(
-                                            agent_msg.instance_uid
-                                            if agent_msg.instance_uid
-                                            else None
-                                        ),
-                                        error_type=opamp_pb2.ServerErrorResponseType.ServerErrorResponseType_BadRequest,
-                                        error_message=ERR_AGENT_PENDING_APPROVAL,
-                                    )
-                                    close_after_send = True
-
-                        if not close_after_send:
-                            client = STORE.upsert_from_agent_msg(
-                                agent_msg,
-                                channel=CHANNEL_WEBSOCKET,
-                                remote_addr=remote_addr,
-                            )
-                            if not _is_heartbeat_only_message(agent_msg):
-                                _note_non_heartbeat_state_change_and_maybe_autosave()
-                            _WEBSOCKET_CLIENTS[websocket] = client.client_id
-                            pending_command = STORE.next_pending_command(client.client_id)
-                            response_msg = _build_response(
-                                agent_msg,
-                                pending_command,
-                                client=client,
-                                channel=CHANNEL_WEBSOCKET,
-                            )
+                    (
+                        response_msg,
+                        pending_command,
+                        client,
+                        close_after_send,
+                    ) = _process_websocket_agent_message(
+                        agent_msg=agent_msg,
+                        ws_headers=ws_headers,
+                        remote_addr=remote_addr,
+                    )
             except ValueError as exc:
                 logger.warning("OpAMP websocket value error: %s", exc)
                 response_msg = _build_error_message(
                     instance_uid=(
-                        agent_msg.instance_uid
-                        if "agent_msg" in locals() and agent_msg.instance_uid
-                        else None
+                        agent_msg.instance_uid if agent_msg.instance_uid else None
                     ),
                     error_type=opamp_pb2.ServerErrorResponseType.ServerErrorResponseType_BadRequest,
                     error_message=str(exc),
@@ -1374,9 +1487,7 @@ async def opamp_websocket() -> None:
                 logger.exception("Unhandled websocket error", exc_info=exc)
                 response_msg = _build_error_message(
                     instance_uid=(
-                        agent_msg.instance_uid
-                        if "agent_msg" in locals() and agent_msg.instance_uid
-                        else None
+                        agent_msg.instance_uid if agent_msg.instance_uid else None
                     ),
                     error_type=opamp_pb2.ServerErrorResponseType.ServerErrorResponseType_Unavailable,
                     error_message="internal server error",

@@ -1006,6 +1006,95 @@ class ClientStore:
         record.events = events
         return record, missing_fields, unknown_fields
 
+    def _reset_restored_state_locked(self) -> None:
+        """Reset mutable state collections before restoring persisted values."""
+        self._clients = {}
+        self._pending_approvals = {}
+        self._blocked_agents = {}
+        self._pending_instance_uid_replacements = {}
+
+    def _restore_clients_locked(
+        self,
+        clients_raw: object,
+    ) -> tuple[int, int, int]:
+        """Restore active clients and return counters for restored/unknown/refresh."""
+        restored_clients = 0
+        unknown_fields_seen = 0
+        refresh_queued = 0
+        if not isinstance(clients_raw, list):
+            return restored_clients, unknown_fields_seen, refresh_queued
+        for entry in clients_raw:
+            record, missing_fields, unknown_fields = self._deserialize_client_record(entry)
+            if record is None:
+                continue
+            if any(not getattr(record, required, None) for required in REQUIRED_RESTORE_FIELDS):
+                continue
+            self._clients[record.client_id] = record
+            restored_clients += 1
+            unknown_fields_seen += len(unknown_fields)
+            if missing_fields and self._is_valid_instance_uid(record.client_id):
+                if self._queue_force_resync_if_missing_locked(record):
+                    refresh_queued += 1
+        return restored_clients, unknown_fields_seen, refresh_queued
+
+    def _restore_pending_approvals_locked(self, pending_raw: object) -> tuple[int, int]:
+        """Restore pending approvals and return restored + unknown field counters."""
+        restored_pending = 0
+        unknown_fields_seen = 0
+        if not isinstance(pending_raw, list):
+            return restored_pending, unknown_fields_seen
+        for entry in pending_raw:
+            record, _missing_fields, unknown_fields = self._deserialize_client_record(entry)
+            if record is None or not record.client_id:
+                continue
+            self._pending_approvals[record.client_id] = record
+            restored_pending += 1
+            unknown_fields_seen += len(unknown_fields)
+        return restored_pending, unknown_fields_seen
+
+    def _restore_blocked_agents_locked(self, blocked_raw: object) -> None:
+        """Restore blocked-agent metadata from persisted state entries."""
+        if not isinstance(blocked_raw, list):
+            return
+        for entry in blocked_raw:
+            if not isinstance(entry, dict):
+                continue
+            instance_uid = str(entry.get("instance_uid") or "").strip()
+            if not instance_uid:
+                continue
+            blocked_at = str(entry.get("blocked_at") or "").strip()
+            ip = entry.get("ip")
+            self._blocked_agents[instance_uid] = {
+                "blocked_at": blocked_at or _utc_now().isoformat(),
+                "reason": "restored from persisted state",
+                "headers": {},
+                "ip": str(ip).strip() if ip is not None else None,
+            }
+
+    def _restore_pending_replacements_locked(self, replacements_raw: object) -> None:
+        """Restore pending instance UID replacement mappings."""
+        if not isinstance(replacements_raw, dict):
+            return
+        for target, source in replacements_raw.items():
+            target_uid = str(target or "").strip()
+            source_uid = str(source or "").strip()
+            if not target_uid or not source_uid:
+                continue
+            self._pending_instance_uid_replacements[target_uid] = source_uid
+
+    def _restore_summary(self, restored_clients: int, restored_pending: int, refresh_queued: int, unknown_fields_seen: int) -> dict[str, int]:
+        """Build a normalized restore summary payload."""
+        return {
+            "clients": restored_clients,
+            "pending_approvals": restored_pending,
+            "blocked_agents": len(self._blocked_agents),
+            "pending_instance_uid_replacements": len(
+                self._pending_instance_uid_replacements
+            ),
+            "full_refresh_queued": refresh_queued,
+            "unknown_attributes_ignored": unknown_fields_seen,
+        }
+
     def import_persisted_state(self, provider_state: object) -> dict[str, int]:
         """Load persisted provider state into memory with schema-drift tolerance."""
         logger = logging.getLogger(__name__)
@@ -1018,69 +1107,23 @@ class ClientStore:
         default_hf_raw = provider_state.get("default_heartbeat_frequency")
 
         with self._lock:
-            self._clients = {}
-            self._pending_approvals = {}
-            self._blocked_agents = {}
-            self._pending_instance_uid_replacements = {}
+            self._reset_restored_state_locked()
 
             if isinstance(default_hf_raw, int) and default_hf_raw > 0:
                 self._default_heartbeat_frequency = int(default_hf_raw)
 
-            unknown_fields_seen = 0
-            restored_clients = 0
-            restored_pending = 0
-            refresh_queued = 0
+            (
+                restored_clients,
+                clients_unknown_fields,
+                refresh_queued,
+            ) = self._restore_clients_locked(clients_raw)
+            restored_pending, pending_unknown_fields = self._restore_pending_approvals_locked(
+                pending_raw
+            )
+            self._restore_blocked_agents_locked(blocked_raw)
+            self._restore_pending_replacements_locked(replacements_raw)
 
-            if isinstance(clients_raw, list):
-                for entry in clients_raw:
-                    record, missing_fields, unknown_fields = self._deserialize_client_record(entry)
-                    if record is None:
-                        continue
-                    for required in REQUIRED_RESTORE_FIELDS:
-                        if not getattr(record, required, None):
-                            record = None
-                            break
-                    if record is None:
-                        continue
-                    self._clients[record.client_id] = record
-                    restored_clients += 1
-                    unknown_fields_seen += len(unknown_fields)
-                    if missing_fields and self._is_valid_instance_uid(record.client_id):
-                        if self._queue_force_resync_if_missing_locked(record):
-                            refresh_queued += 1
-
-            if isinstance(pending_raw, list):
-                for entry in pending_raw:
-                    record, _missing_fields, unknown_fields = self._deserialize_client_record(entry)
-                    if record is None or not record.client_id:
-                        continue
-                    self._pending_approvals[record.client_id] = record
-                    restored_pending += 1
-                    unknown_fields_seen += len(unknown_fields)
-
-            if isinstance(blocked_raw, list):
-                for entry in blocked_raw:
-                    if not isinstance(entry, dict):
-                        continue
-                    instance_uid = str(entry.get("instance_uid") or "").strip()
-                    if not instance_uid:
-                        continue
-                    blocked_at = str(entry.get("blocked_at") or "").strip()
-                    ip = entry.get("ip")
-                    self._blocked_agents[instance_uid] = {
-                        "blocked_at": blocked_at or _utc_now().isoformat(),
-                        "reason": "restored from persisted state",
-                        "headers": {},
-                        "ip": str(ip).strip() if ip is not None else None,
-                    }
-
-            if isinstance(replacements_raw, dict):
-                for target, source in replacements_raw.items():
-                    target_uid = str(target or "").strip()
-                    source_uid = str(source or "").strip()
-                    if not target_uid or not source_uid:
-                        continue
-                    self._pending_instance_uid_replacements[target_uid] = source_uid
+            unknown_fields_seen = clients_unknown_fields + pending_unknown_fields
 
             if unknown_fields_seen:
                 logger.info(
@@ -1092,17 +1135,12 @@ class ClientStore:
                     "state restore queued full refresh for restored clients count=%s",
                     refresh_queued,
                 )
-
-            return {
-                "clients": restored_clients,
-                "pending_approvals": restored_pending,
-                "blocked_agents": len(self._blocked_agents),
-                "pending_instance_uid_replacements": len(
-                    self._pending_instance_uid_replacements
-                ),
-                "full_refresh_queued": refresh_queued,
-                "unknown_attributes_ignored": unknown_fields_seen,
-            }
+            return self._restore_summary(
+                restored_clients=restored_clients,
+                restored_pending=restored_pending,
+                refresh_queued=refresh_queued,
+                unknown_fields_seen=unknown_fields_seen,
+            )
 
 
 STORE = ClientStore()  # Module-level in-memory client store singleton.

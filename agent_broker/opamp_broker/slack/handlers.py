@@ -388,27 +388,17 @@ def _parse_api_command(text: str) -> dict[str, Any] | None:
     if not normalized or not normalized.startswith(SLASH_PREFIX):
         return None
 
-    try:
-        tokens = shlex.split(normalized)
-    except ValueError as exc:
-        return {
-            "api_mode": True,
-            "error": f"Invalid command quoting: {exc}.",
-        }
+    tokens, parse_error = _parse_api_command_tokens(normalized)
+    if parse_error:
+        return {"api_mode": True, "error": parse_error}
     if not tokens:
         return {
             "api_mode": True,
             "error": API_USAGE_TEXT,
         }
 
-    first = tokens[0].strip().lower()
-    index = 1
-    if first == API_ROOT_OPAMP:
-        if len(tokens) > 1 and tokens[1].strip().lower() == API_LEGACY_NAMESPACE:
-            index = 2
-    elif first == API_ROOT_SHORT:
-        index = 1
-    else:
+    index = _resolve_api_command_index(tokens)
+    if index is None:
         return {
             "api_mode": True,
             "error": "Unsupported slash syntax. Use `/opamp <help|tools|opstate|call> ...`.",
@@ -422,6 +412,31 @@ def _parse_api_command(text: str) -> dict[str, Any] | None:
 
     verb = tokens[index].strip().lower()
     tail = tokens[index + 1 :]
+    return _parse_api_command_verb(verb=verb, tail=tail)
+
+
+def _parse_api_command_tokens(normalized: str) -> tuple[list[str], str | None]:
+    """Split API command text into shell-like tokens with user-friendly errors."""
+    try:
+        return shlex.split(normalized), None
+    except ValueError as exc:
+        return [], f"Invalid command quoting: {exc}."
+
+
+def _resolve_api_command_index(tokens: list[str]) -> int | None:
+    """Resolve verb index for supported command roots, including legacy namespace."""
+    first = tokens[0].strip().lower()
+    if first == API_ROOT_SHORT:
+        return 1
+    if first != API_ROOT_OPAMP:
+        return None
+    if len(tokens) > 1 and tokens[1].strip().lower() == API_LEGACY_NAMESPACE:
+        return 2
+    return 1
+
+
+def _parse_api_command_verb(*, verb: str, tail: list[str]) -> dict[str, Any]:
+    """Parse a specific slash-command verb payload."""
     if verb == API_VERB_HELP:
         topic = tail[0] if tail else ""
         return {
@@ -429,48 +444,55 @@ def _parse_api_command(text: str) -> dict[str, Any] | None:
             "immediate_response": _build_api_help_text(topic),
         }
     if verb == API_VERB_TOOLS:
-        # Normalize bare `/opamp tools` to the same internal shape as a
-        # trailing-space form (`/opamp tools `) so both inputs behave identically.
-        tools_filter = " ".join(tail).strip() if tail else " "
-        return {
-            "api_mode": True,
-            "verb": API_VERB_TOOLS,
-            "planner_text": "tools",
-            "tools_filter": tools_filter,
-        }
+        return _build_tools_api_request(tail)
     if verb == API_VERB_OPSTATE:
-        return {
-            "api_mode": True,
-            "verb": API_VERB_OPSTATE,
-        }
+        return {"api_mode": True, "verb": API_VERB_OPSTATE}
     if verb == API_VERB_CALL:
-        if not tail:
-            return {
-                "api_mode": True,
-                "error": "Missing tool name.\n" + API_USAGE_TEXT,
-            }
-        tool_name = str(tail[0]).strip()
-        if not tool_name:
-            return {
-                "api_mode": True,
-                "error": "Missing tool name.\n" + API_USAGE_TEXT,
-            }
-        tool_args, parse_error = _parse_api_call_args(tail[1:])
-        if parse_error:
-            return {
-                "api_mode": True,
-                "error": f"{parse_error}\n{API_USAGE_TEXT}",
-            }
-        return {
-            "api_mode": True,
-            "verb": API_VERB_CALL,
-            "planner_text": tool_name,
-            "direct_tool_name": tool_name,
-            "direct_tool_args": tool_args or {},
-        }
+        return _build_call_api_request(tail)
     return {
         "api_mode": True,
         "error": f"Unsupported verb `{verb}`.\n{API_USAGE_TEXT}",
+    }
+
+
+def _build_tools_api_request(tail: list[str]) -> dict[str, Any]:
+    """Build parsed payload for `/opamp tools` command mode requests."""
+    # Normalize bare `/opamp tools` to the same internal shape as a
+    # trailing-space form (`/opamp tools `) so both inputs behave identically.
+    tools_filter = " ".join(tail).strip() if tail else " "
+    return {
+        "api_mode": True,
+        "verb": API_VERB_TOOLS,
+        "planner_text": "tools",
+        "tools_filter": tools_filter,
+    }
+
+
+def _build_call_api_request(tail: list[str]) -> dict[str, Any]:
+    """Build parsed payload for `/opamp call <tool>` requests."""
+    if not tail:
+        return {
+            "api_mode": True,
+            "error": "Missing tool name.\n" + API_USAGE_TEXT,
+        }
+    tool_name = str(tail[0]).strip()
+    if not tool_name:
+        return {
+            "api_mode": True,
+            "error": "Missing tool name.\n" + API_USAGE_TEXT,
+        }
+    tool_args, parse_error = _parse_api_call_args(tail[1:])
+    if parse_error:
+        return {
+            "api_mode": True,
+            "error": f"{parse_error}\n{API_USAGE_TEXT}",
+        }
+    return {
+        "api_mode": True,
+        "verb": API_VERB_CALL,
+        "planner_text": tool_name,
+        "direct_tool_name": tool_name,
+        "direct_tool_args": tool_args or {},
     }
 
 
