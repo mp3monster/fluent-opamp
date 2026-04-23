@@ -206,6 +206,13 @@ They then start the broker directly:
 
 - `python -m opamp_broker.broker_app`
 
+Startup scripts pass through additional broker CLI arguments. Examples:
+
+- Linux/macOS help: `./scripts/start_broker.sh -h`
+- Windows PowerShell help: `.\scripts\start_broker.ps1 -h`
+- Linux/macOS version: `./scripts/start_broker.sh --version`
+- Windows PowerShell version: `.\scripts\start_broker.ps1 --version`
+
 ### Service mode and stop scripts
 
 If you run startup in service mode, use these stop scripts for graceful shutdown:
@@ -246,19 +253,23 @@ Command format:
 
 #### Option reference
 
-1. `--config-path <path>`
+1. `-h`, `--help`
+   Prints broker CLI options and version metadata (version, git label, commit, commit date), then exits.
+2. `--config-path <path>`
    Use an explicit runtime config file instead of `BROKER_CONFIG_PATH` or bundled defaults.
    Example: `--config-path ./opamp_broker/config/broker.ui_responses.json`
-2. `--social-collaboration <name>`
+3. `--social-collaboration <name>`
    Selects the social collaboration adapter implementation.
    Default: `slack`
    Current supported value: `slack`
    Resolution precedence: CLI value, then `social_collaboration.implementation` from config, then default `slack`.
-3. `--verify-startup <mode>`
+4. `--verify-startup <mode>`
    Runs startup connectivity checks and exits without entering the long-running broker event loop.
    Allowed values: `none`, `social`, `ai_svc`, `all`
    Default: `none`
    Exit code behavior in verification mode: `0` when all requested checks pass, `1` when any requested check fails.
+5. `--version`
+   Prints broker version string and exits.
 
 #### Verification modes
 

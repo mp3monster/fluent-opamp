@@ -37,7 +37,10 @@ from typing import Any
 from dotenv import load_dotenv
 
 from opamp_broker.config.loader import load_runtime_config
-from opamp_broker.component_version import component_version_text
+from opamp_broker.component_version import (
+    component_version_text,
+    load_component_version_info,
+)
 from opamp_broker.graph.graph import build_graph
 from opamp_broker.mcp.client import MCPClient
 from opamp_broker.mcp.tools import MCPToolRegistry
@@ -177,9 +180,28 @@ logger = logging.getLogger(__name__)
 
 def _build_cli_parser() -> argparse.ArgumentParser:
     """Build broker CLI parser for runtime config and adapter selection."""
-    version_text = component_version_text()
+    version_info = load_component_version_info()
+    version_text = str(version_info.get("version", component_version_text()))
+    version_epilog = "\n".join(
+        [
+            "Version details:",
+            f"  version: {version_text}",
+            f"  git_label: {version_info.get('git_label', 'unknown')}",
+            f"  git_commit: {version_info.get('git_commit', 'unknown')}",
+            f"  git_commit_date: {version_info.get('git_commit_date_friendly', 'unknown')}",
+        ]
+    )
     parser = argparse.ArgumentParser(
-        description=f"OpAMP conversation broker runtime. Version: {version_text}"
+        add_help=False,
+        formatter_class=argparse.RawTextHelpFormatter,
+        description="OpAMP conversation broker runtime.",
+        epilog=version_epilog,
+    )
+    parser.add_argument(
+        "-h",
+        "--help",
+        action="help",
+        help="show this help message (including version details) and exit",
     )
     parser.add_argument(
         "--config-path",

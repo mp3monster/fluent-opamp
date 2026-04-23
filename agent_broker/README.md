@@ -96,9 +96,13 @@ existing `fluent-opamp` MCP-enabled service.
      - Windows PowerShell foreground: `.\scripts\start_broker.ps1`
      - Linux/macOS background service mode: `./scripts/start_broker.sh --service`
      - Windows PowerShell background service mode: `.\scripts\start_broker.ps1 -Service`
+     - Show broker CLI help (forwarded through startup scripts):
+       - Linux/macOS: `./scripts/start_broker.sh -h`
+       - Windows PowerShell: `.\scripts\start_broker.ps1 -h`
    - Stop service mode:
      - Linux/macOS: `./scripts/stop_broker_service.sh`
      - Windows PowerShell: `.\scripts\stop_broker_service.ps1`
+   - Show broker CLI options + version details: `python -m opamp_broker.broker_app -h`
    - Optional explicit adapter selection: `python -m opamp_broker.broker_app --social-collaboration slack`
    - Show broker version metadata: `python -m opamp_broker.broker_app --version`
    - Optional startup verification only: `python -m opamp_broker.broker_app --verify-startup social`

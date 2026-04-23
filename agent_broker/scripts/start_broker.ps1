@@ -1,5 +1,7 @@
 param(
-    [switch]$Service
+    [switch]$Service,
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$BrokerArgs
 )
 
 $ErrorActionPreference = "Stop"
@@ -41,7 +43,7 @@ try {
 & $PythonCmd -m pip install -r (Join-Path $RootDir "requirements.txt")
 
 if (-not $Service) {
-    & $PythonCmd -m opamp_broker.broker_app
+    & $PythonCmd -m opamp_broker.broker_app @BrokerArgs
     exit $LASTEXITCODE
 }
 
@@ -68,9 +70,14 @@ if (Test-Path $PidFile) {
     Remove-Item $PidFile -ErrorAction SilentlyContinue
 }
 
+$processArgs = @("-m", "opamp_broker.broker_app")
+if ($BrokerArgs) {
+    $processArgs += $BrokerArgs
+}
+
 $process = Start-Process `
     -FilePath $PythonCmd `
-    -ArgumentList @("-m", "opamp_broker.broker_app") `
+    -ArgumentList $processArgs `
     -WorkingDirectory $RootDir `
     -RedirectStandardOutput $LogFile `
     -RedirectStandardError $ErrLogFile `

@@ -7,17 +7,27 @@ VENV_DIR="${ROOT_DIR}/.venv"
 LINUX_VENV_DIR="${ROOT_DIR}/.venv-linux"
 SERVICE_MODE=0
 PYTHON_CMD=""
+BROKER_ARGS=()
 
-if [[ "${1:-}" == "--service" ]]; then
-  SERVICE_MODE=1
-  shift
-fi
-
-if [[ $# -gt 0 ]]; then
-  echo "Unknown argument(s): $*"
-  echo "Usage: ${0##*/} [--service]"
-  exit 1
-fi
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --service)
+      SERVICE_MODE=1
+      shift
+      ;;
+    --)
+      shift
+      while [[ $# -gt 0 ]]; do
+        BROKER_ARGS+=("$1")
+        shift
+      done
+      ;;
+    *)
+      BROKER_ARGS+=("$1")
+      shift
+      ;;
+  esac
+done
 
 export PYTHONUNBUFFERED="${PYTHONUNBUFFERED:-1}"
 export BROKER_CONFIG_PATH="${BROKER_CONFIG_PATH:-${ROOT_DIR}/opamp_broker/config/broker.ui_responses.json}"
@@ -45,7 +55,7 @@ fi
 "${PYTHON_CMD}" -m pip install -r "${ROOT_DIR}/requirements.txt"
 
 if [[ "${SERVICE_MODE}" -eq 0 ]]; then
-  exec "${PYTHON_CMD}" -m opamp_broker.broker_app
+  exec "${PYTHON_CMD}" -m opamp_broker.broker_app "${BROKER_ARGS[@]}"
 fi
 
 RUNTIME_DIR="${BROKER_RUNTIME_DIR:-${ROOT_DIR}/.broker}"
@@ -64,7 +74,7 @@ if [[ -f "${PID_FILE}" ]]; then
   rm -f "${PID_FILE}"
 fi
 
-nohup "${PYTHON_CMD}" -m opamp_broker.broker_app >>"${LOG_FILE}" 2>&1 &
+nohup "${PYTHON_CMD}" -m opamp_broker.broker_app "${BROKER_ARGS[@]}" >>"${LOG_FILE}" 2>&1 &
 broker_pid=$!
 echo "${broker_pid}" >"${PID_FILE}"
 
