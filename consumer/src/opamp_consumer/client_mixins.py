@@ -22,7 +22,6 @@ import subprocess
 import sys
 import threading
 import time
-import traceback
 from codecs import decode as byte_value
 from typing import TYPE_CHECKING
 
@@ -667,12 +666,13 @@ class ClientRuntimeMixin:
             0, int(self.config.heartbeat_frequency) - self._heartbeat_skew_seconds
         )
         logger.debug("Heartbeat cycle start - checking every %s", interval)
-        try:
-            while self.data.allow_heartbeat:
+        while self.data.allow_heartbeat:
+            try:
                 await asyncio.sleep(interval)
                 if self.check_semaphore():
                     await self._send_disconnect_with_timeout()
                     self.data.allow_heartbeat = False
+                    continue
                 try:
                     with self.data.process_lock:
                         results, codes = self.poll_local_status_with_codes(port)
@@ -696,15 +696,23 @@ class ClientRuntimeMixin:
                     logger.error(
                         "Something stumbled - we catch and carry on\n %s", error
                     )
-                    self.data.last_heartbeat_results = None
-                    self.data.last_heartbeat_http_codes = None
+                    self.data.last_heartbeat_results = {}
+                    self.data.last_heartbeat_http_codes = {}
 
                 self._handle_server_to_agent(await self.send())
-        except BaseException as base_error:  # pylint: disable=broad-exception-caught
-            await self._send_disconnect_with_timeout()
-            logger.error(
-                "heartbeat outer error trap triggered by:\n%s\n %s",
-                base_error,
-                traceback.format_exc(),
-            )
-            print("...ouch, bye")
+            except asyncio.CancelledError:
+                await self._send_disconnect_with_timeout()
+                logger.info("Heartbeat loop cancelled; disconnect signal sent")
+                raise
+            except (KeyboardInterrupt, SystemExit):
+                await self._send_disconnect_with_timeout()
+                logger.error("Heartbeat loop interrupted by shutdown signal")
+                raise
+            except Exception as loop_error:  # pylint: disable=broad-exception-caught
+                await self._send_disconnect_with_timeout()
+                logger.exception(
+                    "Heartbeat loop recovered from unexpected cycle error: %s",
+                    loop_error,
+                )
+                self.data.last_heartbeat_results = {}
+                self.data.last_heartbeat_http_codes = {}
