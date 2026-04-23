@@ -6,8 +6,11 @@ Component version metadata is derived from the current git `HEAD` commit, commit
 - `git_commit_date`: commit timestamp (`git show -s --format=%cI HEAD`)
 - `git_commit_date_friendly`: human-friendly datetime text (for example `23 Apr 2026 00:59:06 UTC+01:00`)
 - `git_label`: latest reachable label/tag from `git describe --tags --abbrev=0` (empty when no label is available)
+- `effective_label`: label used in rendered `version` text:
+  - semver labels (for example `1.2.3` or `v1.2.3`) are patch-incremented to `1.2.4` / `v1.2.4`
+  - non-semver labels are used unchanged
 - `version`: formatted as:
-  - `<git_label> <git_commit> (<git_commit_date_friendly>)` when a label exists
+  - `<effective_label> <git_commit> (<git_commit_date_friendly>)` when a label exists
   - `<git_commit> (<git_commit_date_friendly>)` when no label exists
 
 Generated files:
