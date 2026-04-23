@@ -28,7 +28,7 @@ ROOT_PATH = pathlib.Path(__file__).resolve().parents[3]  # Repository root used 
 if str(ROOT_PATH) not in sys.path:
     sys.path.insert(0, str(ROOT_PATH))
 
-from shared.opamp_config import UTF8_ENCODING
+from shared.opamp_config import UTF8_ENCODING  # noqa: E402 - requires repo-root path adjustment above
 
 ENV_OPAMP_CONFIG_PATH = "OPAMP_CONFIG_PATH"  # Environment variable overriding provider config file location.
 CFG_PROVIDER = "provider"  # Top-level JSON section name for provider settings.

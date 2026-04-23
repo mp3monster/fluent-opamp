@@ -10,11 +10,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import importlib
 import json
 import os
 import pathlib
+import sys
 
 from opamp_provider import config as provider_config
+
+
+def test_provider_config_root_path_insertion_is_idempotent(monkeypatch) -> None:
+    """Reloads should not duplicate ROOT_PATH entries in sys.path."""
+    root_path = str(provider_config.ROOT_PATH)
+    sanitized_path = [entry for entry in sys.path if entry != root_path]
+    monkeypatch.setattr(sys, "path", list(sanitized_path))
+
+    importlib.reload(provider_config)
+    assert sys.path.count(root_path) == 1
+
+    importlib.reload(provider_config)
+    assert sys.path.count(root_path) == 1
 
 
 def test_minutes_keep_disconnected_default() -> None:

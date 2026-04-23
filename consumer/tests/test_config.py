@@ -10,7 +10,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import importlib
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -33,6 +35,19 @@ def _base_consumer_config() -> dict:
             "service_namespace": "FluentBitNS",
         }
     }
+
+
+def test_consumer_config_root_path_insertion_is_idempotent(monkeypatch) -> None:
+    """Reloads should not duplicate ROOT_PATH entries in sys.path."""
+    root_path = str(consumer_config.ROOT_PATH)
+    sanitized_path = [entry for entry in sys.path if entry != root_path]
+    monkeypatch.setattr(sys, "path", list(sanitized_path))
+
+    importlib.reload(consumer_config)
+    assert sys.path.count(root_path) == 1
+
+    importlib.reload(consumer_config)
+    assert sys.path.count(root_path) == 1
 
 
 def test_allow_custom_capabilities_defaults_false_when_missing(

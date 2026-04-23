@@ -10,6 +10,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
+
 from opamp_consumer.config import ConsumerConfig
 from opamp_consumer.custom_handlers import create_handler, discover_handlers
 from opamp_consumer.exceptions import CommandException
@@ -178,6 +180,54 @@ def test_registry_skips_broken_module(tmp_path) -> None:
         allow_custom_capabilities=True,
     )
     assert registry == {}
+
+
+def test_registry_logs_warning_for_broken_module(tmp_path, caplog) -> None:
+    """Import failures should be logged at warning level for diagnostics."""
+    caplog.set_level(logging.WARNING)
+    handler_path = tmp_path / "broken.py"
+    handler_path.write_text("raise RuntimeError('boom')\n")
+
+    registry = discover_handlers(
+        tmp_path,
+        client_data=_make_client_data(),
+        allow_custom_capabilities=True,
+    )
+
+    assert registry == {}
+    assert "Custom handler module import failed" in caplog.text
+
+
+def test_registry_logs_warning_for_handler_init_failure(tmp_path, caplog) -> None:
+    """Handler constructor failures should be logged at warning level."""
+    caplog.set_level(logging.WARNING)
+    handler_path = tmp_path / "exploding_handler.py"
+    handler_path.write_text(
+        """
+from opamp_consumer.custom_handlers.handler_interface import CustomMessageHandlerInterface
+
+class ExplodingHandler(CustomMessageHandlerInterface):
+    def __init__(self):
+        raise RuntimeError("init-boom")
+    def set_client_data(self, data):
+        return None
+    def get_fqdn(self):
+        return "exploding.handler"
+    def handle_message(self, message, message_type):
+        return None
+    def execute_action(self, action, opamp_client):
+        return None
+""".strip()
+    )
+
+    registry = discover_handlers(
+        tmp_path,
+        client_data=_make_client_data(),
+        allow_custom_capabilities=True,
+    )
+
+    assert registry == {}
+    assert "Custom handler class initialization failed class=ExplodingHandler" in caplog.text
 
 
 def test_execute_returns_commandexception_on_handler_error(tmp_path) -> None:

@@ -21,7 +21,7 @@ import platform
 import socket
 import subprocess
 import threading
-import uuid
+import uuid  # noqa: F401 - retained as stable monkeypatch seam in unit tests
 from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass, field
 

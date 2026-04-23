@@ -24,9 +24,6 @@ from opamp_provider.command_implementations.command_nullcommand import (
     CommandNullCommand,
 )
 from opamp_provider.command_implementations.command_restart_agent import RestartAgent
-from opamp_provider.command_implementations.command_shutdown_agent import (
-    CommandShutdownAgent,
-)
 from opamp_provider.command_interface import CommandObjectInterface
 
 _IMPLEMENTATIONS_PACKAGE = "opamp_provider.command_implementations"

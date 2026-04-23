@@ -39,14 +39,24 @@ def _load_module_from_path(path: pathlib.Path) -> types.ModuleType | None:
     Returns:
         Imported module object, or None when module loading fails.
     """
+    logger = logging.getLogger(__name__)
     module_name = f"opamp_custom_{path.stem}_{uuid.uuid4().hex}"
     spec = importlib.util.spec_from_file_location(module_name, path)
     if spec is None or spec.loader is None:
+        logger.warning(
+            "Custom handler module skipped; loader unavailable for path=%s",
+            path,
+        )
         return None
     module = importlib.util.module_from_spec(spec)
     try:
         spec.loader.exec_module(module)
-    except Exception:
+    except Exception as err:
+        logger.warning(
+            "Custom handler module import failed path=%s error=%s",
+            path,
+            err,
+        )
         return None
     return module
 
@@ -122,7 +132,12 @@ def build_factory_lookup(
             if client_data is not None:
                 instance.set_client_data(client_data)
             lookup[instance.get_reverse_fqdn()] = cls
-        except Exception:
+        except Exception as err:
+            logger.warning(
+                "Custom handler class initialization failed class=%s error=%s",
+                getattr(cls, "__name__", str(cls)),
+                err,
+            )
             continue
     if lookup:
         logger.info(

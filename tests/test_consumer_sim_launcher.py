@@ -23,7 +23,7 @@ CONSUMER_SIM_SRC = REPO_ROOT / "consumer-sim" / "src"
 if str(CONSUMER_SIM_SRC) not in sys.path:
     sys.path.insert(0, str(CONSUMER_SIM_SRC))
 
-import consumer_sim_launcher as launcher
+import consumer_sim_launcher as launcher  # noqa: E402 - import requires runtime sys.path injection above
 
 
 def test_build_instance_command_with_entrypoint_and_overrides(tmp_path: pathlib.Path) -> None:
