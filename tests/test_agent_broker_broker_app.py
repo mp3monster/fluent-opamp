@@ -568,3 +568,30 @@ def test_configure_logging_warns_when_broker_log_level_is_ignored(
 
     assert captured_config["config"]["root"]["level"] == "DEBUG"
     assert "ignored because logging config file is present" in caplog.text
+
+
+def test_build_cli_parser_help_includes_version_details(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        broker_app,
+        "load_component_version_info",
+        lambda: {
+            "version": "v1.2.3 abcdef123456 (23 Apr 2026 12:00:00 UTC+00:00)",
+            "git_label": "v1.2.3",
+            "git_commit": "abcdef123456",
+            "git_commit_date_friendly": "23 Apr 2026 12:00:00 UTC+00:00",
+        },
+    )
+    parser = broker_app._build_cli_parser()
+    help_text = parser.format_help()
+
+    assert "-h, --help" in help_text
+    assert "--config-path" in help_text
+    assert "--social-collaboration" in help_text
+    assert "--verify-startup" in help_text
+    assert "--version" in help_text
+    assert "Version details:" in help_text
+    assert "git_label: v1.2.3" in help_text
+    assert "git_commit: abcdef123456" in help_text
+    assert "git_commit_date: 23 Apr 2026 12:00:00 UTC+00:00" in help_text
