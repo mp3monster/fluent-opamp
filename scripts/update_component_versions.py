@@ -51,13 +51,70 @@ def _resolve_git_commit_date(repo_root: Path) -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
-def _build_version_payload(*, component: str, commit: str, commit_date: str) -> dict[str, str]:
+def _resolve_latest_git_label(repo_root: Path) -> str:
+    """Return latest reachable git tag label or empty string when unavailable."""
+    label = _run_git_command(repo_root, ["describe", "--tags", "--abbrev=0"])
+    return str(label or "").strip()
+
+
+def _parse_iso_datetime(value: str) -> datetime | None:
+    """Parse ISO timestamp values while handling optional `Z` suffix."""
+    candidate = str(value).strip()
+    if not candidate:
+        return None
+    normalized = candidate.replace("Z", "+00:00")
+    try:
+        return datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
+
+
+def _friendly_datetime_text(iso_value: str) -> str:
+    """Return a human-friendly datetime string from an ISO timestamp."""
+    parsed = _parse_iso_datetime(iso_value)
+    if parsed is None:
+        return str(iso_value)
+    offset = parsed.strftime("%z")
+    if offset:
+        offset = f"{offset[:3]}:{offset[3:]}"
+    else:
+        offset = "+00:00"
+    return f"{parsed.strftime('%d %b %Y %H:%M:%S')} UTC{offset}"
+
+
+def _build_version_text(
+    *,
+    label: str,
+    commit: str,
+    commit_date_friendly: str,
+) -> str:
+    """Return version text with optional leading git label."""
+    if str(label).strip():
+        return f"{label} {commit} ({commit_date_friendly})"
+    return f"{commit} ({commit_date_friendly})"
+
+
+def _build_version_payload(
+    *,
+    component: str,
+    commit: str,
+    commit_date: str,
+    label: str,
+) -> dict[str, str]:
     """Build stable version payload shape used across all components."""
+    commit_date_friendly = _friendly_datetime_text(commit_date)
+    version_text = _build_version_text(
+        label=label,
+        commit=commit,
+        commit_date_friendly=commit_date_friendly,
+    )
     return {
         "component": component,
+        "git_label": label,
         "git_commit": commit,
         "git_commit_date": commit_date,
-        "version": f"{commit} ({commit_date})",
+        "git_commit_date_friendly": commit_date_friendly,
+        "version": version_text,
         "generated_at_utc": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
     }
 
@@ -91,6 +148,7 @@ def main(argv: list[str] | None = None) -> int:
     repo_root = Path(args.repo_root).expanduser().resolve()
     commit = _resolve_git_commit(repo_root)
     commit_date = _resolve_git_commit_date(repo_root)
+    label = _resolve_latest_git_label(repo_root)
 
     for component, relative_target in COMPONENT_VERSION_TARGETS.items():
         target_path = repo_root / relative_target
@@ -98,6 +156,7 @@ def main(argv: list[str] | None = None) -> int:
             component=component,
             commit=commit,
             commit_date=commit_date,
+            label=label,
         )
         _write_json(target_path, payload)
         if not args.quiet:

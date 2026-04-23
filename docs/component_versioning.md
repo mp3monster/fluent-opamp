@@ -1,10 +1,14 @@
 # Component Versioning
 
-Component version metadata is derived from the current git `HEAD` commit and commit date.
+Component version metadata is derived from the current git `HEAD` commit, commit date, and latest reachable git label/tag.
 
 - `git_commit`: short commit reference (`git rev-parse --short=12 HEAD`)
 - `git_commit_date`: commit timestamp (`git show -s --format=%cI HEAD`)
-- `version`: formatted as `<git_commit> (<git_commit_date>)`
+- `git_commit_date_friendly`: human-friendly datetime text (for example `23 Apr 2026 00:59:06 UTC+01:00`)
+- `git_label`: latest reachable label/tag from `git describe --tags --abbrev=0` (empty when no label is available)
+- `version`: formatted as:
+  - `<git_label> <git_commit> (<git_commit_date_friendly>)` when a label exists
+  - `<git_commit> (<git_commit_date_friendly>)` when no label exists
 
 Generated files:
 
@@ -16,6 +20,16 @@ Generated files:
 The generator script is:
 
 - `scripts/update_component_versions.py`
+
+## Shared-core note
+
+Version generation logic is centralized in one place (`scripts/update_component_versions.py`) and feeds all service `version.json` files.
+
+Runtime loading remains component-local (`component_version.py` in each service) to preserve packaging boundaries:
+
+- provider and consumer package independently
+- broker package remains standalone
+- consumer-sim launcher runs from its own source root
 
 ## Where version is shown
 

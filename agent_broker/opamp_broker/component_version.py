@@ -26,8 +26,10 @@ _UNKNOWN_VALUE = "unknown"
 def _fallback_payload() -> dict[str, str]:
     return {
         "component": COMPONENT_NAME,
+        "git_label": _UNKNOWN_VALUE,
         "git_commit": _UNKNOWN_VALUE,
         "git_commit_date": _UNKNOWN_VALUE,
+        "git_commit_date_friendly": _UNKNOWN_VALUE,
         "version": _UNKNOWN_VALUE,
         "generated_at_utc": _UNKNOWN_VALUE,
     }
