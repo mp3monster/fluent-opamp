@@ -15,7 +15,7 @@ import urllib.parse
 import urllib.request
 import uuid
 import zipfile
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from email import message_from_bytes
 from pathlib import Path
 from typing import Any
@@ -106,6 +106,42 @@ def _refresh_pdf_manual(
             f"manual build did not produce expected file: {manual_output_path}"
         )
     return manual_output_path
+
+
+def _refresh_provider_ui_compact_assets(
+    *,
+    repo_root: Path,
+    python_exe: str,
+) -> None:
+    """Regenerate compacted provider web UI JavaScript assets."""
+    _run(
+        [
+            python_exe,
+            str(repo_root / "scripts" / "build_provider_ui_compact_assets.py"),
+            "--repo-root",
+            str(repo_root),
+        ],
+        cwd=repo_root,
+    )
+
+
+def _run_security_checks(
+    *,
+    repo_root: Path,
+    python_exe: str,
+) -> None:
+    """Run the consolidated security checks workflow script."""
+    _run(
+        [
+            python_exe,
+            str(repo_root / "scripts" / "security_checks.py"),
+            "--repo-root",
+            str(repo_root),
+            "--python",
+            python_exe,
+        ],
+        cwd=repo_root,
+    )
 
 
 def _clean_dir(path: Path) -> None:
@@ -282,6 +318,180 @@ def _build_cyclonedx_sbom(
     sbom_path.parent.mkdir(parents=True, exist_ok=True)
     sbom_path.write_text(f"{json.dumps(sbom, indent=2)}\n", encoding="utf-8")
     return sbom_path
+
+
+def _expected_dependency_refs(requires_dist: list[str]) -> list[str]:
+    """Return normalized CycloneDX dependency refs for non-extra requirements."""
+    dep_refs: set[str] = set()
+    for requirement in requires_dist:
+        if "extra ==" in requirement.lower():
+            continue
+        dep_name = _requirement_name(requirement)
+        if dep_name:
+            dep_refs.add(f"pkg:pypi/{_normalize_dist_name(dep_name)}")
+    return sorted(dep_refs)
+
+
+def _property_value(properties: Any, name: str) -> str | None:
+    """Return one CycloneDX property value by key from a properties list."""
+    if not isinstance(properties, list):
+        return None
+    for entry in properties:
+        if not isinstance(entry, dict):
+            continue
+        if str(entry.get("name") or "").strip() != name:
+            continue
+        value = entry.get("value")
+        return str(value).strip() if value is not None else ""
+    return None
+
+
+def _parse_iso8601_utc(value: str) -> datetime | None:
+    """Parse an ISO-8601 timestamp into UTC datetime when possible."""
+    text = str(value or "").strip()
+    if not text:
+        return None
+    if text.endswith("Z"):
+        text = f"{text[:-1]}+00:00"
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _validate_cyclonedx_sbom(
+    *,
+    artifact: Path,
+    sbom_path: Path,
+    root_component_name: str,
+    repo: str,
+) -> None:
+    """Fail the build if a generated SBOM is stale or mismatched to its wheel."""
+    if not artifact.exists():
+        raise RuntimeError(f"SBOM validation failed: wheel artifact not found: {artifact}")
+    if not sbom_path.exists():
+        raise RuntimeError(f"SBOM validation failed: SBOM file not found: {sbom_path}")
+
+    try:
+        sbom = json.loads(sbom_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(
+            f"SBOM validation failed: invalid JSON in {sbom_path}: {exc}"
+        ) from exc
+    if not isinstance(sbom, dict):
+        raise RuntimeError(f"SBOM validation failed: root JSON must be an object: {sbom_path}")
+
+    wheel_meta = _read_wheel_metadata(artifact)
+    wheel_name = str(wheel_meta["name"])
+    wheel_version = str(wheel_meta["version"])
+    wheel_ref = f"pkg:pypi/{_normalize_dist_name(wheel_name)}@{wheel_version}"
+    wheel_sha = _sha256(artifact)
+    expected_dep_refs = _expected_dependency_refs(list(wheel_meta["requires_dist"]))
+    skew_allowance = timedelta(seconds=1)
+    artifact_mtime_utc = datetime.fromtimestamp(artifact.stat().st_mtime, tz=timezone.utc)
+    sbom_mtime_utc = datetime.fromtimestamp(sbom_path.stat().st_mtime, tz=timezone.utc)
+
+    if sbom_mtime_utc + skew_allowance < artifact_mtime_utc:
+        raise RuntimeError(
+            "SBOM validation failed: SBOM file timestamp is older than wheel artifact; "
+            f"regeneration required ({sbom_path} vs {artifact})."
+        )
+
+    metadata = sbom.get("metadata")
+    if not isinstance(metadata, dict):
+        raise RuntimeError("SBOM validation failed: missing/invalid metadata block.")
+
+    timestamp_utc = _parse_iso8601_utc(str(metadata.get("timestamp") or ""))
+    if timestamp_utc is None:
+        raise RuntimeError(
+            "SBOM validation failed: metadata.timestamp missing or invalid ISO-8601."
+        )
+    if timestamp_utc + skew_allowance < artifact_mtime_utc:
+        raise RuntimeError(
+            "SBOM validation failed: metadata.timestamp predates wheel artifact "
+            f"({timestamp_utc.isoformat()} < {artifact_mtime_utc.isoformat()})."
+        )
+
+    metadata_component = metadata.get("component")
+    if not isinstance(metadata_component, dict):
+        raise RuntimeError("SBOM validation failed: metadata.component is missing.")
+    if str(metadata_component.get("name") or "").strip() != root_component_name:
+        raise RuntimeError(
+            "SBOM validation failed: unexpected metadata.component.name "
+            f"(expected {root_component_name!r})."
+        )
+    if str(metadata_component.get("version") or "").strip() != wheel_version:
+        raise RuntimeError(
+            "SBOM validation failed: metadata.component.version does not match wheel version."
+        )
+    if _property_value(metadata_component.get("properties"), "github.repository") != repo:
+        raise RuntimeError(
+            "SBOM validation failed: metadata github.repository does not match build target."
+        )
+    if _property_value(metadata_component.get("properties"), "wheel.name") != wheel_name:
+        raise RuntimeError("SBOM validation failed: metadata wheel.name does not match wheel.")
+
+    components = sbom.get("components")
+    if not isinstance(components, list):
+        raise RuntimeError("SBOM validation failed: components list is missing/invalid.")
+    wheel_component = None
+    for component in components:
+        if not isinstance(component, dict):
+            continue
+        if str(component.get("bom-ref") or "").strip() == wheel_ref:
+            wheel_component = component
+            break
+    if wheel_component is None:
+        raise RuntimeError(
+            "SBOM validation failed: wheel component entry not found in components."
+        )
+
+    hash_content: str | None = None
+    hashes = wheel_component.get("hashes")
+    if isinstance(hashes, list):
+        for item in hashes:
+            if not isinstance(item, dict):
+                continue
+            if str(item.get("alg") or "").strip().upper() == "SHA-256":
+                value = item.get("content")
+                hash_content = str(value).strip() if value is not None else ""
+                break
+    if hash_content != wheel_sha:
+        raise RuntimeError(
+            "SBOM validation failed: wheel SHA-256 hash in SBOM does not match artifact."
+        )
+
+    expected_path = str(artifact)
+    sbom_artifact_path = _property_value(wheel_component.get("properties"), "opamp.artifact.path")
+    if sbom_artifact_path != expected_path:
+        raise RuntimeError(
+            "SBOM validation failed: wheel artifact path in SBOM does not match built artifact."
+        )
+
+    dependencies = sbom.get("dependencies")
+    if not isinstance(dependencies, list):
+        raise RuntimeError("SBOM validation failed: dependencies list is missing/invalid.")
+    dependency_entry = None
+    for entry in dependencies:
+        if not isinstance(entry, dict):
+            continue
+        if str(entry.get("ref") or "").strip() == wheel_ref:
+            dependency_entry = entry
+            break
+    if dependency_entry is None:
+        raise RuntimeError("SBOM validation failed: dependencies entry for wheel is missing.")
+
+    depends_on = dependency_entry.get("dependsOn")
+    if not isinstance(depends_on, list):
+        raise RuntimeError("SBOM validation failed: dependencies.ref.dependsOn is invalid.")
+    actual_dep_refs = sorted({str(item).strip() for item in depends_on if str(item).strip()})
+    if actual_dep_refs != expected_dep_refs:
+        raise RuntimeError(
+            "SBOM validation failed: dependency refs do not match wheel metadata requirements."
+        )
 
 
 def _github_request(
@@ -519,6 +729,16 @@ def _parse_args() -> argparse.Namespace:
         help="Skip PDF manual refresh step",
     )
     parser.add_argument(
+        "--skip-ui-compaction",
+        action="store_true",
+        help="Skip provider web UI JavaScript compaction step",
+    )
+    parser.add_argument(
+        "--skip-security-checks",
+        action="store_true",
+        help="Skip consolidated security checks workflow step",
+    )
+    parser.add_argument(
         "--python",
         default=sys.executable,
         help="Python executable to use for builds (default: current interpreter)",
@@ -580,6 +800,16 @@ def main() -> int:
 
     _update_component_versions(repo_root, args.python)
     _ensure_python_build(repo_root, args.python)
+    if not args.skip_security_checks:
+        _run_security_checks(
+            repo_root=repo_root,
+            python_exe=args.python,
+        )
+    elif not args.skip_ui_compaction:
+        _refresh_provider_ui_compact_assets(
+            repo_root=repo_root,
+            python_exe=args.python,
+        )
     manual_pdf: Path | None = None
     if not args.skip_manual:
         manual_pdf = _refresh_pdf_manual(
@@ -611,6 +841,19 @@ def main() -> int:
         sbom_path=(repo_root / args.consumer_sbom_path).resolve(),
         root_component_name="fluent-opamp-consumer-deployable-artifact",
     )
+    _validate_cyclonedx_sbom(
+        artifact=provider_wheel,
+        sbom_path=provider_sbom_path,
+        root_component_name="fluent-opamp-provider-deployable-artifact",
+        repo=args.repo,
+    )
+    _validate_cyclonedx_sbom(
+        artifact=consumer_wheel,
+        sbom_path=consumer_sbom_path,
+        root_component_name="fluent-opamp-consumer-deployable-artifact",
+        repo=args.repo,
+    )
+    print("SBOM validation complete.")
 
     print("Build complete.")
     print(f"Provider wheel: {provider_wheel}")

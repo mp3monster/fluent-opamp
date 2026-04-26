@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import argparse
 import re
+import urllib.parse
+from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -23,22 +25,29 @@ from xml.sax.saxutils import escape
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
+from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import (
     BaseDocTemplate,
     Frame,
     Image,
+    NextPageTemplate,
     PageBreak,
     PageTemplate,
     Paragraph,
     Preformatted,
     Spacer,
+    Table,
+    TableStyle,
 )
 from reportlab.platypus.tableofcontents import TableOfContents
 
 DEFAULT_OUTPUT = "dist/manual/opamp_manual.pdf"
 DEFAULT_TITLE = "OpAMP System Manual"
+MANUAL_CONTENT_WIDTH = A4[0] - (32 * mm)
+MANUAL_IMAGE_MAX_HEIGHT = 120 * mm
+CODE_BLOCK_PADDING = 5
 
 APACHE_LICENSE_2_TEXT = """Apache License
 Version 2.0, January 2004
@@ -216,6 +225,7 @@ MANUAL_CHAPTERS: tuple[ChapterSpec, ...] = (
         title="Chapter 1 - Provider (Server)",
         markdown_files=(
             "provider/README.md",
+            "docs/screenshots.md",
             "docs/provider_server_diagrams.md",
             "docs/endpoints.md",
         ),
@@ -224,6 +234,7 @@ MANUAL_CHAPTERS: tuple[ChapterSpec, ...] = (
         title="Chapter 2 - Consumer (Agent)",
         markdown_files=(
             "consumer/README.md",
+            "docs/consumer_client_diagrams.md",
             "docs/consumer_custom_handlers.md",
             "docs/consumer_update_controllers.md",
             "docs/consumer_mixins.md",
@@ -241,6 +252,9 @@ MANUAL_CHAPTERS: tuple[ChapterSpec, ...] = (
             "agent_broker/README.md",
             "agent_broker/docs/README.md",
             "agent_broker/docs/broker_startup_and_shutdown.md",
+            "agent_broker/docs/broker_code_structure.md",
+            "agent_broker/docs/broker_graph_state_transitions.md",
+            "agent_broker/docs/broker_runtime_graph.md",
         ),
     ),
     ChapterSpec(
@@ -308,9 +322,32 @@ class ManualDocTemplate(BaseDocTemplate):
             self.height,
             id="normal",
         )
+        column_gap = 8 * mm
+        column_width = (self.width - column_gap) / 2
+        left_column = Frame(
+            self.leftMargin,
+            self.bottomMargin,
+            column_width,
+            self.height,
+            id="appendixB-left",
+        )
+        right_column = Frame(
+            self.leftMargin + column_width + column_gap,
+            self.bottomMargin,
+            column_width,
+            self.height,
+            id="appendixB-right",
+        )
         self._title_text = title
         self.addPageTemplates(
-            [PageTemplate(id="manual", frames=[frame], onPage=self._on_page)]
+            [
+                PageTemplate(id="manual", frames=[frame], onPage=self._on_page),
+                PageTemplate(
+                    id="appendix_b_two_col",
+                    frames=[left_column, right_column],
+                    onPage=self._on_page,
+                ),
+            ]
         )
 
     def _on_page(self, canvas: object, doc: object) -> None:
@@ -394,7 +431,14 @@ def _build_styles() -> dict[str, ParagraphStyle]:
         "Bullet",
         parent=styles["body"],
         leftIndent=12,
-        firstLineIndent=-10,
+        firstLineIndent=0,
+        bulletIndent=0,
+    )
+    styles["numbered"] = ParagraphStyle(
+        "Numbered",
+        parent=styles["body"],
+        leftIndent=16,
+        firstLineIndent=0,
         bulletIndent=0,
     )
     styles["code"] = ParagraphStyle(
@@ -403,12 +447,31 @@ def _build_styles() -> dict[str, ParagraphStyle]:
         fontName="Courier",
         fontSize=8.8,
         leading=11,
-        leftIndent=8,
-        backColor=colors.HexColor("#F5F7FB"),
-        borderColor=colors.HexColor("#D7DEEE"),
-        borderWidth=0.5,
-        borderPadding=6,
-        borderRadius=3,
+        leftIndent=CODE_BLOCK_PADDING,
+        spaceAfter=0,
+    )
+    styles["table_cell"] = ParagraphStyle(
+        "TableCell",
+        parent=styles["body"],
+        fontName="Helvetica",
+        fontSize=9.2,
+        leading=11.5,
+        spaceAfter=0,
+    )
+    styles["table_header"] = ParagraphStyle(
+        "TableHeader",
+        parent=styles["table_cell"],
+        fontName="Helvetica-Bold",
+    )
+    styles["caption"] = ParagraphStyle(
+        "Caption",
+        parent=styles["body"],
+        fontName="Helvetica-Oblique",
+        fontSize=9,
+        leading=11,
+        textColor=colors.HexColor("#4C5563"),
+        alignment=1,
+        spaceAfter=4,
     )
     return styles
 
@@ -439,17 +502,316 @@ def _flush_paragraph(
     text = _clean_inline_markdown(" ".join(part.strip() for part in buffer if part.strip()))
     if text:
         paragraphs.append(Paragraph(escape(text), body_style))
+        # Add one extra visual line break between markdown paragraph blocks.
+        paragraphs.append(Spacer(1, 2 * mm))
     buffer.clear()
 
 
-def _markdown_to_flowables(markdown_text: str, styles: dict[str, ParagraphStyle]) -> list[object]:
+def _list_paragraph(text: str, style: ParagraphStyle, marker: str) -> Paragraph:
+    """Create a list paragraph with hanging indent aligned by marker."""
+    return Paragraph(escape(text), style, bulletText=escape(marker))
+
+
+def _heading_is_numbered(text: str) -> bool:
+    """Return True when heading text already starts with numeric section prefix."""
+    cleaned = text.strip()
+    return bool(re.match(r"^\d+(?:[.)]|\.\d+)+\s+", cleaned))
+
+
+def _next_heading_number(level: int, counters: list[int]) -> str:
+    """Increment heading counters and return dotted numbering for one level."""
+    for idx in range(0, max(level - 1, 0)):
+        if counters[idx] == 0:
+            counters[idx] = 1
+    counters[level - 1] += 1
+    for idx in range(level, len(counters)):
+        counters[idx] = 0
+    parts = [str(value) for value in counters[:level] if value > 0]
+    return ".".join(parts)
+
+
+class CodeBlockPreformatted(Preformatted):
+    """Preformatted code block that paints a pale-grey background."""
+
+    def __init__(
+        self,
+        text: str,
+        style: ParagraphStyle,
+        *,
+        max_line_length: int,
+    ) -> None:
+        self._max_line_length = max_line_length
+        super().__init__(text, style, maxLineLength=max_line_length)
+
+    def draw(self) -> None:
+        self.canv.saveState()
+        self.canv.setFillColor(colors.HexColor("#F2F2F2"))
+        self.canv.setStrokeColor(colors.HexColor("#D0D0D0"))
+        self.canv.setLineWidth(0.5)
+        self.canv.rect(0, 0, self.width, self.height, stroke=1, fill=1)
+        self.canv.restoreState()
+        super().draw()
+
+    def split(self, availWidth: float, availHeight: float) -> list["CodeBlockPreformatted"]:
+        """Split large code blocks across pages while retaining block styling."""
+        if availHeight < self.style.leading:
+            return []
+
+        lines_that_fit = int(availHeight * 1.0 / self.style.leading)
+        text1 = "\n".join(self.lines[0:lines_that_fit])
+        text2 = "\n".join(self.lines[lines_that_fit:])
+        style = self.style
+        if style.firstLineIndent != 0:
+            style = deepcopy(style)
+            style.firstLineIndent = 0
+        return [
+            CodeBlockPreformatted(
+                text1,
+                self.style,
+                max_line_length=self._max_line_length,
+            ),
+            CodeBlockPreformatted(
+                text2,
+                style,
+                max_line_length=self._max_line_length,
+            ),
+        ]
+
+
+def _code_block_flowables(text: str, styles: dict[str, ParagraphStyle]) -> list[object]:
+    """Render code text with wrapping and pale-grey background."""
+    code_style = styles["code"]
+    safe_char_width = max(stringWidth("M", code_style.fontName, code_style.fontSize), 1.0)
+    usable_width = MANUAL_CONTENT_WIDTH - code_style.leftIndent - CODE_BLOCK_PADDING
+    max_chars = max(
+        20,
+        int(usable_width / safe_char_width),
+    )
+    block = CodeBlockPreformatted(
+        text,
+        code_style,
+        max_line_length=max_chars,
+    )
+    return [block, Spacer(1, 2 * mm)]
+
+
+def _split_markdown_table_row(row_text: str) -> list[str]:
+    """Split one markdown table row into cell values (supports escaped pipes)."""
+    row = row_text.strip()
+    if row.startswith("|"):
+        row = row[1:]
+    if row.endswith("|"):
+        row = row[:-1]
+
+    cells: list[str] = []
+    buffer: list[str] = []
+    escaped = False
+    for char in row:
+        if escaped:
+            buffer.append(char)
+            escaped = False
+            continue
+        if char == "\\":
+            escaped = True
+            continue
+        if char == "|":
+            cells.append("".join(buffer).strip())
+            buffer = []
+            continue
+        buffer.append(char)
+    cells.append("".join(buffer).strip())
+    return cells
+
+
+def _is_markdown_separator_row(cells: list[str], expected_columns: int) -> bool:
+    """Return True when cells represent a markdown table separator row."""
+    if len(cells) != expected_columns or expected_columns == 0:
+        return False
+    for cell in cells:
+        cleaned = cell.replace(" ", "")
+        if not re.fullmatch(r":?-{3,}:?", cleaned):
+            return False
+    return True
+
+
+def _extract_markdown_table(
+    lines: list[str],
+    start_index: int,
+) -> tuple[list[list[str]], int] | None:
+    """Extract a markdown table block from lines[start_index:] when present."""
+    if start_index + 1 >= len(lines):
+        return None
+
+    header_text = lines[start_index].strip()
+    separator_text = lines[start_index + 1].strip()
+    if "|" not in header_text or "|" not in separator_text:
+        return None
+
+    header_cells = _split_markdown_table_row(header_text)
+    separator_cells = _split_markdown_table_row(separator_text)
+    if not _is_markdown_separator_row(separator_cells, len(header_cells)):
+        return None
+
+    table_rows: list[list[str]] = [header_cells]
+    row_index = start_index + 2
+    while row_index < len(lines):
+        row_text = lines[row_index].strip()
+        if not row_text or "|" not in row_text:
+            break
+        row_cells = _split_markdown_table_row(row_text)
+        if len(row_cells) != len(header_cells):
+            break
+        table_rows.append(row_cells)
+        row_index += 1
+
+    return table_rows, row_index
+
+
+def _table_flowable(
+    table_rows: list[list[str]],
+    styles: dict[str, ParagraphStyle],
+) -> Table:
+    """Build a ReportLab Table flowable from parsed markdown table rows."""
+    row_count = len(table_rows)
+    col_count = len(table_rows[0]) if table_rows else 0
+    rendered_rows: list[list[Paragraph]] = []
+    for row_idx, row in enumerate(table_rows):
+        rendered_row: list[Paragraph] = []
+        cell_style = styles["table_header"] if row_idx == 0 else styles["table_cell"]
+        for col_idx in range(col_count):
+            value = row[col_idx] if col_idx < len(row) else ""
+            rendered_row.append(Paragraph(escape(_clean_inline_markdown(value)), cell_style))
+        rendered_rows.append(rendered_row)
+
+    col_width = MANUAL_CONTENT_WIDTH / max(col_count, 1)
+    table = Table(
+        rendered_rows,
+        colWidths=[col_width] * col_count,
+        repeatRows=1 if row_count > 1 else 0,
+        hAlign="LEFT",
+    )
+    table.setStyle(
+        TableStyle(
+            [
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#D7DEEE")),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#EEF2FA")),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, -1), 3),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ]
+        )
+    )
+    return table
+
+
+def _extract_markdown_images_from_line(line: str) -> list[tuple[str, str]] | None:
+    """Extract markdown image tuples from a line if the line only contains image tags."""
+    matches = list(re.finditer(r"!\[([^\]]*)\]\(([^)]+)\)", line))
+    if not matches:
+        return None
+    non_image_text = re.sub(r"!\[[^\]]*\]\([^)]+\)", "", line).strip()
+    if non_image_text:
+        return None
+    return [(match.group(1).strip(), match.group(2).strip()) for match in matches]
+
+
+def _parse_markdown_image_target(target: str) -> str:
+    """Parse markdown image target text and return the path/URL portion."""
+    cleaned = target.strip()
+    if cleaned.startswith("<") and cleaned.endswith(">"):
+        return cleaned[1:-1].strip()
+    title_match = re.match(r'^(.*?)(?:\s+["\'][^"\']*["\'])\s*$', cleaned)
+    if title_match:
+        cleaned = title_match.group(1).strip()
+    return cleaned
+
+
+def _resolve_markdown_image_path(
+    *,
+    target: str,
+    source_path: Path,
+    repo_root: Path,
+) -> Path | None:
+    """Resolve a markdown image target to a local file path when possible."""
+    normalized_target = urllib.parse.unquote(_parse_markdown_image_target(target))
+    lower_target = normalized_target.lower()
+    if lower_target.startswith(("http://", "https://", "data:")):
+        return None
+    if not normalized_target:
+        return None
+    if normalized_target.startswith("/"):
+        return (repo_root / normalized_target.lstrip("/")).resolve()
+    return (source_path.parent / normalized_target).resolve()
+
+
+def _image_flowables(
+    *,
+    alt_text: str,
+    target: str,
+    source_path: Path,
+    repo_root: Path,
+    styles: dict[str, ParagraphStyle],
+) -> list[object]:
+    """Render one markdown image reference into PDF flowables."""
+    resolved_path = _resolve_markdown_image_path(
+        target=target,
+        source_path=source_path,
+        repo_root=repo_root,
+    )
+    if resolved_path is None:
+        return [
+            Paragraph(
+                escape(f"[Image skipped: unsupported target `{target}`]"),
+                styles["body"],
+            )
+        ]
+    if not resolved_path.exists():
+        return [
+            Paragraph(
+                escape(f"[Image not found: {target}]"),
+                styles["body"],
+            )
+        ]
+
+    try:
+        image = Image(str(resolved_path))
+        image._restrictSize(MANUAL_CONTENT_WIDTH, MANUAL_IMAGE_MAX_HEIGHT)  # pylint: disable=protected-access
+        image.hAlign = "CENTER"
+        flowables: list[object] = [image]
+    except OSError:
+        return [
+            Paragraph(
+                escape(f"[Image could not be loaded: {target}]"),
+                styles["body"],
+            )
+        ]
+
+    caption = _clean_inline_markdown(alt_text)
+    if caption:
+        flowables.append(Paragraph(escape(caption), styles["caption"]))
+    flowables.append(Spacer(1, 2 * mm))
+    return flowables
+
+
+def _markdown_to_flowables(
+    markdown_text: str,
+    styles: dict[str, ParagraphStyle],
+    *,
+    source_path: Path,
+    repo_root: Path,
+) -> list[object]:
     flowables: list[object] = []
     lines = markdown_text.splitlines()
     paragraph_buffer: list[str] = []
     code_lines: list[str] = []
+    heading_counters = [0, 0, 0]
     in_code = False
 
-    for raw_line in lines:
+    line_index = 0
+    while line_index < len(lines):
+        raw_line = lines[line_index]
         line = raw_line.rstrip("\n")
         stripped = line.strip()
         if stripped.startswith("```"):
@@ -457,20 +819,47 @@ def _markdown_to_flowables(markdown_text: str, styles: dict[str, ParagraphStyle]
             if in_code:
                 text = "\n".join(code_lines).strip("\n")
                 if text:
-                    flowables.append(Preformatted(text, styles["code"]))
-                    flowables.append(Spacer(1, 2 * mm))
+                    flowables.extend(_code_block_flowables(text, styles))
                 code_lines.clear()
                 in_code = False
             else:
                 in_code = True
+            line_index += 1
             continue
 
         if in_code:
             code_lines.append(line)
+            line_index += 1
             continue
 
         if not stripped:
             _flush_paragraph(flowables, paragraph_buffer, styles["body"])
+            line_index += 1
+            continue
+
+        image_matches = _extract_markdown_images_from_line(stripped)
+        if image_matches is not None:
+            _flush_paragraph(flowables, paragraph_buffer, styles["body"])
+            for alt_text, target in image_matches:
+                flowables.extend(
+                    _image_flowables(
+                        alt_text=alt_text,
+                        target=target,
+                        source_path=source_path,
+                        repo_root=repo_root,
+                        styles=styles,
+                    )
+                )
+            line_index += 1
+            continue
+
+        table_match = _extract_markdown_table(lines, line_index)
+        if table_match is not None:
+            _flush_paragraph(flowables, paragraph_buffer, styles["body"])
+            table_rows, next_line_index = table_match
+            flowables.append(_table_flowable(table_rows, styles))
+            flowables.append(Spacer(1, 2 * mm))
+            line_index = next_line_index
             continue
 
         heading_match = re.match(r"^(#{1,6})\s+(.*)$", stripped)
@@ -479,9 +868,14 @@ def _markdown_to_flowables(markdown_text: str, styles: dict[str, ParagraphStyle]
             hashes, title = heading_match.groups()
             level = min(len(hashes), 3)
             style_name = "h1" if level == 1 else "h2" if level == 2 else "h3"
+            heading_text = _clean_inline_markdown(title)
+            section_number = _next_heading_number(level, heading_counters)
+            if not _heading_is_numbered(heading_text):
+                heading_text = f"{section_number} {heading_text}"
             flowables.append(
-                _toc_heading(_clean_inline_markdown(title), styles[style_name], level)
+                _toc_heading(heading_text, styles[style_name], level)
             )
+            line_index += 1
             continue
 
         bullet_match = re.match(r"^\s*[-*]\s+(.*)$", line)
@@ -489,7 +883,8 @@ def _markdown_to_flowables(markdown_text: str, styles: dict[str, ParagraphStyle]
             _flush_paragraph(flowables, paragraph_buffer, styles["body"])
             bullet_text = _clean_inline_markdown(bullet_match.group(1))
             if bullet_text:
-                flowables.append(Paragraph(f"• {escape(bullet_text)}", styles["bullet"]))
+                flowables.append(_list_paragraph(bullet_text, styles["bullet"], "•"))
+            line_index += 1
             continue
 
         numbered_match = re.match(r"^\s*(\d+)\.\s+(.*)$", line)
@@ -497,14 +892,16 @@ def _markdown_to_flowables(markdown_text: str, styles: dict[str, ParagraphStyle]
             _flush_paragraph(flowables, paragraph_buffer, styles["body"])
             number = numbered_match.group(1)
             item_text = _clean_inline_markdown(numbered_match.group(2))
-            flowables.append(Paragraph(f"{number}. {escape(item_text)}", styles["bullet"]))
+            flowables.append(_list_paragraph(item_text, styles["numbered"], f"{number}."))
+            line_index += 1
             continue
 
         paragraph_buffer.append(line)
+        line_index += 1
 
     _flush_paragraph(flowables, paragraph_buffer, styles["body"])
     if code_lines:
-        flowables.append(Preformatted("\n".join(code_lines), styles["code"]))
+        flowables.extend(_code_block_flowables("\n".join(code_lines), styles))
     return flowables
 
 
@@ -704,7 +1101,7 @@ def _build_story(
     story.append(_toc_heading("Index", styles["h1"], 1))
     for line in _build_index_lines(MANUAL_CHAPTERS):
         if line.startswith("  - "):
-            story.append(Paragraph(f"• {escape(line[4:])}", styles["bullet"]))
+            story.append(_list_paragraph(line[4:], styles["bullet"], "•"))
         else:
             story.append(Paragraph(escape(line), styles["body"]))
     story.append(PageBreak())
@@ -723,12 +1120,20 @@ def _build_story(
                 )
                 continue
             source_text = _load_text(full_path)
-            story.extend(_markdown_to_flowables(source_text, styles))
+            story.extend(
+                _markdown_to_flowables(
+                    source_text,
+                    styles,
+                    source_path=full_path,
+                    repo_root=repo_root,
+                )
+            )
             story.append(Spacer(1, 2 * mm))
         story.append(PageBreak())
 
     story.append(_toc_heading("Appendix A - Apache License 2.0", styles["h1"], 1))
-    story.append(Preformatted(APACHE_LICENSE_2_TEXT, styles["code"]))
+    story.extend(_code_block_flowables(APACHE_LICENSE_2_TEXT, styles))
+    story.append(NextPageTemplate("appendix_b_two_col"))
     story.append(PageBreak())
 
     dependency_by_file, all_dependencies = _collect_dependencies(repo_root)
@@ -750,11 +1155,11 @@ def _build_story(
             story.append(Paragraph("No entries found.", styles["body"]))
             continue
         for dep in deps:
-            story.append(Paragraph(f"• {escape(dep)}", styles["bullet"]))
+            story.append(_list_paragraph(dep, styles["bullet"], "•"))
     story.append(Spacer(1, 2 * mm))
     story.append(_toc_heading("B.2 Combined Dependency Index", styles["h2"], 2))
     for dep in all_dependencies:
-        story.append(Paragraph(f"• {escape(dep)}", styles["bullet"]))
+        story.append(_list_paragraph(dep, styles["bullet"], "•"))
     return story
 
 
@@ -787,7 +1192,8 @@ def main() -> int:
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     styles = _build_styles()
-    generated_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    now_utc = datetime.now(timezone.utc)
+    generated_at = f"{now_utc.day} {now_utc.strftime('%B %Y')}"
     story = _build_story(
         repo_root=repo_root,
         title=str(args.title),
@@ -796,7 +1202,9 @@ def main() -> int:
     )
 
     doc = ManualDocTemplate(output_path, str(args.title))
-    doc.build(story)
+    # TOC entries are discovered in afterFlowable, so ReportLab needs multipass
+    # rendering to replace the placeholder with resolved heading/page entries.
+    doc.multiBuild(story)
     print(f"Manual generated: {output_path}")
     return 0
 

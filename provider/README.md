@@ -12,6 +12,7 @@ Quart-based OpAMP server skeleton and web UI.
 - [State Persistence and Restore](#state-persistence-and-restore)
 - [CLI Overrides](#cli-overrides)
 - [Running As A Service/Daemon](#running-as-a-servicedaemon)
+- [Custom Actions](#custom-actions)
 - [Web UI](#web-ui)
 - [Optional Bearer Authentication](#optional-bearer-authentication)
 - [IdP Settings Illustration](#idp-settings-illustration)
@@ -245,12 +246,22 @@ For Linux `systemd` and Windows service examples for provider and consumer deplo
 
 - `../docs/service_daemon_setup.md`
 
+## Custom Actions
+
+For the shared provider+consumer guide on implementing and deploying custom actions:
+
+- `../docs/adding_your_own_custom_action.md`
+
 ## Web UI
 
 - Console: `http://localhost:8080/ui`
 - Help: `http://localhost:8080/help`
 - The help page includes the server component version generated from git commit/date metadata.
 - Latest docs redirect: `http://localhost:8080/doc-set`
+- JavaScript asset mode is controlled by `APP_ENABLE_DEV_FEATURES`:
+  - truthy (`1`, `true`, `yes`, `on`): prefer readable source files (`web_ui_*.js`)
+  - otherwise: prefer compacted files (`web_ui_*.mini.js`)
+- If preferred assets are unavailable, provider falls back to available assets and logs a warning that the flag preference could not be honored.
 
 The UI includes a shutdown button that prompts for confirmation and calls the shutdown API.
 

@@ -128,6 +128,10 @@ That guide includes:
 2. runtime discovery and execution flow
 3. implementation and deployment checklist for adding a new handler
 
+Shared provider+consumer custom action implementation/deployment guide:
+
+- `../docs/adding_your_own_custom_action.md`
+
 ## Update Controllers
 
 Update-controller behavior and extension guidance are documented here:

@@ -18,6 +18,10 @@ python -m pip show build >nul 2>&1 || python -m pip install build
 echo Ensuring PDF manual tooling is available...
 python -m pip show reportlab >nul 2>&1 || python -m pip install reportlab
 
+echo Running security checks...
+python "%REPO_ROOT%\scripts\security_checks.py" --repo-root "%REPO_ROOT%" --python python
+if errorlevel 1 exit /b 1
+
 echo Refreshing consolidated PDF manual...
 python "%REPO_ROOT%\scripts\build_opamp_manual.py" --repo-root "%REPO_ROOT%"
 if errorlevel 1 exit /b 1

@@ -40,9 +40,9 @@ Here's the markdown table for `ServerToAgent` message fields:
 | `remote_config`        | Stable      | Long Term             | Set when the Server has a remote configuration offer for the Agent. |                                     |
 | `connection_settings`  | Beta        | Long Term             | Set when the Server wants the Agent to change one or more client connection settings (destination, headers, certificate, etc.). |                                     |
 | `packages_available`   | Beta        | Not Planned           | Set when the Server has packages to offer to the Agent for download/installation. |                                     |
-| `**flags**`            | Stable      | Done                  | Bitmask of `ServerToAgentFlags`. Includes `ReportFullState` (asks Agent to resend full status, e.g. after Server restart) and `ReportAvailableComponents` (asks Agent to send full component details rather than just a hash). |                                     |
+| `**flags**`            | Stable      | Partial                  | Bitmask of `ServerToAgentFlags`. Includes `ReportFullState` (asks Agent to resend full status, e.g. after Server restart) and `ReportAvailableComponents` (asks Agent to send full component details rather than just a hash). |                                     |
 | `capabilities`         | Stable      | Done                  | Bitmask of `ServerCapabilities` flags. Must be set in the first `ServerToAgent` message; may be omitted (set to 0) in subsequent messages. |                                     |
-| `agent_identification` | Stable      | Long Term             | Used to override the Agent's `instance_uid`. When `new_instance_uid` is set, the Agent must adopt it for all further communication. |                                     |
+| `agent_identification` | Stable      | Done            | Used to override the Agent's `instance_uid`. When `new_instance_uid` is set, the Agent must adopt it for all further communication. |                                     |
 | `**command**`          | Beta        | Done                  | Set when the Server wants the Agent to perform a command (currently only `Restart`). When set, all fields other than `instance_uid` and `capabilities` are ignored. |                                     |
 | `custom_capabilities`  | Development | Done                 | Declares custom/extension capabilities supported by the Server. | This is support the ChatOps concept |
 | `custom_message`       | Development | Done                | An arbitrary custom message sent from the Server to the Agent, scoped to a declared custom capability. | This is support the ChatOps concept |
@@ -54,19 +54,12 @@ Connection settings policy note:
 	
 ## Immediate ToDos
 
-### Client Side
-* Additional testing of headers needed.
-
 
 ### Server Side
 * Implement the socket connection control (Duplicate WebSockets Connections) where a disconnect is sent if a client appears to connect more than once on a socket.
 
 
 ## Future Features
-
-### In Progress or Recently Completed
-* Wheel packaging for provider/server and consumer/agent - **needs testing**
-* SBOM generation (CycloneDX JSON) for deployable provider/server and consumer/client wheel artifacts (need to automate publication)
 
 ### Server & Client
 * GitHub driven test rig including validating against 3rd party server or client implementation for functional behavior tests.
@@ -75,9 +68,7 @@ Connection settings policy note:
 
 ### Client Side
 * Allow consumer attributes to come from commenting block in Fluent Bit configuration
-
 * extend so configuration can be classic Fluent Bit
-
 * share namespace when running in a K8s deployment
 
   

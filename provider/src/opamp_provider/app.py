@@ -2340,12 +2340,68 @@ _WEB_UI_PATH = _HTML_DIR / "web_ui.html"
 _WEB_UI_HTML = _WEB_UI_PATH.read_text(encoding=UTF8_ENCODING)
 _WEB_UI_CSS_PATH = _HTML_DIR / "web_ui.css"
 _WEB_UI_CSS = _WEB_UI_CSS_PATH.read_text(encoding=UTF8_ENCODING)
-_WEB_UI_STATE_JS_PATH = _HTML_DIR / "web_ui_state.js"
-_WEB_UI_STATE_JS = _WEB_UI_STATE_JS_PATH.read_text(encoding=UTF8_ENCODING)
-_WEB_UI_FUNCTIONS_JS_PATH = _HTML_DIR / "web_ui_functions.js"
-_WEB_UI_FUNCTIONS_JS = _WEB_UI_FUNCTIONS_JS_PATH.read_text(encoding=UTF8_ENCODING)
-_WEB_UI_BINDINGS_JS_PATH = _HTML_DIR / "web_ui_bindings.js"
-_WEB_UI_BINDINGS_JS = _WEB_UI_BINDINGS_JS_PATH.read_text(encoding=UTF8_ENCODING)
+
+APP_ENABLE_DEV_FEATURES_ENV = "APP_ENABLE_DEV_FEATURES"  # Environment variable controlling whether source (dev) or compacted UI JS assets are preferred.
+_ENV_TRUE_VALUES = {"1", "true", "yes", "on"}  # Truthy environment values.
+
+
+def _app_enable_dev_features_enabled() -> bool:
+    """Return whether APP_ENABLE_DEV_FEATURES resolves to an enabled value."""
+    raw_value = os.environ.get(APP_ENABLE_DEV_FEATURES_ENV, "")
+    normalized = str(raw_value or "").strip().lower()
+    return normalized in _ENV_TRUE_VALUES
+
+
+def _read_ui_js_asset(
+    *,
+    source_filename: str,
+) -> str:
+    """Read one UI JS asset with source/minified selection and fallback logging."""
+    source_path = _HTML_DIR / source_filename
+    mini_path = _HTML_DIR / source_filename.replace(".js", ".mini.js")
+    prefer_dev_assets = _app_enable_dev_features_enabled()
+    preferred_path = source_path if prefer_dev_assets else mini_path
+    fallback_path = mini_path if prefer_dev_assets else source_path
+    preferred_exists = preferred_path.exists()
+    fallback_exists = fallback_path.exists()
+
+    if preferred_exists:
+        logger.info(
+            "provider ui asset path=%s minified=%s APP_ENABLE_DEV_FEATURES=%s",
+            str(preferred_path),
+            str(preferred_path.name.endswith(".mini.js")).lower(),
+            str(prefer_dev_assets).lower(),
+        )
+        return preferred_path.read_text(encoding=UTF8_ENCODING)
+
+    if fallback_exists:
+        logger.warning(
+            (
+                "provider ui asset preference could not be honored for %s; "
+                "APP_ENABLE_DEV_FEATURES=%s preferred=%s fallback=%s"
+            ),
+            source_filename,
+            str(prefer_dev_assets).lower(),
+            str(preferred_path),
+            str(fallback_path),
+        )
+        logger.info(
+            "provider ui asset path=%s minified=%s APP_ENABLE_DEV_FEATURES=%s",
+            str(fallback_path),
+            str(fallback_path.name.endswith(".mini.js")).lower(),
+            str(prefer_dev_assets).lower(),
+        )
+        return fallback_path.read_text(encoding=UTF8_ENCODING)
+
+    raise FileNotFoundError(
+        "no UI asset found for %s; expected at least one of %s or %s"
+        % (source_filename, source_path, mini_path)
+    )
+
+
+_WEB_UI_STATE_JS = _read_ui_js_asset(source_filename="web_ui_state.js")
+_WEB_UI_FUNCTIONS_JS = _read_ui_js_asset(source_filename="web_ui_functions.js")
+_WEB_UI_BINDINGS_JS = _read_ui_js_asset(source_filename="web_ui_bindings.js")
 
 _HELP_PATH = _HTML_DIR / "help.html"
 _HELP_HTML = _HELP_PATH.read_text(encoding=UTF8_ENCODING)

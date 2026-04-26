@@ -29,6 +29,9 @@ echo "Ensuring Python build tooling is available..."
 echo "Ensuring PDF manual tooling is available..."
 "${PYTHON_BIN}" -m pip show reportlab >/dev/null 2>&1 || "${PYTHON_BIN}" -m pip install reportlab
 
+echo "Running security checks..."
+"${PYTHON_BIN}" "${REPO_ROOT}/scripts/security_checks.py" --repo-root "${REPO_ROOT}" --python "${PYTHON_BIN}"
+
 echo "Refreshing consolidated PDF manual..."
 "${PYTHON_BIN}" "${REPO_ROOT}/scripts/build_opamp_manual.py" --repo-root "${REPO_ROOT}"
 
