@@ -227,6 +227,7 @@ MANUAL_CHAPTERS: tuple[ChapterSpec, ...] = (
             "provider/README.md",
             "docs/screenshots.md",
             "docs/provider_server_diagrams.md",
+            "docs/command_process_implementation_note.md",
             "docs/endpoints.md",
         ),
     ),
@@ -261,6 +262,7 @@ MANUAL_CHAPTERS: tuple[ChapterSpec, ...] = (
         title="Chapter 5 - Security and Authentication",
         markdown_files=(
             "docs/authentication.md",
+            "docs/self_signed_tls_setup.md",
             "docs/api_gateway_requirements.md",
         ),
     ),

@@ -7,7 +7,7 @@ Welcome to the Fluent Bit & Fluentd OpAMP implementation docs. This page links t
 - [Setup README](README.md) — full setup and run instructions.
 - [Features - spec alignment](features.md) — feature notes and design direction.
 - [UI examples](screenshots.md) - Some of the elements of the UI to illustrate the user experience.
-- [Design & Implementation principles]().
+- [Design & Implementation principles](implementation_philosophy.md) — project architecture and engineering principles.
 - [Command_process_implementation_notes](command_process_implementation_note.md) — command API/queue/dispatch implementation details.
 - [How to add_your_own_custom_action](adding_your_own_custom_action.md) — how to implement and deploy a custom provider+consumer action using `nullcommand` as the baseline.
 - [Client (consumer)_diagram (in Mermaid format)](consumer_client_diagram.md) — consumer client architecture and runtime relationship diagrams.
@@ -61,9 +61,23 @@ Welcome to the Fluent Bit & Fluentd OpAMP implementation docs. This page links t
 ## Reference 3rd Party Documents
 
 - [Open Agent Management Protocol (OpAMP) Specification](https://opentelemetry.io/docs/specs/opamp/)
+- [Cloud Native Computing Foundation (CNCF)](https://www.cncf.io/)
+- [OpenTelemetry at CNCF](https://www.cncf.io/projects/opentelemetry/)
 - [Model Context Protocol (MCP)](https://modelcontextprotocol.io/specification/2025-11-25) specification - optional feature
 - [Fluentd](https://www.fluentd.org/)
 - [Fluent Bit](https://fluentbit.io/)
+- [Manning - Logging in Action](https://www.manning.com/books/logging-in-action?query=fluent) — Fluentd-focused coverage with Kubernetes and related observability workflows.
+- [Manning - Logs and Telemetry](https://www.manning.com/books/logs-and-telemetry) — Fluent Bit, Kubernetes, streaming, and OpenTelemetry-oriented coverage.
 - [Quart](https://quart.palletsprojects.com/en/latest/) (foundation of the implementation)
 - [HAProxy](https://www.haproxy.com/) (optional feature, to support advanced security permutations)
 - [OpAMP posts on blog.mp3monster.org](https://blog.mp3monster.org/category/technology/fluent-observability/opamp/) — external blog posts and updates.
+
+
+## 3rd Party Development Tools
+
+- [pytest](https://docs.pytest.org/) — unit and integration test execution.
+- [Ruff](https://docs.astral.sh/ruff/) — linting/security checks (including `--select S` rules).
+- [detect-secrets](https://github.com/Yelp/detect-secrets) — repository secret scanning during security checks.
+- [pip-audit](https://pypi.org/project/pip-audit/) — Python dependency vulnerability scanning.
+- [esbuild](https://esbuild.github.io/) — JavaScript minification for provider UI compact assets.
+- [CycloneDX](https://cyclonedx.org/) — SBOM format used for generated provider/consumer deployable artifact manifests.
