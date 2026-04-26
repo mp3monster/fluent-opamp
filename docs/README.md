@@ -118,6 +118,8 @@ python3 -m opamp_consumer.fluentbit_client --config-path config/opamp.json
 - Help page: http://localhost:8080/help
 - Latest docs redirect: http://localhost:8080/doc-set
 - Consumer diagram walkthrough (rendered PNGs): `docs/consumer_client_diagrams.md`
+- Consumer custom handler implementation/deployment guide: `docs/consumer_custom_handlers.md`
+- Consumer full update controller behavior and extension guide: `docs/consumer_update_controllers.md`
 - Provider/server diagram walkthrough (rendered PNGs): `docs/provider_server_diagrams.md`
 - Optional bearer auth setup (disabled/static/jwt): see `docs/authentication.md`
 - MCP client setup scripts (Claude/Codex/canonical), command-line parameters, FastMCP usage, required server parameters, and config verification commands: see `../mcp/README.md`

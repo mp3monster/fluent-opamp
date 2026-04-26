@@ -15,6 +15,7 @@ Welcome to the Fluent Bit & Fluentd OpAMP implementation docs. This page links t
 - [Server (provider)_server_diagrams (in Mermaid format)](provider_server_diagram.md) — provider/server Mermaid source diagrams.
 - [Server_(provider) diagrams (as images)](provider_server_diagrams.md) — rendered provider/server diagrams plus links to auth, endpoints, and command docs.
 - [Client (consumer) use of mixins](consumer_mixins.md) — how consumer mixins are composed, dispatched, and overridden.
+- [Client (consumer) custom_handlers](consumer_custom_handlers.md) — built-in custom handlers, runtime discovery, and how to implement/deploy additional handlers.
 - [Client (consumer)_update_controllers](consumer_update_controllers.md) — how full update controllers drive reporting flags and outbound message field cadence.
 - [Authentication](authentication.md) — bearer token auth modes, static-token setup, Keycloak/JWT setup, and MCP token usage.
 - [Web Endpoints](endpoints.md) — provider endpoint inventory, including UI/API/tool/MCP routes and `/doc-set`.

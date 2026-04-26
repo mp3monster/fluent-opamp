@@ -27,6 +27,7 @@ DEFAULT_PROVIDER_SBOM_PATH = (
 DEFAULT_CONSUMER_SBOM_PATH = (
     "dist/sbom/opamp_consumer_deployable_artifacts.cyclonedx.json"
 )
+DEFAULT_MANUAL_PATH = "dist/manual/opamp_manual.pdf"
 
 
 def _run(cmd: list[str], *, cwd: Path) -> None:
@@ -37,8 +38,22 @@ def _run(cmd: list[str], *, cwd: Path) -> None:
 
 def _ensure_python_build(repo_root: Path, python_exe: str) -> None:
     """Ensure the `build` package is available for wheel generation."""
+    _ensure_python_package(
+        repo_root=repo_root,
+        python_exe=python_exe,
+        package_name="build",
+    )
+
+
+def _ensure_python_package(
+    *,
+    repo_root: Path,
+    python_exe: str,
+    package_name: str,
+) -> None:
+    """Ensure a Python package is available in the active environment."""
     probe = subprocess.run(
-        [python_exe, "-m", "pip", "show", "build"],
+        [python_exe, "-m", "pip", "show", package_name],
         cwd=str(repo_root),
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
@@ -46,8 +61,8 @@ def _ensure_python_build(repo_root: Path, python_exe: str) -> None:
     )
     if probe.returncode == 0:
         return
-    print("Python package `build` not found; installing it now...")
-    _run([python_exe, "-m", "pip", "install", "build"], cwd=repo_root)
+    print(f"Python package `{package_name}` not found; installing it now...")
+    _run([python_exe, "-m", "pip", "install", package_name], cwd=repo_root)
 
 
 def _update_component_versions(repo_root: Path, python_exe: str) -> None:
@@ -61,6 +76,36 @@ def _update_component_versions(repo_root: Path, python_exe: str) -> None:
         ],
         cwd=repo_root,
     )
+
+
+def _refresh_pdf_manual(
+    *,
+    repo_root: Path,
+    python_exe: str,
+    manual_output_path: Path,
+) -> Path:
+    """Regenerate the consolidated OpAMP PDF manual and return its path."""
+    _ensure_python_package(
+        repo_root=repo_root,
+        python_exe=python_exe,
+        package_name="reportlab",
+    )
+    _run(
+        [
+            python_exe,
+            str(repo_root / "scripts" / "build_opamp_manual.py"),
+            "--repo-root",
+            str(repo_root),
+            "--output",
+            str(manual_output_path),
+        ],
+        cwd=repo_root,
+    )
+    if not manual_output_path.exists():
+        raise RuntimeError(
+            f"manual build did not produce expected file: {manual_output_path}"
+        )
+    return manual_output_path
 
 
 def _clean_dir(path: Path) -> None:
@@ -464,6 +509,16 @@ def _parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--manual-path",
+        default=DEFAULT_MANUAL_PATH,
+        help=f"PDF manual output path (default: {DEFAULT_MANUAL_PATH})",
+    )
+    parser.add_argument(
+        "--skip-manual",
+        action="store_true",
+        help="Skip PDF manual refresh step",
+    )
+    parser.add_argument(
         "--python",
         default=sys.executable,
         help="Python executable to use for builds (default: current interpreter)",
@@ -521,9 +576,17 @@ def main() -> int:
     dist_root = (repo_root / args.dist_root).resolve()
     provider_dist = dist_root / "provider"
     consumer_dist = dist_root / "consumer"
+    manual_output_path = (repo_root / args.manual_path).resolve()
 
     _update_component_versions(repo_root, args.python)
     _ensure_python_build(repo_root, args.python)
+    manual_pdf: Path | None = None
+    if not args.skip_manual:
+        manual_pdf = _refresh_pdf_manual(
+            repo_root=repo_root,
+            python_exe=args.python,
+            manual_output_path=manual_output_path,
+        )
     provider_wheel = _build_component_wheel(
         repo_root=repo_root,
         python_exe=args.python,
@@ -554,6 +617,8 @@ def main() -> int:
     print(f"Consumer wheel: {consumer_wheel}")
     print(f"Provider SBOM: {provider_sbom_path}")
     print(f"Consumer SBOM: {consumer_sbom_path}")
+    if manual_pdf is not None:
+        print(f"PDF Manual: {manual_pdf}")
 
     if not args.publish:
         print("Publish skipped (use --publish to upload to GitHub release assets).")
@@ -578,12 +643,15 @@ def main() -> int:
         draft=args.draft,
         prerelease=args.prerelease,
         token=token,
-        artifact_paths=[
-            provider_wheel,
-            consumer_wheel,
-            provider_sbom_path,
-            consumer_sbom_path,
-        ],
+        artifact_paths=(
+            [
+                provider_wheel,
+                consumer_wheel,
+                provider_sbom_path,
+                consumer_sbom_path,
+            ]
+            + ([manual_pdf] if manual_pdf is not None else [])
+        ),
     )
     print("Publish complete.")
     return 0

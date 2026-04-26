@@ -26,6 +26,11 @@ echo "Refreshing component version metadata from git HEAD..."
 
 echo "Ensuring Python build tooling is available..."
 "${PYTHON_BIN}" -m pip show build >/dev/null 2>&1 || "${PYTHON_BIN}" -m pip install build
+echo "Ensuring PDF manual tooling is available..."
+"${PYTHON_BIN}" -m pip show reportlab >/dev/null 2>&1 || "${PYTHON_BIN}" -m pip install reportlab
+
+echo "Refreshing consolidated PDF manual..."
+"${PYTHON_BIN}" "${REPO_ROOT}/scripts/build_opamp_manual.py" --repo-root "${REPO_ROOT}"
 
 echo "Preparing artifact directories..."
 mkdir -p "${PROVIDER_DIST}" "${CONSUMER_DIST}"

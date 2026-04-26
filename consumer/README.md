@@ -11,6 +11,8 @@ This document consolidates all consumer configuration options and their CLI over
   - [Quick Start Minimal Config](#quick-start-minimal-config)
   - [Run Scripts](#run-scripts)
   - [Semaphore Shutdown File](#semaphore-shutdown-file)
+  - [Custom Handlers](#custom-handlers)
+  - [Update Controllers](#update-controllers)
   - [Example `opamp.json`](#example-opampjson)
   - [Consumer Config Keys](#consumer-config-keys)
   - [Hardwired Capabilities](#hardwired-capabilities)
@@ -113,6 +115,30 @@ Operational guidance:
 - Create the file only when you intend to stop all consumers in that working directory scope.
 - Prefer server command capability for normal controlled shutdown orchestration.
 - Remove stale `OpAMPSupervisor.signal` files after the incident/maintenance window so subsequent starts are not immediately signaled to stop.
+
+## Custom Handlers
+
+Custom capability handlers are documented here:
+
+- `docs/consumer_custom_handlers.md`
+
+That guide includes:
+
+1. built-in handlers (`ChatOpsCommand`, `ShutdownCommand`, `NullCommand`)
+2. runtime discovery and execution flow
+3. implementation and deployment checklist for adding a new handler
+
+## Update Controllers
+
+Update-controller behavior and extension guidance are documented here:
+
+- `docs/consumer_update_controllers.md`
+
+That guide includes:
+
+1. existing controller strategies (`SentCount`, `AlwaysSend`, `TimeSend`)
+2. reporting-flag send lifecycle behavior
+3. implementation steps for adding a new controller type
 
 ## Example `opamp.json`
 

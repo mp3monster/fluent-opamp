@@ -21,6 +21,7 @@ This table lists the helper scripts and their platform-specific names.
 | Install repo git hooks path (`core.hooksPath=.githooks`) | `scripts/install_git_hooks.sh` | `scripts/install_git_hooks.cmd` |
 | Build deployable Python artifacts (provider + consumer) | `scripts/build_artifacts.sh` | `scripts/build_artifacts.cmd` |
 | Build wheel artifacts and optionally publish to GitHub release assets | `scripts/build_and_publish_wheels.py` | `scripts\build_and_publish_wheels.py` |
+| Build consolidated OpAMP PDF manual | `scripts/build_opamp_manual.py` | `scripts\build_opamp_manual.py` |
 | Configure MCP for Claude Desktop (wrapper) | `mcp/configure-claude-desktop-fastmcp.sh` | `mcp\configure-claude-desktop-fastmcp.ps1` |
 | Configure MCP for ChatGPT/Codex (wrapper) | `mcp/configure-codex-fastmcp.sh` | `mcp\configure-codex-fastmcp.ps1` |
 | Configure MCP for selected clients (canonical script) | `mcp/configure-mcp-clients-fastmcp.sh` | `mcp\configure-mcp-clients-fastmcp.ps1` |
@@ -73,12 +74,15 @@ That guide includes:
 
 - `provider` -> `dist/provider/`
 - `consumer` -> `dist/consumer/`
+- consolidated manual -> `dist/manual/opamp_manual.pdf`
 
 The scripts:
 
 - activate `.venv` when present
 - refresh git-derived component version metadata via `scripts/update_component_versions.py`
 - ensure the `build` package is installed
+- ensure `reportlab` is installed
+- regenerate the consolidated OpAMP PDF manual
 - clear old files in target artifact folders before building
 
 Example:
@@ -121,8 +125,14 @@ Optional publish flags:
 - `--prerelease`
 - `--provider-sbom-path <path>` to override provider SBOM output path
 - `--consumer-sbom-path <path>` to override consumer SBOM output path
+- `--manual-path <path>` to override PDF manual output path
+- `--skip-manual` to skip manual regeneration in this run
 
-When `--publish` is used, both wheel files and both generated SBOM files are uploaded as release assets.
+By default, `build_and_publish_wheels.py` regenerates:
+
+- `dist/manual/opamp_manual.pdf`
+
+When `--publish` is used, the provider wheel, consumer wheel, provider SBOM, consumer SBOM, and generated PDF manual are uploaded as release assets.
 
 ## Mermaid PNG rendering
 
