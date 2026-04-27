@@ -1,10 +1,10 @@
 {
   "component": "consumer-sim",
-  "effective_label": "0.4.1",
-  "generated_at_utc": "2026-04-26T22:19:07+00:00",
-  "git_commit": "4c8be71b22d8",
-  "git_commit_date": "2026-04-26T22:59:39+01:00",
-  "git_commit_date_friendly": "26 Apr 2026 22:59:39 UTC+01:00",
+  "effective_label": "0.4.57",
+  "generated_at_utc": "2026-04-27T13:57:32+00:00",
+  "git_commit": "23e214a11614",
+  "git_commit_date": "2026-04-26T23:19:06+01:00",
+  "git_commit_date_friendly": "26 Apr 2026 23:19:06 UTC+01:00",
   "git_label": "0.4",
-  "version": "0.4.1 4c8be71b22d8 (26 Apr 2026 22:59:39 UTC+01:00)"
+  "version": "0.4.57 23e214a11614 (26 Apr 2026 23:19:06 UTC+01:00)"
 }

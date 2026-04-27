@@ -68,13 +68,14 @@ def _resolve_latest_git_label(repo_root: Path) -> str:
     return str(label or "").strip()
 
 
-def _increment_patch_semver_label(label: str) -> str | None:
+def _increment_patch_semver_label(label: str, *, patch_delta: int = 1) -> str | None:
     """Return patch-incremented label when input is semver, else ``None``.
 
     Supported labels include optional leading ``v`` and optional prerelease/build
     suffixes. Incremented labels intentionally emit plain ``MAJOR.MINOR.PATCH``
     (plus optional ``v`` prefix) without prerelease/build suffixes.
     """
+    safe_patch_delta = max(1, int(patch_delta))
     candidate = str(label or "").strip()
     if not candidate:
         return None
@@ -83,7 +84,7 @@ def _increment_patch_semver_label(label: str) -> str | None:
         prefix = str(match.group("prefix") or "")
         major = int(match.group("major"))
         minor = int(match.group("minor"))
-        patch = int(match.group("patch")) + 1
+        patch = int(match.group("patch")) + safe_patch_delta
         return f"{prefix}{major}.{minor}.{patch}"
     major_minor_match = MAJOR_MINOR_LABEL_PATTERN.fullmatch(candidate)
     if major_minor_match is not None:
@@ -91,13 +92,28 @@ def _increment_patch_semver_label(label: str) -> str | None:
         prefix = str(major_minor_match.group("prefix") or "")
         major = int(major_minor_match.group("major"))
         minor = int(major_minor_match.group("minor"))
-        return f"{prefix}{major}.{minor}.1"
+        return f"{prefix}{major}.{minor}.{safe_patch_delta}"
     return None
 
 
-def _resolve_effective_label(label: str) -> str:
+def _resolve_commits_since_label(repo_root: Path, label: str) -> int:
+    """Return commit distance from latest reachable tag label to ``HEAD``."""
+    candidate = str(label or "").strip()
+    if not candidate:
+        return 0
+    commits_since = _run_git_command(repo_root, ["rev-list", "--count", f"{candidate}..HEAD"])
+    if commits_since is None:
+        return 0
+    try:
+        return max(0, int(commits_since))
+    except ValueError:
+        return 0
+
+
+def _resolve_effective_label(label: str, *, commits_since_label: int = 0) -> str:
     """Return semver-patch-incremented label, or the original label when not semver."""
-    bumped = _increment_patch_semver_label(label)
+    patch_delta = max(0, int(commits_since_label)) + 1
+    bumped = _increment_patch_semver_label(label, patch_delta=patch_delta)
     if bumped is not None:
         return bumped
     return str(label or "").strip()
@@ -146,9 +162,13 @@ def _build_version_payload(
     commit: str,
     commit_date: str,
     label: str,
+    commits_since_label: int,
 ) -> dict[str, str]:
     """Build stable version payload shape used across all components."""
-    effective_label = _resolve_effective_label(label)
+    effective_label = _resolve_effective_label(
+        label,
+        commits_since_label=commits_since_label,
+    )
     commit_date_friendly = _friendly_datetime_text(commit_date)
     version_text = _build_version_text(
         label=effective_label,
@@ -197,6 +217,7 @@ def main(argv: list[str] | None = None) -> int:
     commit = _resolve_git_commit(repo_root)
     commit_date = _resolve_git_commit_date(repo_root)
     label = _resolve_latest_git_label(repo_root)
+    commits_since_label = _resolve_commits_since_label(repo_root, label)
 
     for component, relative_target in COMPONENT_VERSION_TARGETS.items():
         target_path = repo_root / relative_target
@@ -205,6 +226,7 @@ def main(argv: list[str] | None = None) -> int:
             commit=commit,
             commit_date=commit_date,
             label=label,
+            commits_since_label=commits_since_label,
         )
         _write_json(target_path, payload)
         if not args.quiet:
