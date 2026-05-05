@@ -1,0 +1,49 @@
+{
+  "registry_version": "1.0.0",
+  "codes": {
+    "invalid_payload": {
+      "label": "Invalid validation payload",
+      "description": "The request body did not include a valid config object."
+    },
+    "missing_pipeline": {
+      "label": "Missing pipeline block",
+      "description": "The configuration must contain a pipeline object."
+    },
+    "invalid_section_type": {
+      "label": "Invalid plugin section format",
+      "description": "A plugin section is not encoded as an array."
+    },
+    "invalid_plugin_item": {
+      "label": "Invalid plugin entry",
+      "description": "A plugin entry is not an object."
+    },
+    "missing_plugin_name": {
+      "label": "Missing plugin name",
+      "description": "A plugin entry must include a non-empty name."
+    },
+    "unknown_plugin": {
+      "label": "Unknown plugin",
+      "description": "The selected plugin name is not valid for that section."
+    },
+    "missing_required_field": {
+      "label": "Missing required field",
+      "description": "A mandatory plugin field has not been provided."
+    },
+    "unknown_field": {
+      "label": "Unknown field",
+      "description": "The configuration contains a field that is not defined for the plugin."
+    },
+    "ui_message": {
+      "label": "UI validation message",
+      "description": "The UI generated a local validation or status message."
+    },
+    "pydantic_validation_error": {
+      "label": "Request validation error",
+      "description": "The submitted request did not match the API contract."
+    },
+    "unknown_issue": {
+      "label": "Validation issue",
+      "description": "A validation issue was reported without a known code mapping."
+    }
+  }
+}

@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Config Service UI</title>
+    <script>
+      window.__CONFIG_SERVICE_UI_CSS_OVERRIDES__ = __CONFIG_SERVICE_UI_CSS_OVERRIDES__;
+    </script>
+    <link rel="stylesheet" href="__CONFIG_SERVICE_UI_BASE_CSS_PATH__" />
+  </head>
+  <body>
+    <main class="page-shell">
+      <header>
+        <h1>Config Service</h1>
+        <p>Python-served Fluent Bit/Fluentd configuration UI</p>
+      </header>
+
+      <section class="toolbar panel">
+        <div class="row">
+          <label>
+            Open configuration file
+            <input id="open-file" type="file" accept="application/json,.conf,.cfg,.txt" />
+          </label>
+
+          <button id="new-config" type="button">New Configuration</button>
+          <button id="save-config" type="button">Save Configuration</button>
+        </div>
+
+        <div class="row">
+          <label>
+            Configuration Type
+            <select id="config-type-select">
+              <option value="fluentbit">Fluent Bit</option>
+              <option value="fluentd">Fluentd</option>
+            </select>
+          </label>
+
+          <label>
+            Version
+            <select id="version-select"></select>
+          </label>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Service Section</h2>
+        <p>Define service-level settings using known controls or custom keys.</p>
+        <div class="service-editor">
+          <div class="service-configured">
+            <h3>Configured Service Fields</h3>
+            <div id="service-list"></div>
+          </div>
+
+          <div class="service-option-frame">
+            <div class="row">
+              <label>
+                Option
+                <select id="service-option"></select>
+              </label>
+              <label>
+                Value
+                <input id="service-value" type="text" placeholder="1" />
+              </label>
+              <label>
+                Custom Key
+                <input id="service-custom-key" type="text" placeholder="my.custom.key" />
+              </label>
+              <button id="service-help-toggle" type="button" class="icon-help" aria-label="Open service option help in a new tab">?</button>
+              <span class="optional-divider" aria-hidden="true"></span>
+              <button id="add-service-field" type="button">Add Service Field</button>
+            </div>
+            <p id="service-option-meta" class="service-meta"></p>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Add Plugin</h2>
+        <div class="row">
+          <label>
+            Section
+            <select id="plugin-section">
+              <option value="inputs">inputs</option>
+              <option value="filters">filters</option>
+              <option value="outputs">outputs</option>
+            </select>
+          </label>
+          <label>
+            Plugin
+            <select id="plugin-name"></select>
+          </label>
+          <button id="plugin-help-toggle" type="button" class="icon-help" aria-label="Open plugin help in a new tab">?</button>
+          <button id="add-plugin" type="button">Add Plugin</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Plugins</h2>
+        <p>Single list view across inputs, filters, and outputs.</p>
+        <div id="plugin-list"></div>
+      </section>
+
+      <section id="labels-panel" class="panel hidden">
+        <h2>Labels</h2>
+        <p>Manage top-level Fluentd labels and the plugins they contain.</p>
+        <div class="row">
+          <button id="add-label" type="button">Add Label</button>
+        </div>
+        <div id="label-list"></div>
+      </section>
+
+      <section id="workers-panel" class="panel hidden">
+        <h2>Workers</h2>
+        <p>Manage top-level Fluentd workers and the plugins they contain.</p>
+        <div class="row">
+          <button id="add-worker" type="button">Add Worker</button>
+        </div>
+        <div id="worker-list"></div>
+      </section>
+
+      <section class="panel actions">
+        <button id="validate-btn" type="button">Validate</button>
+        <button id="render-btn" type="button">Render Configuration</button>
+      </section>
+
+      <section class="results panel">
+        <div class="result-card">
+          <div id="validation-header" class="result-head">
+            <h3>Validation</h3>
+            <button id="validation-toggle" type="button">Collapse</button>
+          </div>
+          <div id="validation-body" class="result-body">
+            <p id="validation-summary" class="result-summary"></p>
+            <ol id="validation-issues" class="validation-issues"></ol>
+          </div>
+        </div>
+        <div class="result-card">
+          <div class="result-head">
+            <h3>Rendered Configuration</h3>
+            <button id="yaml-toggle" type="button">Collapse</button>
+          </div>
+          <div id="yaml-body" class="result-body">
+            <pre id="yaml-output"></pre>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div class="floating-reload-wrap">
+      <button id="reload-ui" type="button" class="hidden">Reload UI</button>
+    </div>
+
+    <script src="/config-service/ui/assets/config_ui.js__CONFIG_SERVICE_UI_ASSET_SUFFIX__"></script>
+  </body>
+</html>

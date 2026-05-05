@@ -1,0 +1,25 @@
+{
+  "registry_version": "1.0.0",
+  "default_fluent_bit_version": "5.0.4",
+  "default_versions": {
+    "fluentbit": "5.0.4",
+    "fluentd": "1.19"
+  },
+  "catalogs": {
+    "3.2.10": "config-service/json-definitions/fluent-bit-3.2.10-all-plugins-catalog.json",
+    "4.2.4": "config-service/json-definitions/fluent-bit-4.2.4-all-plugins-catalog.json",
+    "5.0.4": "config-service/json-definitions/fluent-bit-5.0.4-all-plugins-catalog.json"
+  },
+  "catalogs_by_type": {
+    "fluentbit": {
+      "3.2.10": "config-service/json-definitions/fluent-bit-3.2.10-all-plugins-catalog.json",
+      "4.2.4": "config-service/json-definitions/fluent-bit-4.2.4-all-plugins-catalog.json",
+      "5.0.4": "config-service/json-definitions/fluent-bit-5.0.4-all-plugins-catalog.json"
+    },
+    "fluentd": {
+      "1.8": "config-service/json-definitions/fluentd-1.8-all-plugins-catalog.json",
+      "1.16": "config-service/json-definitions/fluentd-1.16-all-plugins-catalog.json",
+      "1.19": "config-service/json-definitions/fluentd-1.19-all-plugins-catalog.json"
+    }
+  }
+}

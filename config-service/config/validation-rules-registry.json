@@ -1,0 +1,74 @@
+{
+  "registry_version": "1.0.0",
+  "default_profile": "strict",
+  "profiles": {
+    "strict": {
+      "description": "Full schema + semantic + dependency enforcement.",
+      "rulesets": [
+        "catalog_required_fields",
+        "data_type_enforcement",
+        "dependency_constraints",
+        "value_range_constraints"
+      ]
+    },
+    "compatibility": {
+      "description": "Compatibility-oriented checks with relaxed non-critical constraints.",
+      "rulesets": [
+        "catalog_required_fields",
+        "data_type_enforcement",
+        "dependency_constraints"
+      ]
+    }
+  },
+  "rulesets": {
+    "catalog_required_fields": {
+      "adapter": "builtin.catalog_required_fields",
+      "enabled": true,
+      "params": {
+        "required_keys": [
+          "name",
+          "required",
+          "description",
+          "reference",
+          "data_type"
+        ]
+      }
+    },
+    "data_type_enforcement": {
+      "adapter": "builtin.data_type_enforcement",
+      "enabled": true,
+      "params": {
+        "coercion": "none"
+      }
+    },
+    "dependency_constraints": {
+      "adapter": "builtin.dependency_constraints",
+      "enabled": true,
+      "params": {
+        "use_catalog_semantic_rules": true
+      }
+    },
+    "value_range_constraints": {
+      "adapter": "builtin.validation_rule_constraints",
+      "enabled": true,
+      "params": {
+        "require_validation_rule_when_data_type_is": [
+          "integer",
+          "duration",
+          "size"
+        ]
+      }
+    }
+  },
+  "version_overrides": {
+    "3.2.10": {
+      "additional_rulesets": []
+    },
+    "4.2.4": {
+      "additional_rulesets": []
+    },
+    "5.0.4": {
+      "additional_rulesets": []
+    }
+  }
+}

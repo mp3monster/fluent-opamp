@@ -1,0 +1,25 @@
+{
+  "registry_version": "1.0.0",
+  "default_fluent_bit_version": "5.0.4",
+  "default_versions": {
+    "fluentbit": "5.0.4",
+    "fluentd": "1.19"
+  },
+  "service_definitions": {
+    "3.2.10": "config-service/json-definitions/fluent-bit-3.2.10-service-options.json",
+    "4.2.4": "config-service/json-definitions/fluent-bit-4.2.4-service-options.json",
+    "5.0.4": "config-service/json-definitions/fluent-bit-5.0.4-service-options.json"
+  },
+  "service_definitions_by_type": {
+    "fluentbit": {
+      "3.2.10": "config-service/json-definitions/fluent-bit-3.2.10-service-options.json",
+      "4.2.4": "config-service/json-definitions/fluent-bit-4.2.4-service-options.json",
+      "5.0.4": "config-service/json-definitions/fluent-bit-5.0.4-service-options.json"
+    },
+    "fluentd": {
+      "1.8": "config-service/json-definitions/fluentd-1.8-service-options.json",
+      "1.16": "config-service/json-definitions/fluentd-1.16-service-options.json",
+      "1.19": "config-service/json-definitions/fluentd-1.19-service-options.json"
+    }
+  }
+}
