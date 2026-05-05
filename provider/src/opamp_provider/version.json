@@ -1,10 +1,10 @@
 {
   "component": "server",
-  "effective_label": "0.4.58",
-  "generated_at_utc": "2026-05-05T10:26:31+00:00",
-  "git_commit": "252f03b56fc6",
-  "git_commit_date": "2026-04-27T14:57:31+01:00",
-  "git_commit_date_friendly": "27 Apr 2026 14:57:31 UTC+01:00",
+  "effective_label": "0.4.59",
+  "generated_at_utc": "2026-05-05T10:27:01+00:00",
+  "git_commit": "cd7409cf5b6a",
+  "git_commit_date": "2026-05-05T11:26:30+01:00",
+  "git_commit_date_friendly": "05 May 2026 11:26:30 UTC+01:00",
   "git_label": "0.4",
-  "version": "0.4.58 252f03b56fc6 (27 Apr 2026 14:57:31 UTC+01:00)"
+  "version": "0.4.59 cd7409cf5b6a (05 May 2026 11:26:30 UTC+01:00)"
 }

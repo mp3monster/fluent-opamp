@@ -3,10 +3,40 @@ set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 UPDATE_SCRIPT="${REPO_ROOT}/scripts/update_component_versions.py"
+PRECOMMIT_LOG_FILE_NAME="opamp-pre-commit.log"
 UNAME_TEXT="$(uname -s 2>/dev/null || true)"
 IS_WINDOWS_LIKE_SHELL=0
 if [[ "${UNAME_TEXT}" == MINGW* || "${UNAME_TEXT}" == MSYS* || "${UNAME_TEXT}" == CYGWIN* ]]; then
   IS_WINDOWS_LIKE_SHELL=1
+fi
+
+_append_pre_commit_log() {
+  local git_common_dir log_path timestamp parent_process
+  git_common_dir="$(git rev-parse --git-common-dir 2>/dev/null || true)"
+  if [ -z "${git_common_dir}" ]; then
+    git_common_dir="${REPO_ROOT}/.git"
+  elif [[ "${git_common_dir}" != /* ]]; then
+    git_common_dir="${REPO_ROOT}/${git_common_dir}"
+  fi
+  log_path="${git_common_dir}/${PRECOMMIT_LOG_FILE_NAME}"
+  timestamp="$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || true)"
+  if [ -z "${timestamp}" ]; then
+    timestamp="unknown-time"
+  fi
+  parent_process="$(ps -o comm= -p "${PPID}" 2>/dev/null || true)"
+  if [ -z "${parent_process}" ]; then
+    parent_process="unknown-parent"
+  fi
+  printf "%s pre-commit invoked repo=%s cwd=%s ppid=%s parent=%s\n" \
+    "${timestamp}" \
+    "${REPO_ROOT}" \
+    "$(pwd)" \
+    "${PPID}" \
+    "${parent_process}" >> "${log_path}" 2>/dev/null || true
+}
+
+if [ "${OPAMP_PRECOMMIT_LOG:-1}" != "0" ]; then
+  _append_pre_commit_log
 fi
 
 _run_update_script() {
