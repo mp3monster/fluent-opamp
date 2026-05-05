@@ -24,6 +24,10 @@ body {
   padding: 1.25rem;
 }
 
+#open-file-display {
+  min-width: 24rem;
+}
+
 header p {
   color: var(--muted);
 }
@@ -34,6 +38,17 @@ header p {
   border-radius: 14px;
   padding: 1rem;
   margin-bottom: 1rem;
+}
+
+.status-panel {
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  background: #f7fbff;
+}
+
+.status-message {
+  margin: 0;
+  color: var(--text);
 }
 
 .toolbar,
@@ -151,6 +166,18 @@ button:hover {
   margin-top: 0.5rem;
 }
 
+.field-block {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.comment-group {
+  padding: 0.7rem 0.8rem;
+  border: 1px solid #dbe7b8;
+  border-radius: 12px;
+  background: #fcfff4;
+}
+
 .field-row {
   display: flex;
   gap: 0.4rem;
@@ -160,6 +187,16 @@ button:hover {
 .field-row input,
 .field-row textarea {
   flex: 1;
+}
+
+textarea.code-input {
+  resize: both;
+  min-height: 8.5rem;
+  max-width: 100%;
+  overflow: auto;
+  font-family: "Cascadia Code", "Consolas", "Courier New", monospace;
+  line-height: 1.4;
+  white-space: pre;
 }
 
 .optional-row {
@@ -194,6 +231,45 @@ button:hover {
 
 .service-row input {
   min-width: 220px;
+}
+
+.service-row textarea {
+  min-width: 220px;
+  flex: 1;
+}
+
+.comment-editor {
+  margin-left: 0.2rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px dashed #bfd0f5;
+  border-radius: 12px;
+  background: #f8fbff;
+}
+
+.comment-group .comment-editor {
+  margin-left: 0;
+}
+
+.comment-group .service-row {
+  margin-bottom: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.comment-label {
+  width: 100%;
+  color: var(--muted);
+  display: grid;
+  gap: 0.35rem;
+}
+
+.comment-input {
+  width: 100%;
+  min-height: 3.2rem;
+  resize: vertical;
+  background: #fafcff;
 }
 
 .service-editor {
@@ -275,6 +351,19 @@ button:hover {
   text-align: center;
 }
 
+.icon-note {
+  font-size: 1rem;
+}
+
+.icon-note.is-active {
+  background: #dbeafe;
+  border-color: #60a5fa;
+}
+
+.icon-note.has-comment {
+  box-shadow: inset 0 0 0 1px #f2b84b;
+}
+
 .icon-remove {
   min-width: 1.9rem;
   width: 1.9rem;
@@ -327,6 +416,13 @@ pre {
   margin: 0;
 }
 
+.result-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 .result-head.is-valid {
   background: #e9f8ef;
   color: #166534;
@@ -341,6 +437,15 @@ pre {
 
 .result-body {
   padding: 1rem;
+}
+
+.result-card.is-stale {
+  border-color: #8a6d00;
+  box-shadow: 0 0 0 1px rgba(138, 109, 0, 0.2);
+}
+
+.result-card.is-stale pre {
+  color: #8a6d00;
 }
 
 .result-body.is-collapsed {
@@ -391,8 +496,35 @@ pre {
   z-index: 1000;
 }
 
+.footer {
+  padding: 20px 36px 32px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  #open-file-display {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
 @media (max-width: 1080px) {
   .results {
     grid-template-columns: 1fr;
   }
 }
+/*
+ * Copyright 2026 mp3monster.org
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */

@@ -13,7 +13,63 @@ The rule engine is profile-driven:
 - Adapter interface: `config-service/config_service/rule_engine/base.py`
 - Adapter registry: `config-service/config_service/rule_engine/registry.py`
 - Built-in adapters: `config-service/config_service/rule_engine/adapters/builtin.py`
+- Lua code adapter: `config-service/config_service/rule_engine/adapters/lua_code.py`
 - Rules configuration: `config-service/config/validation-rules-registry.json`
+
+## Built-in custom validator: Lua code syntax
+Inline Lua code fields can be validated through the `luaparser` dependency (`py-lua-parser` project on PyPI).
+
+Current implementation:
+1. Catalog field must use `data_type: "code"`.
+2. Catalog field must include:
+```json
+{
+  "validation_rule": {
+    "kind": "code_syntax",
+    "language": "lua",
+    "parser": "luaparser"
+  }
+}
+```
+3. Validation is executed by ruleset `lua_code_syntax`.
+4. Returned errors use the normalized structure:
+```json
+{
+  "code": "lua_syntax_error",
+  "path": "$.config.pipeline.filters[0].code",
+  "message": "Lua syntax error at line 1, column 12: ...",
+  "severity": "error",
+  "source": "rules"
+}
+```
+
+## Built-in custom validator: Fluent Bit SQL processor syntax
+Inline Fluent Bit SQL processor queries can be validated through the `lark` parsing framework using a custom grammar that mirrors the processor SQL subset.
+
+Current implementation:
+1. Catalog field must use `data_type: "code"`.
+2. Catalog field must include:
+```json
+{
+  "validation_rule": {
+    "kind": "code_syntax",
+    "language": "sql",
+    "parser": "lark",
+    "dialect": "fluentbit_processor_sql"
+  }
+}
+```
+3. Validation is executed by ruleset `sql_code_syntax`.
+4. Returned errors use the normalized structure:
+```json
+{
+  "code": "sql_syntax_error",
+  "path": "$.config.pipeline.inputs[0].processors.logs[0].query",
+  "message": "SQL syntax error at line 1, column 8: ...",
+  "severity": "error",
+  "source": "rules"
+}
+```
 
 ## Add a custom rule adapter
 ### 1. Create adapter module

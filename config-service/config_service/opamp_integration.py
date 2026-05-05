@@ -1,4 +1,19 @@
+#!/usr/bin/env python3
+# Copyright 2026 mp3monster.org
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
+
+from pathlib import Path
 
 from quart import Quart
 
@@ -11,12 +26,12 @@ from config_service.services.schema_service import SchemaService
 from config_service.services.service_definition_service import ServiceDefinitionService
 from config_service.services.validation_service import ValidationService
 from config_service.services.yaml_render_service import YamlRenderService
-from pathlib import Path
 
 
 def register_config_service_feature(opamp_app: Quart) -> None:
     """Mount config-service routes/services into an existing OpAMP Quart app."""
-    repo_root = Path(__file__).resolve().parents[1]
+    module_dir = Path(__file__).resolve().parent
+    repo_root = module_dir.parent if (module_dir.parent / "config").is_dir() else module_dir
     catalog_service = CatalogService(repo_root / "config" / "catalog-registry.json")
     catalog_service.load_all_catalogs()
     service_definition_service = ServiceDefinitionService(

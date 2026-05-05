@@ -1,3 +1,16 @@
+#!/usr/bin/env python3
+# Copyright 2026 mp3monster.org
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
 import json
@@ -14,16 +27,11 @@ class CatalogService:
         self._catalogs_by_type: dict[str, dict[str, dict[str, Any]]] = {}
         self._load_registry()
 
-    @staticmethod
-    def _repo_root() -> Path:
-        # config-service/config_service/services -> repo root is 3 parents up.
-        return Path(__file__).resolve().parents[3]
-
     def _resolve_catalog_path(self, catalog_ref: str) -> Path:
         candidate = Path(catalog_ref)
         if candidate.is_absolute():
             return candidate
-        return self._repo_root() / catalog_ref
+        return self.registry_path.parent.parent / catalog_ref
 
     def _load_registry(self) -> None:
         self._registry = json.loads(self.registry_path.read_text(encoding="utf-8"))
@@ -39,10 +47,6 @@ class CatalogService:
                 if isinstance(catalogs, dict) and catalogs:
                     normalized[str(config_type)] = {str(version): str(path) for version, path in catalogs.items()}
             return normalized
-
-        catalogs = self._registry.get("catalogs", {})
-        if isinstance(catalogs, dict) and catalogs:
-            return {"fluentbit": {str(version): str(path) for version, path in catalogs.items()}}
         return {}
 
     def load_all_catalogs(self) -> None:
@@ -58,7 +62,7 @@ class CatalogService:
 
     def validate_catalog_payload(self, version: str, payload: dict[str, Any], source: str = "<in-memory>") -> None:
         engine = str(payload.get("engine") or "fluentbit").lower()
-        top_required = {"plugins", "custom_plugins"}
+        top_required = {"engine", "plugins", "custom_plugins"}
         if engine == "fluentbit":
             top_required.add("fluent_bit_version")
         elif engine == "fluentd":
@@ -68,11 +72,10 @@ class CatalogService:
             raise ValueError(f"Catalog {version} missing required keys {missing} ({source})")
 
         plugins = payload.get("plugins")
-        expected_group = "fluentbit" if engine == "fluentbit" else "fluentd"
-        if not isinstance(plugins, dict) or expected_group not in plugins:
-            raise ValueError(f"Catalog {version} must include plugins.{expected_group} ({source})")
+        if not isinstance(plugins, dict):
+            raise ValueError(f"Catalog {version} must include plugins object ({source})")
 
-        engine_plugins = plugins[expected_group]
+        engine_plugins = plugins
         for section in ("inputs", "filters", "outputs"):
             section_map = engine_plugins.get(section)
             if not isinstance(section_map, dict):
@@ -169,10 +172,6 @@ class CatalogService:
         resolved_type = str(config_type or "fluentbit")
         if isinstance(defaults, dict) and defaults.get(resolved_type):
             return str(defaults[resolved_type])
-        if resolved_type == "fluentbit":
-            default = self._registry.get("default_fluent_bit_version")
-            if default:
-                return str(default)
         versions = self.get_versions(resolved_type)
         if versions:
             return str(versions[0])

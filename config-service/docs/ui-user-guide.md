@@ -8,8 +8,20 @@ On load, the UI will:
 ## Main actions
 1. Open configuration file (`.json` for design docs, `.conf` for Fluentd)
 2. Create new configuration
-3. Choose configuration version
-4. Choose configuration type
+3. Save the current configuration
+4. Save the current configuration to a new file via `Save As`
+5. Choose configuration type
+6. Choose configuration version
+
+## Save behavior
+1. `New Configuration` clears the current open-file display.
+2. `Save` reuses the current file handle when the browser provides one.
+3. `Save As` always prompts for a new file target.
+4. Saved files include top-of-file header comments for:
+   1. configuration type
+   2. configuration version
+5. When a saved file is reopened, the UI reads those header comments first and updates type/version selection before loading the rest of the document.
+6. If the saved version is no longer available, the UI selects the next supported mapped version after that value. If there is no later mapped version, it uses the highest available version.
 
 ## Add plugin configuration
 Use the `Add Plugin` controls:
@@ -70,13 +82,30 @@ The UI includes a `Service Section` panel to manage top-level service settings:
 2. `Render Configuration` renders:
    - YAML for Fluent Bit
    - standard `.conf` text for Fluentd
+3. If the configuration changes after a successful render, the rendered output is highlighted until it is rendered again.
 
 ## Developer-only reload
 `Reload UI` button appears only when `APP_ENABLE_DEV_FEATURES` is enabled on the backend.
 
+## Read-only mode
+When backend read-only mode is enabled:
+1. Editing controls are disabled.
+2. Save and `Save As` are disabled.
+3. Open file, validate, render, expand/collapse, and documentation help remain available.
+
 ## Notes on comments/annotations
-- The design model supports `annotations` separate from runtime config.
+- The preferred comment model is now object-local metadata:
+  - `_meta.comment_lines`
+  - `_meta.field_comment_lines`
 - Comments are optional and can be included in YAML output if enabled.
+- The UI exposes comment editors for:
+  - the service block
+  - individual service fields
+  - plugin cards
+  - plugin attribute rows
+- Comment editors are opened from the right-hand notepad button on the related entity instead of always being shown inline.
+- The `_meta` question-mark button opens the bundled in-application help page that explains the metadata structure and rendering behavior.
+- Legacy `annotations` maps are migrated into `_meta` when older JSON documents are loaded.
 
 ## Current Fluentd UI scope
 Supported today:

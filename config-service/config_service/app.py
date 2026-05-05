@@ -1,5 +1,19 @@
+#!/usr/bin/env python3
+# Copyright 2026 mp3monster.org
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import sys
@@ -8,8 +22,14 @@ from pathlib import Path
 from quart import Quart, Response, jsonify, request, send_from_directory
 
 from config_service.auth_integration import evaluate_ui_http_auth
-from config_service.runtime_config import resolve_ui_base_css_path, resolve_web_port
 from config_service.routes.api import create_api_blueprint
+from config_service.runtime_config import (
+    ENV_CONFIG_TOOL_CONFIG_PATH,
+    resolve_read_only,
+    resolve_ui_base_css_path,
+    resolve_ui_css_overrides,
+    resolve_web_port,
+)
 from config_service.services.catalog_service import CatalogService
 from config_service.services.fluentd_config_service import FluentdConfigService
 from config_service.services.issue_code_service import IssueCodeService
@@ -26,7 +46,22 @@ CONFIG_SERVICE_UI_CSS_OVERRIDES_KEY = "CONFIG_SERVICE_UI_CSS_OVERRIDES"
 _ENV_TRUE_VALUES = {"1", "true", "yes", "on"}
 
 
+def _config_service_root() -> Path:
+    module_dir = Path(__file__).resolve().parent
+    source_root = module_dir.parent
+    if (source_root / "config").is_dir() and (source_root / "json-definitions").is_dir():
+        return source_root
+    for candidate in (module_dir, Path(sys.prefix) / "config_service"):
+        if (candidate / "config").is_dir():
+            return candidate
+    return module_dir.parent
+
+
 def _resolve_css_overrides(app: Quart) -> list[str]:
+    configured_runtime = resolve_ui_css_overrides()
+    if configured_runtime:
+        return configured_runtime
+
     configured = app.config.get(CONFIG_SERVICE_UI_CSS_OVERRIDES_KEY)
     if isinstance(configured, str):
         return [value.strip() for value in configured.split(",") if value.strip()]
@@ -72,8 +107,9 @@ def _append_suffix(url: str, suffix: str) -> str:
 def create_app(*, mode: str = "standalone") -> Quart:
     app = Quart(__name__)
     app.config["CONFIG_SERVICE_MODE"] = mode
+    app.config["CONFIG_SERVICE_READ_ONLY"] = resolve_read_only()
 
-    repo_root = Path(__file__).resolve().parents[1]
+    repo_root = _config_service_root()
     provider_src = repo_root.parent / "provider" / "src"
     if provider_src.exists() and str(provider_src) not in sys.path:
         sys.path.insert(0, str(provider_src))
@@ -145,6 +181,20 @@ def create_app(*, mode: str = "standalone") -> Quart:
             return _apply_no_cache_headers(response)
         return response
 
+    @app.get("/config-service/ui/docs/meta-comments")
+    async def config_service_ui_meta_comments_help() -> Response:
+        base_css_path = resolve_ui_base_css_path()
+        asset_suffix = _asset_suffix()
+        html_template = (html_dir / "meta_comments_help.html").read_text(encoding="utf-8")
+        rendered = html_template.replace(
+            "__CONFIG_SERVICE_UI_BASE_CSS_PATH__",
+            _append_suffix(base_css_path, asset_suffix),
+        )
+        response = Response(rendered, mimetype="text/html")
+        if _app_enable_dev_features_enabled():
+            return _apply_no_cache_headers(response)
+        return response
+
     @app.get("/config-service/ui/assets/<path:filename>")
     async def config_service_ui_assets(filename: str) -> Response:
         response = await send_from_directory(html_dir, filename)
@@ -158,8 +208,17 @@ def create_app(*, mode: str = "standalone") -> Quart:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Config Service standalone server")
+    parser.add_argument("--config-path", type=str, help="Path to config-service JSON configuration file")
+    parser.add_argument("--host", type=str, default="0.0.0.0", help="Bind address")
+    parser.add_argument("--port", type=int, help="Override listen port")
+    args = parser.parse_args()
+
+    if args.config_path:
+        os.environ[ENV_CONFIG_TOOL_CONFIG_PATH] = args.config_path
+
     app = create_app(mode="standalone")
-    app.run(host="0.0.0.0", port=resolve_web_port(), debug=True)
+    app.run(host=args.host, port=args.port or resolve_web_port(), debug=True)
 
 
 if __name__ == "__main__":

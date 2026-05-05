@@ -93,7 +93,7 @@ export default function App(): JSX.Element {
       .then((payload) => {
         setCatalog(payload);
         if (!pluginName) {
-          const first = Object.keys(payload.plugins.fluentbit.inputs)[0] ?? '';
+          const first = Object.keys(payload.plugins.inputs)[0] ?? '';
           setPluginName(first);
         }
       })

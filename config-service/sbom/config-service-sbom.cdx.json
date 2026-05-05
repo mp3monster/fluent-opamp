@@ -1,0 +1,140 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "serialNumber": "urn:uuid:config-service-0.1.0",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-05-05T22:40:03.720678+00:00",
+    "component": {
+      "type": "application",
+      "name": "config-service",
+      "version": "0.1.0",
+      "bom-ref": "pkg:pypi/config-service@0.1.0",
+      "purl": "pkg:pypi/config-service@0.1.0",
+      "licenses": [
+        {
+          "license": {
+            "name": "Apache-2.0"
+          }
+        }
+      ]
+    },
+    "tools": [
+      {
+        "vendor": "OpenAI Codex",
+        "name": "generate_sbom.py"
+      }
+    ]
+  },
+  "components": [
+    {
+      "type": "application",
+      "name": "config-service",
+      "version": "0.1.0",
+      "bom-ref": "pkg:pypi/config-service@0.1.0",
+      "purl": "pkg:pypi/config-service@0.1.0",
+      "licenses": [
+        {
+          "license": {
+            "name": "Apache-2.0"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "quart",
+      "version": "0.20.0",
+      "bom-ref": "pkg:pypi/quart@0.20.0",
+      "purl": "pkg:pypi/quart@0.20.0",
+      "licenses": [
+        {
+          "license": {
+            "name": "unknown"
+          }
+        }
+      ],
+      "description": "A Python ASGI web framework with the same API as Flask",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "Changes, https://quart.palletsprojects.com/en/latest/changes.html"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "pydantic",
+      "version": "2.12.5",
+      "bom-ref": "pkg:pypi/pydantic@2.12.5",
+      "purl": "pkg:pypi/pydantic@2.12.5",
+      "licenses": [
+        {
+          "license": {
+            "name": "unknown"
+          }
+        }
+      ],
+      "description": "Data validation using Python type hints",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "Homepage, https://github.com/pydantic/pydantic"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "lark",
+      "version": "1.3.1",
+      "bom-ref": "pkg:pypi/lark@1.3.1",
+      "purl": "pkg:pypi/lark@1.3.1",
+      "licenses": [
+        {
+          "license": {
+            "name": "MIT"
+          }
+        }
+      ],
+      "description": "a modern parsing library",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "Homepage, https://github.com/lark-parser/lark"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "luaparser",
+      "version": "4.0.0",
+      "bom-ref": "pkg:pypi/luaparser@4.0.0",
+      "purl": "pkg:pypi/luaparser@4.0.0",
+      "licenses": [
+        {
+          "license": {
+            "name": "MIT"
+          }
+        }
+      ],
+      "description": "A lua parser in Python",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/boolangery/py-lua-parser"
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "pkg:pypi/config-service@0.1.0",
+      "dependsOn": [
+        "pkg:pypi/quart@0.20.0",
+        "pkg:pypi/pydantic@2.12.5",
+        "pkg:pypi/lark@1.3.1",
+        "pkg:pypi/luaparser@4.0.0"
+      ]
+    }
+  ]
+}

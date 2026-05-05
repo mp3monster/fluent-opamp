@@ -4,13 +4,18 @@
 `config-service` uses JSON configuration files for:
 1. Versioned catalog selection
 2. Validation profile/ruleset selection
+3. Standalone config-tool runtime settings
 
 ## Files
+- Standalone config-tool settings: `config-service/config/config-service.json`
 - Catalog registry: `config-service/config/catalog-registry.json`
 - Validation registry: `config-service/config/validation-rules-registry.json`
 - Service registry: `config-service/config/service-registry.json`
 
 ## Environment variables
+- `CONFIG_TOOL_CONFIG_PATH`
+  - Optional path override for the standalone config-tool JSON file.
+  - Also set automatically when launching with `config_service/app.py --config-path <file>`.
 - `CONFIG_SERVICE_WEB_PORT`
   - Optional integer override for the config-service listen port.
   - Takes precedence over JSON file settings.
@@ -39,19 +44,29 @@ Example:
 ```json
 {
   "registry_version": "1.0.0",
-  "default_fluent_bit_version": "5.0.4",
-  "catalogs": {
-    "3.2.10": "config-service/json-definitions/fluent-bit-3.2.10-all-plugins-catalog.json",
-    "4.2.4": "config-service/json-definitions/fluent-bit-4.2.4-all-plugins-catalog.json",
-    "5.0.4": "config-service/json-definitions/fluent-bit-5.0.4-all-plugins-catalog.json"
+  "default_versions": {
+    "fluentbit": "5.0.4",
+    "fluentd": "1.19"
+  },
+  "catalogs_by_type": {
+    "fluentbit": {
+      "3.2.10": "config-service/json-definitions/fluent-bit-3.2.10-all-plugins-catalog.json",
+      "4.2.4": "config-service/json-definitions/fluent-bit-4.2.4-all-plugins-catalog.json",
+      "5.0.4": "config-service/json-definitions/fluent-bit-5.0.4-all-plugins-catalog.json"
+    },
+    "fluentd": {
+      "1.8": "config-service/json-definitions/fluentd-1.8-all-plugins-catalog.json",
+      "1.16": "config-service/json-definitions/fluentd-1.16-all-plugins-catalog.json",
+      "1.19": "config-service/json-definitions/fluentd-1.19-all-plugins-catalog.json"
+    }
   }
 }
 ```
 
 Rules:
-1. `catalogs` must be a non-empty object.
-2. Each version key must map to a readable JSON file path.
-3. `default_fluent_bit_version` should point to a key inside `catalogs`.
+1. `catalogs_by_type` must be a non-empty object.
+2. Each engine key must map to a non-empty object of `version -> JSON path`.
+3. `default_versions` should provide a default version for each configured engine.
 
 ## Service registry format
 Path: `config-service/config/service-registry.json`
@@ -60,18 +75,29 @@ Example:
 ```json
 {
   "registry_version": "1.0.0",
-  "default_fluent_bit_version": "5.0.4",
-  "service_definitions": {
-    "3.2.10": "config-service/json-definitions/fluent-bit-3.2.10-service-options.json",
-    "4.2.4": "config-service/json-definitions/fluent-bit-4.2.4-service-options.json",
-    "5.0.4": "config-service/json-definitions/fluent-bit-5.0.4-service-options.json"
+  "default_versions": {
+    "fluentbit": "5.0.4",
+    "fluentd": "1.19"
+  },
+  "service_definitions_by_type": {
+    "fluentbit": {
+      "3.2.10": "config-service/json-definitions/fluent-bit-3.2.10-service-options.json",
+      "4.2.4": "config-service/json-definitions/fluent-bit-4.2.4-service-options.json",
+      "5.0.4": "config-service/json-definitions/fluent-bit-5.0.4-service-options.json"
+    },
+    "fluentd": {
+      "1.8": "config-service/json-definitions/fluentd-1.8-service-options.json",
+      "1.16": "config-service/json-definitions/fluentd-1.16-service-options.json",
+      "1.19": "config-service/json-definitions/fluentd-1.19-service-options.json"
+    }
   }
 }
 ```
 
 Rules:
-1. `service_definitions` must be a non-empty object.
-2. Each version maps to a JSON file that defines:
+1. `service_definitions_by_type` must be a non-empty object.
+2. Each engine key must map to a non-empty object of `version -> JSON path`.
+3. Each referenced version maps to a JSON file that defines:
    1. `section: service`
    2. `cardinality.maximum: 1`
    3. `options[]` metadata for UI and validation typing.
@@ -97,22 +123,32 @@ Behavior:
 ## Listen port resolution
 `config-service` resolves its standalone listen port in this order:
 1. Environment variable `CONFIG_SERVICE_WEB_PORT`
-2. `config_service.web_port` in the JSON config file referenced by `OPAMP_CONFIG_PATH`
-3. `provider.webui_port` in that same JSON config file
-4. Default `8080`
+2. `config-tool.web_port` in `config-service/config/config-service.json`
+3. Legacy `config_service.web_port` in the JSON config file referenced by `OPAMP_CONFIG_PATH`
+4. `provider.webui_port` in that same fallback JSON config file
+5. Default `8080`
 
 Default config file path:
+- `config-service/config/config-service.json`
+
+Fallback config path:
 - `config/opamp.json`
 
 Example:
 ```json
 {
-  "config_service": {
+  "config-tool": {
     "web_port": 8090,
-    "ui_base_css_path": "/ui/assets/web_ui.css"
+    "ui_base_css_path": "/ui/assets/web_ui.css",
+    "ui_css_overrides": [],
+    "read_only": false
   }
 }
 ```
+
+Read-only mode:
+1. Set `config-tool.read_only` to `true` to disable editing and save actions in the UI.
+2. File open, validation, render, and help actions remain available.
 
 ## Authentication behavior
 1. Embedded mode reuses OpAMP provider non-OpAMP HTTP auth checks.
@@ -122,7 +158,7 @@ Example:
 ## UI CSS integration (OpAMP look and feel)
 The browser UI can load shared OpAMP stylesheets using:
 1. Environment variable `CONFIG_SERVICE_UI_BASE_CSS_PATH` for the primary stylesheet.
-2. JSON config key `config_service.ui_base_css_path` in `config/opamp.json`.
+2. JSON config key `config-tool.ui_base_css_path` in `config-service/config/config-service.json`.
 3. Environment variable `CONFIG_SERVICE_UI_CSS_OVERRIDE_PATH` for one additional override path.
 4. Environment variable `CONFIG_SERVICE_UI_CSS_OVERRIDES` for multiple additional override paths.
 5. App config override key `CONFIG_SERVICE_UI_CSS_OVERRIDES` (list or comma-separated string).

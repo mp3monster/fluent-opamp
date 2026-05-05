@@ -8,6 +8,7 @@ class SchemaService:
 
     TYPE_MAP = {
         "string": "string",
+        "code": "string",
         "duration": "string",
         "time": "string",
         "size": "string",
@@ -23,6 +24,34 @@ class SchemaService:
         "enum": "string",
     }
 
+    @staticmethod
+    def _meta_schema() -> dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "comment_lines": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                },
+                "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                    },
+                },
+            },
+            "additionalProperties": False,
+        }
+
+    def _with_object_meta(self, schema: dict[str, Any]) -> dict[str, Any]:
+        if schema.get("type") != "object":
+            return schema
+        props = dict(schema.get("properties", {}))
+        props["_meta"] = self._meta_schema()
+        schema["properties"] = props
+        return schema
+
     def compile_schema(self, catalog: dict[str, Any], strict_mode: bool = True) -> dict[str, Any]:
         engine = str(catalog.get("engine") or "fluentbit").lower()
         if engine == "fluentd":
@@ -30,12 +59,14 @@ class SchemaService:
         return self._compile_fluentbit_schema(catalog, strict_mode=strict_mode)
 
     def _field_schema(self, field: dict[str, Any]) -> dict[str, Any]:
-        json_type = self.TYPE_MAP.get(str(field.get("data_type", "string")).lower(), "string")
+        catalog_data_type = str(field.get("data_type", "string")).lower()
+        json_type = self.TYPE_MAP.get(catalog_data_type, "string")
         payload: dict[str, Any] = {
             "type": json_type,
             "description": field.get("description", ""),
             "x-doc-reference": field.get("reference", ""),
             "x-doc-required": bool(field.get("required", False)),
+            "x-config-data-type": catalog_data_type,
         }
         enum_options = field.get("called_enum_options")
         if isinstance(enum_options, list) and enum_options:
@@ -89,18 +120,18 @@ class SchemaService:
             if child_props:
                 child_props["includes"] = {
                     "type": "array",
-                    "items": {
+                    "items": self._with_object_meta({
                         "type": "object",
                         "properties": {"path": {"type": "string"}},
                         "required": ["path"],
                         "additionalProperties": False,
-                    },
+                    }),
                 }
-                props["children"] = {
+                props["children"] = self._with_object_meta({
                     "type": "object",
                     "properties": child_props,
                     "additionalProperties": not strict_mode,
-                }
+                })
 
         if fluentbit_processors and fluentbit_section in {"inputs", "outputs"}:
             processors_schema = self._fluentbit_processors_schema(
@@ -110,16 +141,16 @@ class SchemaService:
             )
             props["processors"] = processors_schema
 
-        return {
+        return self._with_object_meta({
             "type": "object",
             "title": plugin_def.get("title", plugin_name),
             "properties": props,
             "required": required,
             "additionalProperties": not strict_mode,
-        }
+        })
 
     def _compile_fluentbit_schema(self, catalog: dict[str, Any], strict_mode: bool) -> dict[str, Any]:
-        plugin_groups = catalog.get("plugins", {}).get("fluentbit", {})
+        plugin_groups = catalog.get("plugins", {})
         processors_def = catalog.get("common", {}).get("processors", {})
 
         def section_item_schema(section: str) -> dict[str, Any]:
@@ -137,14 +168,14 @@ class SchemaService:
             ]
             return {"oneOf": plugin_schemas} if plugin_schemas else {"type": "object"}
 
-        return {
+        return self._with_object_meta({
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "type": "object",
             "properties": {
-                "config": {
+                "config": self._with_object_meta({
                     "type": "object",
                     "properties": {
-                        "pipeline": {
+                        "pipeline": self._with_object_meta({
                             "type": "object",
                             "properties": {
                                 "inputs": {"type": "array", "items": section_item_schema("inputs")},
@@ -153,11 +184,11 @@ class SchemaService:
                             },
                             "required": ["inputs", "outputs"],
                             "additionalProperties": not strict_mode,
-                        }
+                        })
                     },
                     "required": ["pipeline"],
                     "additionalProperties": not strict_mode,
-                },
+                }),
                 "annotations": {
                     "type": "object",
                     "additionalProperties": {"type": "string", "maxLength": 500},
@@ -165,7 +196,7 @@ class SchemaService:
             },
             "required": ["config"],
             "additionalProperties": False,
-        }
+        })
 
     def _fluentbit_processors_schema(
         self,
@@ -198,11 +229,11 @@ class SchemaService:
                 "type": "array",
                 "items": {"oneOf": item_schemas} if item_schemas else {"type": "object"},
             }
-        return {
+        return self._with_object_meta({
             "type": "object",
             "properties": signal_props,
             "additionalProperties": not strict_mode,
-        }
+        })
 
     def _processor_variant_schema(
         self,
@@ -221,7 +252,7 @@ class SchemaService:
             if field.get("required") is True:
                 required.append(field["name"])
         if include_condition:
-            props["condition"] = {
+            props["condition"] = self._with_object_meta({
                 "type": "object",
                 "properties": {
                     "op": {
@@ -235,17 +266,17 @@ class SchemaService:
                 },
                 "required": ["op", "rules"],
                 "additionalProperties": not strict_mode,
-            }
-        return {
+            })
+        return self._with_object_meta({
             "type": "object",
             "title": variant.get("title", processor_name),
             "properties": props,
             "required": required,
             "additionalProperties": not strict_mode,
-        }
+        })
 
     def _compile_fluentd_schema(self, catalog: dict[str, Any], strict_mode: bool) -> dict[str, Any]:
-        plugin_groups = catalog.get("plugins", {}).get("fluentd", {})
+        plugin_groups = catalog.get("plugins", {})
         nested_sections = catalog.get("nested_sections", {})
         root_sections = catalog.get("root_sections", {})
 
@@ -278,22 +309,22 @@ class SchemaService:
             nested_sections=nested_sections,
         )
 
-        return {
+        return self._with_object_meta({
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "type": "object",
             "properties": {
-                "config": {
+                "config": self._with_object_meta({
                     "type": "object",
                     "properties": {
-                        "service": {
+                        "service": self._with_object_meta({
                             "type": "object",
                             "additionalProperties": not strict_mode,
-                        },
+                        }),
                         "includes": {
                             "type": "array",
                             "items": {"type": "string"},
                         },
-                        "pipeline": {
+                        "pipeline": self._with_object_meta({
                             "type": "object",
                             "properties": {
                                 "inputs": {"type": "array", "items": main_section_schema("inputs")},
@@ -302,13 +333,13 @@ class SchemaService:
                             },
                             "required": ["inputs", "filters", "outputs"],
                             "additionalProperties": not strict_mode,
-                        },
+                        }),
                         "labels": {"type": "array", "items": label_schema},
                         "workers": {"type": "array", "items": worker_schema},
                     },
                     "required": ["pipeline"],
                     "additionalProperties": not strict_mode,
-                },
+                }),
                 "annotations": {
                     "type": "object",
                     "additionalProperties": {"type": "string", "maxLength": 500},
@@ -316,7 +347,7 @@ class SchemaService:
             },
             "required": ["config"],
             "additionalProperties": False,
-        }
+        })
 
     def _root_container_schema(
         self,
@@ -334,7 +365,7 @@ class SchemaService:
             props[field["name"]] = self._field_schema(field)
             if field.get("required") is True:
                 required.append(field["name"])
-        props["pipeline"] = {
+        props["pipeline"] = self._with_object_meta({
             "type": "object",
             "properties": {
                 "inputs": {
@@ -382,7 +413,7 @@ class SchemaService:
             },
             "required": ["inputs", "filters", "outputs"],
             "additionalProperties": not strict_mode,
-        }
+        })
         props["includes"] = {"type": "array", "items": {"type": "string"}}
         if include_labels:
             props["labels"] = {
@@ -398,12 +429,12 @@ class SchemaService:
             }
         if include_workers:
             props["workers"] = {"type": "array", "items": {"type": "object"}}
-        return {
+        return self._with_object_meta({
             "type": "object",
             "properties": props,
             "required": required,
             "additionalProperties": not strict_mode,
-        }
+        })
 
     def _nested_section_items_schema(
         self,
@@ -414,14 +445,14 @@ class SchemaService:
         nested_sections: dict[str, Any],
     ) -> dict[str, Any]:
         if nested_def.get("reuses_output_plugins") is True:
-            return {
+            return self._with_object_meta({
                 "type": "object",
                 "properties": {
                     "name": {"type": "string"},
                 },
                 "required": ["name"],
                 "additionalProperties": True,
-            }
+            })
         if nested_def.get("plugin_backed") is True:
             variants = nested_def.get("variants", {})
             schemas = [
@@ -447,9 +478,9 @@ class SchemaService:
             props[field["name"]] = self._field_schema(field)
             if field.get("required") is True:
                 required.append(field["name"])
-        return {
+        return self._with_object_meta({
             "type": "object",
             "properties": props,
             "required": required,
             "additionalProperties": not strict_mode,
-        }
+        })

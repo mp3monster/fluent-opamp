@@ -1,3 +1,17 @@
+/*
+ * Copyright 2026 mp3monster.org
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 (function () {
   "use strict";
 
@@ -5,6 +19,8 @@
   var LAST_FILE_COOKIE = "config_service_last_opened_name";
   var LAST_DOC_STORAGE = "config_service_last_opened_doc";
   var CUSTOM_SERVICE_OPTION = "__custom__";
+  var HEADER_PREFIX = "config-service";
+  var META_COMMENTS_HELP_URL = "/config-service/ui/docs/meta-comments";
   var SERVICE_OPTIONS = [];
 
   var state = {
@@ -24,6 +40,12 @@
     serviceCollapsed: false,
     validationCollapsed: false,
     yamlCollapsed: false,
+    saveFileHandle: null,
+    currentFileDisplay: "",
+    lastRenderedSignature: "",
+    renderDirty: false,
+    readOnly: false,
+    commentOpen: {},
   };
 
   var SERVICE_OPTION_BY_KEY = {};
@@ -62,7 +84,10 @@
 
   var el = {
     openFile: document.getElementById("open-file"),
+    openFileDisplay: document.getElementById("open-file-display"),
+    browseFile: document.getElementById("browse-file"),
     saveConfig: document.getElementById("save-config"),
+    saveAsConfig: document.getElementById("save-as-config"),
     newConfig: document.getElementById("new-config"),
     reloadUi: document.getElementById("reload-ui"),
     versionSelect: document.getElementById("version-select"),
@@ -87,7 +112,10 @@
     serviceOptionMeta: document.getElementById("service-option-meta"),
     validateBtn: document.getElementById("validate-btn"),
     renderBtn: document.getElementById("render-btn"),
+    statusPanel: document.getElementById("status-panel"),
+    statusMessage: document.getElementById("status-message"),
     validationHeader: document.getElementById("validation-header"),
+    validationCard: document.getElementById("validation-card"),
     validationToggle: document.getElementById("validation-toggle"),
     validationBody: document.getElementById("validation-body"),
     validationSummary: document.getElementById("validation-summary"),
@@ -95,6 +123,7 @@
     yamlToggle: document.getElementById("yaml-toggle"),
     yamlBody: document.getElementById("yaml-body"),
     yamlOutput: document.getElementById("yaml-output"),
+    renderCard: document.getElementById("render-card"),
   };
 
   function fetchJson(url, options) {
@@ -157,11 +186,171 @@
     };
   }
 
+  function compareVersionStrings(left, right) {
+    var a = String(left || "").split(".").map(function (part) { return Number(part) || 0; });
+    var b = String(right || "").split(".").map(function (part) { return Number(part) || 0; });
+    var length = Math.max(a.length, b.length);
+    for (var index = 0; index < length; index += 1) {
+      var diff = (a[index] || 0) - (b[index] || 0);
+      if (diff !== 0) {
+        return diff;
+      }
+    }
+    return 0;
+  }
+
+  function resolvePreferredVersion(versions, preferredVersion, fallbackDefault) {
+    var candidates = Array.isArray(versions) ? versions.slice() : [];
+    if (candidates.length === 0) {
+      return "";
+    }
+    candidates.sort(compareVersionStrings);
+    if (preferredVersion) {
+      if (candidates.indexOf(preferredVersion) !== -1) {
+        return preferredVersion;
+      }
+      for (var index = 0; index < candidates.length; index += 1) {
+        if (compareVersionStrings(candidates[index], preferredVersion) > 0) {
+          return candidates[index];
+        }
+      }
+      return candidates[candidates.length - 1];
+    }
+    if (fallbackDefault && candidates.indexOf(fallbackDefault) !== -1) {
+      return fallbackDefault;
+    }
+    return candidates[0];
+  }
+
+  function clearOpenFileSelection() {
+    if (el.openFile) {
+      el.openFile.value = "";
+    }
+    state.currentFileDisplay = "";
+    if (el.openFileDisplay) {
+      el.openFileDisplay.value = "";
+    }
+  }
+
+  function isReadOnlyMode() {
+    return Boolean(state.readOnly);
+  }
+
+  function setOpenFileDisplay(value) {
+    state.currentFileDisplay = String(value || "").trim();
+    if (el.openFileDisplay) {
+      el.openFileDisplay.value = state.currentFileDisplay;
+    }
+  }
+
+  function currentRenderSignature() {
+    if (!state.doc) {
+      return "";
+    }
+    return JSON.stringify({
+      configType: state.configType,
+      version: state.doc.version || state.selectedVersion,
+      config: state.doc.config,
+    });
+  }
+
+  function updateRenderedDirtyState() {
+    if (el.renderCard) {
+      el.renderCard.classList.toggle("is-stale", Boolean(state.renderDirty && el.yamlOutput.textContent));
+    }
+    if (el.yamlOutput) {
+      el.yamlOutput.style.color = state.renderDirty ? "#8a6d00" : "#0f1420";
+    }
+  }
+
+  function updateReadOnlyState() {
+    var readOnly = isReadOnlyMode();
+    el.newConfig.disabled = readOnly;
+    el.saveConfig.disabled = readOnly;
+    el.saveAsConfig.disabled = readOnly;
+    el.configTypeSelect.disabled = readOnly || hasConfiguredContent();
+    el.versionSelect.disabled = readOnly || !Array.isArray(state.versions) || state.versions.length === 0;
+    el.addServiceField.disabled = readOnly;
+    el.serviceOption.disabled = readOnly;
+    el.serviceCustomKey.disabled = readOnly;
+    el.serviceValue.disabled = readOnly;
+    el.addPlugin.disabled = readOnly || !(state.catalog && el.pluginName && el.pluginName.value);
+    el.pluginSection.disabled = readOnly;
+    el.pluginName.disabled = readOnly;
+    el.addLabel.disabled = readOnly;
+    el.addWorker.disabled = readOnly;
+    Array.prototype.forEach.call(
+      document.querySelectorAll(
+        ".plugin-card input, .plugin-card select, .plugin-card textarea, " +
+          ".nested-panel input, .nested-panel select, .nested-panel textarea, " +
+          ".plugin-card button, .nested-panel button, .comment-editor textarea"
+      ),
+      function (node) {
+        if (!node || !node.id) {
+          // continue
+        }
+        var allowAction = node.id === "validation-toggle" ||
+          node.id === "yaml-toggle" ||
+          node.id === "validate-btn" ||
+          node.id === "render-btn" ||
+          node.id === "reload-ui";
+        if (allowAction) {
+          return;
+        }
+        if (node.classList && (node.classList.contains("icon-help") || node.textContent === "Collapse" || node.textContent === "Expand")) {
+          node.disabled = false;
+          return;
+        }
+        node.disabled = readOnly;
+      }
+    );
+  }
+
+  function parseConfigHeader(text) {
+    var meta = {
+      configType: "",
+      version: "",
+      body: String(text || ""),
+    };
+    var lines = meta.body.replace(/\r\n/g, "\n").split("\n");
+    var bodyStart = 0;
+    for (var index = 0; index < lines.length; index += 1) {
+      var line = lines[index];
+      var trimmed = line.trim();
+      var match = /^(?:\/\/|#)\s*config-service:\s*(config_type|version)\s*=\s*(.+?)\s*$/.exec(trimmed);
+      if (match) {
+        if (match[1] === "config_type") {
+          meta.configType = match[2].trim();
+        } else if (match[1] === "version") {
+          meta.version = match[2].trim();
+        }
+        bodyStart = index + 1;
+        continue;
+      }
+      if (!trimmed) {
+        bodyStart = index + 1;
+        continue;
+      }
+      break;
+    }
+    meta.body = lines.slice(bodyStart).join("\n");
+    return meta;
+  }
+
+  function prependConfigHeader(text, configType, version, commentPrefix) {
+    var prefix = commentPrefix || "#";
+    var header = [
+      prefix + " " + HEADER_PREFIX + ": config_type=" + String(configType || ""),
+      prefix + " " + HEADER_PREFIX + ": version=" + String(version || ""),
+    ].join("\n");
+    return header + "\n" + String(text || "");
+  }
+
   function pluginGroups() {
-    if (!state.catalog || !state.catalog.plugins || !state.catalog.plugins[state.configType]) {
+    if (!state.catalog || !state.catalog.plugins) {
       return { inputs: {}, filters: {}, outputs: {} };
     }
-    return state.catalog.plugins[state.configType];
+    return state.catalog.plugins;
   }
 
   function isFluentdMode() {
@@ -208,6 +397,28 @@
     return [];
   }
 
+  function normalizeEnumAliasValue(enumOptions, value) {
+    var options = Array.isArray(enumOptions) ? enumOptions.map(function (item) { return String(item); }) : [];
+    if (options.length === 0) {
+      return value;
+    }
+    var raw = value;
+    if (raw === undefined || raw === null) {
+      return raw;
+    }
+    var text = String(raw).trim();
+    var lower = text.toLowerCase();
+    if (options.indexOf("on") !== -1 && options.indexOf("off") !== -1) {
+      if (raw === true || lower === "true" || lower === "1" || lower === "yes" || lower === "on") {
+        return "on";
+      }
+      if (raw === false || lower === "false" || lower === "0" || lower === "no" || lower === "off") {
+        return "off";
+      }
+    }
+    return text;
+  }
+
   function replaceServiceValueControl(tagName) {
     var current = el.serviceValue;
     if (current && current.tagName && current.tagName.toLowerCase() === tagName.toLowerCase()) {
@@ -226,6 +437,9 @@
   function ensureDoc() {
     if (!state.doc) {
       state.doc = emptyDoc(state.selectedVersion, state.configType);
+    }
+    if (!state.doc.annotations || typeof state.doc.annotations !== "object") {
+      state.doc.annotations = {};
     }
     if (!state.doc.config) {
       state.doc.config = {};
@@ -250,6 +464,294 @@
         state.doc.config.pipeline[section] = [];
       }
     });
+    migrateLegacyAnnotationsToMeta();
+  }
+
+  function ensureMetaBlock(target) {
+    if (!target || typeof target !== "object" || Array.isArray(target)) {
+      return null;
+    }
+    if (!target._meta || typeof target._meta !== "object" || Array.isArray(target._meta)) {
+      target._meta = {};
+    }
+    return target._meta;
+  }
+
+  function ensureFieldCommentMap(target) {
+    var meta = ensureMetaBlock(target);
+    if (!meta) {
+      return null;
+    }
+    if (!meta.field_comment_lines || typeof meta.field_comment_lines !== "object" || Array.isArray(meta.field_comment_lines)) {
+      meta.field_comment_lines = {};
+    }
+    return meta.field_comment_lines;
+  }
+
+  function commentLinesToText(lines) {
+    if (!Array.isArray(lines)) {
+      return "";
+    }
+    return lines
+      .filter(function (line) {
+        return typeof line === "string";
+      })
+      .join("\n")
+      .trim();
+  }
+
+  function textToCommentLines(value) {
+    var text = String(value || "").replace(/\r\n/g, "\n");
+    var parts = text.split("\n");
+    while (parts.length > 0 && parts[0].trim() === "") {
+      parts.shift();
+    }
+    while (parts.length > 0 && parts[parts.length - 1].trim() === "") {
+      parts.pop();
+    }
+    return parts.map(function (line) {
+      return line.trimEnd();
+    });
+  }
+
+  function objectCommentText(target) {
+    var meta = ensureMetaBlock(target);
+    if (!meta) {
+      return "";
+    }
+    return commentLinesToText(meta.comment_lines);
+  }
+
+  function setObjectCommentText(target, value) {
+    var meta = ensureMetaBlock(target);
+    if (!meta) {
+      return;
+    }
+    var lines = textToCommentLines(value);
+    if (lines.length === 0) {
+      delete meta.comment_lines;
+      if (!meta.field_comment_lines || Object.keys(meta.field_comment_lines).length === 0) {
+        delete target._meta;
+      }
+    } else {
+      meta.comment_lines = lines;
+    }
+    saveDoc();
+  }
+
+  function fieldCommentText(target, fieldName) {
+    var meta = ensureMetaBlock(target);
+    if (!meta || !meta.field_comment_lines) {
+      return "";
+    }
+    return commentLinesToText(meta.field_comment_lines[fieldName]);
+  }
+
+  function setFieldCommentText(target, fieldName, value) {
+    var fieldMap = ensureFieldCommentMap(target);
+    if (!fieldMap) {
+      return;
+    }
+    var lines = textToCommentLines(value);
+    if (lines.length === 0) {
+      delete fieldMap[fieldName];
+      if (Object.keys(fieldMap).length === 0) {
+        delete target._meta.field_comment_lines;
+      }
+      if (target._meta && !target._meta.comment_lines && !target._meta.field_comment_lines) {
+        delete target._meta;
+      }
+    } else {
+      fieldMap[fieldName] = lines;
+    }
+    saveDoc();
+  }
+
+  function renameFieldComment(target, oldFieldName, newFieldName) {
+    var meta = ensureMetaBlock(target);
+    if (!meta || !meta.field_comment_lines || oldFieldName === newFieldName) {
+      return;
+    }
+    if (Object.prototype.hasOwnProperty.call(meta.field_comment_lines, oldFieldName)) {
+      meta.field_comment_lines[newFieldName] = meta.field_comment_lines[oldFieldName];
+      delete meta.field_comment_lines[oldFieldName];
+    }
+  }
+
+  function clearFieldComment(target, fieldName) {
+    var meta = ensureMetaBlock(target);
+    if (!meta || !meta.field_comment_lines) {
+      return;
+    }
+    delete meta.field_comment_lines[fieldName];
+    if (Object.keys(meta.field_comment_lines).length === 0) {
+      delete meta.field_comment_lines;
+    }
+    if (!meta.comment_lines && !meta.field_comment_lines) {
+      delete target._meta;
+    }
+  }
+
+  function tokenizeLegacyCommentPath(path) {
+    if (typeof path !== "string" || path.charAt(0) !== "$") {
+      return null;
+    }
+    var tokens = [];
+    var cursor = 1;
+    while (cursor < path.length) {
+      var char = path.charAt(cursor);
+      if (char === ".") {
+        cursor += 1;
+        var nextDot = path.indexOf(".", cursor);
+        var nextBracket = path.indexOf("[", cursor);
+        var end = path.length;
+        if (nextDot !== -1) {
+          end = Math.min(end, nextDot);
+        }
+        if (nextBracket !== -1) {
+          end = Math.min(end, nextBracket);
+        }
+        tokens.push(path.slice(cursor, end));
+        cursor = end;
+        continue;
+      }
+      if (char === "[") {
+        var close = path.indexOf("]", cursor);
+        if (close === -1) {
+          return null;
+        }
+        tokens.push(Number(path.slice(cursor + 1, close)));
+        cursor = close + 1;
+        continue;
+      }
+      return null;
+    }
+    return tokens;
+  }
+
+  function migrateLegacyAnnotationsToMeta() {
+    if (!state.doc || !state.doc.annotations || Object.keys(state.doc.annotations).length === 0) {
+      return;
+    }
+    var annotations = state.doc.annotations;
+    Object.keys(annotations).forEach(function (path) {
+      var tokens = tokenizeLegacyCommentPath(path);
+      if (!tokens || tokens.length === 0) {
+        return;
+      }
+      var cursor = state.doc.config;
+      var parent = null;
+      var lastToken = null;
+      for (var index = 0; index < tokens.length; index += 1) {
+        lastToken = tokens[index];
+        parent = cursor;
+        if (parent === undefined || parent === null) {
+          return;
+        }
+        cursor = parent[lastToken];
+      }
+      var text = String(annotations[path] || "");
+      if (cursor && typeof cursor === "object" && !Array.isArray(cursor)) {
+        setObjectCommentText(cursor, text);
+        return;
+      }
+      if (parent && typeof parent === "object" && typeof lastToken === "string") {
+        setFieldCommentText(parent, lastToken, text);
+      }
+    });
+    state.doc.annotations = {};
+  }
+
+  function createCommentEditor(target, labelText, fieldName) {
+    return createCommentEditorPanel(target, labelText, fieldName, "");
+  }
+
+  function hasCommentText(target, fieldName) {
+    var text = fieldName ? fieldCommentText(target, fieldName) : objectCommentText(target);
+    return Boolean(String(text || "").trim());
+  }
+
+  function isCommentEditorOpen(toggleKey, target, fieldName) {
+    if (toggleKey && Object.prototype.hasOwnProperty.call(state.commentOpen, toggleKey)) {
+      return Boolean(state.commentOpen[toggleKey]);
+    }
+    return hasCommentText(target, fieldName);
+  }
+
+  function setCommentEditorOpen(toggleKey, isOpen) {
+    if (!toggleKey) {
+      return;
+    }
+    state.commentOpen[toggleKey] = Boolean(isOpen);
+  }
+
+  function createMetaHelpButton() {
+    var helpBtn = document.createElement("button");
+    helpBtn.type = "button";
+    helpBtn.textContent = "?";
+    helpBtn.className = "icon-help";
+    helpBtn.title = "Open help for _meta comments and field_comment_lines.";
+    helpBtn.setAttribute("aria-label", "Open help for _meta comments");
+    helpBtn.addEventListener("click", function () {
+      window.open(META_COMMENTS_HELP_URL, "_blank", "noopener,noreferrer");
+    });
+    return helpBtn;
+  }
+
+  function createCommentToggleButton(toggleKey, target, fieldName, labelText) {
+    var btn = document.createElement("button");
+    var isOpen = isCommentEditorOpen(toggleKey, target, fieldName);
+    var hasContent = hasCommentText(target, fieldName);
+    btn.type = "button";
+    btn.textContent = hasContent ? "📝" : "🗒";
+    btn.className = "icon-button icon-note";
+    if (isOpen) {
+      btn.classList.add("is-active");
+    }
+    if (hasContent) {
+      btn.classList.add("has-comment");
+    }
+    btn.title = (isOpen ? "Hide " : "Open ") + (labelText || "comment editor");
+    btn.setAttribute("aria-label", (isOpen ? "Hide " : "Open ") + (labelText || "comment editor"));
+    btn.addEventListener("click", function () {
+      setCommentEditorOpen(toggleKey, !isOpen);
+      renderAll();
+    });
+    return btn;
+  }
+
+  function createCommentEditorPanel(target, labelText, fieldName, toggleKey) {
+    var wrap = document.createElement("div");
+    wrap.className = "comment-editor";
+    if (!isCommentEditorOpen(toggleKey, target, fieldName)) {
+      wrap.classList.add("hidden");
+    }
+
+    var label = document.createElement("label");
+    label.className = "comment-label";
+    label.textContent = labelText || "Comment";
+
+    var input = document.createElement("textarea");
+    input.className = "comment-input";
+    input.rows = 2;
+    input.placeholder = "Optional comment";
+    input.value = fieldName ? fieldCommentText(target, fieldName) : objectCommentText(target);
+    input.disabled = isReadOnlyMode();
+    input.addEventListener("change", function () {
+      if (fieldName) {
+        setFieldCommentText(target, fieldName, input.value);
+        setCommentEditorOpen(toggleKey, true);
+        saveDoc();
+        return;
+      }
+      setObjectCommentText(target, input.value);
+      setCommentEditorOpen(toggleKey, true);
+      saveDoc();
+    });
+
+    label.appendChild(input);
+    wrap.appendChild(label);
+    return wrap;
   }
 
   function saveDoc() {
@@ -258,6 +760,10 @@
     }
     localStorage.setItem(LAST_DOC_STORAGE, JSON.stringify(state.doc));
     markValidationDirtyOnEdit();
+    if (state.lastRenderedSignature && state.lastRenderedSignature !== currentRenderSignature()) {
+      state.renderDirty = true;
+      updateRenderedDirtyState();
+    }
     updateConfigTypeDisabledState();
   }
 
@@ -346,8 +852,24 @@
     });
   }
 
-  function setYamlText(text) {
+  function setStatusMessage(text) {
+    var message = String(text || "").trim();
+    if (!message) {
+      el.statusMessage.textContent = "";
+      el.statusPanel.classList.add("hidden");
+      return;
+    }
+    el.statusMessage.textContent = message;
+    el.statusPanel.classList.remove("hidden");
+  }
+
+  function setYamlText(text, markFresh) {
     el.yamlOutput.textContent = text || "";
+    if (markFresh === true) {
+      state.lastRenderedSignature = currentRenderSignature();
+      state.renderDirty = false;
+    }
+    updateRenderedDirtyState();
     updateResultPanels();
   }
 
@@ -392,7 +914,7 @@
       opt.textContent = v;
       el.versionSelect.appendChild(opt);
     });
-    el.versionSelect.disabled = false;
+    el.versionSelect.disabled = isReadOnlyMode() ? true : false;
     el.versionSelect.value = state.selectedVersion;
   }
 
@@ -400,14 +922,8 @@
     return fetchJson(API_BASE + "/versions?config_type=" + encodeURIComponent(configType)).then(function (data) {
       var versions = Array.isArray(data.versions) ? data.versions.slice() : [];
       state.versions = versions;
-
-      if (preferredVersion && versions.indexOf(preferredVersion) !== -1) {
-        state.selectedVersion = preferredVersion;
-      } else if (state.selectedVersion && versions.indexOf(state.selectedVersion) !== -1) {
-        state.selectedVersion = state.selectedVersion;
-      } else {
-        state.selectedVersion = data.default || versions[0] || "";
-      }
+      var currentPreferred = preferredVersion || state.selectedVersion || "";
+      state.selectedVersion = resolvePreferredVersion(versions, currentPreferred, data.default || "");
 
       if (state.doc) {
         state.doc.version = state.selectedVersion;
@@ -462,15 +978,26 @@
           select.appendChild(option);
         });
         select.value = String(
-          Object.prototype.hasOwnProperty.call(opt, "default") && opt.default !== ""
-            ? opt.default
-            : enumOptions[0]
+          normalizeEnumAliasValue(
+            enumOptions,
+            Object.prototype.hasOwnProperty.call(opt, "default") && opt.default !== ""
+              ? opt.default
+              : enumOptions[0]
+          )
         );
+        select.disabled = isReadOnlyMode();
+      } else if (String(opt.data_type || "").toLowerCase() === "code") {
+        var codeInput = replaceServiceValueControl("textarea");
+        codeInput.placeholder = String(opt.default || "");
+        codeInput.value = "";
+        prepareCodeTextarea(codeInput);
+        codeInput.disabled = isReadOnlyMode();
       } else {
         var input = replaceServiceValueControl("input");
         input.type = "text";
         input.placeholder = String(opt.default);
         input.value = "";
+        input.disabled = isReadOnlyMode();
       }
       el.serviceOptionMeta.innerHTML =
         opt.description +
@@ -485,6 +1012,7 @@
       customInput.type = "text";
       customInput.placeholder = "value";
       customInput.value = "";
+      customInput.disabled = isReadOnlyMode();
       el.serviceOptionMeta.textContent = "Define a custom service key and value.";
       el.serviceHelpToggle.disabled = isCustom;
       el.serviceHelpToggle.title = isCustom
@@ -513,6 +1041,36 @@
     return raw;
   }
 
+  function maxCodeEditorHeight() {
+    var viewport = window.innerHeight || 800;
+    return Math.max(180, viewport - 260);
+  }
+
+  function resizeCodeTextarea(textarea) {
+    if (!textarea) {
+      return;
+    }
+    textarea.style.height = "auto";
+    textarea.style.height = String(Math.max(140, Math.min(textarea.scrollHeight, maxCodeEditorHeight()))) + "px";
+  }
+
+  function prepareCodeTextarea(textarea) {
+    if (!textarea) {
+      return;
+    }
+    textarea.classList.add("code-input");
+    textarea.setAttribute("spellcheck", "false");
+    textarea.setAttribute("wrap", "off");
+    textarea.style.maxHeight = String(maxCodeEditorHeight()) + "px";
+    resizeCodeTextarea(textarea);
+    if (textarea.dataset.codeResizeBound !== "true") {
+      textarea.addEventListener("input", function () {
+        resizeCodeTextarea(textarea);
+      });
+      textarea.dataset.codeResizeBound = "true";
+    }
+  }
+
   function parseServiceValue(raw) {
     var v = String(raw || "").trim();
     if (v === "true") {
@@ -536,6 +1094,9 @@
 
   function parseServiceValueByType(raw, dataType) {
     var t = String(dataType || "string").toLowerCase();
+    if (t === "enum") {
+      return String(raw || "");
+    }
     if (t === "boolean") {
       var v = String(raw || "").trim().toLowerCase();
       return v === "true" || v === "1" || v === "yes" || v === "on";
@@ -607,7 +1168,7 @@
   }
 
   function updateConfigTypeDisabledState() {
-    el.configTypeSelect.disabled = hasConfiguredContent();
+    el.configTypeSelect.disabled = isReadOnlyMode() || hasConfiguredContent();
   }
 
   function defaultSaveFileName() {
@@ -634,48 +1195,118 @@
     window.URL.revokeObjectURL(url);
   }
 
-  function currentApiQuery() {
-    return "?config_type=" + encodeURIComponent(state.configType || "fluentbit");
+  function shouldPromptForSaveLocation() {
+    var name = String(state.currentFileName || "").trim();
+    if (!name) {
+      return true;
+    }
+    return /^new-\d+$/i.test(name);
   }
 
-  function triggerConfigDownload() {
-    if (!state.doc) {
-      setValidationText("Nothing to save yet.");
-      return;
-    }
-    var fileName = defaultSaveFileName();
+  function pickerTypesForCurrentConfig() {
     if (state.configType === "fluentd") {
-      fetchJson(API_BASE + "/render/fluentd/" + encodeURIComponent(state.doc.version), {
+      return [
+        {
+          description: "Fluentd configuration",
+          accept: {
+            "text/plain": [".conf"],
+          },
+        },
+      ];
+    }
+    return [
+      {
+        description: "Config Service JSON document",
+        accept: {
+          "application/json": [".json"],
+        },
+      },
+    ];
+  }
+
+  function buildSaveBlob() {
+    if (state.configType === "fluentd") {
+      return fetchJson(API_BASE + "/render/fluentd/" + encodeURIComponent(state.doc.version), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           config: state.doc.config,
           annotations: state.doc.annotations || {},
         }),
-      })
-        .then(function (result) {
-          downloadBlob(fileName, new Blob([result.text || ""], { type: "text/plain" }));
-          state.currentFileName = fileName;
-          setCookie(LAST_FILE_COOKIE, fileName);
-          saveDoc();
-          setValidationText("Saved configuration as " + fileName);
-        })
-        .catch(function (err) {
-          setValidationText(String(err));
-        });
+      }).then(function (result) {
+        var renderedText = prependConfigHeader(result.text || "", state.configType, state.doc.version, "#");
+        return {
+          blob: new Blob([renderedText], { type: "text/plain" }),
+          text: renderedText,
+        };
+      });
+    }
+    var jsonText = prependConfigHeader(JSON.stringify(state.doc, null, 2), state.configType, state.doc.version, "//");
+    return Promise.resolve({
+      blob: new Blob([jsonText], { type: "application/json" }),
+      text: jsonText,
+    });
+  }
+
+  function writeToSaveHandle(handle, blob) {
+    return handle.createWritable().then(function (writable) {
+      return writable.write(blob).then(function () {
+        return writable.close();
+      });
+    });
+  }
+
+  function currentApiQuery() {
+    return "?config_type=" + encodeURIComponent(state.configType || "fluentbit");
+  }
+
+  function triggerConfigDownload(forcePrompt) {
+    if (!state.doc) {
+      setStatusMessage("Nothing to save yet.");
       return;
     }
-    downloadBlob(fileName, new Blob([JSON.stringify(state.doc, null, 2)], { type: "application/json" }));
-    state.currentFileName = fileName;
-    setCookie(LAST_FILE_COOKIE, fileName);
-    saveDoc();
-    setValidationText("Saved configuration as " + fileName);
+    var fileName = defaultSaveFileName();
+    buildSaveBlob()
+      .then(function (result) {
+        if ((forcePrompt || state.saveFileHandle || shouldPromptForSaveLocation()) && typeof window.showSaveFilePicker === "function") {
+          var handlePromise = !forcePrompt && state.saveFileHandle
+            ? Promise.resolve(state.saveFileHandle)
+            : window.showSaveFilePicker({
+                suggestedName: fileName,
+                types: pickerTypesForCurrentConfig(),
+              });
+          return handlePromise.then(function (handle) {
+            state.saveFileHandle = handle;
+            return writeToSaveHandle(handle, result.blob).then(function () {
+              state.currentFileName = handle.name || fileName;
+              setOpenFileDisplay(handle.name || fileName);
+              setCookie(LAST_FILE_COOKIE, state.currentFileName);
+              saveDoc();
+              setStatusMessage("Saved configuration as " + state.currentFileName);
+            });
+          });
+        }
+
+        downloadBlob(fileName, result.blob);
+        state.currentFileName = fileName;
+        setOpenFileDisplay(fileName);
+        setCookie(LAST_FILE_COOKIE, fileName);
+        saveDoc();
+        setStatusMessage("Saved configuration as " + fileName);
+      })
+      .catch(function (err) {
+        if (err && err.name === "AbortError") {
+          setStatusMessage("Save cancelled.");
+          return;
+        }
+        setValidationText(String(err));
+      });
   }
 
   function updateAddPluginState() {
-    var hasCatalog = Boolean(state.catalog && state.catalog.plugins && state.catalog.plugins[state.configType]);
+    var hasCatalog = Boolean(state.catalog && state.catalog.plugins);
     var hasPluginValue = Boolean(el.pluginName && el.pluginName.value);
-    el.addPlugin.disabled = !(hasCatalog && hasPluginValue);
+    el.addPlugin.disabled = isReadOnlyMode() || !(hasCatalog && hasPluginValue);
   }
 
   function updateFluentdSectionVisibility() {
@@ -712,8 +1343,8 @@
     Object.keys(signalDef.processors || {}).forEach(function (name) {
       available[name] = signalDef.processors[name];
     });
-    if (signalName === "logs" && signalDef.allow_filters_as_processors && state.catalog && state.catalog.plugins && state.catalog.plugins.fluentbit) {
-      var filterDefs = state.catalog.plugins.fluentbit.filters || {};
+    if (signalName === "logs" && signalDef.allow_filters_as_processors && state.catalog && state.catalog.plugins) {
+      var filterDefs = state.catalog.plugins.filters || {};
       Object.keys(filterDefs).forEach(function (name) {
         available[name] = filterDefs[name];
       });
@@ -780,6 +1411,12 @@
 
   function renderFieldRow(instance, field, options) {
     options = options || {};
+    var block = document.createElement("div");
+    block.className = "field-block";
+    if (options.commentTarget && options.commentFieldName) {
+      block.classList.add("comment-group");
+    }
+
     var row = document.createElement("div");
     row.className = "field-row";
     if (options.optional) {
@@ -806,7 +1443,10 @@
         option.textContent = String(value);
         select.appendChild(option);
       });
-      select.value = fieldInputValue(instance[field.name], field.data_type) || String(enumOptions[0]);
+      select.value = normalizeEnumAliasValue(
+        enumOptions,
+        fieldInputValue(instance[field.name], field.data_type) || String(enumOptions[0])
+      ) || String(enumOptions[0]);
       if (options.focusKey && state.pendingFocusFieldKey === options.focusKey) {
         setTimeout(function () {
           select.focus();
@@ -817,6 +1457,7 @@
         instance[field.name] = select.value;
         saveDoc();
       });
+      select.disabled = isReadOnlyMode();
       row.appendChild(select);
     } else if (dataType === "boolean") {
       var checkbox = document.createElement("input");
@@ -832,19 +1473,26 @@
         instance[field.name] = checkbox.checked;
         saveDoc();
       });
+      checkbox.disabled = isReadOnlyMode();
       row.appendChild(checkbox);
     } else {
-      var input = dataType === "array" || dataType === "list" || dataType === "object" || dataType === "map"
-        ? document.createElement("textarea")
-        : document.createElement("input");
+      var isStructured = dataType === "array" || dataType === "list" || dataType === "object" || dataType === "map";
+      var isCode = dataType === "code";
+      var input = isStructured || isCode ? document.createElement("textarea") : document.createElement("input");
       input.value = fieldInputValue(instance[field.name], field.data_type);
       input.placeholder = field.description || "";
       input.title = (field.reference || "") + "\n" + (field.description || "");
+      if (isCode) {
+        prepareCodeTextarea(input);
+      }
       if (options.focusKey && state.pendingFocusFieldKey === options.focusKey) {
         setTimeout(function () {
           input.focus();
           if (typeof input.select === "function") {
             input.select();
+          }
+          if (isCode) {
+            resizeCodeTextarea(input);
           }
         }, 0);
         state.pendingFocusFieldKey = "";
@@ -853,10 +1501,22 @@
         instance[field.name] = parseTextValue(input.value, field.data_type);
         saveDoc();
       });
+      input.disabled = isReadOnlyMode();
       row.appendChild(input);
     }
 
-    row.appendChild(createFieldHelpButton(field, !options.optional));
+    row.appendChild(createFieldHelpButton(field, false));
+
+    if (options.commentTarget && options.commentFieldName) {
+      var commentToggle = createCommentToggleButton(
+        options.commentToggleKey || "",
+        options.commentTarget,
+        options.commentFieldName,
+        "comment editor for " + options.commentFieldName
+      );
+      commentToggle.classList.add("right-align");
+      row.appendChild(commentToggle);
+    }
 
     if (options.optional && typeof options.onRemove === "function") {
       var removeBtn = document.createElement("button");
@@ -864,18 +1524,36 @@
       removeBtn.textContent = "-";
       removeBtn.className = "icon-remove right-align";
       removeBtn.title = "Remove attribute";
+      removeBtn.disabled = isReadOnlyMode();
       removeBtn.addEventListener("click", options.onRemove);
       row.appendChild(removeBtn);
     }
 
-    return row;
+    block.appendChild(row);
+    if (options.commentTarget && options.commentFieldName) {
+      block.appendChild(
+        createCommentEditorPanel(
+          options.commentTarget,
+          "Comment",
+          options.commentFieldName,
+          options.commentToggleKey || ""
+        )
+      );
+    }
+
+    return block;
   }
 
-  function moveWithinPipeline(pipeline, section, index, direction) {
+  function moveWithinPipeline(pipeline, section, index, direction, pathPrefix) {
+    if (isReadOnlyMode()) {
+      return;
+    }
     var list = pipeline[section];
     var target = index + direction;
     if (target < 0 || target >= list.length) {
       return;
+    }
+    if (pathPrefix) {
     }
     var temp = list[target];
     list[target] = list[index];
@@ -899,7 +1577,10 @@
     return nextInstance;
   }
 
-  function movePluginToSection(pipeline, section, index, instance, targetSection) {
+  function movePluginToSection(pipeline, section, index, instance, targetSection, pathPrefix) {
+    if (isReadOnlyMode()) {
+      return;
+    }
     if (targetSection === section) {
       return;
     }
@@ -911,6 +1592,8 @@
       return;
     }
     var nextInstance = remapPluginInstanceForSection(instance, targetPluginDef);
+    if (pathPrefix) {
+    }
     pipeline[section].splice(index, 1);
     pipeline[targetSection].push(nextInstance);
     saveDoc();
@@ -941,12 +1624,16 @@
     });
     opSelect.value = String((instance.condition && instance.condition.op) || "and");
     opSelect.addEventListener("change", function () {
+      if (isReadOnlyMode()) {
+        return;
+      }
       if (!instance.condition || typeof instance.condition !== "object") {
         instance.condition = { op: "and", rules: [] };
       }
       instance.condition.op = opSelect.value;
       saveDoc();
     });
+    opSelect.disabled = isReadOnlyMode();
     row.appendChild(opSelect);
     frame.appendChild(row);
 
@@ -963,6 +1650,9 @@
     }
     rulesInput.placeholder = '[{"field":"$level","op":"eq","value":"error"}]';
     rulesInput.addEventListener("change", function () {
+      if (isReadOnlyMode()) {
+        return;
+      }
       if (!instance.condition || typeof instance.condition !== "object") {
         instance.condition = { op: opSelect.value, rules: [] };
       }
@@ -974,6 +1664,7 @@
       }
       saveDoc();
     });
+    rulesInput.disabled = isReadOnlyMode();
     rulesRow.appendChild(rulesInput);
     frame.appendChild(rulesRow);
 
@@ -982,6 +1673,7 @@
     removeBtn.textContent = "-";
     removeBtn.className = "icon-remove";
     removeBtn.title = "Remove condition";
+    removeBtn.disabled = isReadOnlyMode();
     removeBtn.addEventListener("click", function () {
       delete instance.condition;
       saveDoc();
@@ -992,7 +1684,7 @@
     return frame;
   }
 
-  function renderProcessorCard(signalName, processorIndex, processorInstance, keyPrefix, collection) {
+  function renderProcessorCard(signalName, processorIndex, processorInstance, keyPrefix, collection, processorPath) {
     var procDef = fluentbitProcessorDefinition(signalName, processorInstance.name);
     var card = document.createElement("div");
     card.className = "plugin-card";
@@ -1013,6 +1705,15 @@
     var actions = document.createElement("div");
     actions.className = "plugin-actions";
 
+    actions.appendChild(
+      createCommentToggleButton(
+        key + ":comment",
+        processorInstance,
+        "",
+        "processor comment editor"
+      )
+    );
+
     var collapseBtn = document.createElement("button");
     collapseBtn.type = "button";
     collapseBtn.textContent = collapsed ? "Expand" : "Collapse";
@@ -1027,6 +1728,7 @@
     removeBtn.textContent = "-";
     removeBtn.className = "icon-remove";
     removeBtn.title = "Remove processor";
+    removeBtn.disabled = isReadOnlyMode();
     removeBtn.addEventListener("click", function () {
       collection.splice(processorIndex, 1);
       saveDoc();
@@ -1056,6 +1758,9 @@
         renderFieldRow(processorInstance, field, {
           optional: false,
           focusKey: key + ":" + field.name,
+          commentTarget: processorInstance,
+          commentFieldName: field.name,
+          commentToggleKey: key + ":" + field.name + ":comment",
         })
       );
     });
@@ -1065,6 +1770,9 @@
         renderFieldRow(processorInstance, field, {
           optional: true,
           focusKey: key + ":" + field.name,
+          commentTarget: processorInstance,
+          commentFieldName: field.name,
+          commentToggleKey: key + ":" + field.name + ":comment",
           onRemove: function () {
             delete processorInstance[field.name];
             saveDoc();
@@ -1073,7 +1781,7 @@
         })
       );
     });
-
+    card.appendChild(createCommentEditorPanel(processorInstance, "Processor Comment", "", key + ":comment"));
     card.appendChild(fieldsWrap);
 
     var missingOptional = fields.filter(function (field) {
@@ -1144,7 +1852,7 @@
     return card;
   }
 
-  function renderFluentbitProcessorsPanel(section, index, instance, keyPrefix) {
+  function renderFluentbitProcessorsPanel(section, index, instance, keyPrefix, pluginPath) {
     ensureFluentbitProcessors(instance);
 
     var frame = document.createElement("div");
@@ -1253,7 +1961,8 @@
             processorIndex,
             processorInstance,
             keyPrefix + ":" + section + ":" + index,
-            items
+            items,
+            pluginPath + ".processors." + signalName + "[" + processorIndex + "]"
           )
         );
       });
@@ -1263,13 +1972,14 @@
     return frame;
   }
 
-  function renderPluginCard(flatIndex, section, index, instance, pipeline, keyPrefix) {
+  function renderPluginCard(flatIndex, section, index, instance, pipeline, keyPrefix, pathPrefix) {
     var groups = pluginGroups();
     var pluginDef = groups[section][instance.name];
     var card = document.createElement("div");
     card.className = "plugin-card";
 
     var key = (keyPrefix || "main") + ":" + section + "-" + index;
+    var pluginPath = (pathPrefix || "$.pipeline") + "." + section + "[" + index + "]";
     var collapsed = Boolean(state.collapse[key]);
 
     var head = document.createElement("div");
@@ -1299,6 +2009,8 @@
       if (!targetPluginDef) {
         iconBtn.disabled = true;
         iconBtn.classList.add("is-disabled");
+      } else if (isReadOnlyMode()) {
+        iconBtn.disabled = true;
       }
       iconBtn.title = sectionMeta.title;
       iconBtn.setAttribute(
@@ -1309,7 +2021,7 @@
       );
       if (targetPluginDef && sectionMeta.key !== section) {
         iconBtn.addEventListener("click", function () {
-          movePluginToSection(pipeline, section, index, instance, sectionMeta.key);
+          movePluginToSection(pipeline, section, index, instance, sectionMeta.key, pathPrefix || "$.pipeline");
         });
       }
       sectionIcons.appendChild(iconBtn);
@@ -1320,6 +2032,8 @@
 
     var actions = document.createElement("div");
     actions.className = "plugin-actions";
+
+    actions.appendChild(createCommentToggleButton(key + ":comment", instance, "", "plugin comment editor"));
 
     var collapseBtn = document.createElement("button");
     collapseBtn.type = "button";
@@ -1335,9 +2049,9 @@
     upBtn.textContent = "↑";
     upBtn.className = "icon-button";
     upBtn.title = "Move plugin up";
-    upBtn.disabled = index === 0;
+    upBtn.disabled = isReadOnlyMode() || index === 0;
     upBtn.addEventListener("click", function () {
-      moveWithinPipeline(pipeline, section, index, -1);
+      moveWithinPipeline(pipeline, section, index, -1, pathPrefix || "$.pipeline");
     });
     actions.appendChild(upBtn);
 
@@ -1346,9 +2060,9 @@
     downBtn.textContent = "↓";
     downBtn.className = "icon-button";
     downBtn.title = "Move plugin down";
-    downBtn.disabled = index >= pipeline[section].length - 1;
+    downBtn.disabled = isReadOnlyMode() || index >= pipeline[section].length - 1;
     downBtn.addEventListener("click", function () {
-      moveWithinPipeline(pipeline, section, index, 1);
+      moveWithinPipeline(pipeline, section, index, 1, pathPrefix || "$.pipeline");
     });
     actions.appendChild(downBtn);
 
@@ -1357,6 +2071,7 @@
     removeBtn.textContent = "-";
     removeBtn.className = "icon-remove";
     removeBtn.title = "Remove plugin";
+    removeBtn.disabled = isReadOnlyMode();
     removeBtn.addEventListener("click", function () {
       pipeline[section].splice(index, 1);
       saveDoc();
@@ -1368,6 +2083,8 @@
     card.appendChild(head);
 
     if (!collapsed) {
+      card.appendChild(createCommentEditorPanel(instance, "Plugin Comment", "", key + ":comment"));
+
       var fieldsWrap = document.createElement("div");
       fieldsWrap.className = "field-grid";
 
@@ -1386,6 +2103,9 @@
             optional: false,
             focusKey: focusKey,
             onRemove: null,
+            commentTarget: instance,
+            commentFieldName: field.name,
+            commentToggleKey: key + ":" + field.name + ":comment",
           })
         );
       });
@@ -1396,6 +2116,9 @@
           renderFieldRow(instance, field, {
             optional: true,
             focusKey: focusKey,
+            commentTarget: instance,
+            commentFieldName: field.name,
+            commentToggleKey: key + ":" + field.name + ":comment",
             onRemove: function () {
               delete instance[field.name];
               saveDoc();
@@ -1434,6 +2157,7 @@
         var addOptional = document.createElement("button");
         addOptional.type = "button";
         addOptional.textContent = "Add Optional";
+        addOptional.disabled = isReadOnlyMode();
         addOptional.addEventListener("click", function () {
           var selected = optionalSel.value;
           if (!selected) {
@@ -1456,7 +2180,7 @@
       }
 
       if (state.configType === "fluentbit" && (section === "inputs" || section === "outputs") && fluentbitProcessorRoot()) {
-        card.appendChild(renderFluentbitProcessorsPanel(section, index, instance, keyPrefix || "main"));
+        card.appendChild(renderFluentbitProcessorsPanel(section, index, instance, keyPrefix || "main", pluginPath));
       }
     }
 
@@ -1487,6 +2211,15 @@
 
     var actions = document.createElement("div");
     actions.className = "plugin-actions";
+    actions.appendChild(createMetaHelpButton());
+    actions.appendChild(
+      createCommentToggleButton(
+        "service:comment",
+        state.doc.config.service,
+        "",
+        "service comment editor"
+      )
+    );
     var collapseBtn = document.createElement("button");
     collapseBtn.type = "button";
     collapseBtn.textContent = state.serviceCollapsed ? "Expand" : "Collapse";
@@ -1504,6 +2237,15 @@
       return;
     }
 
+    card.appendChild(
+      createCommentEditorPanel(
+        state.doc.config.service,
+        "Service Comment",
+        "",
+        "service:comment"
+      )
+    );
+
     var body = document.createElement("div");
     body.className = "field-grid";
 
@@ -1519,12 +2261,14 @@
 
       var keyInput = document.createElement("input");
       keyInput.value = key;
+      keyInput.disabled = isReadOnlyMode();
       keyInput.addEventListener("change", function () {
         var newKey = keyInput.value.trim();
         if (!newKey || newKey === key) {
           keyInput.value = key;
           return;
         }
+        renameFieldComment(state.doc.config.service, key, newKey);
         state.doc.config.service[newKey] = state.doc.config.service[key];
         delete state.doc.config.service[key];
         saveDoc();
@@ -1533,15 +2277,31 @@
       row.appendChild(keyInput);
 
       var valueInput = document.createElement("input");
-      if (knownServiceOption && String(knownServiceOption.data_type || "").toLowerCase() === "enum") {
+      var serviceDataType = knownServiceOption ? String(knownServiceOption.data_type || "").toLowerCase() : "";
+      if (knownServiceOption && serviceDataType === "enum") {
         valueInput = document.createElement("select");
-        getEnumOptions(knownServiceOption).forEach(function (enumValue) {
+        var serviceEnumOptions = getEnumOptions(knownServiceOption);
+        serviceEnumOptions.forEach(function (enumValue) {
           var option = document.createElement("option");
           option.value = String(enumValue);
           option.textContent = String(enumValue);
           valueInput.appendChild(option);
         });
-        valueInput.value = String(value);
+        valueInput.value = String(normalizeEnumAliasValue(serviceEnumOptions, value));
+        valueInput.disabled = isReadOnlyMode();
+      } else if (knownServiceOption && serviceDataType === "code") {
+        valueInput = document.createElement("textarea");
+        if (typeof value === "object") {
+          try {
+            valueInput.value = JSON.stringify(value, null, 2);
+          } catch (_e) {
+            valueInput.value = String(value);
+          }
+        } else {
+          valueInput.value = String(value);
+        }
+        prepareCodeTextarea(valueInput);
+        valueInput.disabled = isReadOnlyMode();
       } else {
         valueInput = document.createElement("input");
         if (typeof value === "object") {
@@ -1553,6 +2313,7 @@
         } else {
           valueInput.value = String(value);
         }
+        valueInput.disabled = isReadOnlyMode();
       }
       valueInput.addEventListener("change", function () {
         if (knownServiceOption) {
@@ -1567,19 +2328,53 @@
       });
       row.appendChild(valueInput);
 
+      row.appendChild(
+        createFieldHelpButton(
+          {
+            name: key,
+            description: knownServiceOption ? knownServiceOption.description : "No linked service attribute documentation available.",
+            reference: knownServiceOption ? knownServiceOption.reference : "",
+          },
+          false
+        )
+      );
+
+      row.appendChild(
+        createCommentToggleButton(
+          "service:" + key + ":comment",
+          state.doc.config.service,
+          key,
+          "comment editor for " + key
+        )
+      );
+
       var removeBtn = document.createElement("button");
       removeBtn.type = "button";
       removeBtn.textContent = "-";
       removeBtn.className = "icon-remove right-align";
       removeBtn.title = "Remove service field";
+      removeBtn.disabled = isReadOnlyMode();
       removeBtn.addEventListener("click", function () {
+        clearFieldComment(state.doc.config.service, key);
         delete state.doc.config.service[key];
         saveDoc();
         renderService();
       });
       row.appendChild(removeBtn);
 
-      body.appendChild(row);
+      var block = document.createElement("div");
+      block.className = "field-block";
+      block.classList.add("comment-group");
+      block.appendChild(row);
+      block.appendChild(
+        createCommentEditorPanel(
+          state.doc.config.service,
+          "Comment",
+          key,
+          "service:" + key + ":comment"
+        )
+      );
+      body.appendChild(block);
     });
 
     card.appendChild(body);
@@ -1599,7 +2394,7 @@
 
     flattened.forEach(function (entry, flatIndex) {
       el.pluginList.appendChild(
-        renderPluginCard(flatIndex, entry.section, entry.index, entry.instance, state.doc.config.pipeline, "main")
+        renderPluginCard(flatIndex, entry.section, entry.index, entry.instance, state.doc.config.pipeline, "main", "$.pipeline")
       );
     });
   }
@@ -1672,6 +2467,7 @@
     }
 
     sectionSelect.addEventListener("change", refreshPluginSelect);
+    sectionSelect.disabled = isReadOnlyMode();
     pluginSelect.addEventListener("change", function () {
       var def = getPluginDefinition(sectionSelect.value, pluginSelect.value);
       helpBtn.disabled = !(def && def.doc_url);
@@ -1685,6 +2481,7 @@
       }
       window.open(def.doc_url, "_blank", "noopener,noreferrer");
     });
+    pluginSelect.disabled = isReadOnlyMode();
     addBtn.addEventListener("click", function () {
       var section = sectionSelect.value;
       var name = pluginSelect.value;
@@ -1702,13 +2499,14 @@
       saveDoc();
       renderAll();
     });
+    addBtn.disabled = isReadOnlyMode();
 
     refreshPluginSelect();
     row.appendChild(controls);
     return row;
   }
 
-  function renderContainerPlugins(target, pipeline, prefix) {
+  function renderContainerPlugins(target, pipeline, prefix, pathPrefix) {
     var flattened = flattenPipeline(pipeline, prefix);
     if (flattened.length === 0) {
       var empty = document.createElement("p");
@@ -1718,7 +2516,7 @@
     }
     flattened.forEach(function (entry, flatIndex) {
       target.appendChild(
-        renderPluginCard(flatIndex, entry.section, entry.index, entry.instance, pipeline, prefix)
+        renderPluginCard(flatIndex, entry.section, entry.index, entry.instance, pipeline, prefix, pathPrefix)
       );
     });
   }
@@ -1749,6 +2547,7 @@
 
     var actions = document.createElement("div");
     actions.className = "plugin-actions";
+    actions.appendChild(createCommentToggleButton(collapseKey + ":comment", item, "", kind + " comment editor"));
 
     var collapseBtn = document.createElement("button");
     collapseBtn.type = "button";
@@ -1764,6 +2563,7 @@
     removeBtn.textContent = "-";
     removeBtn.className = "icon-remove";
     removeBtn.title = "Remove " + kind;
+    removeBtn.disabled = isReadOnlyMode();
     removeBtn.addEventListener("click", function () {
       collection.splice(index, 1);
       saveDoc();
@@ -1784,6 +2584,7 @@
     nameLabel.textContent = "Name";
     var nameInput = document.createElement("input");
     nameInput.value = String(item.name || "");
+    nameInput.disabled = isReadOnlyMode();
     nameInput.addEventListener("change", function () {
       item.name = nameInput.value.trim();
       saveDoc();
@@ -1791,12 +2592,13 @@
     nameLabel.appendChild(nameInput);
     meta.appendChild(nameLabel);
     card.appendChild(meta);
+    card.appendChild(createCommentEditorPanel(item, "Comment", "", collapseKey + ":comment"));
 
     card.appendChild(createScopedPluginAdder(item.pipeline, kind + ":" + index));
 
     var pluginHolder = document.createElement("div");
     pluginHolder.className = "container-stack";
-    renderContainerPlugins(pluginHolder, item.pipeline, kind + ":" + index);
+    renderContainerPlugins(pluginHolder, item.pipeline, kind + ":" + index, "$." + kind + "s[" + index + "].pipeline");
     card.appendChild(pluginHolder);
 
     return card;
@@ -1837,6 +2639,7 @@
     renderPlugins();
     renderLabelsAndWorkers();
     updateConfigTypeDisabledState();
+    updateReadOnlyState();
   }
 
   function loadCatalog(version) {
@@ -1882,16 +2685,33 @@
   }
 
   function initEvents() {
+    window.addEventListener("resize", function () {
+      Array.prototype.forEach.call(document.querySelectorAll("textarea.code-input"), function (node) {
+        prepareCodeTextarea(node);
+      });
+    });
+
     el.newConfig.addEventListener("click", function () {
       state.doc = emptyDoc(state.selectedVersion, state.configType);
       state.currentFileName = "";
+      state.saveFileHandle = null;
+      clearOpenFileSelection();
       setCookie(LAST_FILE_COOKIE, "new-" + Date.now());
       saveDoc();
+      setStatusMessage("Started a new configuration.");
       renderAll();
+    });
+
+    el.browseFile.addEventListener("click", function () {
+      el.openFile.click();
     });
 
     el.saveConfig.addEventListener("click", function () {
       triggerConfigDownload();
+    });
+
+    el.saveAsConfig.addEventListener("click", function () {
+      triggerConfigDownload(true);
     });
 
     el.reloadUi.addEventListener("click", function () {
@@ -1925,6 +2745,9 @@
 
     el.configTypeSelect.addEventListener("change", function () {
       state.configType = el.configTypeSelect.value;
+      if (state.doc) {
+        state.doc.configType = state.configType;
+      }
       loadVersionsForType(state.configType)
         .then(function () {
           if (!state.selectedVersion) {
@@ -2074,20 +2897,30 @@
       if (!file) {
         return;
       }
+      var selectedDisplay = String(event.target.value || file.name || "").trim() || file.name;
       file
         .text()
         .then(function (text) {
+          var parsedHeader = parseConfigHeader(text);
           if (/\.json$/i.test(file.name)) {
-            var parsed = JSON.parse(text);
+            var parsed = JSON.parse(parsedHeader.body);
             state.doc = parsed;
             ensureDoc();
-            state.configType = parsed.configType || "fluentbit";
+            state.configType = parsedHeader.configType || parsed.configType || "fluentbit";
+            state.doc.configType = state.configType;
             state.currentFileName = file.name;
+            state.saveFileHandle = null;
+            setOpenFileDisplay(selectedDisplay);
             el.configTypeSelect.value = state.configType;
             setCookie(LAST_FILE_COOKIE, file.name);
-            return loadVersionsForType(state.configType, parsed.version || state.selectedVersion)
+            return loadVersionsForType(
+              state.configType,
+              parsedHeader.version || parsed.version || state.selectedVersion
+            )
               .then(function () {
+                state.doc.version = state.selectedVersion;
                 saveDoc();
+                setStatusMessage("Loaded configuration file " + file.name);
                 if (!state.selectedVersion) {
                   renderAll();
                   return null;
@@ -2104,16 +2937,18 @@
               .then(renderAll);
           }
 
-          state.configType = "fluentd";
+          state.configType = parsedHeader.configType || "fluentd";
           el.configTypeSelect.value = state.configType;
           state.currentFileName = file.name;
+          state.saveFileHandle = null;
+          setOpenFileDisplay(selectedDisplay);
           setCookie(LAST_FILE_COOKIE, file.name);
-          return loadVersionsForType("fluentd", state.selectedVersion)
+          return loadVersionsForType(state.configType, parsedHeader.version || state.selectedVersion)
             .then(function () {
               return fetchJson(API_BASE + "/parse/fluentd/" + encodeURIComponent(state.selectedVersion), {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ text: text }),
+                body: JSON.stringify({ text: parsedHeader.body }),
               });
             })
             .then(function (result) {
@@ -2125,6 +2960,7 @@
               };
               ensureDoc();
               saveDoc();
+              setStatusMessage("Loaded configuration file " + file.name);
               return loadCatalog(state.selectedVersion);
             })
             .then(function () {
@@ -2161,6 +2997,7 @@
 
     el.renderBtn.addEventListener("click", function () {
       if (!state.doc) {
+        setStatusMessage("Load or create a configuration before rendering.");
         return;
       }
       var payload = {
@@ -2171,15 +3008,19 @@
       var endpoint = state.configType === "fluentd"
         ? API_BASE + "/render/fluentd/" + encodeURIComponent(state.doc.version)
         : API_BASE + "/render/yaml/" + encodeURIComponent(state.doc.version) + currentApiQuery();
+      state.yamlCollapsed = false;
+      updateResultPanels();
       fetchJson(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       })
         .then(function (result) {
-          setYamlText(result.yaml || result.text || "");
+          setStatusMessage("Rendered configuration updated.");
+          setYamlText(result.yaml || result.text || "", true);
         })
         .catch(function (err) {
+          setStatusMessage("Rendering failed.");
           setYamlText(String(err));
         });
     });
@@ -2196,6 +3037,8 @@
 
     fetchJson(API_BASE + "/health")
       .then(function (health) {
+        state.readOnly = Boolean(health.read_only);
+        updateReadOnlyState();
         if (health.app_enable_dev_features) {
           el.reloadUi.classList.remove("hidden");
         }
@@ -2224,6 +3067,7 @@
             state.doc = parsed;
             state.configType = parsed.configType || "fluentbit";
             state.currentFileName = cookieName;
+            setOpenFileDisplay(/^new-\d+$/i.test(cookieName) ? "" : cookieName);
           } catch (_e) {
             clearCookie(LAST_FILE_COOKIE);
             localStorage.removeItem(LAST_DOC_STORAGE);
@@ -2235,6 +3079,7 @@
         }
 
         ensureDoc();
+        state.doc.configType = state.configType;
         el.configTypeSelect.value = state.configType;
         return loadVersionsForType(state.configType, state.doc.version || state.selectedVersion);
       })
@@ -2249,6 +3094,8 @@
       })
       .then(function () {
         renderAll();
+        updateReadOnlyState();
+        updateRenderedDirtyState();
       })
       .catch(function (err) {
         setValidationText(String(err));

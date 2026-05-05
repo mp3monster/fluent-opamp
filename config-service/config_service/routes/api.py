@@ -1,3 +1,16 @@
+#!/usr/bin/env python3
+# Copyright 2026 mp3monster.org
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
 import os
@@ -58,6 +71,7 @@ def create_api_blueprint() -> Blueprint:
                 "ok": True,
                 "mode": current_app.config.get("CONFIG_SERVICE_MODE", "standalone"),
                 "app_enable_dev_features": _app_enable_dev_features_enabled(),
+                "read_only": bool(current_app.config.get("CONFIG_SERVICE_READ_ONLY", False)),
             }
         )
 
@@ -106,7 +120,6 @@ def create_api_blueprint() -> Blueprint:
     @bp.post("/catalog/<version>/validate")
     async def validate_catalog(version: str) -> Any:
         catalog_service = current_app.extensions["catalog_service"]
-        config_type = request.args.get("config_type")
         try:
             result = catalog_service.validate_catalog_for_version(version)
         except (KeyError, ValueError) as exc:

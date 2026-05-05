@@ -1,0 +1,263 @@
+from __future__ import annotations
+
+from typing import Any
+
+from config_service.rule_engine.base import RuleAdapter, RuleContext
+
+try:
+    from lark import Lark, Token, Tree, UnexpectedInput
+except ImportError:  # pragma: no cover - runtime fallback only
+    Lark = None
+    Token = None
+    Tree = None
+    UnexpectedInput = Exception
+
+
+FLUENT_BIT_SQL_GRAMMAR = r"""
+start: select_stmt
+
+select_stmt: SELECT select_list FROM STREAM stream_name? where_clause? ";"
+
+select_list: select_item ("," select_item)*
+select_item: "*"                         -> wildcard_item
+           | IDENTIFIER alias_clause?    -> identifier_item
+
+alias_clause: AS IDENTIFIER
+stream_name: IDENTIFIER
+where_clause: WHERE condition
+
+?condition: or_expr
+?or_expr: and_expr (OR and_expr)*
+?and_expr: unary_expr (AND unary_expr)*
+?unary_expr: NOT unary_expr              -> not_expr
+           | primary
+?primary: "(" condition ")"             -> grouped_condition
+        | comparison
+        | value                          -> literal_condition
+
+?comparison: operand IS NULL             -> is_null
+           | operand IS NOT NULL         -> is_not_null
+           | operand comparator value    -> binary_comparison
+           | operand                     -> truthy_operand
+
+?operand: IDENTIFIER                     -> key_operand
+        | RECORD "." CONTAINS "(" IDENTIFIER ")" -> record_contains
+
+comparator: "="
+          | NEQ
+          | LT
+          | LTE
+          | GT
+          | GTE
+
+?value: NUMBER                           -> number_value
+      | STRING                           -> string_value
+      | BOOLEAN                          -> boolean_value
+
+SELECT.2: /SELECT/i
+AS.2: /AS/i
+FROM.2: /FROM/i
+STREAM.2: /STREAM/i
+WHERE.2: /WHERE/i
+AND.2: /AND/i
+OR.2: /OR/i
+NOT.2: /NOT/i
+IS.2: /IS/i
+NULL.2: /NULL/i
+RECORD.2: /RECORD/i
+CONTAINS.2: /CONTAINS/i
+BOOLEAN.2: /TRUE|FALSE/i
+NEQ: "!=" | "<>"
+LTE: "<="
+GTE: ">="
+LT: "<"
+GT: ">"
+IDENTIFIER.0: /[_A-Za-z][_A-Za-z0-9.]*/
+STRING: /'(?:[^']|'')*'/
+NUMBER: /-?(?:[1-9][0-9]*|0)(?:\.[0-9]+)?/
+
+%import common.WS
+%ignore WS
+"""
+
+
+def _issue(code: str, path: str, message: str, severity: str = "error", source: str = "rules") -> dict[str, Any]:
+    return {
+        "code": code,
+        "path": path,
+        "message": message,
+        "severity": severity,
+        "source": source,
+    }
+
+
+class SqlCodeSyntaxAdapter(RuleAdapter):
+    _parser = None
+
+    @classmethod
+    def parser(cls):
+        if Lark is None:
+            return None
+        if cls._parser is None:
+            cls._parser = Lark(
+                FLUENT_BIT_SQL_GRAMMAR,
+                parser="lalr",
+                lexer="contextual",
+                maybe_placeholders=False,
+            )
+        return cls._parser
+
+    def evaluate(self, context: RuleContext) -> list[dict[str, Any]]:
+        issues: list[dict[str, Any]] = []
+        pipeline = context.config.get("pipeline", {})
+        if not isinstance(pipeline, dict):
+            return issues
+
+        plugin_groups = context.catalog.get("plugins", {})
+        common_processors = context.catalog.get("common", {}).get("processors", {})
+
+        for section in ("inputs", "filters", "outputs"):
+            items = pipeline.get(section, [])
+            if not isinstance(items, list):
+                continue
+            section_defs = plugin_groups.get(section, {})
+            for idx, plugin_instance in enumerate(items):
+                if not isinstance(plugin_instance, dict):
+                    continue
+                plugin_name = plugin_instance.get("name")
+                if not isinstance(plugin_name, str) or not plugin_name:
+                    continue
+                plugin_def = section_defs.get(plugin_name)
+                if isinstance(plugin_def, dict):
+                    issues.extend(
+                        self._validate_named_code_fields(
+                            payload=plugin_instance,
+                            field_defs=plugin_def.get("fields", []),
+                            path_prefix=f"$.config.pipeline.{section}[{idx}]",
+                        )
+                    )
+                if section in {"inputs", "outputs"}:
+                    issues.extend(
+                        self._validate_processor_code_fields(
+                            plugin_instance=plugin_instance,
+                            processors_def=common_processors,
+                            path_prefix=f"$.config.pipeline.{section}[{idx}]",
+                        )
+                    )
+        return issues
+
+    def _validate_named_code_fields(
+        self,
+        *,
+        payload: dict[str, Any],
+        field_defs: list[dict[str, Any]],
+        path_prefix: str,
+    ) -> list[dict[str, Any]]:
+        issues: list[dict[str, Any]] = []
+        for field in field_defs:
+            if not isinstance(field, dict):
+                continue
+            validation_rule = field.get("validation_rule")
+            if not self._is_sql_rule(validation_rule):
+                continue
+            field_name = str(field.get("name", ""))
+            if not field_name:
+                continue
+            code_value = payload.get(field_name)
+            if isinstance(code_value, str) and code_value.strip():
+                issues.extend(self._validate_sql_source(code_value, f"{path_prefix}.{field_name}"))
+        return issues
+
+    def _validate_processor_code_fields(
+        self,
+        *,
+        plugin_instance: dict[str, Any],
+        processors_def: dict[str, Any],
+        path_prefix: str,
+    ) -> list[dict[str, Any]]:
+        issues: list[dict[str, Any]] = []
+        processors = plugin_instance.get("processors")
+        if not isinstance(processors, dict):
+            return issues
+        signals = processors_def.get("signals", {})
+        for signal_name, entries in processors.items():
+            if not isinstance(entries, list):
+                continue
+            signal_def = signals.get(signal_name, {})
+            signal_processors = signal_def.get("processors", {})
+            for idx, processor_instance in enumerate(entries):
+                if not isinstance(processor_instance, dict):
+                    continue
+                processor_name = processor_instance.get("name")
+                if not isinstance(processor_name, str) or not processor_name:
+                    continue
+                processor_def = signal_processors.get(processor_name)
+                if not isinstance(processor_def, dict):
+                    continue
+                issues.extend(
+                    self._validate_named_code_fields(
+                        payload=processor_instance,
+                        field_defs=processor_def.get("fields", []),
+                        path_prefix=f"{path_prefix}.processors.{signal_name}[{idx}]",
+                    )
+                )
+        return issues
+
+    def _validate_sql_source(self, source: str, path: str) -> list[dict[str, Any]]:
+        parser = self.parser()
+        if parser is None:
+            return [
+                _issue(
+                    "sql_parser_unavailable",
+                    path,
+                    "SQL validation is unavailable because the 'lark' dependency is not installed.",
+                )
+            ]
+
+        try:
+            tree = parser.parse(source)
+            wildcard_count = self._count_wildcards(tree)
+            select_items = self._count_select_items(tree)
+            if wildcard_count > 0 and select_items > 1:
+                return [
+                    _issue(
+                        "sql_syntax_error",
+                        path,
+                        "SQL syntax error: wildcard selection '*' cannot be combined with additional selected fields.",
+                    )
+                ]
+        except UnexpectedInput as exc:
+            expected = ", ".join(sorted(exc.expected)) if getattr(exc, "expected", None) else "valid SQL tokens"
+            message = (
+                f"SQL syntax error at line {getattr(exc, 'line', '?')}, "
+                f"column {getattr(exc, 'column', '?')}: unexpected input; expected {expected}."
+            )
+            return [_issue("sql_syntax_error", path, message)]
+        except Exception as exc:
+            return [_issue("sql_syntax_error", path, f"SQL syntax error: {str(exc).strip() or 'invalid SQL query.'}")]
+        return []
+
+    @staticmethod
+    def _is_sql_rule(validation_rule: Any) -> bool:
+        return (
+            isinstance(validation_rule, dict)
+            and str(validation_rule.get("kind", "")).lower() == "code_syntax"
+            and str(validation_rule.get("language", "")).lower() == "sql"
+        )
+
+    @staticmethod
+    def _count_wildcards(tree: Any) -> int:
+        if Tree is None or not isinstance(tree, Tree):
+            return 0
+        return sum(1 for sub in tree.iter_subtrees_topdown() if sub.data == "wildcard_item")
+
+    @staticmethod
+    def _count_select_items(tree: Any) -> int:
+        if Tree is None or not isinstance(tree, Tree):
+            return 0
+        return sum(1 for sub in tree.iter_subtrees_topdown() if sub.data in {"wildcard_item", "identifier_item"})
+
+
+CUSTOM_ADAPTERS: dict[str, type[RuleAdapter]] = {
+    "custom.sql_code_syntax": SqlCodeSyntaxAdapter,
+}

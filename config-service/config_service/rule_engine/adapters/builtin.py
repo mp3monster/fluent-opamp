@@ -17,7 +17,7 @@ def _iter_pipeline_plugins(config: dict[str, Any]):
 
 
 def _catalog_plugin(catalog: dict[str, Any], section: str, name: str) -> dict[str, Any] | None:
-    return catalog.get("plugins", {}).get("fluentbit", {}).get(section, {}).get(name)
+    return catalog.get("plugins", {}).get(section, {}).get(name)
 
 
 def _issue(code: str, path: str, message: str, severity: str = "error", source: str = "rules") -> dict[str, Any]:
@@ -54,6 +54,7 @@ class CatalogRequiredFieldsAdapter(RuleAdapter):
 class DataTypeEnforcementAdapter(RuleAdapter):
     TYPE_MAP = {
         "string": str,
+        "code": str,
         "integer": int,
         "boolean": bool,
         "float": (int, float),

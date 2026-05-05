@@ -4,7 +4,6 @@ import json
 import re
 from typing import Any
 
-
 _DIRECTIVE_START = re.compile(r"^<(?P<name>[@A-Za-z_][\w@-]*)(?:\s+(?P<arg>.*?))?>$")
 _DIRECTIVE_END = re.compile(r"^</(?P<name>[@A-Za-z_][\w@-]*)>$")
 
@@ -88,6 +87,10 @@ def _format_scalar(value: Any) -> str:
 class FluentdConfigService:
     """Parse and render standard Fluentd .conf text."""
 
+    @staticmethod
+    def _has_substantive_keys(payload: Any) -> bool:
+        return isinstance(payload, dict) and any(key != "_meta" for key in payload.keys())
+
     def parse(self, text: str) -> dict[str, Any]:
         root = self._parse_ast(text)
         return self._ast_to_model(root)
@@ -95,7 +98,7 @@ class FluentdConfigService:
     def render(self, config: dict[str, Any]) -> str:
         lines: list[str] = []
         service = config.get("service")
-        if isinstance(service, dict) and service:
+        if self._has_substantive_keys(service):
             lines.extend(self._render_key_value_block("system", service, indent=0))
             lines.append("")
 
@@ -352,7 +355,7 @@ class FluentdConfigService:
     def _render_plugin_body(self, plugin: dict[str, Any], *, indent: int) -> list[str]:
         lines = [self._indent(indent) + f"@type {_format_scalar(plugin.get('name', ''))}"]
         for key, value in plugin.items():
-            if key in {"name", "directive_arg", "children"}:
+            if key in {"name", "directive_arg", "children", "_meta"}:
                 continue
             if key == "chunk_keys":
                 continue
@@ -386,6 +389,8 @@ class FluentdConfigService:
         if section_name in {"regexp", "exclude"}:
             lines = [self._indent(indent) + f"<{section_name}>"]
             for key, value in item.items():
+                if key == "_meta":
+                    continue
                 lines.append(self._indent(indent + 2) + f"{key} {_format_scalar(value)}")
             lines.append(self._indent(indent) + f"</{section_name}>")
             return lines
@@ -397,7 +402,7 @@ class FluentdConfigService:
                 arg = " " + str(item.get("directive_arg") or "")
             lines = [self._indent(indent) + f"<{section_name}{arg}>"]
             for key, value in item.items():
-                if key == "directive_arg":
+                if key in {"directive_arg", "_meta"}:
                     continue
                 lines.append(self._indent(indent + 2) + f"{key} {_format_scalar(value)}")
             lines.append(self._indent(indent) + f"</{section_name}>")
@@ -413,7 +418,7 @@ class FluentdConfigService:
         lines = [self._indent(indent) + f"<{section_name}{arg}>"]
         lines.append(self._indent(indent + 2) + f"@type {_format_scalar(item.get('name', ''))}")
         for key, value in item.items():
-            if key in {"name", "directive_arg", "children", "chunk_keys"}:
+            if key in {"name", "directive_arg", "children", "chunk_keys", "_meta"}:
                 continue
             lines.append(self._indent(indent + 2) + f"{key} {_format_scalar(value)}")
         children = item.get("children")
@@ -430,7 +435,7 @@ class FluentdConfigService:
         lines = [self._indent(indent) + f"<{section_name}>"]
         lines.append(self._indent(indent + 2) + f"@type {_format_scalar(item.get('name', ''))}")
         for key, value in item.items():
-            if key in {"name", "directive_arg", "children"}:
+            if key in {"name", "directive_arg", "children", "_meta"}:
                 continue
             lines.append(self._indent(indent + 2) + f"{key} {_format_scalar(value)}")
         children = item.get("children")
@@ -446,6 +451,8 @@ class FluentdConfigService:
     def _render_key_value_block(self, directive_name: str, params: dict[str, Any], *, indent: int) -> list[str]:
         lines = [self._indent(indent) + f"<{directive_name}>"]
         for key, value in params.items():
+            if key == "_meta":
+                continue
             lines.append(self._indent(indent + 2) + f"{key} {_format_scalar(value)}")
         lines.append(self._indent(indent) + f"</{directive_name}>")
         return lines

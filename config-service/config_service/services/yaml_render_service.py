@@ -12,11 +12,77 @@ class YamlRenderService:
         payload: dict[str, Any],
         include_comments: bool = False,
     ) -> str:
-        config = payload.get("config", {})
+        config = self._prune_optional_empty_sections(payload.get("config", {}), path="$")
         annotations = payload.get("annotations", {}) if include_comments else {}
         lines: list[str] = []
         self._emit_yaml(config, lines, indent=0, path="$", annotations=annotations)
         return "\n".join(lines) + "\n"
+
+    def _prune_optional_empty_sections(self, value: Any, *, path: str) -> Any:
+        if isinstance(value, dict):
+            result: dict[str, Any] = {}
+            for key, item in value.items():
+                if key == "_meta":
+                    result[key] = item
+                    continue
+                child_path = f"{path}.{key}" if path != "$" else f"$.{key}"
+                pruned = self._prune_optional_empty_sections(item, path=child_path)
+                if self._should_skip_empty(path=path, key=key, value=pruned):
+                    continue
+                result[key] = pruned
+            return result
+        if isinstance(value, list):
+            return [self._prune_optional_empty_sections(item, path=f"{path}[]") for item in value]
+        return value
+
+    @staticmethod
+    def _should_skip_empty(*, path: str, key: str, value: Any) -> bool:
+        if key == "service" and path == "$":
+            return isinstance(value, dict) and YamlRenderService._dict_without_meta_is_empty(value)
+        if key in {"inputs", "filters", "outputs"} and path == "$.pipeline":
+            return isinstance(value, list) and len(value) == 0
+        if key == "pipeline" and path == "$":
+            return isinstance(value, dict) and YamlRenderService._dict_without_meta_is_empty(value)
+        if key in {"labels", "workers", "includes"}:
+            if isinstance(value, list) and len(value) == 0:
+                return True
+        return False
+
+    @staticmethod
+    def _dict_without_meta_is_empty(value: dict[str, Any]) -> bool:
+        return len([key for key in value.keys() if key != "_meta"]) == 0
+
+    @staticmethod
+    def _extract_meta(value: Any) -> dict[str, Any]:
+        if not isinstance(value, dict):
+            return {}
+        meta = value.get("_meta")
+        if isinstance(meta, dict):
+            return meta
+        return {}
+
+    @staticmethod
+    def _comment_lines_from_meta(meta: dict[str, Any]) -> list[str]:
+        lines = meta.get("comment_lines")
+        if not isinstance(lines, list):
+            return []
+        return [str(line).rstrip() for line in lines if str(line).strip()]
+
+    @staticmethod
+    def _field_comment_lines(meta: dict[str, Any], key: str) -> list[str]:
+        field_map = meta.get("field_comment_lines")
+        if not isinstance(field_map, dict):
+            return []
+        lines = field_map.get(key)
+        if not isinstance(lines, list):
+            return []
+        return [str(line).rstrip() for line in lines if str(line).strip()]
+
+    @staticmethod
+    def _emit_comment_lines(lines: list[str], output: list[str], *, indent: int) -> None:
+        indent_str = " " * indent
+        for line in lines:
+            output.append(f"{indent_str}# {line}")
 
     def _emit_yaml(
         self,
@@ -29,12 +95,17 @@ class YamlRenderService:
     ) -> None:
         indent_str = " " * indent
 
-        comment = annotations.get(path)
-        if isinstance(comment, str) and comment.strip():
-            lines.append(f"{indent_str}# {comment.strip()}")
+        meta = self._extract_meta(value)
+        comment_lines = self._comment_lines_from_meta(meta)
+        if comment_lines:
+            self._emit_comment_lines(comment_lines, lines, indent=indent)
+        else:
+            comment = annotations.get(path)
+            if isinstance(comment, str) and comment.strip():
+                lines.append(f"{indent_str}# {comment.strip()}")
 
         if isinstance(value, dict):
-            keys = list(value.keys())
+            keys = [key for key in value.keys() if key != "_meta"]
             if path == "$":
                 preferred = ["service", "pipeline"]
                 ordered = [key for key in preferred if key in value]
@@ -49,6 +120,9 @@ class YamlRenderService:
             for key in keys:
                 item = value[key]
                 key_path = f"{path}.{key}" if path != "$" else f"$.{key}"
+                field_comment_lines = self._field_comment_lines(meta, key)
+                if field_comment_lines:
+                    self._emit_comment_lines(field_comment_lines, lines, indent=indent)
                 if isinstance(item, (dict, list)):
                     lines.append(f"{indent_str}{key}:")
                     self._emit_yaml(item, lines, indent=indent + 2, path=key_path, annotations=annotations)

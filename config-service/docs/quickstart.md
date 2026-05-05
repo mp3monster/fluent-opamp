@@ -17,7 +17,7 @@ Notes:
 - Logs are written under `config-service/.run/`.
 - `dev-up` now runs in the foreground and does not fork the Python server into a separate process.
 - The listen port is configuration-driven. By default it resolves from `config/opamp.json`
-  and falls back to `8080`.
+  and now prefers `config-service/config/config-service.json` before falling back to `config/opamp.json` and `8080`.
 - In dev mode (`APP_ENABLE_DEV_FEATURES` truthy), backend logs are mirrored to both
   console and `config-service/.run/logs/backend.log`.
 
@@ -26,6 +26,11 @@ Notes:
 From repository root:
 ```bash
 PYTHONPATH=config-service python3 config-service/config_service/app.py
+```
+
+To point at a specific config-tool file:
+```bash
+PYTHONPATH=config-service python3 config-service/config_service/app.py --config-path config-service/config/config-service.json
 ```
 
 ## Verify service health

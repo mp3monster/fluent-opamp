@@ -75,7 +75,7 @@ class ValidationService:
                 }
             ]
 
-        plugins = catalog.get("plugins", {}).get("fluentbit", {})
+        plugins = catalog.get("plugins", {})
         processors_def = catalog.get("common", {}).get("processors", {})
         for section in ("inputs", "filters", "outputs"):
             issues.extend(
@@ -106,7 +106,7 @@ class ValidationService:
                 }
             ]
 
-        plugin_groups = catalog.get("plugins", {}).get("fluentd", {})
+        plugin_groups = catalog.get("plugins", {})
         nested_sections = catalog.get("nested_sections", {})
         for section in ("inputs", "filters", "outputs"):
             issues.extend(
@@ -373,7 +373,7 @@ class ValidationService:
                     }
                 )
         for key in plugin_instance:
-            if key in {"name", "directive_arg", "children", "processors"}:
+            if key in {"name", "directive_arg", "children", "processors", "_meta"}:
                 continue
             if key not in fields:
                 issues.append(
@@ -499,7 +499,7 @@ class ValidationService:
                             }
                         )
                 for key in processor:
-                    if key in {"name", "condition"}:
+                    if key in {"name", "condition", "_meta"}:
                         continue
                     if key not in fields:
                         issues.append(

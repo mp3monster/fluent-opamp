@@ -15,7 +15,8 @@ Example response:
 {
   "ok": true,
   "mode": "standalone",
-  "app_enable_dev_features": true
+  "app_enable_dev_features": true,
+  "read_only": false
 }
 ```
 
@@ -65,6 +66,29 @@ Request:
   },
   "annotations": {},
   "profile": "strict"
+}
+```
+
+Comment metadata can also live directly on objects:
+```json
+{
+  "config": {
+    "pipeline": {
+      "inputs": [
+        {
+          "name": "forward",
+          "port": 24224,
+          "_meta": {
+            "comment_lines": ["Ingress listener"],
+            "field_comment_lines": {
+              "port": ["Matches upstream sender port"]
+            }
+          }
+        }
+      ],
+      "outputs": [{"name": "stdout"}]
+    }
+  }
 }
 ```
 

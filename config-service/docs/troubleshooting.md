@@ -35,9 +35,9 @@ Check:
 
 ## Logs and runtime state
 - Script logs: `config-service/.run/logs/`
-- PID files: `config-service/.run/*.pid`
+- Foreground launcher state: use the terminal running `dev-up` and stop with `Ctrl+C`
 
 ## Common cleanup
-1. Stop stack: `scripts/dev-down.sh` (or `.cmd` on Windows)
+1. Stop stack: `Ctrl+C` in the terminal running `scripts/dev-up.sh` (or `.cmd` on Windows)
 2. Remove stale state: delete `config-service/.run/`
 3. Restart stack: `scripts/dev-up.sh`
