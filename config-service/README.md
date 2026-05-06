@@ -8,6 +8,12 @@ This package ships:
 - bundled catalog and service definition JSON files
 - generated runtime JSON schemas
 
+Repository source layout:
+- Python backend package: `src/config_service`
+- developer tools: `dev-tools`
+- operational scripts: `scripts`
+- user documentation: `docs`
+
 Run after installation:
 
 ```bash

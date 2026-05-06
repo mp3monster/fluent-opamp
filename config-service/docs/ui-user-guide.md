@@ -6,7 +6,7 @@ On load, the UI will:
 2. Fall back to a new configuration when no prior state exists.
 
 ## Main actions
-1. Open configuration file (`.json` for design docs, `.conf` for Fluentd)
+1. Open configuration file (`.json` for design docs, `.yaml`/`.yml` for Fluent Bit, `.conf` for Fluentd)
 2. Create new configuration
 3. Save the current configuration
 4. Save the current configuration to a new file via `Save As`
@@ -22,6 +22,13 @@ On load, the UI will:
    2. configuration version
 5. When a saved file is reopened, the UI reads those header comments first and updates type/version selection before loading the rest of the document.
 6. If the saved version is no longer available, the UI selects the next supported mapped version after that value. If there is no later mapped version, it uses the highest available version.
+
+## File loading behavior
+1. Fluent Bit files are loaded from YAML (`.yaml` / `.yml`).
+2. Fluentd files are loaded from standard `.conf`.
+3. If a Fluent Bit YAML file contains unsupported sections, the UI loads the supported parts and shows parser errors for the ignored sections in the validation panel.
+4. The message bar will say when the file loaded with problems.
+5. Empty files are rejected as load errors and are not treated as valid configurations.
 
 ## Add plugin configuration
 Use the `Add Plugin` controls:

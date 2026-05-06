@@ -27,7 +27,17 @@ def run_step(*args: str) -> None:
 
 
 def main() -> None:
-    run_step(sys.executable, "-m", "ruff", "check", "config_service", "tests", "dev-tools", "setup.py", "build_config.py")
+    run_step(
+        sys.executable,
+        "-m",
+        "ruff",
+        "check",
+        "src/config_service",
+        "tests",
+        "dev-tools",
+        "setup.py",
+        "build_config.py",
+    )
     run_step(sys.executable, "-m", "pytest")
 
 

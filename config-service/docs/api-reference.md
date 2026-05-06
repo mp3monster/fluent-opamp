@@ -163,6 +163,51 @@ Response:
 }
 ```
 
+## POST `/parse/fluentbit/{version}`
+Parses Fluent Bit YAML text into the internal JSON config model.
+
+Behavior:
+1. Supported sections are loaded into the editor model.
+2. Unsupported or malformed sections are skipped and returned in `errors`.
+3. Empty files return a `400` with an `empty_input_file` error.
+
+Request:
+```json
+{
+  "text": "service:\n  flush_interval: 5\npipeline:\n  inputs:\n    - name: dummy\n"
+}
+```
+
+Response with partial load:
+```json
+{
+  "ok": false,
+  "config": {
+    "service": {
+      "flush_interval": 5
+    },
+    "pipeline": {
+      "inputs": [{"name": "dummy"}],
+      "filters": [],
+      "outputs": []
+    },
+    "labels": [],
+    "workers": [],
+    "includes": []
+  },
+  "errors": [
+    {
+      "order": 1,
+      "code": "fluentbit_yaml_ignored_section",
+      "path": "$.plugins",
+      "message": "Ignored unsupported Fluent Bit YAML section 'plugins'.",
+      "severity": "error",
+      "source": "parser"
+    }
+  ]
+}
+```
+
 ## POST `/render/fluentd/{version}`
 Renders the internal JSON config model back into standard Fluentd `.conf` text.
 

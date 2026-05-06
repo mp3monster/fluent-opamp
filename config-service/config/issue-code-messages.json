@@ -57,6 +57,26 @@
       "label": "SQL validator unavailable",
       "description": "SQL syntax validation could not run because the parser dependency is unavailable."
     },
+    "empty_input_file": {
+      "label": "Empty configuration file",
+      "description": "The selected configuration file does not contain any configuration content."
+    },
+    "fluentbit_yaml_parse_error": {
+      "label": "Fluent Bit YAML parse error",
+      "description": "The Fluent Bit YAML file could not be parsed."
+    },
+    "fluentbit_yaml_ignored_section": {
+      "label": "Ignored YAML section",
+      "description": "Part of the Fluent Bit YAML file was skipped because the editor does not support that section yet."
+    },
+    "fluentbit_yaml_invalid_section": {
+      "label": "Invalid YAML section",
+      "description": "Part of the Fluent Bit YAML file was skipped because the section shape was not valid."
+    },
+    "fluentbit_yaml_invalid_plugin": {
+      "label": "Invalid plugin entry",
+      "description": "A Fluent Bit YAML plugin entry was skipped because it was not structured correctly."
+    },
     "unknown_issue": {
       "label": "Validation issue",
       "description": "A validation issue was reported without a known code mapping."

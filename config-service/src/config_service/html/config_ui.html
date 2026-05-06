@@ -17,6 +17,7 @@ limitations under the License.
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Config Service UI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
     <script>
       window.__CONFIG_SERVICE_UI_CSS_OVERRIDES__ = __CONFIG_SERVICE_UI_CSS_OVERRIDES__;
     </script>
@@ -25,17 +26,27 @@ limitations under the License.
   <body>
     <main class="page-shell">
       <header>
-        <h1>Config Service</h1>
-        <p>Tool for viewing and editing Observability agent configurations</p>
+        <div class="title">
+          <div class="title-brand">
+            <img class="title-logo" src="/config-service/ui/assets/opamp_logo.png" alt="OpAMP Server logo" />
+            <div>
+              <h1>Config Service</h1>
+              <p>Tool for viewing and editing Observability agent configurations</p>
+            </div>
+          </div>
+        </div>
       </header>
 
-      <section class="toolbar panel">
+      <section class="panel">
+        <h2>Configuration Selection</h2>
+        <p>Open an existing configuration or start a new one, then choose the matching type and version.</p>
+        <div class="toolbar">
         <div class="row">
           <label>
-            Open configuration
+            Configuration File
             <input id="open-file-display" type="text" readonly placeholder="No file selected" />
           </label>
-          <input id="open-file" type="file" accept="application/json,.conf,.cfg,.txt" class="hidden" />
+          <input id="open-file" type="file" accept=".yaml,.yml,.conf,application/json,.json,.cfg,.txt" class="hidden" />
           <button id="browse-file" type="button">Browse…</button>
 
           <button id="new-config" type="button">New Configuration</button>
@@ -57,6 +68,14 @@ limitations under the License.
             <select id="version-select"></select>
           </label>
         </div>
+        </div>
+      </section>
+
+      <section id="status-panel" class="panel status-panel hidden" aria-live="polite">
+        <p class="status-message">
+          <span id="status-time" class="status-time"></span>
+          <span id="status-message"></span>
+        </p>
       </section>
 
       <section class="panel">
@@ -92,7 +111,9 @@ limitations under the License.
       </section>
 
       <section class="panel">
-        <h2>Add Plugin</h2>
+        <div class="section-head">
+          <h2>Add Plugin</h2>
+        </div>
         <div class="row">
           <label>
             Section
@@ -112,31 +133,48 @@ limitations under the License.
       </section>
 
       <section class="panel">
-        <h2>Plugins</h2>
-        <p>Single list view across inputs, filters, and outputs.</p>
-        <div id="plugin-list"></div>
+        <div class="section-head">
+          <div>
+            <h2>Plugins</h2>
+            <p>Single list view across inputs, filters, and outputs.</p>
+          </div>
+          <button id="plugins-toggle" type="button">Collapse</button>
+        </div>
+        <div id="plugins-body">
+          <div id="plugin-list"></div>
+        </div>
       </section>
 
       <section id="labels-panel" class="panel hidden">
-        <h2>Labels</h2>
-        <p>Manage top-level Fluentd labels and the plugins they contain.</p>
-        <div class="row">
-          <button id="add-label" type="button">Add Label</button>
+        <div class="section-head">
+          <div>
+            <h2>Labels</h2>
+            <p>Manage top-level Fluentd labels and the plugins they contain.</p>
+          </div>
+          <button id="labels-toggle" type="button">Open</button>
         </div>
-        <div id="label-list"></div>
+        <div id="labels-body" class="is-collapsed">
+          <div class="row">
+            <button id="add-label" type="button">Add Label</button>
+          </div>
+          <div id="label-list"></div>
+        </div>
       </section>
 
       <section id="workers-panel" class="panel hidden">
-        <h2>Workers</h2>
-        <p>Manage top-level Fluentd workers and the plugins they contain.</p>
-        <div class="row">
-          <button id="add-worker" type="button">Add Worker</button>
+        <div class="section-head">
+          <div>
+            <h2>Workers</h2>
+            <p>Manage top-level Fluentd workers and the plugins they contain.</p>
+          </div>
+          <button id="workers-toggle" type="button">Open</button>
         </div>
-        <div id="worker-list"></div>
-      </section>
-
-      <section id="status-panel" class="panel status-panel hidden" aria-live="polite">
-        <p id="status-message" class="status-message"></p>
+        <div id="workers-body" class="is-collapsed">
+          <div class="row">
+            <button id="add-worker" type="button">Add Worker</button>
+          </div>
+          <div id="worker-list"></div>
+        </div>
       </section>
 
       <section class="results panel">

@@ -15,7 +15,7 @@
 ## Environment variables
 - `CONFIG_TOOL_CONFIG_PATH`
   - Optional path override for the standalone config-tool JSON file.
-  - Also set automatically when launching with `config_service/app.py --config-path <file>`.
+  - Also set automatically when launching with `python -m config_service --config-path <file>`.
 - `CONFIG_SERVICE_WEB_PORT`
   - Optional integer override for the config-service listen port.
   - Takes precedence over JSON file settings.
@@ -117,8 +117,8 @@ Behavior:
 3. `version_overrides.<version>.additional_rulesets` adds version-specific rule evaluation.
 
 ## Backend mode
-- `standalone`: launched directly by `config_service/app.py`
-- `embedded`: mounted into OpAMP provider via `config_service/opamp_integration.py`
+- `standalone`: launched directly by `python -m config_service`
+- `embedded`: mounted into OpAMP provider via `src/config_service/opamp_integration.py`
 
 ## Listen port resolution
 `config-service` resolves its standalone listen port in this order:

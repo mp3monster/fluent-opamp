@@ -27,7 +27,8 @@ This folder contains user-facing documentation for running, configuring, and ext
 - Generated runtime JSON Schemas: `config-service/json-schemas/`
 
 ## Primary runtime entry points
-- Backend app: `config-service/config_service/app.py`
+- Backend app: `config-service/src/config_service/app.py`
+- Backend package root: `config-service/src/config_service/`
 - Python-served UI: `http://localhost:8080/config-service/ui`
 - Local convenience scripts: `config-service/scripts`
 - Developer tooling and generators: `config-service/dev-tools`

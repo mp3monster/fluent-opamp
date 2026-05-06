@@ -6,7 +6,7 @@ RUN_DIR="${ROOT_DIR}/.run"
 BACK_PID_FILE="${RUN_DIR}/backend.pid"
 
 resolve_port() {
-  PYTHONPATH="${ROOT_DIR}:${ROOT_DIR}/../provider/src" python3 -c \
+  PYTHONPATH="${ROOT_DIR}/src:${ROOT_DIR}/../provider/src" python3 -c \
     "from config_service.runtime_config import resolve_web_port; print(resolve_web_port())"
 }
 

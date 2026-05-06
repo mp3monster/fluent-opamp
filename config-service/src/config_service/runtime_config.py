@@ -40,13 +40,13 @@ DEFAULT_CONFIG_TOOL_CONFIG_PATH = "config-service.json"
 
 def _config_service_root() -> Path:
     module_dir = Path(__file__).resolve().parent
-    source_root = module_dir.parent
+    source_root = module_dir.parents[1]
     if (source_root / "config").is_dir() and (source_root / "json-definitions").is_dir():
         return source_root
     for candidate in (module_dir, Path(sys.prefix) / "config_service"):
         if (candidate / "config").is_dir():
             return candidate
-    return module_dir.parent
+    return source_root
 
 
 def _repo_root() -> Path:

@@ -10,7 +10,7 @@ $BackPidFile = Join-Path $RunDir "backend.pid"
 New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
 
 function Resolve-Port {
-    $env:PYTHONPATH = "$RootDir;$RootDir\..\provider\src"
+    $env:PYTHONPATH = "$RootDir\src;$RootDir\..\provider\src"
     py -3 -c "from config_service.runtime_config import resolve_web_port; print(resolve_web_port())"
 }
 
@@ -35,9 +35,8 @@ function Start-Backend {
     Write-Host "Stop: press Ctrl+C"
     Write-Host ""
 
-    $env:PYTHONPATH = "$RootDir;$RootDir\..\provider\src"
-    $quotedAppPath = '"' + "$RootDir\config_service\app.py" + '"'
-    cmd.exe /d /c "py -3 $quotedAppPath 2>&1" |
+    $env:PYTHONPATH = "$RootDir\src;$RootDir\..\provider\src"
+    cmd.exe /d /c "py -3 -m config_service 2>&1" |
         Tee-Object -FilePath (Join-Path $LogDir "backend.log") -Append
 }
 

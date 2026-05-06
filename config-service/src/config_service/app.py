@@ -31,6 +31,7 @@ from config_service.runtime_config import (
     resolve_web_port,
 )
 from config_service.services.catalog_service import CatalogService
+from config_service.services.fluentbit_yaml_config_service import FluentBitYamlConfigService
 from config_service.services.fluentd_config_service import FluentdConfigService
 from config_service.services.issue_code_service import IssueCodeService
 from config_service.services.rule_engine_service import RuleEngineService
@@ -48,13 +49,13 @@ _ENV_TRUE_VALUES = {"1", "true", "yes", "on"}
 
 def _config_service_root() -> Path:
     module_dir = Path(__file__).resolve().parent
-    source_root = module_dir.parent
+    source_root = module_dir.parents[1]
     if (source_root / "config").is_dir() and (source_root / "json-definitions").is_dir():
         return source_root
     for candidate in (module_dir, Path(sys.prefix) / "config_service"):
         if (candidate / "config").is_dir():
             return candidate
-    return module_dir.parent
+    return source_root
 
 
 def _resolve_css_overrides(app: Quart) -> list[str]:
@@ -138,6 +139,7 @@ def create_app(*, mode: str = "standalone") -> Quart:
     app.extensions["schema_service"] = SchemaService()
     app.extensions["validation_service"] = validation_service
     app.extensions["yaml_render_service"] = YamlRenderService()
+    app.extensions["fluentbit_yaml_config_service"] = FluentBitYamlConfigService()
     app.extensions["fluentd_config_service"] = FluentdConfigService()
 
     if mode == "standalone":

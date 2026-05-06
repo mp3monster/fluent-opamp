@@ -25,12 +25,12 @@ Notes:
 ### Backend + UI (single Python process)
 From repository root:
 ```bash
-PYTHONPATH=config-service python3 config-service/config_service/app.py
+PYTHONPATH=config-service/src python3 -m config_service
 ```
 
 To point at a specific config-tool file:
 ```bash
-PYTHONPATH=config-service python3 config-service/config_service/app.py --config-path config-service/config/config-service.json
+PYTHONPATH=config-service/src python3 -m config_service --config-path config-service/config/config-service.json
 ```
 
 ## Verify service health

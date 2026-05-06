@@ -10,10 +10,10 @@ The rule engine is profile-driven:
 - A ruleset selects one adapter and parameters.
 
 ## Existing extension points
-- Adapter interface: `config-service/config_service/rule_engine/base.py`
-- Adapter registry: `config-service/config_service/rule_engine/registry.py`
-- Built-in adapters: `config-service/config_service/rule_engine/adapters/builtin.py`
-- Lua code adapter: `config-service/config_service/rule_engine/adapters/lua_code.py`
+- Adapter interface: `config-service/src/config_service/rule_engine/base.py`
+- Adapter registry: `config-service/src/config_service/rule_engine/registry.py`
+- Built-in adapters: `config-service/src/config_service/rule_engine/adapters/builtin.py`
+- Lua code adapter: `config-service/src/config_service/rule_engine/adapters/lua_code.py`
 - Rules configuration: `config-service/config/validation-rules-registry.json`
 
 ## Built-in custom validator: Lua code syntax
@@ -74,7 +74,7 @@ Current implementation:
 ## Add a custom rule adapter
 ### 1. Create adapter module
 Add a new module under:
-- `config-service/config_service/rule_engine/adapters/`
+- `config-service/src/config_service/rule_engine/adapters/`
 
 Implement class extending `RuleAdapter` and return normalized issues:
 ```python
@@ -88,7 +88,7 @@ Implement class extending `RuleAdapter` and return normalized issues:
 ```
 
 ### 2. Register adapter
-In `config_service/rule_engine/registry.py`, map adapter name to class.
+In `src/config_service/rule_engine/registry.py`, map adapter name to class.
 
 Example adapter name:
 - `custom.require_tls_on_forward`

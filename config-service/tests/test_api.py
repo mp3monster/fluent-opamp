@@ -19,7 +19,7 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from config_service.app import create_app
 from config_service.runtime_config import (
@@ -108,6 +108,11 @@ async def test_health_and_versions() -> None:
 
     ui = await client.get("/config-service/ui")
     assert ui.status_code == 200
+    ui_html = (await ui.get_data()).decode("utf-8")
+    assert "/config-service/ui/assets/opamp_logo.png" in ui_html
+
+    logo = await client.get("/config-service/ui/assets/opamp_logo.png")
+    assert logo.status_code == 200
 
     svc = await client.get("/config-service/api/v1/service-options/5.0.4")
     assert svc.status_code == 200
@@ -147,6 +152,32 @@ async def test_health_and_versions() -> None:
     issue_body = await issue_codes.get_json()
     assert "codes" in issue_body
     assert "missing_required_field" in issue_body["codes"]
+
+
+@pytest.mark.asyncio
+async def test_client_error_endpoint_logs_ui_errors(capsys: pytest.CaptureFixture[str]) -> None:
+    app = create_app(mode="standalone")
+    client = app.test_client()
+
+    response = await client.post(
+        "/config-service/api/v1/client-errors",
+        json={
+            "kind": "window_error",
+            "message": "Render button handler exploded",
+            "source": "config_ui.js",
+            "path": "http://localhost:8080/config-service/ui",
+            "stack": "Error: Render button handler exploded\n    at onClick (config_ui.js:10:2)",
+            "line": 10,
+            "column": 2,
+        },
+    )
+    assert response.status_code == 200
+    body = await response.get_json()
+    assert body["ok"] is True
+
+    captured = capsys.readouterr()
+    assert "UI ERROR" in captured.err
+    assert "Render button handler exploded" in captured.err
 
 
 @pytest.mark.asyncio
@@ -596,6 +627,102 @@ async def test_parse_fluentd_returns_parser_errors_for_invalid_conf() -> None:
     assert body["ok"] is False
     assert body["errors"][0]["code"] == "fluentd_parse_error"
     assert body["errors"][0]["source"] == "parser"
+
+
+@pytest.mark.asyncio
+async def test_parse_fluentd_rejects_empty_file() -> None:
+    app = create_app(mode="standalone")
+    client = app.test_client()
+
+    resp = await client.post(
+        "/config-service/api/v1/parse/fluentd/1.19",
+        json={"text": "   \n\t  "},
+    )
+    assert resp.status_code == 400
+    body = await resp.get_json()
+    assert body["ok"] is False
+    assert body["errors"][0]["code"] == "empty_input_file"
+
+
+@pytest.mark.asyncio
+async def test_parse_fluentbit_yaml_loads_supported_sections_and_reports_ignored_ones() -> None:
+    app = create_app(mode="standalone")
+    client = app.test_client()
+
+    sample_yaml = """
+service:
+  flush_interval: 5
+pipeline:
+  inputs:
+    - name: dummy
+      tag: sample
+  outputs:
+    - name: stdout
+  processors:
+    - name: ignored
+plugins:
+  custom:
+    - path: ./custom.so
+""".strip()
+
+    resp = await client.post(
+        "/config-service/api/v1/parse/fluentbit/5.0.4",
+        json={"text": sample_yaml},
+    )
+    assert resp.status_code == 200
+    body = await resp.get_json()
+    assert body["ok"] is False
+    assert body["config"]["service"]["flush_interval"] == 5
+    assert body["config"]["pipeline"]["inputs"][0]["name"] == "dummy"
+    assert body["config"]["pipeline"]["outputs"][0]["name"] == "stdout"
+    assert body["config"]["pipeline"]["filters"] == []
+
+    codes = [item["code"] for item in body["errors"]]
+    assert "fluentbit_yaml_ignored_section" in codes
+    assert any(item["path"] == "$.pipeline.processors" for item in body["errors"])
+    assert any(item["path"] == "$.plugins" for item in body["errors"])
+
+
+@pytest.mark.asyncio
+async def test_parse_fluentbit_yaml_preserves_null_plugin_name_and_string_enums() -> None:
+    app = create_app(mode="standalone")
+    client = app.test_client()
+
+    sample_yaml = """
+service:
+  daemon: on
+  http_server: off
+pipeline:
+  outputs:
+    - name: null
+      match: '*'
+""".strip()
+
+    resp = await client.post(
+        "/config-service/api/v1/parse/fluentbit/5.0.4",
+        json={"text": sample_yaml},
+    )
+    assert resp.status_code == 200
+    body = await resp.get_json()
+    assert body["config"]["service"]["daemon"] == "on"
+    assert body["config"]["service"]["http_server"] == "off"
+    assert body["config"]["pipeline"]["outputs"][0]["name"] == "null"
+    assert not body["errors"]
+
+
+@pytest.mark.asyncio
+async def test_parse_fluentbit_yaml_rejects_empty_file() -> None:
+    app = create_app(mode="standalone")
+    client = app.test_client()
+
+    resp = await client.post(
+        "/config-service/api/v1/parse/fluentbit/5.0.4",
+        json={"text": " \n  "},
+    )
+    assert resp.status_code == 400
+    body = await resp.get_json()
+    assert body["ok"] is False
+    assert body["errors"][0]["code"] == "empty_input_file"
 
 
 @pytest.mark.asyncio

@@ -19,6 +19,7 @@ from quart import Quart
 
 from config_service.routes.api import create_api_blueprint
 from config_service.services.catalog_service import CatalogService
+from config_service.services.fluentbit_yaml_config_service import FluentBitYamlConfigService
 from config_service.services.fluentd_config_service import FluentdConfigService
 from config_service.services.rule_engine_service import RuleEngineService
 from config_service.services.rules_registry_service import RulesRegistryService
@@ -49,6 +50,7 @@ def register_config_service_feature(opamp_app: Quart) -> None:
     opamp_app.extensions["config_service:schema_service"] = SchemaService()
     opamp_app.extensions["config_service:validation_service"] = validation_service
     opamp_app.extensions["config_service:yaml_render_service"] = YamlRenderService()
+    opamp_app.extensions["config_service:fluentbit_yaml_config_service"] = FluentBitYamlConfigService()
     opamp_app.extensions["config_service:fluentd_config_service"] = FluentdConfigService()
 
     # Also expose under un-prefixed keys for route handlers that run in this app context.
@@ -59,6 +61,7 @@ def register_config_service_feature(opamp_app: Quart) -> None:
     opamp_app.extensions["schema_service"] = SchemaService()
     opamp_app.extensions["validation_service"] = validation_service
     opamp_app.extensions["yaml_render_service"] = YamlRenderService()
+    opamp_app.extensions["fluentbit_yaml_config_service"] = FluentBitYamlConfigService()
     opamp_app.extensions["fluentd_config_service"] = FluentdConfigService()
     opamp_app.config["CONFIG_SERVICE_MODE"] = "embedded"
 

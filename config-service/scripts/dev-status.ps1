@@ -7,7 +7,7 @@ $RunDir = Join-Path $RootDir ".run"
 $BackPidFile = Join-Path $RunDir "backend.pid"
 
 function Resolve-Port {
-    $env:PYTHONPATH = "$RootDir;$RootDir\..\provider\src"
+    $env:PYTHONPATH = "$RootDir\src;$RootDir\..\provider\src"
     py -3 -c "from config_service.runtime_config import resolve_web_port; print(resolve_web_port())"
 }
 

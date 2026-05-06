@@ -22,6 +22,8 @@
   var HEADER_PREFIX = "config-service";
   var META_COMMENTS_HELP_URL = "/config-service/ui/docs/meta-comments";
   var SERVICE_OPTIONS = [];
+  var lastUiErrorFingerprint = "";
+  var lastUiErrorAt = 0;
 
   var state = {
     versions: [],
@@ -39,7 +41,10 @@
     pendingFocusFieldKey: "",
     serviceCollapsed: false,
     validationCollapsed: false,
-    yamlCollapsed: false,
+    yamlCollapsed: true,
+    pluginsPanelCollapsed: false,
+    labelsPanelCollapsed: true,
+    workersPanelCollapsed: true,
     saveFileHandle: null,
     currentFileDisplay: "",
     lastRenderedSignature: "",
@@ -97,10 +102,16 @@
     pluginHelpToggle: document.getElementById("plugin-help-toggle"),
     addPlugin: document.getElementById("add-plugin"),
     pluginList: document.getElementById("plugin-list"),
+    pluginsToggle: document.getElementById("plugins-toggle"),
+    pluginsBody: document.getElementById("plugins-body"),
     labelsPanel: document.getElementById("labels-panel"),
+    labelsToggle: document.getElementById("labels-toggle"),
+    labelsBody: document.getElementById("labels-body"),
     labelList: document.getElementById("label-list"),
     addLabel: document.getElementById("add-label"),
     workersPanel: document.getElementById("workers-panel"),
+    workersToggle: document.getElementById("workers-toggle"),
+    workersBody: document.getElementById("workers-body"),
     workerList: document.getElementById("worker-list"),
     addWorker: document.getElementById("add-worker"),
     serviceList: document.getElementById("service-list"),
@@ -113,6 +124,7 @@
     validateBtn: document.getElementById("validate-btn"),
     renderBtn: document.getElementById("render-btn"),
     statusPanel: document.getElementById("status-panel"),
+    statusTime: document.getElementById("status-time"),
     statusMessage: document.getElementById("status-message"),
     validationHeader: document.getElementById("validation-header"),
     validationCard: document.getElementById("validation-card"),
@@ -136,9 +148,84 @@
           data = { error: text };
         }
         if (!resp.ok) {
-          throw new Error(data.error || JSON.stringify(data));
+          var err = new Error(
+            data.error ||
+            (Array.isArray(data.errors) && data.errors.length > 0 && data.errors[0].message) ||
+            JSON.stringify(data)
+          );
+          err.payload = data;
+          err.status = resp.status;
+          throw err;
         }
         return data;
+      });
+    });
+  }
+
+  function reportUiError(details) {
+    var payload = details && typeof details === "object" ? details : {};
+    var fingerprint = JSON.stringify({
+      kind: payload.kind || "",
+      message: payload.message || "",
+      source: payload.source || "",
+      path: payload.path || "",
+      line: payload.line || "",
+      column: payload.column || "",
+    });
+    var now = Date.now();
+    if (fingerprint === lastUiErrorFingerprint && now - lastUiErrorAt < 4000) {
+      return;
+    }
+    lastUiErrorFingerprint = fingerprint;
+    lastUiErrorAt = now;
+    fetch(API_BASE + "/client-errors", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        kind: String(payload.kind || "runtime_error"),
+        message: String(payload.message || "Unknown UI error"),
+        source: String(payload.source || "browser"),
+        path: String(payload.path || window.location.href || ""),
+        stack: payload.stack ? String(payload.stack) : "",
+        line: payload.line === undefined ? null : payload.line,
+        column: payload.column === undefined ? null : payload.column,
+      }),
+      keepalive: true,
+    }).catch(function () {
+      // Avoid error-reporting loops when the backend is unavailable.
+    });
+  }
+
+  function installGlobalUiErrorHandlers() {
+    window.addEventListener("error", function (event) {
+      var error = event && event.error;
+      reportUiError({
+        kind: "window_error",
+        message: error && error.message ? error.message : String((event && event.message) || "Unhandled UI error"),
+        source: event && event.filename ? event.filename : "browser",
+        path: window.location.href,
+        stack: error && error.stack ? error.stack : "",
+        line: event && event.lineno ? event.lineno : null,
+        column: event && event.colno ? event.colno : null,
+      });
+    });
+
+    window.addEventListener("unhandledrejection", function (event) {
+      var reason = event ? event.reason : null;
+      var message = "Unhandled promise rejection";
+      var stack = "";
+      if (reason && typeof reason === "object") {
+        message = String(reason.message || message);
+        stack = reason.stack ? String(reason.stack) : "";
+      } else if (reason !== undefined && reason !== null) {
+        message = String(reason);
+      }
+      reportUiError({
+        kind: "unhandledrejection",
+        message: message,
+        source: "browser",
+        path: window.location.href,
+        stack: stack,
       });
     });
   }
@@ -259,7 +346,7 @@
       el.renderCard.classList.toggle("is-stale", Boolean(state.renderDirty && el.yamlOutput.textContent));
     }
     if (el.yamlOutput) {
-      el.yamlOutput.style.color = state.renderDirty ? "#8a6d00" : "#0f1420";
+      el.yamlOutput.style.color = state.renderDirty ? "#ffd24d" : "#e5ebff";
     }
   }
 
@@ -438,11 +525,42 @@
     if (!state.doc) {
       state.doc = emptyDoc(state.selectedVersion, state.configType);
     }
+    if (!state.doc.config || typeof state.doc.config !== "object") {
+      state.doc.config = {};
+    }
+    if (state.doc.pipeline && (!state.doc.config.pipeline || typeof state.doc.config.pipeline !== "object")) {
+      state.doc.config.pipeline = state.doc.pipeline;
+    }
+    if (
+      !state.doc.config.pipeline &&
+      (
+        Array.isArray(state.doc.config.inputs) ||
+        Array.isArray(state.doc.config.filters) ||
+        Array.isArray(state.doc.config.outputs)
+      )
+    ) {
+      state.doc.config.pipeline = {
+        inputs: Array.isArray(state.doc.config.inputs) ? state.doc.config.inputs : [],
+        filters: Array.isArray(state.doc.config.filters) ? state.doc.config.filters : [],
+        outputs: Array.isArray(state.doc.config.outputs) ? state.doc.config.outputs : [],
+      };
+      delete state.doc.config.inputs;
+      delete state.doc.config.filters;
+      delete state.doc.config.outputs;
+    }
+    if (
+      state.doc.config.plugins &&
+      typeof state.doc.config.plugins === "object" &&
+      !state.doc.config.pipeline
+    ) {
+      state.doc.config.pipeline = {
+        inputs: Array.isArray(state.doc.config.plugins.inputs) ? state.doc.config.plugins.inputs : [],
+        filters: Array.isArray(state.doc.config.plugins.filters) ? state.doc.config.plugins.filters : [],
+        outputs: Array.isArray(state.doc.config.plugins.outputs) ? state.doc.config.plugins.outputs : [],
+      };
+    }
     if (!state.doc.annotations || typeof state.doc.annotations !== "object") {
       state.doc.annotations = {};
-    }
-    if (!state.doc.config) {
-      state.doc.config = {};
     }
     if (!state.doc.config.service || typeof state.doc.config.service !== "object") {
       state.doc.config.service = {};
@@ -837,6 +955,13 @@
     updateResultPanels();
   }
 
+  function formatStatusTimestamp() {
+    return new Date().toLocaleString(undefined, {
+      dateStyle: "medium",
+      timeStyle: "medium",
+    });
+  }
+
   function setValidationText(text) {
     renderValidationState({
       ok: false,
@@ -855,10 +980,12 @@
   function setStatusMessage(text) {
     var message = String(text || "").trim();
     if (!message) {
+      el.statusTime.textContent = "";
       el.statusMessage.textContent = "";
       el.statusPanel.classList.add("hidden");
       return;
     }
+    el.statusTime.textContent = formatStatusTimestamp();
     el.statusMessage.textContent = message;
     el.statusPanel.classList.remove("hidden");
   }
@@ -878,6 +1005,21 @@
     el.validationToggle.textContent = state.validationCollapsed ? "Open" : "Collapse";
     el.yamlBody.classList.toggle("is-collapsed", state.yamlCollapsed);
     el.yamlToggle.textContent = state.yamlCollapsed ? "Open" : "Collapse";
+  }
+
+  function updateSectionPanels() {
+    if (el.pluginsBody && el.pluginsToggle) {
+      el.pluginsBody.classList.toggle("is-collapsed", state.pluginsPanelCollapsed);
+      el.pluginsToggle.textContent = state.pluginsPanelCollapsed ? "Open" : "Collapse";
+    }
+    if (el.labelsBody && el.labelsToggle) {
+      el.labelsBody.classList.toggle("is-collapsed", state.labelsPanelCollapsed);
+      el.labelsToggle.textContent = state.labelsPanelCollapsed ? "Open" : "Collapse";
+    }
+    if (el.workersBody && el.workersToggle) {
+      el.workersBody.classList.toggle("is-collapsed", state.workersPanelCollapsed);
+      el.workersToggle.textContent = state.workersPanelCollapsed ? "Open" : "Collapse";
+    }
   }
 
   function repopulatePluginNameSelect() {
@@ -999,12 +1141,13 @@
         input.value = "";
         input.disabled = isReadOnlyMode();
       }
-      el.serviceOptionMeta.innerHTML =
-        opt.description +
-        " " +
-        '<a href=\"' +
-        opt.reference +
-        '\" target=\"_blank\" rel=\"noreferrer\">reference</a>';
+      el.serviceOptionMeta.innerHTML = opt.reference
+        ? opt.description +
+          " " +
+          '<a href=\"' +
+          opt.reference +
+          '\" target=\"_blank\" rel=\"noreferrer\">reference</a>'
+        : opt.description;
       el.serviceHelpToggle.disabled = false;
       el.serviceHelpToggle.title = opt.key + ": " + opt.description;
     } else {
@@ -2256,7 +2399,9 @@
       var row = document.createElement("div");
       row.className = "service-row";
       if (knownServiceOption) {
-        row.title = knownServiceOption.description + " (" + knownServiceOption.reference + ")";
+        row.title = knownServiceOption.reference
+          ? knownServiceOption.description + " (" + knownServiceOption.reference + ")"
+          : knownServiceOption.description;
       }
 
       var keyInput = document.createElement("input");
@@ -2640,6 +2785,7 @@
     renderLabelsAndWorkers();
     updateConfigTypeDisabledState();
     updateReadOnlyState();
+    updateSectionPanels();
   }
 
   function loadCatalog(version) {
@@ -2726,6 +2872,21 @@
     el.yamlToggle.addEventListener("click", function () {
       state.yamlCollapsed = !state.yamlCollapsed;
       updateResultPanels();
+    });
+
+    el.pluginsToggle.addEventListener("click", function () {
+      state.pluginsPanelCollapsed = !state.pluginsPanelCollapsed;
+      updateSectionPanels();
+    });
+
+    el.labelsToggle.addEventListener("click", function () {
+      state.labelsPanelCollapsed = !state.labelsPanelCollapsed;
+      updateSectionPanels();
+    });
+
+    el.workersToggle.addEventListener("click", function () {
+      state.workersPanelCollapsed = !state.workersPanelCollapsed;
+      updateSectionPanels();
     });
 
     el.versionSelect.addEventListener("change", function () {
@@ -2937,6 +3098,45 @@
               .then(renderAll);
           }
 
+          if (/\.ya?ml$/i.test(file.name)) {
+            state.configType = "fluentbit";
+            el.configTypeSelect.value = state.configType;
+            return loadVersionsForType(state.configType, parsedHeader.version || state.selectedVersion)
+              .then(function () {
+                return fetchJson(API_BASE + "/parse/fluentbit/" + encodeURIComponent(state.selectedVersion), {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ text: parsedHeader.body }),
+                });
+              })
+              .then(function (result) {
+                state.doc = {
+                  version: state.selectedVersion,
+                  configType: "fluentbit",
+                  config: result.config || emptyDoc(state.selectedVersion, "fluentbit").config,
+                  annotations: {},
+                };
+                ensureDoc();
+                state.currentFileName = file.name;
+                state.saveFileHandle = null;
+                setOpenFileDisplay(selectedDisplay);
+                setCookie(LAST_FILE_COOKIE, file.name);
+                saveDoc();
+                if (Array.isArray(result.errors) && result.errors.length > 0) {
+                  setStatusMessage("There were problems loading configuration file " + file.name + ". Recognized sections were loaded.");
+                  renderValidationState({ ok: false, errors: result.errors });
+                } else {
+                  setStatusMessage("Loaded configuration file " + file.name);
+                  renderValidationState(null);
+                }
+                return loadCatalog(state.selectedVersion);
+              })
+              .then(function () {
+                return loadServiceOptions(state.selectedVersion);
+              })
+              .then(renderAll);
+          }
+
           state.configType = parsedHeader.configType || "fluentd";
           el.configTypeSelect.value = state.configType;
           state.currentFileName = file.name;
@@ -2969,7 +3169,13 @@
             .then(renderAll);
         })
         .catch(function (err) {
+          if (err && err.payload && Array.isArray(err.payload.errors)) {
+            renderValidationState({ ok: false, errors: err.payload.errors });
+            setStatusMessage("There were problems loading configuration file " + file.name + ".");
+            return;
+          }
           setValidationText(String(err));
+          setStatusMessage("There were problems loading configuration file " + file.name + ".");
         });
     });
 
@@ -3027,12 +3233,14 @@
   }
 
   function init() {
+    installGlobalUiErrorHandlers();
     applyCssOverrides();
     repopulateServiceOptionSelect();
     updateAddPluginState();
     renderValidationState(null);
     setYamlText("");
     updateResultPanels();
+    updateSectionPanels();
     initEvents();
 
     fetchJson(API_BASE + "/health")

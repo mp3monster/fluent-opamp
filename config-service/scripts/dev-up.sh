@@ -9,7 +9,7 @@ BACK_PID_FILE="${RUN_DIR}/backend.pid"
 mkdir -p "${LOG_DIR}"
 
 resolve_port() {
-  PYTHONPATH="${ROOT_DIR}:${ROOT_DIR}/../provider/src" python3 -c \
+  PYTHONPATH="${ROOT_DIR}/src:${ROOT_DIR}/../provider/src" python3 -c \
     "from config_service.runtime_config import resolve_web_port; print(resolve_web_port())"
 }
 
@@ -38,9 +38,9 @@ start_backend() {
   cd "${ROOT_DIR}"
   if is_truthy "${APP_ENABLE_DEV_FEATURES}"; then
     echo "Dev mode log mirror enabled: backend logs are written to ${LOG_DIR}/backend.log and console."
-    PYTHONPATH="${ROOT_DIR}:${ROOT_DIR}/../provider/src" python3 "${ROOT_DIR}/config_service/app.py" 2>&1 | tee -a "${LOG_DIR}/backend.log"
+    PYTHONPATH="${ROOT_DIR}/src:${ROOT_DIR}/../provider/src" python3 -m config_service 2>&1 | tee -a "${LOG_DIR}/backend.log"
   else
-    PYTHONPATH="${ROOT_DIR}:${ROOT_DIR}/../provider/src" python3 "${ROOT_DIR}/config_service/app.py" 2>&1 | tee -a "${LOG_DIR}/backend.log"
+    PYTHONPATH="${ROOT_DIR}/src:${ROOT_DIR}/../provider/src" python3 -m config_service 2>&1 | tee -a "${LOG_DIR}/backend.log"
   fi
 }
 

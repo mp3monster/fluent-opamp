@@ -21,8 +21,9 @@ from pathlib import Path
 from setuptools import find_packages, setup
 
 ROOT = Path(__file__).resolve().parent
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+for candidate in (ROOT, ROOT / "src"):
+    if str(candidate) not in sys.path:
+        sys.path.insert(0, str(candidate))
 
 
 def _load_build_config() -> tuple[list[str], list[str], str, str, str]:
@@ -49,7 +50,8 @@ setup(
     author="Phil Wilkins",
     author_email="phil-AT-mp3monster.org",
     license="Apache-2.0",
-    packages=find_packages(include=["config_service", "config_service.*"]),
+    packages=find_packages(where="src", include=["config_service", "config_service.*"]),
+    package_dir={"": "src"},
     include_package_data=True,
     package_data={
         "config_service": [

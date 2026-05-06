@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from http import HTTPStatus
 from typing import Any
 
@@ -63,6 +64,32 @@ def _normalize_pydantic_issues(errors: list[dict[str, Any]]) -> list[dict[str, A
 
 def create_api_blueprint() -> Blueprint:
     bp = Blueprint("config_service_api", __name__)
+
+    @bp.post("/client-errors")
+    async def client_errors() -> Any:
+        body = await request.get_json(silent=True) or {}
+        message = str(body.get("message") or "Unknown UI error").strip()
+        kind = str(body.get("kind") or "runtime_error").strip()
+        source = str(body.get("source") or "browser").strip()
+        path = str(body.get("path") or request.headers.get("Referer") or "").strip()
+        stack = str(body.get("stack") or "").strip()
+        line = body.get("line")
+        column = body.get("column")
+        user_agent = request.headers.get("User-Agent", "")
+
+        log_message = (
+            f"UI ERROR | kind={kind} | source={source} | path={path or '-'} | "
+            f"line={line if line is not None else '-'} | column={column if column is not None else '-'} | "
+            f"message={message}"
+        )
+        if user_agent:
+            log_message += f" | user_agent={user_agent}"
+        if stack:
+            log_message += f"\n{stack}"
+
+        current_app.logger.error(log_message)
+        print(log_message, file=sys.stderr, flush=True)
+        return jsonify({"ok": True})
 
     @bp.get("/health")
     async def health() -> Any:
@@ -195,11 +222,65 @@ def create_api_blueprint() -> Blueprint:
             return jsonify({"ok": False, "errors": _normalize_pydantic_issues(exc.errors())}), HTTPStatus.BAD_REQUEST
         except KeyError as exc:
             return jsonify({"ok": False, "error": str(exc)}), HTTPStatus.NOT_FOUND
+        if not req.text.strip():
+            return jsonify(
+                {
+                    "ok": False,
+                    "errors": [
+                        {
+                            "order": 1,
+                            "code": "empty_input_file",
+                            "path": "$",
+                            "message": "The configuration file is empty.",
+                            "severity": "error",
+                            "source": "parser",
+                        }
+                    ],
+                }
+            ), HTTPStatus.BAD_REQUEST
         try:
             config_payload = fluentd_config_service.parse(req.text)
         except ValueError as exc:
             return jsonify({"ok": False, "errors": [{"order": 1, "code": "fluentd_parse_error", "path": "$", "message": str(exc), "severity": "error", "source": "parser"}]}), HTTPStatus.BAD_REQUEST
         return jsonify({"ok": True, "config": config_payload})
+
+    @bp.post("/parse/fluentbit/<version>")
+    async def parse_fluentbit(version: str) -> Any:
+        catalog_service = current_app.extensions["catalog_service"]
+        fluentbit_yaml_config_service = current_app.extensions["fluentbit_yaml_config_service"]
+        body = await request.get_json(silent=True) or {}
+        try:
+            req = ParseTextRequest.model_validate(body)
+            catalog_service.get_catalog(version, config_type="fluentbit")
+        except ValidationError as exc:
+            return jsonify({"ok": False, "errors": _normalize_pydantic_issues(exc.errors())}), HTTPStatus.BAD_REQUEST
+        except KeyError as exc:
+            return jsonify({"ok": False, "error": str(exc)}), HTTPStatus.NOT_FOUND
+
+        try:
+            result = fluentbit_yaml_config_service.parse(req.text)
+        except ValueError as exc:
+            message = str(exc)
+            code = "empty_input_file" if "empty" in message.lower() else "fluentbit_yaml_parse_error"
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "errors": [
+                            {
+                                "order": 1,
+                                "code": code,
+                                "path": "$",
+                                "message": message,
+                                "severity": "error",
+                                "source": "parser",
+                            }
+                        ],
+                    }
+                ),
+                HTTPStatus.BAD_REQUEST,
+            )
+        return jsonify(result)
 
     @bp.post("/render/fluentd/<version>")
     async def render_fluentd(version: str) -> Any:
