@@ -51,6 +51,8 @@
     renderDirty: false,
     readOnly: false,
     commentOpen: {},
+    sourceLineMap: {},
+    preserveSourceLineMapOnce: false,
   };
 
   var SERVICE_OPTION_BY_KEY = {};
@@ -422,6 +424,210 @@
     }
     meta.body = lines.slice(bodyStart).join("\n");
     return meta;
+  }
+
+  function normalizeIssuePath(path) {
+    var text = String(path || "").trim();
+    if (!text) {
+      return "$";
+    }
+    if (text === "$.config") {
+      return "$";
+    }
+    if (text.indexOf("$.config.") === 0) {
+      return "$." + text.substring("$.config.".length);
+    }
+    return text;
+  }
+
+  function lookupIssueSourceLine(path) {
+    var normalized = normalizeIssuePath(path);
+    var map = state.sourceLineMap || {};
+    if (Object.prototype.hasOwnProperty.call(map, normalized)) {
+      return map[normalized];
+    }
+    var candidate = normalized;
+    while (candidate && candidate !== "$") {
+      if (Object.prototype.hasOwnProperty.call(map, candidate)) {
+        return map[candidate];
+      }
+      if (/\[[0-9]+\]$/.test(candidate)) {
+        candidate = candidate.replace(/\[[0-9]+\]$/, "");
+        continue;
+      }
+      candidate = candidate.replace(/(?:\[[0-9]+\])?\.[^.[]+$/, "");
+      if (!candidate) {
+        break;
+      }
+      if (candidate === "") {
+        candidate = "$";
+      }
+    }
+    return null;
+  }
+
+  function buildSourceLineMap(text, configType, fileName) {
+    if (!text) {
+      return {};
+    }
+    if (configType === "fluentbit" || /\.ya?ml$/i.test(String(fileName || ""))) {
+      return buildFluentBitYamlLineMap(text);
+    }
+    if (configType === "fluentd" || /\.conf$/i.test(String(fileName || ""))) {
+      return buildFluentdLineMap(text);
+    }
+    return {};
+  }
+
+  function buildFluentBitYamlLineMap(text) {
+    var map = {};
+    var lines = String(text || "").replace(/\r\n/g, "\n").split("\n");
+    var rootSection = "";
+    var pipelineSection = "";
+    var indices = { inputs: -1, filters: -1, outputs: -1 };
+    var currentPluginIndex = -1;
+
+    lines.forEach(function (rawLine, index) {
+      var lineNumber = index + 1;
+      var trimmed = rawLine.trim();
+      if (!trimmed || trimmed.charAt(0) === "#") {
+        return;
+      }
+      var indent = rawLine.length - rawLine.replace(/^\s+/, "").length;
+
+      if (indent === 0) {
+        rootSection = "";
+        pipelineSection = "";
+        currentPluginIndex = -1;
+        var rootMatch = /^([A-Za-z0-9_.-]+):(?:\s|$)/.exec(trimmed);
+        if (rootMatch) {
+          rootSection = rootMatch[1];
+          map["$." + rootSection] = lineNumber;
+        }
+        return;
+      }
+
+      if (rootSection === "service") {
+        var serviceMatch = /^([A-Za-z0-9_.-]+):(?:\s|$)/.exec(trimmed);
+        if (serviceMatch) {
+          map["$.service." + serviceMatch[1]] = lineNumber;
+        }
+        return;
+      }
+
+      if (rootSection !== "pipeline") {
+        return;
+      }
+
+      if (indent === 2) {
+        var sectionMatch = /^(inputs|filters|outputs):(?:\s|$)/.exec(trimmed);
+        if (sectionMatch) {
+          pipelineSection = sectionMatch[1];
+          currentPluginIndex = -1;
+          indices[pipelineSection] = -1;
+          map["$.pipeline." + pipelineSection] = lineNumber;
+        } else {
+          pipelineSection = "";
+        }
+        return;
+      }
+
+      if (!pipelineSection) {
+        return;
+      }
+
+      if (indent >= 4 && /^-\s*/.test(trimmed)) {
+        indices[pipelineSection] += 1;
+        currentPluginIndex = indices[pipelineSection];
+        var basePath = "$.pipeline." + pipelineSection + "[" + currentPluginIndex + "]";
+        map[basePath] = lineNumber;
+        var inline = trimmed.replace(/^-\s*/, "");
+        var inlineMatch = /^([A-Za-z0-9_.-]+):(?:\s|$)/.exec(inline);
+        if (inlineMatch) {
+          map[basePath + "." + inlineMatch[1]] = lineNumber;
+        }
+        return;
+      }
+
+      if (currentPluginIndex >= 0) {
+        var fieldMatch = /^([A-Za-z0-9_.-]+):(?:\s|$)/.exec(trimmed);
+        if (fieldMatch) {
+          map["$.pipeline." + pipelineSection + "[" + currentPluginIndex + "]." + fieldMatch[1]] = lineNumber;
+        }
+      }
+    });
+
+    return map;
+  }
+
+  function buildFluentdLineMap(text) {
+    var map = {};
+    var lines = String(text || "").replace(/\r\n/g, "\n").split("\n");
+    var stack = [];
+    var indices = { inputs: -1, filters: -1, outputs: -1 };
+
+    lines.forEach(function (rawLine, index) {
+      var lineNumber = index + 1;
+      var trimmed = rawLine.trim();
+      if (!trimmed || trimmed.charAt(0) === "#") {
+        return;
+      }
+
+      var endMatch = /^<\/([@A-Za-z_][\w@-]*)>$/.exec(trimmed);
+      if (endMatch) {
+        stack.pop();
+        return;
+      }
+
+      if (/^<system>$/.test(trimmed)) {
+        stack = [{ type: "service", path: "$.service" }];
+        map["$.service"] = lineNumber;
+        return;
+      }
+
+      var sourceMatch = /^<(source|filter|match)(?:\s+.*)?>$/.exec(trimmed);
+      if (sourceMatch) {
+        var sectionMap = { source: "inputs", filter: "filters", match: "outputs" };
+        var section = sectionMap[sourceMatch[1]];
+        indices[section] += 1;
+        var path = "$.pipeline." + section + "[" + indices[section] + "]";
+        stack = [{ type: sourceMatch[1], path: path }];
+        map[path] = lineNumber;
+        return;
+      }
+
+      if (/^<(label|worker)(?:\s+.*)?>$/.test(trimmed)) {
+        stack = [{ type: "container", path: "" }];
+        return;
+      }
+
+      if (trimmed.charAt(0) === "<") {
+        stack.push({ type: "nested", path: "" });
+        return;
+      }
+
+      if (stack.length === 0) {
+        return;
+      }
+
+      var current = stack[stack.length - 1];
+      if (!current || !current.path) {
+        return;
+      }
+
+      var parts = trimmed.split(/\s+/, 2);
+      var key = parts[0] || "";
+      if (!key) {
+        return;
+      }
+      if (key === "@type") {
+        map[current.path + ".name"] = lineNumber;
+        return;
+      }
+      map[current.path + "." + key] = lineNumber;
+    });
+
+    return map;
   }
 
   function prependConfigHeader(text, configType, version, commentPrefix) {
@@ -804,16 +1010,15 @@
   }
 
   function createMetaHelpButton() {
-    var helpBtn = document.createElement("button");
-    helpBtn.type = "button";
-    helpBtn.textContent = "?";
-    helpBtn.className = "icon-help";
-    helpBtn.title = "Open help for _meta comments and field_comment_lines.";
-    helpBtn.setAttribute("aria-label", "Open help for _meta comments");
-    helpBtn.addEventListener("click", function () {
-      window.open(META_COMMENTS_HELP_URL, "_blank", "noopener,noreferrer");
-    });
-    return helpBtn;
+    var helpLink = document.createElement("a");
+    helpLink.href = META_COMMENTS_HELP_URL;
+    helpLink.target = "_blank";
+    helpLink.rel = "noopener noreferrer";
+    helpLink.textContent = "?";
+    helpLink.className = "icon-help";
+    helpLink.title = "Open help for comments and field comments.";
+    helpLink.setAttribute("aria-label", "Open help for _meta comments");
+    return helpLink;
   }
 
   function createCommentToggleButton(toggleKey, target, fieldName, labelText) {
@@ -877,6 +1082,11 @@
       return;
     }
     localStorage.setItem(LAST_DOC_STORAGE, JSON.stringify(state.doc));
+    if (state.preserveSourceLineMapOnce) {
+      state.preserveSourceLineMapOnce = false;
+    } else {
+      state.sourceLineMap = {};
+    }
     markValidationDirtyOnEdit();
     if (state.lastRenderedSignature && state.lastRenderedSignature !== currentRenderSignature()) {
       state.renderDirty = true;
@@ -931,6 +1141,10 @@
         var detailBits = [];
         if (issue && issue.path) {
           detailBits.push("Path: " + issue.path);
+        }
+        var sourceLine = issue && issue.line ? issue.line : lookupIssueSourceLine(issue && issue.path);
+        if (sourceLine) {
+          detailBits.push("Line: " + sourceLine);
         }
         if (issue && issue.severity) {
           detailBits.push("Severity: " + issue.severity);
@@ -1540,7 +1754,7 @@
     }
     var description = String(field.description || "Open field documentation.");
     var reference = String(field.reference || "").trim();
-    helpBtn.title = reference ? description + " (" + reference + ")" : description;
+    helpBtn.title = description;
     if (!reference) {
       helpBtn.disabled = true;
       return helpBtn;
@@ -1624,7 +1838,7 @@
       var input = isStructured || isCode ? document.createElement("textarea") : document.createElement("input");
       input.value = fieldInputValue(instance[field.name], field.data_type);
       input.placeholder = field.description || "";
-      input.title = (field.reference || "") + "\n" + (field.description || "");
+      input.title = field.description || "";
       if (isCode) {
         prepareCodeTextarea(input);
       }
@@ -2399,9 +2613,7 @@
       var row = document.createElement("div");
       row.className = "service-row";
       if (knownServiceOption) {
-        row.title = knownServiceOption.reference
-          ? knownServiceOption.description + " (" + knownServiceOption.reference + ")"
-          : knownServiceOption.description;
+        row.title = knownServiceOption.description || "";
       }
 
       var keyInput = document.createElement("input");
@@ -2816,6 +3028,9 @@
               default: Object.prototype.hasOwnProperty.call(item, "default") ? item.default : "",
               description: item.description || "",
               reference: item.reference || "",
+              called_enum_options: Array.isArray(item.called_enum_options) ? item.called_enum_options.slice() : [],
+              enum_options: Array.isArray(item.enum_options) ? item.enum_options.slice() : [],
+              validation_rule: item.validation_rule || null,
             };
           });
         if (parsed.length > 0) {
@@ -2841,6 +3056,7 @@
       state.doc = emptyDoc(state.selectedVersion, state.configType);
       state.currentFileName = "";
       state.saveFileHandle = null;
+      state.sourceLineMap = {};
       clearOpenFileSelection();
       setCookie(LAST_FILE_COOKIE, "new-" + Date.now());
       saveDoc();
@@ -3058,7 +3274,7 @@
       if (!file) {
         return;
       }
-      var selectedDisplay = String(event.target.value || file.name || "").trim() || file.name;
+      var selectedDisplay = String(file.name || "").trim();
       file
         .text()
         .then(function (text) {
@@ -3069,6 +3285,7 @@
             ensureDoc();
             state.configType = parsedHeader.configType || parsed.configType || "fluentbit";
             state.doc.configType = state.configType;
+            state.sourceLineMap = {};
             state.currentFileName = file.name;
             state.saveFileHandle = null;
             setOpenFileDisplay(selectedDisplay);
@@ -3080,6 +3297,7 @@
             )
               .then(function () {
                 state.doc.version = state.selectedVersion;
+                state.preserveSourceLineMapOnce = true;
                 saveDoc();
                 setStatusMessage("Loaded configuration file " + file.name);
                 if (!state.selectedVersion) {
@@ -3101,6 +3319,7 @@
           if (/\.ya?ml$/i.test(file.name)) {
             state.configType = "fluentbit";
             el.configTypeSelect.value = state.configType;
+            state.sourceLineMap = buildSourceLineMap(parsedHeader.body, "fluentbit", file.name);
             return loadVersionsForType(state.configType, parsedHeader.version || state.selectedVersion)
               .then(function () {
                 return fetchJson(API_BASE + "/parse/fluentbit/" + encodeURIComponent(state.selectedVersion), {
@@ -3121,6 +3340,7 @@
                 state.saveFileHandle = null;
                 setOpenFileDisplay(selectedDisplay);
                 setCookie(LAST_FILE_COOKIE, file.name);
+                state.preserveSourceLineMapOnce = true;
                 saveDoc();
                 if (Array.isArray(result.errors) && result.errors.length > 0) {
                   setStatusMessage("There were problems loading configuration file " + file.name + ". Recognized sections were loaded.");
@@ -3139,6 +3359,7 @@
 
           state.configType = parsedHeader.configType || "fluentd";
           el.configTypeSelect.value = state.configType;
+          state.sourceLineMap = buildSourceLineMap(parsedHeader.body, "fluentd", file.name);
           state.currentFileName = file.name;
           state.saveFileHandle = null;
           setOpenFileDisplay(selectedDisplay);
@@ -3152,14 +3373,15 @@
               });
             })
             .then(function (result) {
-              state.doc = {
-                version: state.selectedVersion,
-                configType: "fluentd",
-                config: result.config || emptyDoc(state.selectedVersion, "fluentd").config,
-                annotations: {},
-              };
-              ensureDoc();
-              saveDoc();
+            state.doc = {
+              version: state.selectedVersion,
+              configType: "fluentd",
+              config: result.config || emptyDoc(state.selectedVersion, "fluentd").config,
+              annotations: {},
+            };
+            ensureDoc();
+            state.preserveSourceLineMapOnce = true;
+            saveDoc();
               setStatusMessage("Loaded configuration file " + file.name);
               return loadCatalog(state.selectedVersion);
             })

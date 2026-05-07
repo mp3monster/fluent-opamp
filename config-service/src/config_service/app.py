@@ -192,6 +192,10 @@ def create_app(*, mode: str = "standalone") -> Quart:
             "__CONFIG_SERVICE_UI_BASE_CSS_PATH__",
             _append_suffix(base_css_path, asset_suffix),
         )
+        rendered = rendered.replace(
+            "__CONFIG_SERVICE_UI_ASSET_SUFFIX__",
+            asset_suffix,
+        )
         response = Response(rendered, mimetype="text/html")
         if _app_enable_dev_features_enabled():
             return _apply_no_cache_headers(response)

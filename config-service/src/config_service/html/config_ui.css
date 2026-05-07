@@ -405,6 +405,9 @@ textarea.code-input {
 }
 
 .icon-help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-width: 2rem;
   width: 2rem;
   height: 2rem;
@@ -412,6 +415,8 @@ textarea.code-input {
   border-radius: 999px;
   font-weight: 700;
   line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
 }
 
 .icon-button {

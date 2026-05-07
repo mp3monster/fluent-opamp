@@ -1,0 +1,14 @@
+service:
+  flush_interval: 5
+pipeline:
+  inputs:
+    - name: dummy
+      tag: sample
+  outputs:
+    - name: null
+      match: "*"
+  processors:
+    - name: ignored
+plugins:
+  custom:
+    - path: ./custom.so
