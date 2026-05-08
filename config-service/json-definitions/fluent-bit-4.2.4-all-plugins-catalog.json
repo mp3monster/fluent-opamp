@@ -17341,6 +17341,161 @@
         "processors": "https://docs.fluentbit.io/manual/data-pipeline/processors",
         "filters_as_processors": "https://docs.fluentbit.io/manual/data-pipeline/processors/filters"
       }
+    },
+    "route": {
+      "description": "Optional Fluent Bit conditional routing rules for input plugins. The editor stores this as 'route' and renders native YAML as 'routes'.",
+      "doc_url": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+      "yaml_key": "routes",
+      "yaml_only": true,
+      "supported_sections": [
+        "inputs"
+      ],
+      "top_level_fields": [
+        {
+          "name": "per_record_routing",
+          "required": false,
+          "description": "When true, Fluent Bit evaluates route conditions for each record.",
+          "reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+          "data_type": "boolean",
+          "default": true
+        }
+      ],
+      "signals": [
+        {
+          "name": "logs",
+          "description": "Routes log records.",
+          "implemented": true
+        },
+        {
+          "name": "metrics",
+          "description": "Routes metric records. Fluent Bit currently parses these routes but does not evaluate them.",
+          "implemented": false
+        },
+        {
+          "name": "traces",
+          "description": "Routes trace records. Fluent Bit currently parses these routes but does not evaluate them.",
+          "implemented": false
+        },
+        {
+          "name": "any",
+          "description": "Routes all signal types. Fluent Bit currently evaluates logs only.",
+          "implemented": true
+        }
+      ],
+      "route_fields": [
+        {
+          "name": "name",
+          "required": true,
+          "description": "A unique identifier for the route.",
+          "reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+          "data_type": "string"
+        }
+      ],
+      "condition_fields": [
+        {
+          "name": "default",
+          "required": false,
+          "description": "Match records that did not match any earlier route.",
+          "reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+          "data_type": "boolean"
+        },
+        {
+          "name": "op",
+          "required": false,
+          "description": "Logical operator for combining route rules.",
+          "reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+          "data_type": "enum",
+          "called_enum_options": [
+            "and",
+            "or"
+          ],
+          "validation_rule": {
+            "kind": "enum",
+            "values": [
+              "and",
+              "or"
+            ]
+          }
+        }
+      ],
+      "rule_fields": [
+        {
+          "name": "context",
+          "required": false,
+          "description": "Location of the field used for route evaluation.",
+          "reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+          "data_type": "enum",
+          "called_enum_options": [
+            "body",
+            "group_attributes",
+            "group_metadata",
+            "metadata",
+            "otel_resource_attributes",
+            "otel_scope_attributes",
+            "otel_scope_metadata"
+          ],
+          "validation_rule": {
+            "kind": "enum",
+            "values": [
+              "body",
+              "group_attributes",
+              "group_metadata",
+              "metadata",
+              "otel_resource_attributes",
+              "otel_scope_attributes",
+              "otel_scope_metadata"
+            ]
+          }
+        },
+        {
+          "name": "field",
+          "required": true,
+          "description": "Field to evaluate, using Fluent Bit record accessor syntax.",
+          "reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+          "data_type": "string"
+        },
+        {
+          "name": "op",
+          "required": true,
+          "description": "Comparison operator applied to the selected field.",
+          "reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+          "data_type": "enum",
+          "called_enum_options": [
+            "eq",
+            "gt",
+            "gte",
+            "in",
+            "lt",
+            "lte",
+            "neq",
+            "not_in",
+            "not_regex",
+            "regex"
+          ],
+          "validation_rule": {
+            "kind": "enum",
+            "values": [
+              "eq",
+              "gt",
+              "gte",
+              "in",
+              "lt",
+              "lte",
+              "neq",
+              "not_in",
+              "not_regex",
+              "regex"
+            ]
+          }
+        },
+        {
+          "name": "value",
+          "required": true,
+          "description": "Value compared against the selected field. Arrays are valid for in and not_in.",
+          "reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+          "data_type": "string"
+        }
+      ]
     }
   },
   "custom_plugins": {
