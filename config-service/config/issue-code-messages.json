@@ -80,6 +80,58 @@
     "unknown_issue": {
       "label": "Validation issue",
       "description": "A validation issue was reported without a known code mapping."
+    },
+    "unknown_parser_format": {
+      "label": "Unknown parser format",
+      "description": "The parser definition uses a parser format that is not supported by the editor."
+    },
+    "duplicate_parser_name": {
+      "label": "Duplicate parser name",
+      "description": "A parser name was defined more than once in the parsers section."
+    },
+    "unknown_parser_reference": {
+      "label": "Unknown parser reference",
+      "description": "A plugin parser reference did not match a defined parser or a known built-in Fluent Bit parser."
+    },
+    "duplicate_route_name": {
+      "label": "Duplicate route name",
+      "description": "A conditional route name is defined more than once."
+    },
+    "unknown_route_signal": {
+      "label": "Unknown route signal",
+      "description": "The route block contains a signal group that Fluent Bit does not recognise."
+    },
+    "invalid_route_field_type": {
+      "label": "Invalid route field type",
+      "description": "A route configuration value uses the wrong data type."
+    },
+    "route_signal_not_fully_supported": {
+      "label": "Route signal not fully supported",
+      "description": "The selected Fluent Bit route signal is parsed but not fully evaluated yet."
+    },
+    "route_not_enabled": {
+      "label": "Route not enabled",
+      "description": "Conditional routes are defined, but per-record routing is not enabled."
+    },
+    "invalid_route_condition_operator": {
+      "label": "Invalid route condition operator",
+      "description": "A route condition operator must be and or or."
+    },
+    "invalid_route_context": {
+      "label": "Invalid route context",
+      "description": "A route rule uses an unsupported context source."
+    },
+    "invalid_route_rule_operator": {
+      "label": "Invalid route rule operator",
+      "description": "A route rule uses an unsupported comparison operator."
+    },
+    "invalid_route_output_reference": {
+      "label": "Invalid route output reference",
+      "description": "A route output entry must be a non-empty string."
+    },
+    "unknown_route_output_reference": {
+      "label": "Unknown route output",
+      "description": "A route points at an output name or alias that is not currently configured."
     }
   }
 }

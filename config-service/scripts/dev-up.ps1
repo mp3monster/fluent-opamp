@@ -18,6 +18,9 @@ function Start-Backend {
     if (-not $env:APP_ENABLE_DEV_FEATURES) {
         $env:APP_ENABLE_DEV_FEATURES = "1"
     }
+    if (-not $env:CONFIG_TOOL_LOG_LEVEL) {
+        $env:CONFIG_TOOL_LOG_LEVEL = "DEBUG"
+    }
 
     if (Test-Path $BackPidFile) {
         Remove-Item -Force $BackPidFile
@@ -31,6 +34,7 @@ function Start-Backend {
     Write-Host "Config-service dev stack is starting in the current terminal."
     Write-Host "Backend:  http://localhost:$port/config-service/api/v1/health"
     Write-Host "UI:       http://localhost:$port/config-service/ui"
+    Write-Host "Log level: $env:CONFIG_TOOL_LOG_LEVEL"
     Write-Host "Logs: $LogDir"
     Write-Host "Stop: press Ctrl+C"
     Write-Host ""

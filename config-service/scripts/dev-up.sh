@@ -22,6 +22,7 @@ is_truthy() {
 
 start_backend() {
   export APP_ENABLE_DEV_FEATURES="${APP_ENABLE_DEV_FEATURES:-1}"
+  export CONFIG_TOOL_LOG_LEVEL="${CONFIG_TOOL_LOG_LEVEL:-DEBUG}"
   rm -f "${BACK_PID_FILE}"
   rm -f "${RUN_DIR}/frontend.pid"
   local port
@@ -31,6 +32,7 @@ start_backend() {
   echo "Config-service dev stack is starting in the current terminal."
   echo "Backend:  http://localhost:${port}/config-service/api/v1/health"
   echo "UI:       http://localhost:${port}/config-service/ui"
+  echo "Log level: ${CONFIG_TOOL_LOG_LEVEL}"
   echo "Logs: ${LOG_DIR}"
   echo "Stop: press Ctrl+C"
   echo

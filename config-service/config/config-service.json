@@ -1,6 +1,7 @@
 {
   "config-tool": {
     "web_port": 8080,
+    "log_level": "INFO",
     "ui_base_css_path": "/config-service/ui/assets/config_ui.css",
     "ui_css_overrides": [],
     "read_only": false
