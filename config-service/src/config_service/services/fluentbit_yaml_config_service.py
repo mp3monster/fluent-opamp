@@ -67,6 +67,7 @@ class FluentBitYamlConfigService:
 
         config: dict[str, Any] = {
             "service": {},
+            "parsers": [],
             "pipeline": {"inputs": [], "filters": [], "outputs": []},
             "labels": [],
             "workers": [],
@@ -96,6 +97,13 @@ class FluentBitYamlConfigService:
                 config["pipeline"] = pipeline_payload
                 errors.extend(pipeline_errors)
                 order += len(pipeline_errors)
+                continue
+
+            if key == "parsers":
+                parsers_payload, parser_errors = self._parse_parsers(value, order)
+                config["parsers"] = parsers_payload
+                errors.extend(parser_errors)
+                order += len(parser_errors)
                 continue
 
             errors.append(
@@ -179,6 +187,39 @@ class FluentBitYamlConfigService:
                     )
                     order += 1
                     continue
-                pipeline[section_name].append(deepcopy(item))
+                plugin_item = deepcopy(item)
+                if "routes" in plugin_item and "route" not in plugin_item:
+                    plugin_item["route"] = plugin_item.pop("routes")
+                pipeline[section_name].append(plugin_item)
 
         return pipeline, errors
+
+    def _parse_parsers(self, payload: Any, start_order: int) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+        parsers: list[dict[str, Any]] = []
+        errors: list[dict[str, Any]] = []
+        order = start_order
+        if not isinstance(payload, list):
+            errors.append(
+                _issue(
+                    order,
+                    "fluentbit_yaml_invalid_section",
+                    "$.parsers",
+                    "Ignored parsers section because it is not a list.",
+                )
+            )
+            return parsers, errors
+        for index, item in enumerate(payload):
+            item_path = f"$.parsers[{index}]"
+            if not isinstance(item, dict):
+                errors.append(
+                    _issue(
+                        order,
+                        "fluentbit_yaml_invalid_plugin",
+                        item_path,
+                        f"Ignored parser entry at index {index} because it is not an object.",
+                    )
+                )
+                order += 1
+                continue
+            parsers.append(deepcopy(item))
+        return parsers, errors

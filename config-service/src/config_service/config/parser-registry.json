@@ -1,0 +1,13 @@
+{
+  "registry_version": "1.0.0",
+  "default_versions": {
+    "fluentbit": "5.0.4"
+  },
+  "parser_definitions_by_type": {
+    "fluentbit": {
+      "3.2.10": "json-definitions/fluent-bit-3.2.10-parser-options.json",
+      "4.2.4": "json-definitions/fluent-bit-4.2.4-parser-options.json",
+      "5.0.4": "json-definitions/fluent-bit-5.0.4-parser-options.json"
+    }
+  }
+}

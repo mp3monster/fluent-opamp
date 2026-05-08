@@ -139,6 +139,16 @@ def create_api_blueprint() -> Blueprint:
             return jsonify({"ok": False, "error": str(exc)}), HTTPStatus.NOT_FOUND
         return jsonify(payload)
 
+    @bp.get("/parser-options/<version>")
+    async def parser_options(version: str) -> Any:
+        parser_definition_service = current_app.extensions["parser_definition_service"]
+        config_type = request.args.get("config_type", "fluentbit")
+        try:
+            payload = parser_definition_service.get_definition(version, config_type=config_type)
+        except KeyError as exc:
+            return jsonify({"ok": False, "error": str(exc)}), HTTPStatus.NOT_FOUND
+        return jsonify(payload)
+
     @bp.get("/issue-codes")
     async def issue_codes() -> Any:
         issue_code_service = current_app.extensions["issue_code_service"]
@@ -157,6 +167,7 @@ def create_api_blueprint() -> Blueprint:
     async def schema(version: str) -> Any:
         catalog_service = current_app.extensions["catalog_service"]
         schema_service = current_app.extensions["schema_service"]
+        parser_definition_service = current_app.extensions["parser_definition_service"]
         body = await request.get_json(silent=True) or {}
         config_type = request.args.get("config_type")
         try:
@@ -166,12 +177,20 @@ def create_api_blueprint() -> Blueprint:
             return jsonify({"ok": False, "error": exc.errors()}), HTTPStatus.BAD_REQUEST
         except KeyError as exc:
             return jsonify({"ok": False, "error": str(exc)}), HTTPStatus.NOT_FOUND
-        schema_payload = schema_service.compile_schema(catalog_payload, strict_mode=options.strict)
+        parser_definition = None
+        if str(config_type or "fluentbit").lower() == "fluentbit":
+            parser_definition = parser_definition_service.get_definition(version, config_type="fluentbit")
+        schema_payload = schema_service.compile_schema(
+            catalog_payload,
+            strict_mode=options.strict,
+            parser_definition=parser_definition,
+        )
         return jsonify({"ok": True, "schema": schema_payload})
 
     @bp.post("/validate/<version>")
     async def validate(version: str) -> Any:
         catalog_service = current_app.extensions["catalog_service"]
+        parser_definition_service = current_app.extensions["parser_definition_service"]
         validation_service = current_app.extensions["validation_service"]
         body = await request.get_json(silent=True) or {}
         config_type = request.args.get("config_type")
@@ -183,11 +202,15 @@ def create_api_blueprint() -> Blueprint:
         except KeyError as exc:
             return jsonify({"ok": False, "error": str(exc)}), HTTPStatus.NOT_FOUND
 
+        parser_definition = None
+        if str(config_type or "fluentbit").lower() == "fluentbit":
+            parser_definition = parser_definition_service.get_definition(version, config_type="fluentbit")
         result = validation_service.validate(
             version=version,
             payload=req.model_dump(),
             catalog=catalog_payload,
             profile=req.profile,
+            parser_definition=parser_definition,
         )
         return jsonify(result), HTTPStatus.OK if result.get("ok") else HTTPStatus.BAD_REQUEST
 

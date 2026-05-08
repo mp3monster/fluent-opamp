@@ -1,0 +1,137 @@
+<!--
+Copyright 2026 mp3monster.org
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Config Service UI Help</title>
+    <link rel="icon" type="image/png" href="/config-service/ui/assets/config_editor_icon.png__CONFIG_SERVICE_UI_ASSET_SUFFIX__" />
+    <link rel="stylesheet" href="__CONFIG_SERVICE_UI_BASE_CSS_PATH__" />
+  </head>
+  <body>
+    <main class="page-shell">
+      <header>
+        <h1>Config Service Help</h1>
+        <p>Guide to the main editor building blocks, nested configuration areas, icon buttons, and color meanings.</p>
+        <p><a class="button-link" href="/config-service/ui">Back to Config Service UI</a></p>
+      </header>
+
+      <section class="panel">
+        <h2>Main Building Blocks</h2>
+        <p>The editor is organized into a small set of top-level panels. Each panel focuses on a different part of the configuration.</p>
+        <ol>
+          <li><strong>Configuration Selection</strong>: open files, create a new configuration, save, choose configuration type, and select version.</li>
+          <li><strong>Status Bar</strong>: shows save, load, render, and other UI messages with local timestamps.</li>
+          <li><strong>Service Section</strong>: manages top-level service settings such as flush intervals, logging, and other runtime options.</li>
+          <li><strong>Parsers</strong>: defines reusable Fluent Bit parsers that input plugins can reference.</li>
+          <li><strong>Add Plugin</strong>: selects a section and plugin type before adding it to the active pipeline.</li>
+          <li><strong>Plugins</strong>: the main editable pipeline list for inputs, filters, and outputs.</li>
+          <li><strong>Labels</strong> and <strong>Workers</strong>: Fluentd-only panels for top-level routing containers.</li>
+          <li><strong>Validation</strong>: shows errors and warnings found in the current configuration.</li>
+          <li><strong>Rendered Configuration</strong>: shows the generated Fluent Bit YAML or Fluentd configuration text.</li>
+        </ol>
+      </section>
+
+      <section class="panel">
+        <h2>Plugin Sub-Blocks</h2>
+        <p>Plugin cards can contain nested blocks depending on the selected plugin type and configuration engine.</p>
+        <ol>
+          <li><strong>Required and Optional Fields</strong>: required fields are always present, while optional fields can be added from the attribute picker.</li>
+          <li><strong>Processors</strong>: Fluent Bit inputs and outputs can contain nested processors grouped by signal such as logs, metrics, and traces.</li>
+          <li><strong>Route</strong>: Fluent Bit 4.2+ input plugins can define conditional routing rules. These nested route blocks let you set per-record routing, signal-specific routes, route conditions, and output targets.</li>
+          <li><strong>Comments</strong>: object-level and field-level comments are stored as editor metadata and can be toggled open when needed.</li>
+        </ol>
+      </section>
+
+      <section class="panel">
+        <h2>Routes</h2>
+        <p>The Route panel is used for Fluent Bit conditional routing on supported input plugins.</p>
+        <ol>
+          <li><strong>per_record_routing</strong>: enables evaluation of route conditions on each record.</li>
+          <li><strong>Signal groups</strong>: route entries can be organized under groups such as <code>logs</code>, <code>metrics</code>, <code>traces</code>, and <code>any</code>.</li>
+          <li><strong>Condition</strong>: each route can define a default condition or a set of rules with logical operators.</li>
+          <li><strong>To Outputs</strong>: each route points to one or more configured outputs by name or alias.</li>
+        </ol>
+        <p>The editor stores this block internally as <code>route</code>, while rendered Fluent Bit YAML uses the native <code>routes</code> block.</p>
+      </section>
+
+      <section class="panel">
+        <h2>Processors</h2>
+        <p>The Processors block adds transformation logic inside Fluent Bit input and output plugins.</p>
+        <ol>
+          <li>Choose a signal type such as logs, metrics, or traces.</li>
+          <li>Select a processor definition.</li>
+          <li>Configure required and optional processor fields.</li>
+          <li>When supported, add a nested conditional processing block.</li>
+        </ol>
+      </section>
+
+      <section class="panel">
+        <h2>Icon Buttons</h2>
+        <p>The UI uses several icon-style controls to reduce clutter. These are the ones to know about.</p>
+        <ol>
+          <li><strong><code>?</code></strong>: opens documentation or help for the related item.</li>
+          <li><strong><code>🗒</code></strong>: opens a comment editor when there is no comment yet.</li>
+          <li><strong><code>📝</code></strong>: opens a comment editor when a comment already exists.</li>
+          <li><strong><code>↑</code></strong>: moves a plugin up in its current section ordering.</li>
+          <li><strong><code>↓</code></strong>: moves a plugin down in its current section ordering.</li>
+          <li><strong><code>-</code></strong>: removes the related plugin, field, parser, route, or destination entry.</li>
+          <li><strong><code>I</code>, <code>F</code>, <code>O</code></strong>: show input, filter, and output placement on plugin cards. The active one is highlighted.</li>
+        </ol>
+      </section>
+
+      <section class="panel">
+        <h2>Color Use</h2>
+        <p>Color is used intentionally to separate state and nested structure.</p>
+        <ol>
+          <li><strong>Blue / accent highlights</strong>: active controls and current section indicators.</li>
+          <li><strong>Pale blue route panels</strong>: conditional routing blocks and nested route content.</li>
+          <li><strong>Pale framed comment groups</strong>: a field and its comment editor are grouped together visually.</li>
+          <li><strong>Grey readonly styling</strong>: locked metadata such as parser format.</li>
+          <li><strong>Red labels</strong>: required fields.</li>
+          <li><strong>Green validation header</strong>: the configuration validated successfully with no issues.</li>
+          <li><strong>Amber validation header</strong>: warnings are present, but validation is not blocked.</li>
+          <li><strong>Red validation header</strong>: blocking validation errors are present.</li>
+          <li><strong>Yellow render state</strong>: the rendered output is stale because the configuration changed after the last render.</li>
+        </ol>
+      </section>
+
+      <section class="panel">
+        <h2>Collapse and Expansion</h2>
+        <p>Most large panels can be collapsed to make the page easier to scan.</p>
+        <ol>
+          <li>Top-level panels such as Parsers, Plugins, Labels, Workers, Validation, and Rendered Configuration can be opened and collapsed.</li>
+          <li>Plugin cards, parser cards, and route cards can also be collapsed individually.</li>
+          <li>This helps when large configurations contain many repeated blocks.</li>
+        </ol>
+      </section>
+
+      <section class="panel">
+        <h2>Notes on Comments</h2>
+        <p>Comments are editor metadata, not runtime configuration fields.</p>
+        <ol>
+          <li>Object comments and field comments are stored in <code>_meta</code>.</li>
+          <li>Those comments can be rendered into Fluent Bit YAML when comment rendering is enabled.</li>
+          <li>They are not meant to appear as normal service or plugin attributes.</li>
+        </ol>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div>Licensed under Apache 2.0 • Attribution: <a href="https://mp3monster.org" target="_blank" rel="noopener noreferrer">mp3monster.org</a></div>
+      <div><a href="https://opentelemetry.io/docs/specs/opamp/" target="_blank" rel="noopener noreferrer">OpAMP Specification</a> • <a href="/doc-set">Latest docs</a></div>
+    </footer>
+  </body>
+</html>

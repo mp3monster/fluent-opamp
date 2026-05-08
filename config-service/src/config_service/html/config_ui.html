@@ -35,6 +35,15 @@ limitations under the License.
               <p>Tool for viewing and editing Observability agent configurations</p>
             </div>
           </div>
+          <div class="title-actions">
+            <a
+              href="/config-service/ui/docs/help"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="button-link"
+              aria-label="Open UI help in a new tab"
+            >Help</a>
+          </div>
         </div>
       </header>
 
@@ -80,8 +89,20 @@ limitations under the License.
       </section>
 
       <section class="panel">
-        <h2>Service Section</h2>
-        <p>Define service-level settings using known controls or custom keys.</p>
+        <div class="section-head">
+          <div>
+            <h2>Service Section</h2>
+            <p>Define service-level settings using known controls or custom keys.</p>
+          </div>
+          <a
+            href="/config-service/ui/docs/meta-comments"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="icon-help"
+            title="Open help for comments and field comments."
+            aria-label="Open help for _meta comments"
+          >?</a>
+        </div>
         <div class="service-editor">
           <div class="service-configured">
             <h3>Configured Service Fields</h3>
@@ -107,6 +128,39 @@ limitations under the License.
               <button id="add-service-field" type="button">Add Service Field</button>
             </div>
             <p id="service-option-meta" class="service-meta"></p>
+          </div>
+        </div>
+      </section>
+
+      <section id="parsers-panel" class="panel">
+        <div class="section-head">
+          <div>
+            <h2>Parsers</h2>
+            <p>Define custom Fluent Bit parsers and validate parser references before adding plugins.</p>
+          </div>
+          <button id="parsers-toggle" type="button">Collapse</button>
+        </div>
+        <div id="parsers-body">
+          <div class="service-configured">
+            <h3>Configured Parsers</h3>
+            <div id="parser-list"></div>
+          </div>
+
+          <div class="service-option-frame">
+            <div class="row">
+              <label>
+                Format
+                <select id="parser-format"></select>
+              </label>
+              <label>
+                Parser Name
+                <input id="parser-name-input" type="text" placeholder="custom_parser" />
+              </label>
+              <button id="parser-help-toggle" type="button" class="icon-help" aria-label="Open parser format help in a new tab">?</button>
+              <span class="optional-divider" aria-hidden="true"></span>
+              <button id="add-parser" type="button">Add Parser</button>
+            </div>
+            <p id="parser-format-meta" class="service-meta"></p>
           </div>
         </div>
       </section>
@@ -216,6 +270,10 @@ limitations under the License.
       <button id="reload-ui" type="button" class="hidden">Reload UI</button>
     </div>
 
+    <script src="/config-service/ui/assets/config_ui_helpers.js__CONFIG_SERVICE_UI_ASSET_SUFFIX__"></script>
+    <script src="/config-service/ui/assets/config_ui_comments.js__CONFIG_SERVICE_UI_ASSET_SUFFIX__"></script>
+    <script src="/config-service/ui/assets/config_ui_plugins.js__CONFIG_SERVICE_UI_ASSET_SUFFIX__"></script>
+    <script src="/config-service/ui/assets/config_ui_sections.js__CONFIG_SERVICE_UI_ASSET_SUFFIX__"></script>
     <script src="/config-service/ui/assets/config_ui.js__CONFIG_SERVICE_UI_ASSET_SUFFIX__"></script>
   </body>
 </html>

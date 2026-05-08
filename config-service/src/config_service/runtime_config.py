@@ -23,19 +23,23 @@ ENV_CONFIG_TOOL_CONFIG_PATH = "CONFIG_TOOL_CONFIG_PATH"
 ENV_OPAMP_CONFIG_PATH = "OPAMP_CONFIG_PATH"
 ENV_CONFIG_SERVICE_WEB_PORT = "CONFIG_SERVICE_WEB_PORT"
 ENV_CONFIG_SERVICE_UI_BASE_CSS_PATH = "CONFIG_SERVICE_UI_BASE_CSS_PATH"
+ENV_CONFIG_TOOL_LOG_LEVEL = "CONFIG_TOOL_LOG_LEVEL"
 CFG_CONFIG_TOOL = "config-tool"
 CFG_CONFIG_TOOL_WEB_PORT = "web_port"
 CFG_CONFIG_TOOL_UI_BASE_CSS_PATH = "ui_base_css_path"
+CFG_CONFIG_TOOL_LOG_LEVEL = "log_level"
 CFG_CONFIG_TOOL_UI_CSS_OVERRIDES = "ui_css_overrides"
 CFG_CONFIG_TOOL_READ_ONLY = "read_only"
 CFG_CONFIG_SERVICE = "config_service"
 CFG_CONFIG_SERVICE_WEB_PORT = "web_port"
 CFG_CONFIG_SERVICE_UI_BASE_CSS_PATH = "ui_base_css_path"
 CFG_PROVIDER = "provider"
+CFG_PROVIDER_LOG_LEVEL = "log_level"
 CFG_PROVIDER_WEBUI_PORT = "webui_port"
 DEFAULT_CONFIG_SERVICE_WEB_PORT = 8080
 DEFAULT_CONFIG_SERVICE_UI_BASE_CSS_PATH = "/config-service/ui/assets/config_ui.css"
 DEFAULT_CONFIG_TOOL_CONFIG_PATH = "config-service.json"
+DEFAULT_CONFIG_TOOL_LOG_LEVEL = "INFO"
 
 
 def _config_service_root() -> Path:
@@ -172,3 +176,24 @@ def resolve_read_only() -> bool:
     if isinstance(config_tool_raw, dict):
         return _coerce_bool(config_tool_raw.get(CFG_CONFIG_TOOL_READ_ONLY), False)
     return False
+
+
+def resolve_log_level_name() -> str:
+    env_value = os.environ.get(ENV_CONFIG_TOOL_LOG_LEVEL, "").strip()
+    if env_value:
+        return str(env_value).strip().upper()
+
+    raw = _load_json(get_effective_config_path())
+    config_tool_raw = raw.get(CFG_CONFIG_TOOL, {})
+    if isinstance(config_tool_raw, dict):
+        configured = str(config_tool_raw.get(CFG_CONFIG_TOOL_LOG_LEVEL, "")).strip()
+        if configured:
+            return configured.upper()
+
+    provider_raw = raw.get(CFG_PROVIDER, {})
+    if isinstance(provider_raw, dict):
+        configured = str(provider_raw.get(CFG_PROVIDER_LOG_LEVEL, "")).strip()
+        if configured:
+            return configured.upper()
+
+    return DEFAULT_CONFIG_TOOL_LOG_LEVEL

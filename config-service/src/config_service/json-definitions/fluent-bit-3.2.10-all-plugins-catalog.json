@@ -205,7 +205,8 @@
             "description": "Specify the name of a parser to interpret the entry as a structured message.",
             "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-events#configuration-parameters",
             "data_type": "string",
-            "validation_rule": null
+            "validation_rule": null,
+            "references_parser": true
           },
           {
             "name": "key",
@@ -573,7 +574,8 @@
             "description": "Specify the name of a parser to interpret the entry as a structured message.",
             "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec#configuration-parameters",
             "data_type": "string",
-            "validation_rule": null
+            "validation_rule": null,
+            "references_parser": true
           },
           {
             "name": "interval_sec",
@@ -669,7 +671,8 @@
             "description": "Specify the name of a parser to interpret the entry as a structured message.",
             "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec-wasi#configuration-parameters",
             "data_type": "string",
-            "validation_rule": null
+            "validation_rule": null,
+            "references_parser": true
           },
           {
             "name": "accessible_paths",
@@ -2878,7 +2881,8 @@
             "description": "The name of the parser to invoke instead of the default JSON input parser",
             "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/standard-input#configuration-parameters-a-hrefconfig-idconfiga",
             "data_type": "string",
-            "validation_rule": null
+            "validation_rule": null,
+            "references_parser": true
           },
           {
             "name": "threaded",
@@ -3022,7 +3026,8 @@
             "description": "Specify an alternative parser for the message.",
             "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/syslog#configuration-parameters",
             "data_type": "string",
-            "validation_rule": null
+            "validation_rule": null,
+            "references_parser": true
           },
           {
             "name": "buffer_chunk_size",
@@ -3418,7 +3423,8 @@
             "description": "Specify the name of a parser to interpret the entry as a structured message.",
             "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/tail#configuration-parameters-a-hrefconfig-idconfiga",
             "data_type": "string",
-            "validation_rule": null
+            "validation_rule": null,
+            "references_parser": true
           },
           {
             "name": "key",
@@ -4773,7 +4779,8 @@
             "description": "Optional parser name to specify how to parse the data contained in the log key.",
             "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
             "data_type": "string",
-            "validation_rule": null
+            "validation_rule": null,
+            "references_parser": true
           },
           {
             "name": "keep_log",
@@ -4849,7 +4856,8 @@
             "data_type": "string",
             "validation_rule": {
               "kind": "regex_string"
-            }
+            },
+            "references_parser": true
           },
           {
             "name": "k8s-logging.parser",
@@ -4858,7 +4866,8 @@
             "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
             "default": "Off",
             "data_type": "string",
-            "validation_rule": null
+            "validation_rule": null,
+            "references_parser": true
           },
           {
             "name": "k8s-logging.exclude",
@@ -5298,7 +5307,8 @@
             "description": "Specify the parser name to interpret the field.",
             "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/parser#configuration-parameters",
             "data_type": "string",
-            "validation_rule": null
+            "validation_rule": null,
+            "references_parser": true
           },
           {
             "name": "preserve_key",

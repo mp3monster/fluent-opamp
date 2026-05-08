@@ -20,8 +20,8 @@
   var LAST_DOC_STORAGE = "config_service_last_opened_doc";
   var CUSTOM_SERVICE_OPTION = "__custom__";
   var HEADER_PREFIX = "config-service";
-  var META_COMMENTS_HELP_URL = "/config-service/ui/docs/meta-comments";
   var SERVICE_OPTIONS = [];
+  var PARSER_FORMATS = [];
   var lastUiErrorFingerprint = "";
   var lastUiErrorAt = 0;
 
@@ -40,6 +40,7 @@
     issueCodeMap: {},
     pendingFocusFieldKey: "",
     serviceCollapsed: false,
+    parsersPanelCollapsed: false,
     validationCollapsed: false,
     yamlCollapsed: true,
     pluginsPanelCollapsed: false,
@@ -55,7 +56,16 @@
     preserveSourceLineMapOnce: false,
   };
 
+  var uiHelpers = window.ConfigServiceUiHelpers || {};
+  var commentHelpers = window.ConfigServiceUiComments.create({
+    state: state,
+    saveDoc: saveDoc,
+    renderAll: renderAll,
+    isReadOnlyMode: isReadOnlyMode,
+  });
+
   var SERVICE_OPTION_BY_KEY = {};
+  var PARSER_FORMAT_BY_KEY = {};
 
   function rebuildServiceOptionIndex() {
     SERVICE_OPTION_BY_KEY = {};
@@ -64,7 +74,15 @@
     });
   }
 
+  function rebuildParserFormatIndex() {
+    PARSER_FORMAT_BY_KEY = {};
+    PARSER_FORMATS.forEach(function (formatDef) {
+      PARSER_FORMAT_BY_KEY[formatDef.key] = formatDef;
+    });
+  }
+
   rebuildServiceOptionIndex();
+  rebuildParserFormatIndex();
 
   function applyCssOverrides() {
     var overrides = window.__CONFIG_SERVICE_UI_CSS_OVERRIDES__;
@@ -123,6 +141,15 @@
     serviceHelpToggle: document.getElementById("service-help-toggle"),
     addServiceField: document.getElementById("add-service-field"),
     serviceOptionMeta: document.getElementById("service-option-meta"),
+    parsersPanel: document.getElementById("parsers-panel"),
+    parsersToggle: document.getElementById("parsers-toggle"),
+    parsersBody: document.getElementById("parsers-body"),
+    parserList: document.getElementById("parser-list"),
+    parserFormat: document.getElementById("parser-format"),
+    parserNameInput: document.getElementById("parser-name-input"),
+    parserHelpToggle: document.getElementById("parser-help-toggle"),
+    addParser: document.getElementById("add-parser"),
+    parserFormatMeta: document.getElementById("parser-format-meta"),
     validateBtn: document.getElementById("validate-btn"),
     renderBtn: document.getElementById("render-btn"),
     statusPanel: document.getElementById("status-panel"),
@@ -266,6 +293,7 @@
       configType: configType || "fluentbit",
       config: {
         service: {},
+        parsers: [],
         pipeline: { inputs: [], filters: [], outputs: [] },
         labels: [],
         workers: [],
@@ -363,11 +391,18 @@
     el.serviceOption.disabled = readOnly;
     el.serviceCustomKey.disabled = readOnly;
     el.serviceValue.disabled = readOnly;
+    el.addParser.disabled = readOnly;
+    el.parserFormat.disabled = readOnly;
+    el.parserNameInput.disabled = readOnly;
     el.addPlugin.disabled = readOnly || !(state.catalog && el.pluginName && el.pluginName.value);
     el.pluginSection.disabled = readOnly;
     el.pluginName.disabled = readOnly;
     el.addLabel.disabled = readOnly;
     el.addWorker.disabled = readOnly;
+    if (el.parserHelpToggle) {
+      var parserFormat = selectedParserFormatDefinition();
+      el.parserHelpToggle.disabled = !(parserFormat && parserFormat.doc_url);
+    }
     Array.prototype.forEach.call(
       document.querySelectorAll(
         ".plugin-card input, .plugin-card select, .plugin-card textarea, " +
@@ -515,6 +550,28 @@
         return;
       }
 
+      if (rootSection === "parsers") {
+        if (indent >= 2 && /^-\s*/.test(trimmed)) {
+          currentPluginIndex += 1;
+          var parserBasePath = "$.parsers[" + currentPluginIndex + "]";
+          map[parserBasePath] = lineNumber;
+          var inlineParser = trimmed.replace(/^-\s*/, "");
+          var inlineParserMatch = /^([A-Za-z0-9_.-]+):(?:\s|$)/.exec(inlineParser);
+          if (inlineParserMatch) {
+            map[parserBasePath + "." + inlineParserMatch[1]] = lineNumber;
+          }
+          return;
+        }
+
+        if (currentPluginIndex >= 0) {
+          var parserFieldMatch = /^([A-Za-z0-9_.-]+):(?:\s|$)/.exec(trimmed);
+          if (parserFieldMatch) {
+            map["$.parsers[" + currentPluginIndex + "]." + parserFieldMatch[1]] = lineNumber;
+          }
+        }
+        return;
+      }
+
       if (rootSection !== "pipeline") {
         return;
       }
@@ -631,12 +688,7 @@
   }
 
   function prependConfigHeader(text, configType, version, commentPrefix) {
-    var prefix = commentPrefix || "#";
-    var header = [
-      prefix + " " + HEADER_PREFIX + ": config_type=" + String(configType || ""),
-      prefix + " " + HEADER_PREFIX + ": version=" + String(version || ""),
-    ].join("\n");
-    return header + "\n" + String(text || "");
+    return uiHelpers.prependConfigHeader(text, configType, version, commentPrefix);
   }
 
   function pluginGroups() {
@@ -651,65 +703,15 @@
   }
 
   function defaultForField(field) {
-    var enumOptions = getEnumOptions(field);
-    if (enumOptions.length > 0) {
-      if (Object.prototype.hasOwnProperty.call(field, "default") && field.default !== "") {
-        return field.default;
-      }
-      return enumOptions[0];
-    }
-    if (Object.prototype.hasOwnProperty.call(field, "default")) {
-      return field.default;
-    }
-    var t = String(field.data_type || "string").toLowerCase();
-    if (t === "integer" || t === "number" || t === "float") {
-      return 0;
-    }
-    if (t === "boolean") {
-      return false;
-    }
-    if (t === "array" || t === "list") {
-      return [];
-    }
-    if (t === "object" || t === "map") {
-      return {};
-    }
-    return "";
+    return uiHelpers.defaultForField(field);
   }
 
   function getEnumOptions(field) {
-    if (!field || typeof field !== "object") {
-      return [];
-    }
-    if (Array.isArray(field.called_enum_options)) {
-      return field.called_enum_options.slice();
-    }
-    if (Array.isArray(field.enum_options)) {
-      return field.enum_options.slice();
-    }
-    return [];
+    return uiHelpers.getEnumOptions(field);
   }
 
   function normalizeEnumAliasValue(enumOptions, value) {
-    var options = Array.isArray(enumOptions) ? enumOptions.map(function (item) { return String(item); }) : [];
-    if (options.length === 0) {
-      return value;
-    }
-    var raw = value;
-    if (raw === undefined || raw === null) {
-      return raw;
-    }
-    var text = String(raw).trim();
-    var lower = text.toLowerCase();
-    if (options.indexOf("on") !== -1 && options.indexOf("off") !== -1) {
-      if (raw === true || lower === "true" || lower === "1" || lower === "yes" || lower === "on") {
-        return "on";
-      }
-      if (raw === false || lower === "false" || lower === "0" || lower === "no" || lower === "off") {
-        return "off";
-      }
-    }
-    return text;
+    return uiHelpers.normalizeEnumAliasValue(enumOptions, value);
   }
 
   function replaceServiceValueControl(tagName) {
@@ -771,6 +773,9 @@
     if (!state.doc.config.service || typeof state.doc.config.service !== "object") {
       state.doc.config.service = {};
     }
+    if (!Array.isArray(state.doc.config.parsers)) {
+      state.doc.config.parsers = [];
+    }
     if (!state.doc.config.pipeline || typeof state.doc.config.pipeline !== "object") {
       state.doc.config.pipeline = {};
     }
@@ -787,294 +792,92 @@
       if (!Array.isArray(state.doc.config.pipeline[section])) {
         state.doc.config.pipeline[section] = [];
       }
+      state.doc.config.pipeline[section].forEach(function (instance) {
+        if (
+          section === "inputs" &&
+          instance &&
+          typeof instance === "object" &&
+          instance.routes &&
+          !instance.route
+        ) {
+          instance.route = instance.routes;
+          delete instance.routes;
+        }
+      });
     });
     migrateLegacyAnnotationsToMeta();
   }
 
   function ensureMetaBlock(target) {
-    if (!target || typeof target !== "object" || Array.isArray(target)) {
-      return null;
-    }
-    if (!target._meta || typeof target._meta !== "object" || Array.isArray(target._meta)) {
-      target._meta = {};
-    }
-    return target._meta;
+    return commentHelpers.ensureMetaBlock(target);
   }
 
   function ensureFieldCommentMap(target) {
-    var meta = ensureMetaBlock(target);
-    if (!meta) {
-      return null;
-    }
-    if (!meta.field_comment_lines || typeof meta.field_comment_lines !== "object" || Array.isArray(meta.field_comment_lines)) {
-      meta.field_comment_lines = {};
-    }
-    return meta.field_comment_lines;
+    return commentHelpers.ensureFieldCommentMap(target);
   }
 
   function commentLinesToText(lines) {
-    if (!Array.isArray(lines)) {
-      return "";
-    }
-    return lines
-      .filter(function (line) {
-        return typeof line === "string";
-      })
-      .join("\n")
-      .trim();
+    return commentHelpers.commentLinesToText(lines);
   }
 
   function textToCommentLines(value) {
-    var text = String(value || "").replace(/\r\n/g, "\n");
-    var parts = text.split("\n");
-    while (parts.length > 0 && parts[0].trim() === "") {
-      parts.shift();
-    }
-    while (parts.length > 0 && parts[parts.length - 1].trim() === "") {
-      parts.pop();
-    }
-    return parts.map(function (line) {
-      return line.trimEnd();
-    });
+    return commentHelpers.textToCommentLines(value);
   }
 
   function objectCommentText(target) {
-    var meta = ensureMetaBlock(target);
-    if (!meta) {
-      return "";
-    }
-    return commentLinesToText(meta.comment_lines);
+    return commentHelpers.objectCommentText(target);
   }
 
   function setObjectCommentText(target, value) {
-    var meta = ensureMetaBlock(target);
-    if (!meta) {
-      return;
-    }
-    var lines = textToCommentLines(value);
-    if (lines.length === 0) {
-      delete meta.comment_lines;
-      if (!meta.field_comment_lines || Object.keys(meta.field_comment_lines).length === 0) {
-        delete target._meta;
-      }
-    } else {
-      meta.comment_lines = lines;
-    }
-    saveDoc();
+    commentHelpers.setObjectCommentText(target, value);
   }
 
   function fieldCommentText(target, fieldName) {
-    var meta = ensureMetaBlock(target);
-    if (!meta || !meta.field_comment_lines) {
-      return "";
-    }
-    return commentLinesToText(meta.field_comment_lines[fieldName]);
+    return commentHelpers.fieldCommentText(target, fieldName);
   }
 
   function setFieldCommentText(target, fieldName, value) {
-    var fieldMap = ensureFieldCommentMap(target);
-    if (!fieldMap) {
-      return;
-    }
-    var lines = textToCommentLines(value);
-    if (lines.length === 0) {
-      delete fieldMap[fieldName];
-      if (Object.keys(fieldMap).length === 0) {
-        delete target._meta.field_comment_lines;
-      }
-      if (target._meta && !target._meta.comment_lines && !target._meta.field_comment_lines) {
-        delete target._meta;
-      }
-    } else {
-      fieldMap[fieldName] = lines;
-    }
-    saveDoc();
+    commentHelpers.setFieldCommentText(target, fieldName, value);
   }
 
   function renameFieldComment(target, oldFieldName, newFieldName) {
-    var meta = ensureMetaBlock(target);
-    if (!meta || !meta.field_comment_lines || oldFieldName === newFieldName) {
-      return;
-    }
-    if (Object.prototype.hasOwnProperty.call(meta.field_comment_lines, oldFieldName)) {
-      meta.field_comment_lines[newFieldName] = meta.field_comment_lines[oldFieldName];
-      delete meta.field_comment_lines[oldFieldName];
-    }
+    commentHelpers.renameFieldComment(target, oldFieldName, newFieldName);
   }
 
   function clearFieldComment(target, fieldName) {
-    var meta = ensureMetaBlock(target);
-    if (!meta || !meta.field_comment_lines) {
-      return;
-    }
-    delete meta.field_comment_lines[fieldName];
-    if (Object.keys(meta.field_comment_lines).length === 0) {
-      delete meta.field_comment_lines;
-    }
-    if (!meta.comment_lines && !meta.field_comment_lines) {
-      delete target._meta;
-    }
+    commentHelpers.clearFieldComment(target, fieldName);
   }
 
   function tokenizeLegacyCommentPath(path) {
-    if (typeof path !== "string" || path.charAt(0) !== "$") {
-      return null;
-    }
-    var tokens = [];
-    var cursor = 1;
-    while (cursor < path.length) {
-      var char = path.charAt(cursor);
-      if (char === ".") {
-        cursor += 1;
-        var nextDot = path.indexOf(".", cursor);
-        var nextBracket = path.indexOf("[", cursor);
-        var end = path.length;
-        if (nextDot !== -1) {
-          end = Math.min(end, nextDot);
-        }
-        if (nextBracket !== -1) {
-          end = Math.min(end, nextBracket);
-        }
-        tokens.push(path.slice(cursor, end));
-        cursor = end;
-        continue;
-      }
-      if (char === "[") {
-        var close = path.indexOf("]", cursor);
-        if (close === -1) {
-          return null;
-        }
-        tokens.push(Number(path.slice(cursor + 1, close)));
-        cursor = close + 1;
-        continue;
-      }
-      return null;
-    }
-    return tokens;
+    return commentHelpers.tokenizeLegacyCommentPath(path);
   }
 
   function migrateLegacyAnnotationsToMeta() {
-    if (!state.doc || !state.doc.annotations || Object.keys(state.doc.annotations).length === 0) {
-      return;
-    }
-    var annotations = state.doc.annotations;
-    Object.keys(annotations).forEach(function (path) {
-      var tokens = tokenizeLegacyCommentPath(path);
-      if (!tokens || tokens.length === 0) {
-        return;
-      }
-      var cursor = state.doc.config;
-      var parent = null;
-      var lastToken = null;
-      for (var index = 0; index < tokens.length; index += 1) {
-        lastToken = tokens[index];
-        parent = cursor;
-        if (parent === undefined || parent === null) {
-          return;
-        }
-        cursor = parent[lastToken];
-      }
-      var text = String(annotations[path] || "");
-      if (cursor && typeof cursor === "object" && !Array.isArray(cursor)) {
-        setObjectCommentText(cursor, text);
-        return;
-      }
-      if (parent && typeof parent === "object" && typeof lastToken === "string") {
-        setFieldCommentText(parent, lastToken, text);
-      }
-    });
-    state.doc.annotations = {};
+    commentHelpers.migrateLegacyAnnotationsToMeta();
   }
 
   function createCommentEditor(target, labelText, fieldName) {
-    return createCommentEditorPanel(target, labelText, fieldName, "");
+    return commentHelpers.createCommentEditor(target, labelText, fieldName);
   }
 
   function hasCommentText(target, fieldName) {
-    var text = fieldName ? fieldCommentText(target, fieldName) : objectCommentText(target);
-    return Boolean(String(text || "").trim());
+    return commentHelpers.hasCommentText(target, fieldName);
   }
 
   function isCommentEditorOpen(toggleKey, target, fieldName) {
-    if (toggleKey && Object.prototype.hasOwnProperty.call(state.commentOpen, toggleKey)) {
-      return Boolean(state.commentOpen[toggleKey]);
-    }
-    return hasCommentText(target, fieldName);
+    return commentHelpers.isCommentEditorOpen(toggleKey, target, fieldName);
   }
 
   function setCommentEditorOpen(toggleKey, isOpen) {
-    if (!toggleKey) {
-      return;
-    }
-    state.commentOpen[toggleKey] = Boolean(isOpen);
-  }
-
-  function createMetaHelpButton() {
-    var helpLink = document.createElement("a");
-    helpLink.href = META_COMMENTS_HELP_URL;
-    helpLink.target = "_blank";
-    helpLink.rel = "noopener noreferrer";
-    helpLink.textContent = "?";
-    helpLink.className = "icon-help";
-    helpLink.title = "Open help for comments and field comments.";
-    helpLink.setAttribute("aria-label", "Open help for _meta comments");
-    return helpLink;
+    commentHelpers.setCommentEditorOpen(toggleKey, isOpen);
   }
 
   function createCommentToggleButton(toggleKey, target, fieldName, labelText) {
-    var btn = document.createElement("button");
-    var isOpen = isCommentEditorOpen(toggleKey, target, fieldName);
-    var hasContent = hasCommentText(target, fieldName);
-    btn.type = "button";
-    btn.textContent = hasContent ? "📝" : "🗒";
-    btn.className = "icon-button icon-note";
-    if (isOpen) {
-      btn.classList.add("is-active");
-    }
-    if (hasContent) {
-      btn.classList.add("has-comment");
-    }
-    btn.title = (isOpen ? "Hide " : "Open ") + (labelText || "comment editor");
-    btn.setAttribute("aria-label", (isOpen ? "Hide " : "Open ") + (labelText || "comment editor"));
-    btn.addEventListener("click", function () {
-      setCommentEditorOpen(toggleKey, !isOpen);
-      renderAll();
-    });
-    return btn;
+    return commentHelpers.createCommentToggleButton(toggleKey, target, fieldName, labelText);
   }
 
   function createCommentEditorPanel(target, labelText, fieldName, toggleKey) {
-    var wrap = document.createElement("div");
-    wrap.className = "comment-editor";
-    if (!isCommentEditorOpen(toggleKey, target, fieldName)) {
-      wrap.classList.add("hidden");
-    }
-
-    var label = document.createElement("label");
-    label.className = "comment-label";
-    label.textContent = labelText || "Comment";
-
-    var input = document.createElement("textarea");
-    input.className = "comment-input";
-    input.rows = 2;
-    input.placeholder = "Optional comment";
-    input.value = fieldName ? fieldCommentText(target, fieldName) : objectCommentText(target);
-    input.disabled = isReadOnlyMode();
-    input.addEventListener("change", function () {
-      if (fieldName) {
-        setFieldCommentText(target, fieldName, input.value);
-        setCommentEditorOpen(toggleKey, true);
-        saveDoc();
-        return;
-      }
-      setObjectCommentText(target, input.value);
-      setCommentEditorOpen(toggleKey, true);
-      saveDoc();
-    });
-
-    label.appendChild(input);
-    wrap.appendChild(label);
-    return wrap;
+    return commentHelpers.createCommentEditorPanel(target, labelText, fieldName, toggleKey);
   }
 
   function saveDoc() {
@@ -1096,7 +899,7 @@
   }
 
   function markValidationDirtyOnEdit() {
-    if (state.validationStatus !== "valid") {
+    if (state.validationStatus === "neutral") {
       return;
     }
     state.validationStatus = "neutral";
@@ -1108,11 +911,17 @@
     errors.sort(function (a, b) {
       return Number((a && a.order) || 0) - Number((b && b.order) || 0);
     });
-    var hasErrors = errors.length > 0 || (result && result.ok === false);
+    var hasBlockingErrors = errors.some(function (issue) {
+      return String((issue && issue.severity) || "error").toLowerCase() === "error";
+    });
+    var hasWarnings = errors.some(function (issue) {
+      return String((issue && issue.severity) || "").toLowerCase() === "warning";
+    });
+    var hasIssues = errors.length > 0 || (result && result.ok === false);
     var isValid = Boolean(result && result.ok === true && errors.length === 0);
 
-    el.validationHeader.classList.remove("is-valid", "has-errors");
-    el.validationSummary.classList.remove("is-valid", "has-errors");
+    el.validationHeader.classList.remove("is-valid", "is-warning", "has-errors");
+    el.validationSummary.classList.remove("is-valid", "is-warning", "has-errors");
     el.validationIssues.innerHTML = "";
 
     if (isValid) {
@@ -1121,7 +930,7 @@
       el.validationSummary.classList.add("is-valid");
       el.validationSummary.textContent = "Configuration is valid.";
       state.validationCollapsed = false;
-    } else if (hasErrors) {
+    } else if (hasBlockingErrors) {
       state.validationStatus = "error";
       el.validationHeader.classList.add("has-errors");
       el.validationSummary.classList.add("has-errors");
@@ -1129,9 +938,27 @@
         ? "Validation found " + errors.length + " error" + (errors.length === 1 ? "" : "s") + "."
         : "Validation failed.";
       state.validationCollapsed = false;
+    } else if (hasWarnings) {
+      state.validationStatus = "warning";
+      el.validationHeader.classList.add("is-warning");
+      el.validationSummary.classList.add("is-warning");
+      el.validationSummary.textContent = "Validation found " + errors.length + " warning" + (errors.length === 1 ? "" : "s") + ".";
+      state.validationCollapsed = false;
+    } else if (hasIssues) {
+      state.validationStatus = "error";
+      el.validationHeader.classList.add("has-errors");
+      el.validationSummary.classList.add("has-errors");
+      el.validationSummary.textContent = errors.length > 0
+        ? "Validation found " + errors.length + " issue" + (errors.length === 1 ? "" : "s") + "."
+        : "Validation failed.";
+      state.validationCollapsed = false;
+    }
 
+    if (hasIssues) {
       errors.forEach(function (issue, idx) {
         var item = document.createElement("li");
+        var severity = String((issue && issue.severity) || "error").toLowerCase();
+        item.classList.add("severity-" + severity);
         var code = String((issue && issue.code) || "unknown_issue");
         var mapping = state.issueCodeMap[code] || state.issueCodeMap.unknown_issue || null;
         var friendlyLabel = mapping && mapping.label ? mapping.label : code;
@@ -1222,6 +1049,10 @@
   }
 
   function updateSectionPanels() {
+    if (el.parsersBody && el.parsersToggle) {
+      el.parsersBody.classList.toggle("is-collapsed", state.parsersPanelCollapsed);
+      el.parsersToggle.textContent = state.parsersPanelCollapsed ? "Open" : "Collapse";
+    }
     if (el.pluginsBody && el.pluginsToggle) {
       el.pluginsBody.classList.toggle("is-collapsed", state.pluginsPanelCollapsed);
       el.pluginsToggle.textContent = state.pluginsPanelCollapsed ? "Open" : "Collapse";
@@ -1300,6 +1131,11 @@
     return SERVICE_OPTION_BY_KEY[selectedKey] || null;
   }
 
+  function selectedParserFormatDefinition() {
+    var selectedKey = String((el.parserFormat && el.parserFormat.value) || "");
+    return PARSER_FORMAT_BY_KEY[selectedKey] || null;
+  }
+
   function repopulateServiceOptionSelect() {
     el.serviceOption.innerHTML = "";
     SERVICE_OPTIONS.forEach(function (opt) {
@@ -1314,6 +1150,20 @@
     el.serviceOption.appendChild(customOpt);
     el.serviceOption.value = SERVICE_OPTIONS[0] ? SERVICE_OPTIONS[0].key : CUSTOM_SERVICE_OPTION;
     updateServiceOptionUI();
+  }
+
+  function repopulateParserFormatSelect() {
+    if (!el.parserFormat) {
+      return;
+    }
+    el.parserFormat.innerHTML = "";
+    PARSER_FORMATS.forEach(function (formatDef) {
+      var option = document.createElement("option");
+      option.value = formatDef.key;
+      option.textContent = formatDef.key;
+      el.parserFormat.appendChild(option);
+    });
+    updateParserFormatUI();
   }
 
   function updateServiceOptionUI() {
@@ -1378,24 +1228,21 @@
     }
   }
 
+  function updateParserFormatUI() {
+    var formatDef = selectedParserFormatDefinition();
+    if (!formatDef) {
+      el.parserFormatMeta.textContent = "No parser formats available for this version.";
+      el.parserHelpToggle.disabled = true;
+      el.parserHelpToggle.title = "No parser format documentation is available.";
+      return;
+    }
+    el.parserFormatMeta.textContent = formatDef.description || "";
+    el.parserHelpToggle.disabled = !formatDef.doc_url;
+    el.parserHelpToggle.title = formatDef.key + ": " + String(formatDef.description || "Open parser format documentation.");
+  }
+
   function parseTextValue(raw, dataType) {
-    var t = String(dataType || "string").toLowerCase();
-    if (t === "integer") {
-      var i = Number(raw);
-      return Number.isFinite(i) ? Math.trunc(i) : 0;
-    }
-    if (t === "number" || t === "float") {
-      var n = Number(raw);
-      return Number.isFinite(n) ? n : 0;
-    }
-    if (t === "array" || t === "list" || t === "object" || t === "map") {
-      try {
-        return raw ? JSON.parse(raw) : t === "array" || t === "list" ? [] : {};
-      } catch (_e) {
-        return raw;
-      }
-    }
-    return raw;
+    return uiHelpers.parseTextValue(raw, dataType);
   }
 
   function maxCodeEditorHeight() {
@@ -1429,59 +1276,23 @@
   }
 
   function parseServiceValue(raw) {
-    var v = String(raw || "").trim();
-    if (v === "true") {
-      return true;
-    }
-    if (v === "false") {
-      return false;
-    }
-    if (v !== "" && !Number.isNaN(Number(v))) {
-      return Number(v);
-    }
-    try {
-      if ((v.startsWith("{") && v.endsWith("}")) || (v.startsWith("[") && v.endsWith("]"))) {
-        return JSON.parse(v);
-      }
-    } catch (_e) {
-      return raw;
-    }
-    return raw;
+    return uiHelpers.parseServiceValue(raw);
   }
 
   function parseServiceValueByType(raw, dataType) {
-    var t = String(dataType || "string").toLowerCase();
-    if (t === "enum") {
-      return String(raw || "");
-    }
-    if (t === "boolean") {
-      var v = String(raw || "").trim().toLowerCase();
-      return v === "true" || v === "1" || v === "yes" || v === "on";
-    }
-    if (t === "integer") {
-      var i = Number(raw);
-      return Number.isFinite(i) ? Math.trunc(i) : 0;
-    }
-    if (t === "number" || t === "float") {
-      var f = Number(raw);
-      return Number.isFinite(f) ? f : 0;
-    }
-    return parseServiceValue(raw);
+    return uiHelpers.parseServiceValueByType(raw, dataType);
   }
 
   function fieldInputValue(value, dataType) {
-    var t = String(dataType || "string").toLowerCase();
-    if (t === "array" || t === "list" || t === "object" || t === "map") {
-      try {
-        return JSON.stringify(value === undefined ? null : value);
-      } catch (_e) {
-        return String(value || "");
-      }
-    }
-    if (value === undefined || value === null) {
-      return "";
-    }
-    return String(value);
+    return uiHelpers.fieldInputValue(value, dataType);
+  }
+
+  function parseFlexibleRouteValue(raw) {
+    return uiHelpers.parseFlexibleRouteValue(raw);
+  }
+
+  function formatFlexibleRouteValue(value) {
+    return uiHelpers.formatFlexibleRouteValue(value);
   }
 
   function flattenPlugins() {
@@ -1517,11 +1328,14 @@
 
   function hasConfiguredContent() {
     ensureDoc();
-    var serviceCount = Object.keys(state.doc.config.service || {}).length;
+    var serviceCount = Object.keys(state.doc.config.service || {}).filter(function (key) {
+      return key !== "_meta";
+    }).length;
+    var parserCount = Array.isArray(state.doc.config.parsers) ? state.doc.config.parsers.length : 0;
     var pluginCount = flattenPlugins().length;
     var labelCount = Array.isArray(state.doc.config.labels) ? state.doc.config.labels.length : 0;
     var workerCount = Array.isArray(state.doc.config.workers) ? state.doc.config.workers.length : 0;
-    return serviceCount > 0 || pluginCount > 0 || labelCount > 0 || workerCount > 0;
+    return serviceCount > 0 || parserCount > 0 || pluginCount > 0 || labelCount > 0 || workerCount > 0;
   }
 
   function updateConfigTypeDisabledState() {
@@ -1670,6 +1484,9 @@
     var show = isFluentdMode();
     el.labelsPanel.classList.toggle("hidden", !show);
     el.workersPanel.classList.toggle("hidden", !show);
+    if (el.parsersPanel) {
+      el.parsersPanel.classList.toggle("hidden", show);
+    }
   }
 
   function selectedPluginDefinition() {
@@ -1724,6 +1541,71 @@
     });
   }
 
+  function versionAtLeast(actual, minimum) {
+    return uiHelpers.versionAtLeast(actual, minimum);
+  }
+
+  function supportsFluentbitRoutingUi() {
+    return state.configType === "fluentbit" && versionAtLeast(state.selectedVersion, "4.2.0");
+  }
+
+  function fallbackFluentbitRouteDefinition() {
+    return {
+      description: "Optional Fluent Bit conditional routing rules for input plugins.",
+      doc_url: "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+      supported_sections: ["inputs"],
+      signals: [
+        { name: "logs", description: "Routes log records.", implemented: true },
+        { name: "metrics", description: "Routes metric records. Fluent Bit currently parses these routes but does not evaluate them.", implemented: false },
+        { name: "traces", description: "Routes trace records. Fluent Bit currently parses these routes but does not evaluate them.", implemented: false },
+        { name: "any", description: "Routes all signal types. Fluent Bit currently evaluates logs only.", implemented: true }
+      ]
+    };
+  }
+
+  function fluentbitRouteRoot() {
+    if (state.catalog && state.catalog.common && state.catalog.common.route) {
+      return state.catalog.common.route;
+    }
+    if (supportsFluentbitRoutingUi()) {
+      return fallbackFluentbitRouteDefinition();
+    }
+    return null;
+  }
+
+  function fluentbitRouteSignals() {
+    var root = fluentbitRouteRoot();
+    return Array.isArray(root && root.signals) ? root.signals.slice() : [];
+  }
+
+  function fluentbitRouteSignalByName(signalName) {
+    var signals = fluentbitRouteSignals();
+    for (var i = 0; i < signals.length; i += 1) {
+      if (signals[i] && signals[i].name === signalName) {
+        return signals[i];
+      }
+    }
+    return null;
+  }
+
+  function ensureFluentbitRoute(instance) {
+    if (!instance.route || typeof instance.route !== "object") {
+      instance.route = { per_record_routing: true };
+    }
+    if (instance.route.per_record_routing === undefined) {
+      instance.route.per_record_routing = true;
+    }
+    fluentbitRouteSignals().forEach(function (signalMeta) {
+      var signalName = signalMeta && signalMeta.name;
+      if (!signalName) {
+        return;
+      }
+      if (!Array.isArray(instance.route[signalName])) {
+        instance.route[signalName] = [];
+      }
+    });
+  }
+
   function getPluginDefinition(section, pluginName) {
     var groups = pluginGroups();
     return (groups[section] && groups[section][pluginName]) || null;
@@ -1766,6 +1648,14 @@
     return helpBtn;
   }
 
+  function applyRequiredLabelStyle(label, isRequired) {
+    if (isRequired) {
+      label.classList.add("is-required");
+    } else {
+      label.classList.remove("is-required");
+    }
+  }
+
   function renderFieldRow(instance, field, options) {
     options = options || {};
     var block = document.createElement("div");
@@ -1782,12 +1672,7 @@
 
     var label = document.createElement("label");
     label.textContent = field.name;
-    if (field.required) {
-      var required = document.createElement("span");
-      required.className = "required-mark";
-      required.textContent = "*";
-      label.appendChild(required);
-    }
+    applyRequiredLabelStyle(label, Boolean(field.required));
     row.appendChild(label);
 
     var dataType = String(field.data_type || "string").toLowerCase();
@@ -1901,6 +1786,62 @@
     return block;
   }
 
+
+  var pluginUi = window.ConfigServiceUiPlugins.create({
+    state: state,
+    saveDoc: saveDoc,
+    renderAll: renderAll,
+    isReadOnlyMode: isReadOnlyMode,
+    renderFieldRow: renderFieldRow,
+    createCommentToggleButton: createCommentToggleButton,
+    createCommentEditorPanel: createCommentEditorPanel,
+    defaultForField: defaultForField,
+    getPluginDefinition: getPluginDefinition,
+    movePluginToSection: movePluginToSection,
+    moveWithinPipeline: moveWithinPipeline,
+    setValidationText: setValidationText,
+    ensureFluentbitProcessors: ensureFluentbitProcessors,
+    fluentbitProcessorSignals: fluentbitProcessorSignals,
+    fluentbitSignalProcessorMap: fluentbitSignalProcessorMap,
+    fluentbitProcessorDefinition: fluentbitProcessorDefinition,
+    ensureFluentbitRoute: ensureFluentbitRoute,
+    fluentbitRouteRoot: fluentbitRouteRoot,
+    fluentbitRouteSignals: fluentbitRouteSignals,
+    fluentbitRouteSignalByName: fluentbitRouteSignalByName,
+    createFieldHelpButton: createFieldHelpButton,
+    parseFlexibleRouteValue: parseFlexibleRouteValue,
+    formatFlexibleRouteValue: formatFlexibleRouteValue,
+  });
+
+  var sectionsUi = window.ConfigServiceUiSections.create({
+    state: state,
+    el: el,
+    saveDoc: saveDoc,
+    renderAll: renderAll,
+    ensureDoc: ensureDoc,
+    isReadOnlyMode: isReadOnlyMode,
+    createCommentToggleButton: createCommentToggleButton,
+    createCommentEditorPanel: createCommentEditorPanel,
+    renameFieldComment: renameFieldComment,
+    clearFieldComment: clearFieldComment,
+    renderFieldRow: renderFieldRow,
+    createFieldHelpButton: createFieldHelpButton,
+    applyRequiredLabelStyle: applyRequiredLabelStyle,
+    parseServiceValueByType: parseServiceValueByType,
+    parseServiceValue: parseServiceValue,
+    normalizeEnumAliasValue: normalizeEnumAliasValue,
+    getEnumOptions: getEnumOptions,
+    prepareCodeTextarea: prepareCodeTextarea,
+    parserFormatFields: parserFormatFields,
+    getServiceOptionByKey: function (key) {
+      return SERVICE_OPTION_BY_KEY[key] || null;
+    },
+    getParserFormatByKey: function (key) {
+      return PARSER_FORMAT_BY_KEY[key] || null;
+    },
+    defaultForField: defaultForField,
+  });
+
   function moveWithinPipeline(pipeline, section, index, direction, pathPrefix) {
     if (isReadOnlyMode()) {
       return;
@@ -1958,787 +1899,23 @@
     renderAll();
   }
 
-  function renderProcessorCondition(instance, procPathPrefix) {
-    var frame = document.createElement("div");
-    frame.className = "nested-panel";
-    var title = document.createElement("h4");
-    title.textContent = "Condition";
-    frame.appendChild(title);
-
-    var row = document.createElement("div");
-    row.className = "field-row";
-
-    var opLabel = document.createElement("label");
-    opLabel.textContent = "Operator";
-    row.appendChild(opLabel);
-
-    var opSelect = document.createElement("select");
-    ["and", "or"].forEach(function (value) {
-      var option = document.createElement("option");
-      option.value = value;
-      option.textContent = value;
-      opSelect.appendChild(option);
-    });
-    opSelect.value = String((instance.condition && instance.condition.op) || "and");
-    opSelect.addEventListener("change", function () {
-      if (isReadOnlyMode()) {
-        return;
-      }
-      if (!instance.condition || typeof instance.condition !== "object") {
-        instance.condition = { op: "and", rules: [] };
-      }
-      instance.condition.op = opSelect.value;
-      saveDoc();
-    });
-    opSelect.disabled = isReadOnlyMode();
-    row.appendChild(opSelect);
-    frame.appendChild(row);
-
-    var rulesRow = document.createElement("div");
-    rulesRow.className = "field-row";
-    var rulesLabel = document.createElement("label");
-    rulesLabel.textContent = "Rules JSON";
-    rulesRow.appendChild(rulesLabel);
-    var rulesInput = document.createElement("textarea");
-    try {
-      rulesInput.value = JSON.stringify((instance.condition && instance.condition.rules) || [], null, 2);
-    } catch (_e) {
-      rulesInput.value = "[]";
-    }
-    rulesInput.placeholder = '[{"field":"$level","op":"eq","value":"error"}]';
-    rulesInput.addEventListener("change", function () {
-      if (isReadOnlyMode()) {
-        return;
-      }
-      if (!instance.condition || typeof instance.condition !== "object") {
-        instance.condition = { op: opSelect.value, rules: [] };
-      }
-      try {
-        var parsed = JSON.parse(rulesInput.value || "[]");
-        instance.condition.rules = Array.isArray(parsed) ? parsed : [];
-      } catch (_err) {
-        instance.condition.rules = [];
-      }
-      saveDoc();
-    });
-    rulesInput.disabled = isReadOnlyMode();
-    rulesRow.appendChild(rulesInput);
-    frame.appendChild(rulesRow);
-
-    var removeBtn = document.createElement("button");
-    removeBtn.type = "button";
-    removeBtn.textContent = "-";
-    removeBtn.className = "icon-remove";
-    removeBtn.title = "Remove condition";
-    removeBtn.disabled = isReadOnlyMode();
-    removeBtn.addEventListener("click", function () {
-      delete instance.condition;
-      saveDoc();
-      renderAll();
-    });
-    frame.appendChild(removeBtn);
-
-    return frame;
+    function renderPluginCard(flatIndex, section, index, instance, pipeline, keyPrefix, pathPrefix) {
+    return pluginUi.renderPluginCard(flatIndex, section, index, instance, pipeline, keyPrefix, pathPrefix);
   }
 
-  function renderProcessorCard(signalName, processorIndex, processorInstance, keyPrefix, collection, processorPath) {
-    var procDef = fluentbitProcessorDefinition(signalName, processorInstance.name);
-    var card = document.createElement("div");
-    card.className = "plugin-card";
-
-    var key = keyPrefix + ":processor:" + signalName + ":" + processorIndex;
-    var collapsed = Boolean(state.collapse[key]);
-
-    var head = document.createElement("div");
-    head.className = "plugin-head";
-
-    var left = document.createElement("div");
-    left.className = "plugin-head-main";
-    var title = document.createElement("strong");
-    title.textContent = "#" + (processorIndex + 1) + " " + processorInstance.name + " (" + signalName + ")";
-    left.appendChild(title);
-    head.appendChild(left);
-
-    var actions = document.createElement("div");
-    actions.className = "plugin-actions";
-
-    actions.appendChild(
-      createCommentToggleButton(
-        key + ":comment",
-        processorInstance,
-        "",
-        "processor comment editor"
-      )
-    );
-
-    var collapseBtn = document.createElement("button");
-    collapseBtn.type = "button";
-    collapseBtn.textContent = collapsed ? "Expand" : "Collapse";
-    collapseBtn.addEventListener("click", function () {
-      state.collapse[key] = !collapsed;
-      renderAll();
-    });
-    actions.appendChild(collapseBtn);
-
-    var removeBtn = document.createElement("button");
-    removeBtn.type = "button";
-    removeBtn.textContent = "-";
-    removeBtn.className = "icon-remove";
-    removeBtn.title = "Remove processor";
-    removeBtn.disabled = isReadOnlyMode();
-    removeBtn.addEventListener("click", function () {
-      collection.splice(processorIndex, 1);
-      saveDoc();
-      renderAll();
-    });
-    actions.appendChild(removeBtn);
-
-    head.appendChild(actions);
-    card.appendChild(head);
-
-    if (collapsed) {
-      return card;
-    }
-
-    var fieldsWrap = document.createElement("div");
-    fieldsWrap.className = "field-grid";
-    var fields = (procDef && procDef.fields) || [];
-    var requiredFields = fields.filter(function (field) {
-      return field.required;
-    });
-    var currentOptionalFields = fields.filter(function (field) {
-      return !field.required && Object.prototype.hasOwnProperty.call(processorInstance, field.name);
-    });
-
-    requiredFields.forEach(function (field) {
-      fieldsWrap.appendChild(
-        renderFieldRow(processorInstance, field, {
-          optional: false,
-          focusKey: key + ":" + field.name,
-          commentTarget: processorInstance,
-          commentFieldName: field.name,
-          commentToggleKey: key + ":" + field.name + ":comment",
-        })
-      );
-    });
-
-    currentOptionalFields.forEach(function (field) {
-      fieldsWrap.appendChild(
-        renderFieldRow(processorInstance, field, {
-          optional: true,
-          focusKey: key + ":" + field.name,
-          commentTarget: processorInstance,
-          commentFieldName: field.name,
-          commentToggleKey: key + ":" + field.name + ":comment",
-          onRemove: function () {
-            delete processorInstance[field.name];
-            saveDoc();
-            renderAll();
-          },
-        })
-      );
-    });
-    card.appendChild(createCommentEditorPanel(processorInstance, "Processor Comment", "", key + ":comment"));
-    card.appendChild(fieldsWrap);
-
-    var missingOptional = fields.filter(function (field) {
-      return !field.required && !Object.prototype.hasOwnProperty.call(processorInstance, field.name);
-    });
-    if (missingOptional.length > 0) {
-      var optionalRow = document.createElement("div");
-      optionalRow.className = "optional-row";
-      var optionalSel = document.createElement("select");
-      var emptyOpt = document.createElement("option");
-      emptyOpt.value = "";
-      emptyOpt.textContent = "Select optional processor attribute...";
-      optionalSel.appendChild(emptyOpt);
-      missingOptional.forEach(function (field) {
-        var opt = document.createElement("option");
-        opt.value = field.name;
-        opt.textContent = field.name;
-        optionalSel.appendChild(opt);
-      });
-      optionalRow.appendChild(optionalSel);
-
-      var optionalDivider = document.createElement("span");
-      optionalDivider.className = "optional-divider";
-      optionalDivider.setAttribute("aria-hidden", "true");
-      optionalRow.appendChild(optionalDivider);
-
-      var addOptional = document.createElement("button");
-      addOptional.type = "button";
-      addOptional.textContent = "Add Optional";
-      addOptional.addEventListener("click", function () {
-        var selected = optionalSel.value;
-        if (!selected) {
-          return;
-        }
-        var field = fields.find(function (item) {
-          return item.name === selected;
-        });
-        if (!field) {
-          return;
-        }
-        processorInstance[field.name] = defaultForField(field);
-        saveDoc();
-        renderAll();
-      });
-      optionalRow.appendChild(addOptional);
-      card.appendChild(optionalRow);
-    }
-
-    if (procDef && procDef.supports_condition) {
-      var conditionWrap = document.createElement("div");
-      conditionWrap.className = "nested-panel";
-      if (processorInstance.condition && typeof processorInstance.condition === "object") {
-        card.appendChild(renderProcessorCondition(processorInstance, key));
-      } else {
-        var addCondition = document.createElement("button");
-        addCondition.type = "button";
-        addCondition.textContent = "Add Condition";
-        addCondition.addEventListener("click", function () {
-          processorInstance.condition = { op: "and", rules: [] };
-          saveDoc();
-          renderAll();
-        });
-        conditionWrap.appendChild(addCondition);
-        card.appendChild(conditionWrap);
-      }
-    }
-
-    return card;
+function parserFormatFields(parserFormat) {
+    return Array.isArray(parserFormat && parserFormat.fields) ? parserFormat.fields : [];
   }
 
-  function renderFluentbitProcessorsPanel(section, index, instance, keyPrefix, pluginPath) {
-    ensureFluentbitProcessors(instance);
-
-    var frame = document.createElement("div");
-    frame.className = "nested-panel";
-
-    var heading = document.createElement("h4");
-    heading.textContent = "Processors";
-    frame.appendChild(heading);
-
-    var controls = document.createElement("div");
-    controls.className = "row";
-
-    var signalLabel = document.createElement("label");
-    signalLabel.textContent = "Signal";
-    var signalSelect = document.createElement("select");
-    Object.keys(fluentbitProcessorSignals()).forEach(function (signalName) {
-      var option = document.createElement("option");
-      option.value = signalName;
-      option.textContent = signalName;
-      signalSelect.appendChild(option);
-    });
-    signalLabel.appendChild(signalSelect);
-    controls.appendChild(signalLabel);
-
-    var procLabel = document.createElement("label");
-    procLabel.textContent = "Processor";
-    var procSelect = document.createElement("select");
-    procLabel.appendChild(procSelect);
-    controls.appendChild(procLabel);
-
-    var helpBtn = document.createElement("button");
-    helpBtn.type = "button";
-    helpBtn.textContent = "?";
-    helpBtn.className = "icon-help";
-    controls.appendChild(helpBtn);
-
-    var addBtn = document.createElement("button");
-    addBtn.type = "button";
-    addBtn.textContent = "Add Processor";
-    controls.appendChild(addBtn);
-
-    function refreshProcessorSelect() {
-      var signalName = signalSelect.value;
-      var available = fluentbitSignalProcessorMap(signalName);
-      var names = Object.keys(available).sort();
-      procSelect.innerHTML = "";
-      names.forEach(function (name) {
-        var option = document.createElement("option");
-        option.value = name;
-        option.textContent = name;
-        procSelect.appendChild(option);
-      });
-      var def = names.length > 0 ? available[names[0]] : null;
-      helpBtn.disabled = !(def && def.doc_url);
-      helpBtn.title = def && def.description ? def.description : "Open processor documentation.";
-    }
-
-    signalSelect.addEventListener("change", refreshProcessorSelect);
-    procSelect.addEventListener("change", function () {
-      var def = fluentbitProcessorDefinition(signalSelect.value, procSelect.value);
-      helpBtn.disabled = !(def && def.doc_url);
-      helpBtn.title = def && def.description ? def.description : "Open processor documentation.";
-    });
-    helpBtn.addEventListener("click", function () {
-      var def = fluentbitProcessorDefinition(signalSelect.value, procSelect.value);
-      if (!def || !def.doc_url) {
-        setValidationText("No linked processor documentation is available for the current selection.");
-        return;
-      }
-      window.open(def.doc_url, "_blank", "noopener,noreferrer");
-    });
-    addBtn.addEventListener("click", function () {
-      var signalName = signalSelect.value;
-      var processorName = procSelect.value;
-      var def = fluentbitProcessorDefinition(signalName, processorName);
-      if (!def) {
-        return;
-      }
-      var item = { name: processorName };
-      (def.fields || []).forEach(function (field) {
-        if (field.required) {
-          item[field.name] = defaultForField(field);
-        }
-      });
-      instance.processors[signalName].push(item);
-      saveDoc();
-      renderAll();
-    });
-    refreshProcessorSelect();
-    frame.appendChild(controls);
-
-    ["logs", "metrics", "traces"].forEach(function (signalName) {
-      var items = instance.processors[signalName];
-      if (!Array.isArray(items) || items.length === 0) {
-        return;
-      }
-      var signalWrap = document.createElement("div");
-      signalWrap.className = "container-stack";
-      var signalTitle = document.createElement("h4");
-      signalTitle.textContent = signalName;
-      signalWrap.appendChild(signalTitle);
-      items.forEach(function (processorInstance, processorIndex) {
-        signalWrap.appendChild(
-          renderProcessorCard(
-            signalName,
-            processorIndex,
-            processorInstance,
-            keyPrefix + ":" + section + ":" + index,
-            items,
-            pluginPath + ".processors." + signalName + "[" + processorIndex + "]"
-          )
-        );
-      });
-      frame.appendChild(signalWrap);
-    });
-
-    return frame;
-  }
-
-  function renderPluginCard(flatIndex, section, index, instance, pipeline, keyPrefix, pathPrefix) {
-    var groups = pluginGroups();
-    var pluginDef = groups[section][instance.name];
-    var card = document.createElement("div");
-    card.className = "plugin-card";
-
-    var key = (keyPrefix || "main") + ":" + section + "-" + index;
-    var pluginPath = (pathPrefix || "$.pipeline") + "." + section + "[" + index + "]";
-    var collapsed = Boolean(state.collapse[key]);
-
-    var head = document.createElement("div");
-    head.className = "plugin-head";
-
-    var left = document.createElement("div");
-    left.className = "plugin-head-main";
-    var title = document.createElement("strong");
-    title.textContent = "#" + (flatIndex + 1) + " " + instance.name;
-    left.appendChild(title);
-
-    var sectionIcons = document.createElement("div");
-    sectionIcons.className = "section-icon-group";
-    [
-      { key: "inputs", label: "I", title: "Input" },
-      { key: "filters", label: "F", title: "Filter" },
-      { key: "outputs", label: "O", title: "Output" },
-    ].forEach(function (sectionMeta) {
-      var targetPluginDef = getPluginDefinition(sectionMeta.key, instance.name);
-      var iconBtn = document.createElement("button");
-      iconBtn.type = "button";
-      iconBtn.textContent = sectionMeta.label;
-      iconBtn.className = "section-icon";
-      if (sectionMeta.key === section) {
-        iconBtn.classList.add("is-active");
-      }
-      if (!targetPluginDef) {
-        iconBtn.disabled = true;
-        iconBtn.classList.add("is-disabled");
-      } else if (isReadOnlyMode()) {
-        iconBtn.disabled = true;
-      }
-      iconBtn.title = sectionMeta.title;
-      iconBtn.setAttribute(
-        "aria-label",
-        targetPluginDef
-          ? "Move plugin to " + sectionMeta.title + " section"
-          : sectionMeta.title + " section unavailable for this plugin"
-      );
-      if (targetPluginDef && sectionMeta.key !== section) {
-        iconBtn.addEventListener("click", function () {
-          movePluginToSection(pipeline, section, index, instance, sectionMeta.key, pathPrefix || "$.pipeline");
-        });
-      }
-      sectionIcons.appendChild(iconBtn);
-    });
-    left.appendChild(sectionIcons);
-
-    head.appendChild(left);
-
-    var actions = document.createElement("div");
-    actions.className = "plugin-actions";
-
-    actions.appendChild(createCommentToggleButton(key + ":comment", instance, "", "plugin comment editor"));
-
-    var collapseBtn = document.createElement("button");
-    collapseBtn.type = "button";
-    collapseBtn.textContent = collapsed ? "Expand" : "Collapse";
-    collapseBtn.addEventListener("click", function () {
-      state.collapse[key] = !collapsed;
-      renderAll();
-    });
-    actions.appendChild(collapseBtn);
-
-    var upBtn = document.createElement("button");
-    upBtn.type = "button";
-    upBtn.textContent = "↑";
-    upBtn.className = "icon-button";
-    upBtn.title = "Move plugin up";
-    upBtn.disabled = isReadOnlyMode() || index === 0;
-    upBtn.addEventListener("click", function () {
-      moveWithinPipeline(pipeline, section, index, -1, pathPrefix || "$.pipeline");
-    });
-    actions.appendChild(upBtn);
-
-    var downBtn = document.createElement("button");
-    downBtn.type = "button";
-    downBtn.textContent = "↓";
-    downBtn.className = "icon-button";
-    downBtn.title = "Move plugin down";
-    downBtn.disabled = isReadOnlyMode() || index >= pipeline[section].length - 1;
-    downBtn.addEventListener("click", function () {
-      moveWithinPipeline(pipeline, section, index, 1, pathPrefix || "$.pipeline");
-    });
-    actions.appendChild(downBtn);
-
-    var removeBtn = document.createElement("button");
-    removeBtn.type = "button";
-    removeBtn.textContent = "-";
-    removeBtn.className = "icon-remove";
-    removeBtn.title = "Remove plugin";
-    removeBtn.disabled = isReadOnlyMode();
-    removeBtn.addEventListener("click", function () {
-      pipeline[section].splice(index, 1);
-      saveDoc();
-      renderAll();
-    });
-    actions.appendChild(removeBtn);
-
-    head.appendChild(actions);
-    card.appendChild(head);
-
-    if (!collapsed) {
-      card.appendChild(createCommentEditorPanel(instance, "Plugin Comment", "", key + ":comment"));
-
-      var fieldsWrap = document.createElement("div");
-      fieldsWrap.className = "field-grid";
-
-      var fields = (pluginDef && pluginDef.fields) || [];
-      var requiredFields = fields.filter(function (field) {
-        return field.required;
-      });
-      var currentOptionalFields = fields.filter(function (field) {
-        return !field.required && Object.prototype.hasOwnProperty.call(instance, field.name);
-      });
-
-      requiredFields.forEach(function (field) {
-        var focusKey = section + ":" + index + ":" + field.name;
-        fieldsWrap.appendChild(
-          renderFieldRow(instance, field, {
-            optional: false,
-            focusKey: focusKey,
-            onRemove: null,
-            commentTarget: instance,
-            commentFieldName: field.name,
-            commentToggleKey: key + ":" + field.name + ":comment",
-          })
-        );
-      });
-
-      currentOptionalFields.forEach(function (field) {
-        var focusKey = section + ":" + index + ":" + field.name;
-        fieldsWrap.appendChild(
-          renderFieldRow(instance, field, {
-            optional: true,
-            focusKey: focusKey,
-            commentTarget: instance,
-            commentFieldName: field.name,
-            commentToggleKey: key + ":" + field.name + ":comment",
-            onRemove: function () {
-              delete instance[field.name];
-              saveDoc();
-              renderAll();
-            },
-          })
-        );
-      });
-
-      card.appendChild(fieldsWrap);
-
-      var missingOptional = fields.filter(function (f) {
-        return !f.required && !Object.prototype.hasOwnProperty.call(instance, f.name);
-      });
-      if (missingOptional.length > 0) {
-        var optionalRow = document.createElement("div");
-        optionalRow.className = "optional-row";
-        var optionalSel = document.createElement("select");
-        var emptyOpt = document.createElement("option");
-        emptyOpt.value = "";
-        emptyOpt.textContent = "Select optional attribute...";
-        optionalSel.appendChild(emptyOpt);
-        missingOptional.forEach(function (f) {
-          var opt = document.createElement("option");
-          opt.value = f.name;
-          opt.textContent = f.name;
-          optionalSel.appendChild(opt);
-        });
-        optionalRow.appendChild(optionalSel);
-
-        var optionalDivider = document.createElement("span");
-        optionalDivider.className = "optional-divider";
-        optionalDivider.setAttribute("aria-hidden", "true");
-        optionalRow.appendChild(optionalDivider);
-
-        var addOptional = document.createElement("button");
-        addOptional.type = "button";
-        addOptional.textContent = "Add Optional";
-        addOptional.disabled = isReadOnlyMode();
-        addOptional.addEventListener("click", function () {
-          var selected = optionalSel.value;
-          if (!selected) {
-            return;
-          }
-          var field = fields.find(function (f) {
-            return f.name === selected;
-          });
-          if (!field) {
-            return;
-          }
-          instance[field.name] = defaultForField(field);
-          state.pendingFocusFieldKey = section + ":" + index + ":" + field.name;
-          saveDoc();
-          renderAll();
-        });
-        optionalRow.appendChild(addOptional);
-
-        card.appendChild(optionalRow);
-      }
-
-      if (state.configType === "fluentbit" && (section === "inputs" || section === "outputs") && fluentbitProcessorRoot()) {
-        card.appendChild(renderFluentbitProcessorsPanel(section, index, instance, keyPrefix || "main", pluginPath));
-      }
-    }
-
-    return card;
+    function renderParsers() {
+    return sectionsUi.renderParsers();
   }
 
   function renderService() {
-    ensureDoc();
-    el.serviceList.innerHTML = "";
-    var entries = Object.entries(state.doc.config.service || {});
-    if (entries.length === 0) {
-      var empty = document.createElement("p");
-      empty.textContent = "No service settings configured.";
-      el.serviceList.appendChild(empty);
-      return;
-    }
-
-    var card = document.createElement("div");
-    card.className = "plugin-card service-card";
-
-    var head = document.createElement("div");
-    head.className = "plugin-head";
-
-    var left = document.createElement("div");
-    left.className = "plugin-head-main";
-
-    head.appendChild(left);
-
-    var actions = document.createElement("div");
-    actions.className = "plugin-actions";
-    actions.appendChild(createMetaHelpButton());
-    actions.appendChild(
-      createCommentToggleButton(
-        "service:comment",
-        state.doc.config.service,
-        "",
-        "service comment editor"
-      )
-    );
-    var collapseBtn = document.createElement("button");
-    collapseBtn.type = "button";
-    collapseBtn.textContent = state.serviceCollapsed ? "Expand" : "Collapse";
-    collapseBtn.addEventListener("click", function () {
-      state.serviceCollapsed = !state.serviceCollapsed;
-      renderService();
-    });
-    actions.appendChild(collapseBtn);
-    head.appendChild(actions);
-
-    card.appendChild(head);
-
-    if (state.serviceCollapsed) {
-      el.serviceList.appendChild(card);
-      return;
-    }
-
-    card.appendChild(
-      createCommentEditorPanel(
-        state.doc.config.service,
-        "Service Comment",
-        "",
-        "service:comment"
-      )
-    );
-
-    var body = document.createElement("div");
-    body.className = "field-grid";
-
-    entries.forEach(function (entry) {
-      var key = entry[0];
-      var value = entry[1];
-      var knownServiceOption = SERVICE_OPTION_BY_KEY[key] || null;
-      var row = document.createElement("div");
-      row.className = "service-row";
-      if (knownServiceOption) {
-        row.title = knownServiceOption.description || "";
-      }
-
-      var keyInput = document.createElement("input");
-      keyInput.value = key;
-      keyInput.disabled = isReadOnlyMode();
-      keyInput.addEventListener("change", function () {
-        var newKey = keyInput.value.trim();
-        if (!newKey || newKey === key) {
-          keyInput.value = key;
-          return;
-        }
-        renameFieldComment(state.doc.config.service, key, newKey);
-        state.doc.config.service[newKey] = state.doc.config.service[key];
-        delete state.doc.config.service[key];
-        saveDoc();
-        renderService();
-      });
-      row.appendChild(keyInput);
-
-      var valueInput = document.createElement("input");
-      var serviceDataType = knownServiceOption ? String(knownServiceOption.data_type || "").toLowerCase() : "";
-      if (knownServiceOption && serviceDataType === "enum") {
-        valueInput = document.createElement("select");
-        var serviceEnumOptions = getEnumOptions(knownServiceOption);
-        serviceEnumOptions.forEach(function (enumValue) {
-          var option = document.createElement("option");
-          option.value = String(enumValue);
-          option.textContent = String(enumValue);
-          valueInput.appendChild(option);
-        });
-        valueInput.value = String(normalizeEnumAliasValue(serviceEnumOptions, value));
-        valueInput.disabled = isReadOnlyMode();
-      } else if (knownServiceOption && serviceDataType === "code") {
-        valueInput = document.createElement("textarea");
-        if (typeof value === "object") {
-          try {
-            valueInput.value = JSON.stringify(value, null, 2);
-          } catch (_e) {
-            valueInput.value = String(value);
-          }
-        } else {
-          valueInput.value = String(value);
-        }
-        prepareCodeTextarea(valueInput);
-        valueInput.disabled = isReadOnlyMode();
-      } else {
-        valueInput = document.createElement("input");
-        if (typeof value === "object") {
-          try {
-            valueInput.value = JSON.stringify(value);
-          } catch (_e) {
-            valueInput.value = String(value);
-          }
-        } else {
-          valueInput.value = String(value);
-        }
-        valueInput.disabled = isReadOnlyMode();
-      }
-      valueInput.addEventListener("change", function () {
-        if (knownServiceOption) {
-          state.doc.config.service[key] = parseServiceValueByType(
-            valueInput.value,
-            knownServiceOption.data_type
-          );
-        } else {
-          state.doc.config.service[key] = parseServiceValue(valueInput.value);
-        }
-        saveDoc();
-      });
-      row.appendChild(valueInput);
-
-      row.appendChild(
-        createFieldHelpButton(
-          {
-            name: key,
-            description: knownServiceOption ? knownServiceOption.description : "No linked service attribute documentation available.",
-            reference: knownServiceOption ? knownServiceOption.reference : "",
-          },
-          false
-        )
-      );
-
-      row.appendChild(
-        createCommentToggleButton(
-          "service:" + key + ":comment",
-          state.doc.config.service,
-          key,
-          "comment editor for " + key
-        )
-      );
-
-      var removeBtn = document.createElement("button");
-      removeBtn.type = "button";
-      removeBtn.textContent = "-";
-      removeBtn.className = "icon-remove right-align";
-      removeBtn.title = "Remove service field";
-      removeBtn.disabled = isReadOnlyMode();
-      removeBtn.addEventListener("click", function () {
-        clearFieldComment(state.doc.config.service, key);
-        delete state.doc.config.service[key];
-        saveDoc();
-        renderService();
-      });
-      row.appendChild(removeBtn);
-
-      var block = document.createElement("div");
-      block.className = "field-block";
-      block.classList.add("comment-group");
-      block.appendChild(row);
-      block.appendChild(
-        createCommentEditorPanel(
-          state.doc.config.service,
-          "Comment",
-          key,
-          "service:" + key + ":comment"
-        )
-      );
-      body.appendChild(block);
-    });
-
-    card.appendChild(body);
-    el.serviceList.appendChild(card);
+    return sectionsUi.renderService();
   }
 
-  function renderPlugins() {
+function renderPlugins() {
     ensureDoc();
     el.pluginList.innerHTML = "";
     var flattened = flattenPlugins();
@@ -2993,6 +2170,7 @@
 
   function renderAll() {
     renderService();
+    renderParsers();
     renderPlugins();
     renderLabelsAndWorkers();
     updateConfigTypeDisabledState();
@@ -3042,6 +2220,39 @@
       })
       .catch(function (_err) {
         // Leave only the custom option available when service definitions cannot be loaded.
+      });
+  }
+
+  function loadParserOptions(version) {
+    return fetchJson(API_BASE + "/parser-options/" + encodeURIComponent(version) + currentApiQuery())
+      .then(function (payload) {
+        if (!payload || !payload.parser_formats || typeof payload.parser_formats !== "object") {
+          PARSER_FORMATS = [];
+          rebuildParserFormatIndex();
+          repopulateParserFormatSelect();
+          renderParsers();
+          return;
+        }
+        PARSER_FORMATS = Object.keys(payload.parser_formats)
+          .sort()
+          .map(function (key) {
+            var item = payload.parser_formats[key] || {};
+            return {
+              key: key,
+              title: item.title || key,
+              description: item.description || "",
+              doc_url: item.doc_url || "",
+              fields: Array.isArray(item.fields) ? item.fields : [],
+            };
+          });
+        rebuildParserFormatIndex();
+        repopulateParserFormatSelect();
+        renderParsers();
+      })
+      .catch(function (_err) {
+        PARSER_FORMATS = [];
+        rebuildParserFormatIndex();
+        repopulateParserFormatSelect();
       });
   }
 
@@ -3095,6 +2306,11 @@
       updateSectionPanels();
     });
 
+    el.parsersToggle.addEventListener("click", function () {
+      state.parsersPanelCollapsed = !state.parsersPanelCollapsed;
+      updateSectionPanels();
+    });
+
     el.labelsToggle.addEventListener("click", function () {
       state.labelsPanelCollapsed = !state.labelsPanelCollapsed;
       updateSectionPanels();
@@ -3114,6 +2330,9 @@
         .then(function () {
           return loadServiceOptions(state.selectedVersion);
         })
+        .then(function () {
+          return loadParserOptions(state.selectedVersion);
+        })
         .catch(function (err) {
           setValidationText(String(err));
         });
@@ -3131,14 +2350,19 @@
             state.catalog = null;
             state.catalogLoaded = false;
             SERVICE_OPTIONS = [];
+            PARSER_FORMATS = [];
             rebuildServiceOptionIndex();
+            rebuildParserFormatIndex();
             repopulateServiceOptionSelect();
+            repopulateParserFormatSelect();
             renderAll();
             saveDoc();
             return null;
           }
           return loadCatalog(state.selectedVersion).then(function () {
             return loadServiceOptions(state.selectedVersion);
+          }).then(function () {
+            return loadParserOptions(state.selectedVersion);
           });
         })
         .then(function () {
@@ -3246,6 +2470,47 @@
       window.open(opt.reference, "_blank", "noopener,noreferrer");
     });
 
+    el.parserFormat.addEventListener("change", function () {
+      updateParserFormatUI();
+    });
+
+    el.parserHelpToggle.addEventListener("click", function () {
+      var formatDef = selectedParserFormatDefinition();
+      if (!formatDef || !formatDef.doc_url) {
+        setValidationText("No linked documentation is available for the current parser format selection.");
+        return;
+      }
+      window.open(formatDef.doc_url, "_blank", "noopener,noreferrer");
+    });
+
+    el.addParser.addEventListener("click", function () {
+      ensureDoc();
+      var formatDef = selectedParserFormatDefinition();
+      var parserName = String((el.parserNameInput && el.parserNameInput.value) || "").trim();
+      if (!formatDef) {
+        setValidationText("Select a parser format before adding.");
+        return;
+      }
+      if (!parserName) {
+        setValidationText("Provide a parser name before adding.");
+        return;
+      }
+      var parserInstance = {
+        name: parserName,
+        format: formatDef.key,
+      };
+      parserFormatFields(formatDef).forEach(function (field) {
+        if (field.required) {
+          parserInstance[field.name] = defaultForField(field);
+        }
+      });
+      state.doc.config.parsers.push(parserInstance);
+      el.parserNameInput.value = "";
+      saveDoc();
+      setValidationText("");
+      renderAll();
+    });
+
     el.addLabel.addEventListener("click", function () {
       ensureDoc();
       state.doc.config.labels.push({
@@ -3313,6 +2578,12 @@
                 }
                 return loadServiceOptions(state.selectedVersion);
               })
+              .then(function () {
+                if (!state.selectedVersion) {
+                  return null;
+                }
+                return loadParserOptions(state.selectedVersion);
+              })
               .then(renderAll);
           }
 
@@ -3354,6 +2625,9 @@
               .then(function () {
                 return loadServiceOptions(state.selectedVersion);
               })
+              .then(function () {
+                return loadParserOptions(state.selectedVersion);
+              })
               .then(renderAll);
           }
 
@@ -3387,6 +2661,9 @@
             })
             .then(function () {
               return loadServiceOptions(state.selectedVersion);
+            })
+            .then(function () {
+              return loadParserOptions(state.selectedVersion);
             })
             .then(renderAll);
         })
@@ -3458,6 +2735,7 @@
     installGlobalUiErrorHandlers();
     applyCssOverrides();
     repopulateServiceOptionSelect();
+    repopulateParserFormatSelect();
     updateAddPluginState();
     renderValidationState(null);
     setYamlText("");
@@ -3520,6 +2798,8 @@
         }
         return loadCatalog(state.selectedVersion).then(function () {
           return loadServiceOptions(state.selectedVersion);
+        }).then(function () {
+          return loadParserOptions(state.selectedVersion);
         });
       })
       .then(function () {

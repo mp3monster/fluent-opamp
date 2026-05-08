@@ -1,3 +1,15 @@
+# Copyright 2026 mp3monster.org
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
 from typing import Any
@@ -82,6 +94,7 @@ NUMBER: /-?(?:[1-9][0-9]*|0)(?:\.[0-9]+)?/
 
 
 def _issue(code: str, path: str, message: str, severity: str = "error", source: str = "rules") -> dict[str, Any]:
+    """Create a consistently-shaped rule-engine issue payload."""
     return {
         "code": code,
         "path": path,
@@ -92,10 +105,13 @@ def _issue(code: str, path: str, message: str, severity: str = "error", source: 
 
 
 class SqlCodeSyntaxAdapter(RuleAdapter):
+    """Validate Fluent Bit processor SQL using the project-specific Lark grammar."""
+
     _parser = None
 
     @classmethod
     def parser(cls):
+        """Build and cache the Lark parser so each validation pass can reuse it."""
         if Lark is None:
             return None
         if cls._parser is None:
@@ -108,6 +124,7 @@ class SqlCodeSyntaxAdapter(RuleAdapter):
         return cls._parser
 
     def evaluate(self, context: RuleContext) -> list[dict[str, Any]]:
+        """Scan plugin fields and processor fields that declare SQL syntax rules."""
         issues: list[dict[str, Any]] = []
         pipeline = context.config.get("pipeline", {})
         if not isinstance(pipeline, dict):
@@ -153,6 +170,7 @@ class SqlCodeSyntaxAdapter(RuleAdapter):
         field_defs: list[dict[str, Any]],
         path_prefix: str,
     ) -> list[dict[str, Any]]:
+        """Validate SQL-bearing fields on a single plugin or processor payload."""
         issues: list[dict[str, Any]] = []
         for field in field_defs:
             if not isinstance(field, dict):
@@ -175,6 +193,7 @@ class SqlCodeSyntaxAdapter(RuleAdapter):
         processors_def: dict[str, Any],
         path_prefix: str,
     ) -> list[dict[str, Any]]:
+        """Walk nested processor blocks and validate any SQL query fields they carry."""
         issues: list[dict[str, Any]] = []
         processors = plugin_instance.get("processors")
         if not isinstance(processors, dict):
@@ -204,6 +223,7 @@ class SqlCodeSyntaxAdapter(RuleAdapter):
         return issues
 
     def _validate_sql_source(self, source: str, path: str) -> list[dict[str, Any]]:
+        """Parse Fluent Bit SQL and translate grammar failures into rule issues."""
         parser = self.parser()
         if parser is None:
             return [
@@ -239,6 +259,7 @@ class SqlCodeSyntaxAdapter(RuleAdapter):
 
     @staticmethod
     def _is_sql_rule(validation_rule: Any) -> bool:
+        """Return true only for validation rules that explicitly target SQL syntax."""
         return (
             isinstance(validation_rule, dict)
             and str(validation_rule.get("kind", "")).lower() == "code_syntax"
@@ -247,12 +268,14 @@ class SqlCodeSyntaxAdapter(RuleAdapter):
 
     @staticmethod
     def _count_wildcards(tree: Any) -> int:
+        """Count wildcard selections so we can enforce Fluent Bit SQL quirks."""
         if Tree is None or not isinstance(tree, Tree):
             return 0
         return sum(1 for sub in tree.iter_subtrees_topdown() if sub.data == "wildcard_item")
 
     @staticmethod
     def _count_select_items(tree: Any) -> int:
+        """Count selected items to detect invalid `*` plus explicit field mixes."""
         if Tree is None or not isinstance(tree, Tree):
             return 0
         return sum(1 for sub in tree.iter_subtrees_topdown() if sub.data in {"wildcard_item", "identifier_item"})

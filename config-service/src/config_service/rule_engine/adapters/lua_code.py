@@ -1,3 +1,15 @@
+# Copyright 2026 mp3monster.org
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
 import re
@@ -12,6 +24,7 @@ except ImportError:  # pragma: no cover - exercised via runtime fallback
 
 
 def _issue(code: str, path: str, message: str, severity: str = "error", source: str = "rules") -> dict[str, Any]:
+    """Create a consistently-shaped rule-engine issue payload."""
     return {
         "code": code,
         "path": path,
@@ -22,9 +35,12 @@ def _issue(code: str, path: str, message: str, severity: str = "error", source: 
 
 
 class LuaCodeSyntaxAdapter(RuleAdapter):
+    """Validate inline Lua snippets declared in catalog fields of type `code`."""
+
     _LINE_COL_RE = re.compile(r"line\\s+(?P<line>\\d+):(?P<column>\\d+):\\s*(?P<detail>.+)$", re.IGNORECASE)
 
     def evaluate(self, context: RuleContext) -> list[dict[str, Any]]:
+        """Scan pipeline plugins and validate only Lua-targeted `code` fields."""
         issues: list[dict[str, Any]] = []
         pipeline = context.config.get("pipeline", {})
         if not isinstance(pipeline, dict):
@@ -61,6 +77,7 @@ class LuaCodeSyntaxAdapter(RuleAdapter):
         plugin_def: dict[str, Any],
         path_prefix: str,
     ) -> list[dict[str, Any]]:
+        """Find Lua code fields on a plugin instance and validate their source."""
         issues: list[dict[str, Any]] = []
         for field in plugin_def.get("fields", []):
             if not isinstance(field, dict):
@@ -95,6 +112,7 @@ class LuaCodeSyntaxAdapter(RuleAdapter):
         return issues
 
     def _validate_lua_source(self, *, source: str, path: str) -> list[dict[str, Any]]:
+        """Run luaparser and normalize syntax failures into UI-friendly issues."""
         if lua_ast is None:
             return [
                 _issue(

@@ -1,3 +1,15 @@
+# Copyright 2026 mp3monster.org
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
 import re
@@ -7,6 +19,7 @@ from config_service.rule_engine.base import RuleAdapter, RuleContext
 
 
 def _iter_pipeline_plugins(config: dict[str, Any]):
+    """Yield concrete plugin objects from the main pipeline for rule checks."""
     pipeline = config.get("pipeline", {})
     for section in ("inputs", "filters", "outputs"):
         items = pipeline.get(section, [])
@@ -17,10 +30,12 @@ def _iter_pipeline_plugins(config: dict[str, Any]):
 
 
 def _catalog_plugin(catalog: dict[str, Any], section: str, name: str) -> dict[str, Any] | None:
+    """Look up a plugin definition in the loaded catalog."""
     return catalog.get("plugins", {}).get(section, {}).get(name)
 
 
 def _issue(code: str, path: str, message: str, severity: str = "error", source: str = "rules") -> dict[str, Any]:
+    """Create a consistently-shaped rule-engine issue payload."""
     return {
         "code": code,
         "path": path,
@@ -31,7 +46,10 @@ def _issue(code: str, path: str, message: str, severity: str = "error", source: 
 
 
 class CatalogRequiredFieldsAdapter(RuleAdapter):
+    """Mirror catalog-required plugin fields into rule-engine validation."""
+
     def evaluate(self, context: RuleContext) -> list[dict[str, Any]]:
+        """Report plugin instances that are missing catalog-mandated fields."""
         issues: list[dict[str, Any]] = []
         for section, idx, plugin_instance in _iter_pipeline_plugins(context.config):
             plugin_name = str(plugin_instance.get("name", ""))
@@ -52,6 +70,8 @@ class CatalogRequiredFieldsAdapter(RuleAdapter):
 
 
 class DataTypeEnforcementAdapter(RuleAdapter):
+    """Enforce simple runtime Python types derived from catalog field metadata."""
+
     TYPE_MAP = {
         "string": str,
         "code": str,
@@ -68,6 +88,7 @@ class DataTypeEnforcementAdapter(RuleAdapter):
     }
 
     def evaluate(self, context: RuleContext) -> list[dict[str, Any]]:
+        """Reject values whose in-memory types drift from the catalog contract."""
         issues: list[dict[str, Any]] = []
         for section, idx, plugin_instance in _iter_pipeline_plugins(context.config):
             plugin_name = str(plugin_instance.get("name", ""))
@@ -106,11 +127,15 @@ class DependencyConstraintsAdapter(RuleAdapter):
     """Placeholder for future catalog-level dependency rules."""
 
     def evaluate(self, context: RuleContext) -> list[dict[str, Any]]:
+        """Return no issues until cross-field dependency rules are implemented."""
         return []
 
 
 class ValidationRuleConstraintsAdapter(RuleAdapter):
+    """Interpret simple inline validation rules such as ranges and regexes."""
+
     def evaluate(self, context: RuleContext) -> list[dict[str, Any]]:
+        """Apply field-level validation rules after structural checks have passed."""
         issues: list[dict[str, Any]] = []
         for section, idx, plugin_instance in _iter_pipeline_plugins(context.config):
             plugin_name = str(plugin_instance.get("name", ""))

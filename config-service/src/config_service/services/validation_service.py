@@ -16,6 +16,7 @@ class ValidationService:
         payload: dict[str, Any],
         catalog: dict[str, Any],
         profile: str | None,
+        parser_definition: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         config = payload.get("config")
         if not isinstance(config, dict):
@@ -38,7 +39,11 @@ class ValidationService:
         if engine == "fluentd":
             semantic_issues = self._validate_fluentd_config(config, catalog)
         else:
-            semantic_issues = self._validate_fluentbit_pipeline(config, catalog)
+            semantic_issues = self._validate_fluentbit_pipeline(
+                config,
+                catalog,
+                parser_definition=parser_definition,
+            )
         rule_issues = self.rule_engine_service.evaluate(
             version=version,
             config=config,
@@ -46,7 +51,8 @@ class ValidationService:
             profile=profile,
         )
         errors = self._normalize_errors(semantic_issues + rule_issues)
-        return {"ok": len(errors) == 0, "errors": errors}
+        has_error = any(str(item.get("severity") or "error").lower() == "error" for item in errors)
+        return {"ok": not has_error, "errors": errors}
 
     def _normalize_errors(self, issues: list[dict[str, Any]]) -> list[dict[str, Any]]:
         normalized: list[dict[str, Any]] = []
@@ -61,11 +67,22 @@ class ValidationService:
             normalized.append(item)
         return normalized
 
-    def _validate_fluentbit_pipeline(self, config: dict[str, Any], catalog: dict[str, Any]) -> list[dict[str, Any]]:
+    def _validate_fluentbit_pipeline(
+        self,
+        config: dict[str, Any],
+        catalog: dict[str, Any],
+        *,
+        parser_definition: dict[str, Any] | None,
+    ) -> list[dict[str, Any]]:
         issues: list[dict[str, Any]] = []
+        parser_issues, custom_parser_names, builtin_parser_names = self._validate_fluentbit_parsers(
+            config.get("parsers"),
+            parser_definition,
+        )
+        issues.extend(parser_issues)
         pipeline = config.get("pipeline")
         if not isinstance(pipeline, dict):
-            return [
+            issues.append(
                 {
                     "code": "missing_pipeline",
                     "path": "$.config.pipeline",
@@ -73,10 +90,12 @@ class ValidationService:
                     "severity": "error",
                     "source": "schema",
                 }
-            ]
+            )
+            return issues
 
         plugins = catalog.get("plugins", {})
         processors_def = catalog.get("common", {}).get("processors", {})
+        route_def = catalog.get("common", {}).get("route", {})
         for section in ("inputs", "filters", "outputs"):
             issues.extend(
                 self._validate_plugin_list(
@@ -88,9 +107,136 @@ class ValidationService:
                     allow_children=False,
                     fluentbit_processors=processors_def,
                     fluentbit_filter_plugins=plugins.get("filters", {}),
+                    known_parser_names=custom_parser_names | builtin_parser_names,
+                    fluentbit_route=route_def,
+                    pipeline=pipeline,
                 )
             )
         return issues
+
+    def _validate_fluentbit_parsers(
+        self,
+        parsers_payload: Any,
+        parser_definition: dict[str, Any] | None,
+    ) -> tuple[list[dict[str, Any]], set[str], set[str]]:
+        issues: list[dict[str, Any]] = []
+        custom_parser_names: set[str] = set()
+        builtin_parser_names = (
+            set(parser_definition.get("builtin_parser_names", []))
+            if parser_definition
+            else set()
+        )
+        if parsers_payload is None:
+            return issues, custom_parser_names, builtin_parser_names
+        if not isinstance(parsers_payload, list):
+            return [
+                {
+                    "code": "invalid_section_type",
+                    "path": "$.config.parsers",
+                    "message": "parsers must be an array.",
+                    "severity": "warning",
+                    "source": "schema",
+                }
+            ], custom_parser_names, builtin_parser_names
+
+        parser_formats = (
+            parser_definition.get("parser_formats", {})
+            if isinstance(parser_definition, dict)
+            else {}
+        )
+        for idx, parser_instance in enumerate(parsers_payload):
+            path = f"$.config.parsers[{idx}]"
+            if not isinstance(parser_instance, dict):
+                issues.append(
+                    {
+                        "code": "invalid_plugin_item",
+                        "path": path,
+                        "message": "Parser definition must be an object.",
+                        "severity": "warning",
+                        "source": "schema",
+                    }
+                )
+                continue
+
+            parser_name = parser_instance.get("name")
+            if not isinstance(parser_name, str) or not parser_name:
+                issues.append(
+                    {
+                        "code": "missing_required_field",
+                        "path": f"{path}.name",
+                        "message": "Parser definition requires a non-empty name.",
+                        "severity": "warning",
+                        "source": "semantic",
+                    }
+                )
+            elif parser_name in custom_parser_names:
+                issues.append(
+                    {
+                        "code": "duplicate_parser_name",
+                        "path": f"{path}.name",
+                        "message": f"Parser name '{parser_name}' is defined more than once.",
+                        "severity": "warning",
+                        "source": "semantic",
+                    }
+                )
+            else:
+                custom_parser_names.add(parser_name)
+
+            parser_format = parser_instance.get("format")
+            if not isinstance(parser_format, str) or not parser_format:
+                issues.append(
+                    {
+                        "code": "missing_required_field",
+                        "path": f"{path}.format",
+                        "message": "Parser definition requires a non-empty format.",
+                        "severity": "warning",
+                        "source": "semantic",
+                    }
+                )
+                continue
+            format_def = parser_formats.get(parser_format)
+            if not isinstance(format_def, dict):
+                issues.append(
+                    {
+                        "code": "unknown_parser_format",
+                        "path": f"{path}.format",
+                        "message": f"Unknown parser format '{parser_format}'.",
+                        "severity": "warning",
+                        "source": "semantic",
+                    }
+                )
+                continue
+            fields = {field["name"]: field for field in format_def.get("fields", [])}
+            for required in [
+                name
+                for name, field in fields.items()
+                if field.get("required") is True
+            ]:
+                value = parser_instance.get(required)
+                if value is None or (isinstance(value, str) and not value):
+                    issues.append(
+                        {
+                            "code": "missing_required_field",
+                            "path": f"{path}.{required}",
+                            "message": f"Required field '{required}' is missing.",
+                            "severity": "warning",
+                            "source": "semantic",
+                        }
+                    )
+            for key in parser_instance:
+                if key in {"name", "format", "_meta"}:
+                    continue
+                if key not in fields:
+                    issues.append(
+                        {
+                            "code": "unknown_field",
+                            "path": f"{path}.{key}",
+                            "message": f"Unknown field '{key}' for parser format '{parser_format}'.",
+                            "severity": "warning",
+                            "source": "semantic",
+                        }
+                    )
+        return issues, custom_parser_names, builtin_parser_names
 
     def _validate_fluentd_config(self, config: dict[str, Any], catalog: dict[str, Any]) -> list[dict[str, Any]]:
         issues: list[dict[str, Any]] = []
@@ -119,6 +265,9 @@ class ValidationService:
                     allow_children=True,
                     fluentbit_processors=None,
                     fluentbit_filter_plugins=None,
+                    known_parser_names=set(),
+                    fluentbit_route=None,
+                    pipeline=pipeline,
                 )
             )
 
@@ -219,6 +368,9 @@ class ValidationService:
                     allow_children=True,
                     fluentbit_processors=None,
                     fluentbit_filter_plugins=None,
+                    known_parser_names=set(),
+                    fluentbit_route=None,
+                    pipeline=pipeline,
                 )
             )
         return issues
@@ -272,6 +424,9 @@ class ValidationService:
         allow_children: bool,
         fluentbit_processors: dict[str, Any] | None,
         fluentbit_filter_plugins: dict[str, Any] | None,
+        known_parser_names: set[str],
+        fluentbit_route: dict[str, Any] | None,
+        pipeline: dict[str, Any],
     ) -> list[dict[str, Any]]:
         issues: list[dict[str, Any]] = []
         if section_items is None:
@@ -333,6 +488,9 @@ class ValidationService:
                     fluentbit_processors=fluentbit_processors,
                     fluentbit_filter_plugins=fluentbit_filter_plugins,
                     section=section,
+                    known_parser_names=known_parser_names,
+                    fluentbit_route=fluentbit_route,
+                    pipeline=pipeline,
                 )
             )
         return issues
@@ -347,6 +505,9 @@ class ValidationService:
         fluentbit_processors: dict[str, Any] | None,
         fluentbit_filter_plugins: dict[str, Any] | None,
         section: str,
+        known_parser_names: set[str],
+        fluentbit_route: dict[str, Any] | None,
+        pipeline: dict[str, Any],
     ) -> list[dict[str, Any]]:
         issues: list[dict[str, Any]] = []
         fields = {field["name"]: field for field in plugin_def.get("fields", [])}
@@ -373,7 +534,7 @@ class ValidationService:
                     }
                 )
         for key in plugin_instance:
-            if key in {"name", "directive_arg", "children", "processors", "_meta"}:
+            if key in {"name", "directive_arg", "children", "processors", "route", "_meta"}:
                 continue
             if key not in fields:
                 issues.append(
@@ -385,6 +546,14 @@ class ValidationService:
                         "source": "semantic",
                     }
                 )
+        issues.extend(
+            self._validate_parser_references(
+                path=path,
+                plugin_instance=plugin_instance,
+                fields=fields,
+                known_parser_names=known_parser_names,
+            )
+        )
         if allow_children:
             issues.extend(self._validate_children(path, plugin_instance, plugin_def, nested_sections))
         if fluentbit_processors and section in {"inputs", "outputs"}:
@@ -396,6 +565,44 @@ class ValidationService:
                     filter_plugins=fluentbit_filter_plugins or {},
                 )
             )
+        if fluentbit_route and section == "inputs":
+            issues.extend(
+                self._validate_fluentbit_route(
+                    path=path,
+                    plugin_instance=plugin_instance,
+                    route_def=fluentbit_route,
+                    outputs=pipeline.get("outputs") if isinstance(pipeline, dict) else [],
+                )
+            )
+        return issues
+
+    def _validate_parser_references(
+        self,
+        *,
+        path: str,
+        plugin_instance: dict[str, Any],
+        fields: dict[str, dict[str, Any]],
+        known_parser_names: set[str],
+    ) -> list[dict[str, Any]]:
+        issues: list[dict[str, Any]] = []
+        if not known_parser_names:
+            return issues
+        for field_name, field_def in fields.items():
+            if field_def.get("references_parser") is not True:
+                continue
+            value = plugin_instance.get(field_name)
+            if not isinstance(value, str) or not value:
+                continue
+            if value not in known_parser_names:
+                issues.append(
+                    {
+                        "code": "unknown_parser_reference",
+                        "path": f"{path}.{field_name}",
+                        "message": f"Parser '{value}' was not found in the defined parsers or known built-in parser names.",
+                        "severity": "warning",
+                        "source": "semantic",
+                    }
+                )
         return issues
 
     def _validate_fluentbit_processors(
@@ -533,6 +740,361 @@ class ValidationService:
                             }
                         )
         return issues
+
+    def _validate_fluentbit_route(
+        self,
+        *,
+        path: str,
+        plugin_instance: dict[str, Any],
+        route_def: dict[str, Any],
+        outputs: Any,
+    ) -> list[dict[str, Any]]:
+        issues: list[dict[str, Any]] = []
+        route_payload = plugin_instance.get("route")
+        if route_payload is None:
+            return issues
+        if not isinstance(route_payload, dict):
+            return [
+                {
+                    "code": "invalid_section_type",
+                    "path": f"{path}.route",
+                    "message": "route must be an object.",
+                    "severity": "error",
+                    "source": "schema",
+                }
+            ]
+
+        top_level_fields = {
+            field["name"]: field
+            for field in route_def.get("top_level_fields", [])
+            if isinstance(field, dict) and isinstance(field.get("name"), str)
+        }
+        allowed_signals = {
+            str(signal.get("name")): signal
+            for signal in route_def.get("signals", [])
+            if isinstance(signal, dict) and isinstance(signal.get("name"), str)
+        }
+        seen_route_names: set[str] = set()
+        available_output_refs = self._route_output_reference_names(outputs)
+        has_any_routes = False
+
+        for key, value in route_payload.items():
+            if key == "_meta":
+                continue
+            if key in top_level_fields:
+                if key == "per_record_routing" and not isinstance(value, bool):
+                    issues.append(
+                        {
+                            "code": "invalid_route_field_type",
+                            "path": f"{path}.route.per_record_routing",
+                            "message": "per_record_routing must be true or false.",
+                            "severity": "error",
+                            "source": "schema",
+                        }
+                    )
+                continue
+
+            signal_meta = allowed_signals.get(key)
+            if signal_meta is None:
+                issues.append(
+                    {
+                        "code": "unknown_route_signal",
+                        "path": f"{path}.route.{key}",
+                        "message": f"Unknown route signal '{key}'.",
+                        "severity": "warning",
+                        "source": "semantic",
+                    }
+                )
+                continue
+
+            if not isinstance(value, list):
+                issues.append(
+                    {
+                        "code": "invalid_section_type",
+                        "path": f"{path}.route.{key}",
+                        "message": f"Route signal '{key}' must be an array.",
+                        "severity": "error",
+                        "source": "schema",
+                    }
+                )
+                continue
+
+            if value:
+                has_any_routes = True
+            if signal_meta.get("implemented") is False:
+                issues.append(
+                    {
+                        "code": "route_signal_not_fully_supported",
+                        "path": f"{path}.route.{key}",
+                        "message": f"Signal '{key}' is parsed by Fluent Bit but is not fully evaluated yet.",
+                        "severity": "warning",
+                        "source": "semantic",
+                    }
+                )
+
+            for idx, route_item in enumerate(value):
+                issues.extend(
+                    self._validate_route_item(
+                        route_item,
+                        path_prefix=f"{path}.route.{key}[{idx}]",
+                        seen_route_names=seen_route_names,
+                        available_output_refs=available_output_refs,
+                    )
+                )
+
+        if has_any_routes and route_payload.get("per_record_routing") is not True:
+            issues.append(
+                {
+                    "code": "route_not_enabled",
+                    "path": f"{path}.route.per_record_routing",
+                    "message": "Conditional routing rules are defined but per_record_routing is not enabled.",
+                    "severity": "warning",
+                    "source": "semantic",
+                }
+            )
+        return issues
+
+    def _validate_route_item(
+        self,
+        route_item: Any,
+        *,
+        path_prefix: str,
+        seen_route_names: set[str],
+        available_output_refs: set[str],
+    ) -> list[dict[str, Any]]:
+        issues: list[dict[str, Any]] = []
+        if not isinstance(route_item, dict):
+            return [
+                {
+                    "code": "invalid_plugin_item",
+                    "path": path_prefix,
+                    "message": "Route entry must be an object.",
+                    "severity": "error",
+                    "source": "schema",
+                }
+            ]
+
+        route_name = route_item.get("name")
+        if not isinstance(route_name, str) or not route_name:
+            issues.append(
+                {
+                    "code": "missing_required_field",
+                    "path": f"{path_prefix}.name",
+                    "message": "Route entry requires a non-empty name.",
+                    "severity": "error",
+                    "source": "semantic",
+                }
+            )
+        elif route_name in seen_route_names:
+            issues.append(
+                {
+                    "code": "duplicate_route_name",
+                    "path": f"{path_prefix}.name",
+                    "message": f"Route name '{route_name}' is defined more than once.",
+                    "severity": "error",
+                    "source": "semantic",
+                }
+            )
+        else:
+            seen_route_names.add(route_name)
+
+        condition = route_item.get("condition")
+        if not isinstance(condition, dict):
+            issues.append(
+                {
+                    "code": "missing_required_field",
+                    "path": f"{path_prefix}.condition",
+                    "message": "Route entry requires a condition object.",
+                    "severity": "error",
+                    "source": "semantic",
+                }
+            )
+        else:
+            issues.extend(
+                self._validate_route_condition(
+                    condition,
+                    path_prefix=f"{path_prefix}.condition",
+                )
+            )
+
+        destination = route_item.get("to")
+        if not isinstance(destination, dict):
+            issues.append(
+                {
+                    "code": "missing_required_field",
+                    "path": f"{path_prefix}.to",
+                    "message": "Route entry requires a to object.",
+                    "severity": "error",
+                    "source": "semantic",
+                }
+            )
+        else:
+            route_outputs = destination.get("outputs")
+            if not isinstance(route_outputs, list) or not route_outputs:
+                issues.append(
+                    {
+                        "code": "missing_required_field",
+                        "path": f"{path_prefix}.to.outputs",
+                        "message": "Route entry requires at least one output destination.",
+                        "severity": "error",
+                        "source": "semantic",
+                    }
+                )
+            else:
+                for idx, output_name in enumerate(route_outputs):
+                    output_path = f"{path_prefix}.to.outputs[{idx}]"
+                    if not isinstance(output_name, str) or not output_name:
+                        issues.append(
+                            {
+                                "code": "invalid_route_output_reference",
+                                "path": output_path,
+                                "message": "Route output reference must be a non-empty string.",
+                                "severity": "error",
+                                "source": "schema",
+                            }
+                        )
+                        continue
+                    if available_output_refs and output_name not in available_output_refs:
+                        issues.append(
+                            {
+                                "code": "unknown_route_output_reference",
+                                "path": output_path,
+                                "message": f"Route output '{output_name}' was not found in the configured outputs by name or alias.",
+                                "severity": "warning",
+                                "source": "semantic",
+                            }
+                        )
+        return issues
+
+    def _validate_route_condition(
+        self,
+        condition: dict[str, Any],
+        *,
+        path_prefix: str,
+    ) -> list[dict[str, Any]]:
+        issues: list[dict[str, Any]] = []
+        if condition.get("default") is True:
+            return issues
+
+        op = condition.get("op")
+        if op not in {"and", "or"}:
+            issues.append(
+                {
+                    "code": "invalid_route_condition_operator",
+                    "path": f"{path_prefix}.op",
+                    "message": "Route condition operator must be 'and' or 'or'.",
+                    "severity": "error",
+                    "source": "semantic",
+                }
+            )
+
+        rules = condition.get("rules")
+        if not isinstance(rules, list) or not rules:
+            issues.append(
+                {
+                    "code": "missing_required_field",
+                    "path": f"{path_prefix}.rules",
+                    "message": "Route condition requires at least one rule unless it is marked as default.",
+                    "severity": "error",
+                    "source": "semantic",
+                }
+            )
+            return issues
+
+        valid_contexts = {
+            "body",
+            "group_attributes",
+            "group_metadata",
+            "metadata",
+            "otel_resource_attributes",
+            "otel_scope_attributes",
+            "otel_scope_metadata",
+        }
+        valid_ops = {
+            "eq",
+            "gt",
+            "gte",
+            "in",
+            "lt",
+            "lte",
+            "neq",
+            "not_in",
+            "not_regex",
+            "regex",
+        }
+        for idx, rule in enumerate(rules):
+            rule_path = f"{path_prefix}.rules[{idx}]"
+            if not isinstance(rule, dict):
+                issues.append(
+                    {
+                        "code": "invalid_plugin_item",
+                        "path": rule_path,
+                        "message": "Route condition rule must be an object.",
+                        "severity": "error",
+                        "source": "schema",
+                    }
+                )
+                continue
+            if "context" in rule and rule.get("context") not in valid_contexts:
+                issues.append(
+                    {
+                        "code": "invalid_route_context",
+                        "path": f"{rule_path}.context",
+                        "message": f"Unknown route rule context '{rule.get('context')}'.",
+                        "severity": "error",
+                        "source": "semantic",
+                    }
+                )
+            if not isinstance(rule.get("field"), str) or not rule.get("field"):
+                issues.append(
+                    {
+                        "code": "missing_required_field",
+                        "path": f"{rule_path}.field",
+                        "message": "Route rule requires a non-empty field.",
+                        "severity": "error",
+                        "source": "semantic",
+                    }
+                )
+            if rule.get("op") not in valid_ops:
+                issues.append(
+                    {
+                        "code": "invalid_route_rule_operator",
+                        "path": f"{rule_path}.op",
+                        "message": f"Unknown route rule operator '{rule.get('op')}'.",
+                        "severity": "error",
+                        "source": "semantic",
+                    }
+                )
+            if "value" not in rule:
+                issues.append(
+                    {
+                        "code": "missing_required_field",
+                        "path": f"{rule_path}.value",
+                        "message": "Route rule requires a comparison value.",
+                        "severity": "error",
+                        "source": "semantic",
+                    }
+                )
+        return issues
+
+    def _route_output_reference_names(self, outputs: Any) -> set[str]:
+        names: set[str] = set()
+        if not isinstance(outputs, list):
+            return names
+        counters: dict[str, int] = {}
+        for output in outputs:
+            if not isinstance(output, dict):
+                continue
+            plugin_name = output.get("name")
+            if isinstance(plugin_name, str) and plugin_name:
+                names.add(plugin_name)
+                sequence = counters.get(plugin_name, 0)
+                names.add(f"{plugin_name}.{sequence}")
+                counters[plugin_name] = sequence + 1
+            alias = output.get("alias")
+            if isinstance(alias, str) and alias:
+                names.add(alias)
+        return names
 
     def _validate_children(
         self,

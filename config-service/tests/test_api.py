@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import sys
 from pathlib import Path
 
@@ -24,10 +25,45 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from config_service.app import create_app
 from config_service.runtime_config import (
     ENV_CONFIG_TOOL_CONFIG_PATH,
+    resolve_log_level_name,
     resolve_read_only,
     resolve_ui_base_css_path,
     resolve_web_port,
 )
+
+YAML_KEYWORD_LITERALS = {
+    "null",
+    "Null",
+    "NULL",
+    "~",
+    "true",
+    "True",
+    "TRUE",
+    "false",
+    "False",
+    "FALSE",
+    "yes",
+    "Yes",
+    "YES",
+    "no",
+    "No",
+    "NO",
+    "on",
+    "On",
+    "ON",
+    "off",
+    "Off",
+    "OFF",
+    ".nan",
+    ".NaN",
+    ".NAN",
+    ".inf",
+    ".Inf",
+    ".INF",
+    "-.inf",
+    "-.Inf",
+    "-.INF",
+}
 
 
 def test_resolve_web_port_precedence(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -81,6 +117,43 @@ def test_resolve_read_only_from_config_tool(tmp_path: Path, monkeypatch: pytest.
     assert resolve_read_only() is True
 
 
+def test_resolve_log_level_name_precedence(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    config_path = tmp_path / "config-service.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "config-tool": {"log_level": "warning"},
+                "provider": {"log_level": "error"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv(ENV_CONFIG_TOOL_CONFIG_PATH, str(config_path))
+    monkeypatch.delenv("CONFIG_TOOL_LOG_LEVEL", raising=False)
+    assert resolve_log_level_name() == "WARNING"
+
+    monkeypatch.setenv("CONFIG_TOOL_LOG_LEVEL", "debug")
+    assert resolve_log_level_name() == "DEBUG"
+
+
+def test_create_app_applies_resolved_log_level(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    config_path = tmp_path / "config-service.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "config-tool": {"log_level": "debug"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv(ENV_CONFIG_TOOL_CONFIG_PATH, str(config_path))
+    monkeypatch.delenv("CONFIG_TOOL_LOG_LEVEL", raising=False)
+
+    app = create_app(mode="standalone")
+
+    assert app.logger.level == logging.DEBUG
+
+
 @pytest.mark.asyncio
 async def test_health_and_versions() -> None:
     app = create_app(mode="standalone")
@@ -110,9 +183,18 @@ async def test_health_and_versions() -> None:
     assert ui.status_code == 200
     ui_html = (await ui.get_data()).decode("utf-8")
     assert "/config-service/ui/assets/opamp_logo.png" in ui_html
+    assert "/config-service/ui/assets/config_editor_icon.png" in ui_html
+    assert "/config-service/ui/assets/config_ui_helpers.js" in ui_html
+    assert "/config-service/ui/assets/config_ui_comments.js" in ui_html
+    assert "/config-service/ui/assets/config_ui_plugins.js" in ui_html
+    assert "/config-service/ui/assets/config_ui_sections.js" in ui_html
+    assert "/config-service/ui/assets/config_ui.js" in ui_html
 
     logo = await client.get("/config-service/ui/assets/opamp_logo.png")
     assert logo.status_code == 200
+
+    favicon = await client.get("/config-service/ui/assets/config_editor_icon.png")
+    assert favicon.status_code == 200
 
     svc = await client.get("/config-service/api/v1/service-options/5.0.4")
     assert svc.status_code == 200
@@ -135,9 +217,21 @@ async def test_health_and_versions() -> None:
     assert hot_reload_option["data_type"] == "enum"
     assert hot_reload_option["called_enum_options"] == ["on", "off"]
 
+    parser_options = await client.get("/config-service/api/v1/parser-options/5.0.4")
+    assert parser_options.status_code == 200
+    parser_body = await parser_options.get_json()
+    assert parser_body["section"] == "parsers"
+    assert "json" in parser_body["parser_formats"]
+    assert "regex" in parser_body["parser_formats"]
+    regex_fields = parser_body["parser_formats"]["regex"]["fields"]
+    assert any(field["name"] == "regex" and field["required"] is True for field in regex_fields)
+    assert "docker" in parser_body["builtin_parser_names"]
+
     catalog = await client.get("/config-service/api/v1/catalog/5.0.4")
     assert catalog.status_code == 200
     catalog_body = await catalog.get_json()
+    assert "route" in catalog_body["common"]
+    assert catalog_body["common"]["route"]["supported_sections"] == ["inputs"]
     s3_fields = catalog_body["plugins"]["outputs"]["s3"]["fields"]
     net_dns_mode = next(item for item in s3_fields if item["name"] == "net.dns.mode")
     assert net_dns_mode["data_type"] == "enum"
@@ -152,6 +246,23 @@ async def test_health_and_versions() -> None:
     issue_body = await issue_codes.get_json()
     assert "codes" in issue_body
     assert "missing_required_field" in issue_body["codes"]
+
+
+def test_fluent_bit_catalogs_have_no_other_yaml_keyword_plugin_name_conflicts() -> None:
+    base = Path(__file__).resolve().parents[1] / "json-definitions"
+    conflicts: list[tuple[str, str, str]] = []
+    for path in sorted(base.glob("fluent-bit-*-all-plugins-catalog.json")):
+        body = json.loads(path.read_text(encoding="utf-8"))
+        for section, plugins in body.get("plugins", {}).items():
+            for plugin_name in plugins.keys():
+                if plugin_name in YAML_KEYWORD_LITERALS:
+                    conflicts.append((path.name, section, plugin_name))
+
+    assert conflicts == [
+        ("fluent-bit-3.2.10-all-plugins-catalog.json", "outputs", "null"),
+        ("fluent-bit-4.2.4-all-plugins-catalog.json", "outputs", "null"),
+        ("fluent-bit-5.0.4-all-plugins-catalog.json", "outputs", "null"),
+    ]
 
 
 @pytest.mark.asyncio
@@ -206,6 +317,45 @@ async def test_meta_comments_help_page_served() -> None:
 
 
 @pytest.mark.asyncio
+async def test_config_service_help_page_served() -> None:
+    app = create_app(mode="standalone")
+    client = app.test_client()
+    response = await client.get("/config-service/ui/docs/help")
+    assert response.status_code == 200
+    html = (await response.get_data()).decode("utf-8")
+    assert "Config Service Help" in html
+    assert "Main Building Blocks" in html
+    assert "Icon Buttons" in html
+    assert "Color Use" in html
+    assert "Route" in html
+    assert "Processors" in html
+
+
+@pytest.mark.asyncio
+async def test_service_section_meta_help_link_is_rendered() -> None:
+    app = create_app(mode="standalone")
+    client = app.test_client()
+    response = await client.get("/config-service/ui")
+    assert response.status_code == 200
+    html = (await response.get_data()).decode("utf-8")
+    assert 'href="/config-service/ui/docs/meta-comments"' in html
+    assert 'title="Open help for comments and field comments."' in html
+    assert "/config-service/ui/assets/config_editor_icon.png" in html
+
+
+@pytest.mark.asyncio
+async def test_top_level_help_link_is_rendered() -> None:
+    app = create_app(mode="standalone")
+    client = app.test_client()
+    response = await client.get("/config-service/ui")
+    assert response.status_code == 200
+    html = (await response.get_data()).decode("utf-8")
+    assert 'href="/config-service/ui/docs/help"' in html
+    assert 'aria-label="Open UI help in a new tab"' in html
+    assert ">Help</a>" in html
+
+
+@pytest.mark.asyncio
 async def test_ui_routes_disable_cache_in_dev_mode(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("APP_ENABLE_DEV_FEATURES", "1")
     app = create_app(mode="standalone")
@@ -216,6 +366,8 @@ async def test_ui_routes_disable_cache_in_dev_mode(monkeypatch: pytest.MonkeyPat
     assert ui.headers["Cache-Control"] == "no-store, no-cache, must-revalidate, max-age=0"
     html = (await ui.get_data()).decode("utf-8")
     assert "/config-service/ui/assets/config_ui.css?v=" in html
+    assert "/config-service/ui/assets/config_ui_plugins.js?v=" in html
+    assert "/config-service/ui/assets/config_ui_sections.js?v=" in html
     assert "/config-service/ui/assets/config_ui.js?v=" in html
 
     asset = await client.get("/config-service/ui/assets/config_ui.js")
@@ -285,9 +437,311 @@ async def test_schema_includes_meta_comment_support() -> None:
     body = await resp.get_json()
     assert body["ok"] is True
     config_props = body["schema"]["properties"]["config"]["properties"]
+    assert "parsers" in config_props
+    assert config_props["parsers"]["type"] == "array"
     assert "_meta" in body["schema"]["properties"]["config"]["properties"]["pipeline"]["properties"]
     input_items = config_props["pipeline"]["properties"]["inputs"]["items"]["oneOf"]
+    assert any("route" in schema["properties"] for schema in input_items)
     assert any("_meta" in schema["properties"] for schema in input_items)
+
+
+@pytest.mark.asyncio
+async def test_render_yaml_includes_parsers_before_pipeline() -> None:
+    app = create_app(mode="standalone")
+    client = app.test_client()
+
+    payload = {
+        "config": {
+            "service": {},
+            "parsers": [
+                {
+                    "name": "custom_json",
+                    "format": "json",
+                    "time_key": "timestamp",
+                }
+            ],
+            "pipeline": {
+                "inputs": [],
+                "filters": [],
+                "outputs": [],
+            },
+        }
+    }
+
+    response = await client.post(
+        "/config-service/api/v1/render/yaml/5.0.4?config_type=fluentbit",
+        json=payload,
+    )
+    assert response.status_code == 200
+    body = await response.get_json()
+    rendered = body["yaml"]
+    assert "parsers:" in rendered
+    assert "pipeline:" not in rendered
+    assert rendered.index("parsers:") < rendered.index("-\n    name: custom_json")
+
+
+@pytest.mark.asyncio
+async def test_validate_accepts_builtin_and_custom_parser_references() -> None:
+    app = create_app(mode="standalone")
+    client = app.test_client()
+
+    payload = {
+        "config": {
+            "parsers": [
+                {
+                    "name": "app_json",
+                    "format": "json",
+                    "time_key": "timestamp",
+                }
+            ],
+            "pipeline": {
+                "inputs": [
+                    {
+                        "name": "tcp",
+                        "chunk_size": 32,
+                        "parser": "app_json",
+                    },
+                    {
+                        "name": "tcp",
+                        "chunk_size": 32,
+                        "parser": "docker",
+                    },
+                ],
+                "filters": [],
+                "outputs": [{"name": "null"}],
+            },
+        },
+        "profile": "strict",
+    }
+
+    response = await client.post(
+        "/config-service/api/v1/validate/5.0.4?config_type=fluentbit",
+        json=payload,
+    )
+    assert response.status_code == 200
+    body = await response.get_json()
+    assert body["ok"] is True
+    assert body["errors"] == []
+
+
+@pytest.mark.asyncio
+async def test_render_yaml_translates_route_object_to_native_routes_block() -> None:
+    app = create_app(mode="standalone")
+    client = app.test_client()
+
+    payload = {
+        "config": {
+            "pipeline": {
+                "inputs": [
+                    {
+                        "name": "tail",
+                        "path": "/var/log/app.log",
+                        "tag": "app.logs",
+                        "route": {
+                            "per_record_routing": True,
+                            "logs": [
+                                {
+                                    "name": "error_logs",
+                                    "condition": {
+                                        "op": "and",
+                                        "rules": [
+                                            {"context": "body", "field": "$level", "op": "eq", "value": "error"}
+                                        ],
+                                    },
+                                    "to": {"outputs": ["error_destination"]},
+                                }
+                            ],
+                        },
+                    }
+                ],
+                "filters": [],
+                "outputs": [
+                    {"name": "stdout", "alias": "error_destination"}
+                ],
+            }
+        }
+    }
+
+    response = await client.post(
+        "/config-service/api/v1/render/yaml/5.0.4?config_type=fluentbit",
+        json=payload,
+    )
+    assert response.status_code == 200
+    body = await response.get_json()
+    rendered = body["yaml"]
+    assert "route:" not in rendered
+    assert "routes:" in rendered
+    assert "per_record_routing: true" in rendered
+    assert "outputs:" in rendered
+    assert "error_destination" in rendered
+
+
+@pytest.mark.asyncio
+async def test_parse_fluentbit_yaml_maps_native_routes_to_internal_route() -> None:
+    app = create_app(mode="standalone")
+    client = app.test_client()
+
+    yaml_text = """
+pipeline:
+  inputs:
+    - name: tail
+      path: /var/log/app.log
+      tag: app.logs
+      routes:
+        logs:
+          - name: error_logs
+            condition:
+              op: and
+              rules:
+                - field: "$level"
+                  op: eq
+                  value: error
+            to:
+              outputs:
+                - error_destination
+  outputs:
+    - name: stdout
+      alias: error_destination
+""".strip()
+
+    response = await client.post(
+        "/config-service/api/v1/parse/fluentbit/5.0.4",
+        json={"text": yaml_text},
+    )
+    assert response.status_code == 200
+    body = await response.get_json()
+    route = body["config"]["pipeline"]["inputs"][0]["route"]
+    assert "logs" in route
+    assert route["logs"][0]["name"] == "error_logs"
+    assert route["logs"][0]["to"]["outputs"] == ["error_destination"]
+
+
+@pytest.mark.asyncio
+async def test_validate_route_output_reference_and_enablement() -> None:
+    app = create_app(mode="standalone")
+    client = app.test_client()
+
+    payload = {
+        "config": {
+            "pipeline": {
+                "inputs": [
+                    {
+                        "name": "tcp",
+                        "chunk_size": 32,
+                        "route": {
+                            "per_record_routing": False,
+                            "logs": [
+                                {
+                                    "name": "error_logs",
+                                    "condition": {
+                                        "op": "and",
+                                        "rules": [
+                                            {"field": "$level", "op": "eq", "value": "error"}
+                                        ],
+                                    },
+                                    "to": {"outputs": ["missing_destination"]},
+                                }
+                            ],
+                        },
+                    }
+                ],
+                "filters": [],
+                "outputs": [{"name": "null", "alias": "known_destination"}],
+            }
+        },
+        "profile": "strict",
+    }
+
+    response = await client.post(
+        "/config-service/api/v1/validate/5.0.4?config_type=fluentbit",
+        json=payload,
+    )
+    assert response.status_code == 200
+    body = await response.get_json()
+    assert body["ok"] is True
+    codes = {issue["code"] for issue in body["errors"]}
+    severities = {issue["code"]: issue["severity"] for issue in body["errors"]}
+    assert "unknown_route_output_reference" in codes
+    assert "route_not_enabled" in codes
+    assert severities["unknown_route_output_reference"] == "warning"
+    assert severities["route_not_enabled"] == "warning"
+
+
+@pytest.mark.asyncio
+async def test_validate_rejects_unknown_parser_reference_and_duplicate_parser_name() -> None:
+    app = create_app(mode="standalone")
+    client = app.test_client()
+
+    payload = {
+        "config": {
+            "parsers": [
+                {
+                    "name": "dup_parser",
+                    "format": "json",
+                },
+                {
+                    "name": "dup_parser",
+                    "format": "regex",
+                    "regex": "^(?<msg>.*)$",
+                },
+            ],
+            "pipeline": {
+                "inputs": [
+                    {
+                        "name": "tcp",
+                        "chunk_size": 32,
+                        "parser": "missing_parser",
+                    }
+                ],
+                "filters": [],
+                "outputs": [{"name": "null"}],
+            },
+        },
+        "profile": "strict",
+    }
+
+    response = await client.post(
+        "/config-service/api/v1/validate/5.0.4?config_type=fluentbit",
+        json=payload,
+    )
+    assert response.status_code == 200
+    body = await response.get_json()
+    assert body["ok"] is True
+    codes = {issue["code"] for issue in body["errors"]}
+    assert "duplicate_parser_name" in codes
+    assert "unknown_parser_reference" in codes
+    severities = {issue["severity"] for issue in body["errors"]}
+    assert severities == {"warning"}
+
+
+@pytest.mark.asyncio
+async def test_parse_fluentbit_yaml_loads_parsers() -> None:
+    app = create_app(mode="standalone")
+    client = app.test_client()
+
+    yaml_text = """
+parsers:
+  - name: app_json
+    format: json
+    time_key: timestamp
+pipeline:
+  inputs:
+    - name: tcp
+      chunk_size: 32
+      parser: app_json
+  outputs:
+    - name: null
+""".strip()
+
+    response = await client.post(
+        "/config-service/api/v1/parse/fluentbit/5.0.4",
+        json={"text": yaml_text},
+    )
+    assert response.status_code == 200
+    body = await response.get_json()
+    assert body["config"]["parsers"][0]["name"] == "app_json"
+    assert body["config"]["parsers"][0]["format"] == "json"
+    assert body["config"]["pipeline"]["inputs"][0]["parser"] == "app_json"
 
 
 @pytest.mark.asyncio

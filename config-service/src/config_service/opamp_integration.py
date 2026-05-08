@@ -21,6 +21,8 @@ from config_service.routes.api import create_api_blueprint
 from config_service.services.catalog_service import CatalogService
 from config_service.services.fluentbit_yaml_config_service import FluentBitYamlConfigService
 from config_service.services.fluentd_config_service import FluentdConfigService
+from config_service.services.issue_code_service import IssueCodeService
+from config_service.services.parser_definition_service import ParserDefinitionService
 from config_service.services.rule_engine_service import RuleEngineService
 from config_service.services.rules_registry_service import RulesRegistryService
 from config_service.services.schema_service import SchemaService
@@ -39,6 +41,10 @@ def register_config_service_feature(opamp_app: Quart) -> None:
         repo_root / "config" / "service-registry.json"
     )
     service_definition_service.load_all()
+    parser_definition_service = ParserDefinitionService(repo_root / "config" / "parser-registry.json")
+    parser_definition_service.load_all()
+    issue_code_service = IssueCodeService(repo_root / "config" / "issue-code-messages.json")
+    issue_code_service.load()
     rules_registry_service = RulesRegistryService(repo_root / "config" / "validation-rules-registry.json")
     rule_engine_service = RuleEngineService(rules_registry_service)
     validation_service = ValidationService(rule_engine_service)
@@ -47,6 +53,8 @@ def register_config_service_feature(opamp_app: Quart) -> None:
     opamp_app.extensions["config_service:rules_registry_service"] = rules_registry_service
     opamp_app.extensions["config_service:rule_engine_service"] = rule_engine_service
     opamp_app.extensions["config_service:service_definition_service"] = service_definition_service
+    opamp_app.extensions["config_service:parser_definition_service"] = parser_definition_service
+    opamp_app.extensions["config_service:issue_code_service"] = issue_code_service
     opamp_app.extensions["config_service:schema_service"] = SchemaService()
     opamp_app.extensions["config_service:validation_service"] = validation_service
     opamp_app.extensions["config_service:yaml_render_service"] = YamlRenderService()
@@ -58,6 +66,8 @@ def register_config_service_feature(opamp_app: Quart) -> None:
     opamp_app.extensions["rules_registry_service"] = rules_registry_service
     opamp_app.extensions["rule_engine_service"] = rule_engine_service
     opamp_app.extensions["service_definition_service"] = service_definition_service
+    opamp_app.extensions["parser_definition_service"] = parser_definition_service
+    opamp_app.extensions["issue_code_service"] = issue_code_service
     opamp_app.extensions["schema_service"] = SchemaService()
     opamp_app.extensions["validation_service"] = validation_service
     opamp_app.extensions["yaml_render_service"] = YamlRenderService()

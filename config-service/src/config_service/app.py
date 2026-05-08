@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 import sys
 from pathlib import Path
@@ -25,6 +26,7 @@ from config_service.auth_integration import evaluate_ui_http_auth
 from config_service.routes.api import create_api_blueprint
 from config_service.runtime_config import (
     ENV_CONFIG_TOOL_CONFIG_PATH,
+    resolve_log_level_name,
     resolve_read_only,
     resolve_ui_base_css_path,
     resolve_ui_css_overrides,
@@ -34,6 +36,7 @@ from config_service.services.catalog_service import CatalogService
 from config_service.services.fluentbit_yaml_config_service import FluentBitYamlConfigService
 from config_service.services.fluentd_config_service import FluentdConfigService
 from config_service.services.issue_code_service import IssueCodeService
+from config_service.services.parser_definition_service import ParserDefinitionService
 from config_service.services.rule_engine_service import RuleEngineService
 from config_service.services.rules_registry_service import RulesRegistryService
 from config_service.services.schema_service import SchemaService
@@ -105,10 +108,22 @@ def _append_suffix(url: str, suffix: str) -> str:
     return url + joiner + suffix.lstrip("?")
 
 
+def _configure_logging() -> None:
+    level_name = resolve_log_level_name()
+    level = getattr(logging, level_name, logging.INFO)
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        force=True,
+    )
+
+
 def create_app(*, mode: str = "standalone") -> Quart:
+    _configure_logging()
     app = Quart(__name__)
     app.config["CONFIG_SERVICE_MODE"] = mode
     app.config["CONFIG_SERVICE_READ_ONLY"] = resolve_read_only()
+    app.logger.setLevel(getattr(logging, resolve_log_level_name(), logging.INFO))
 
     repo_root = _config_service_root()
     provider_src = repo_root.parent / "provider" / "src"
@@ -117,6 +132,7 @@ def create_app(*, mode: str = "standalone") -> Quart:
 
     catalog_registry_path = repo_root / "config" / "catalog-registry.json"
     service_registry_path = repo_root / "config" / "service-registry.json"
+    parser_registry_path = repo_root / "config" / "parser-registry.json"
     issue_codes_path = repo_root / "config" / "issue-code-messages.json"
     rules_registry_path = repo_root / "config" / "validation-rules-registry.json"
 
@@ -124,6 +140,8 @@ def create_app(*, mode: str = "standalone") -> Quart:
     catalog_service.load_all_catalogs()
     service_definition_service = ServiceDefinitionService(service_registry_path)
     service_definition_service.load_all()
+    parser_definition_service = ParserDefinitionService(parser_registry_path)
+    parser_definition_service.load_all()
     issue_code_service = IssueCodeService(issue_codes_path)
     issue_code_service.load()
 
@@ -135,6 +153,7 @@ def create_app(*, mode: str = "standalone") -> Quart:
     app.extensions["rules_registry_service"] = rules_registry_service
     app.extensions["rule_engine_service"] = rule_engine_service
     app.extensions["service_definition_service"] = service_definition_service
+    app.extensions["parser_definition_service"] = parser_definition_service
     app.extensions["issue_code_service"] = issue_code_service
     app.extensions["schema_service"] = SchemaService()
     app.extensions["validation_service"] = validation_service
@@ -188,6 +207,24 @@ def create_app(*, mode: str = "standalone") -> Quart:
         base_css_path = resolve_ui_base_css_path()
         asset_suffix = _asset_suffix()
         html_template = (html_dir / "meta_comments_help.html").read_text(encoding="utf-8")
+        rendered = html_template.replace(
+            "__CONFIG_SERVICE_UI_BASE_CSS_PATH__",
+            _append_suffix(base_css_path, asset_suffix),
+        )
+        rendered = rendered.replace(
+            "__CONFIG_SERVICE_UI_ASSET_SUFFIX__",
+            asset_suffix,
+        )
+        response = Response(rendered, mimetype="text/html")
+        if _app_enable_dev_features_enabled():
+            return _apply_no_cache_headers(response)
+        return response
+
+    @app.get("/config-service/ui/docs/help")
+    async def config_service_ui_help() -> Response:
+        base_css_path = resolve_ui_base_css_path()
+        asset_suffix = _asset_suffix()
+        html_template = (html_dir / "config_ui_help.html").read_text(encoding="utf-8")
         rendered = html_template.replace(
             "__CONFIG_SERVICE_UI_BASE_CSS_PATH__",
             _append_suffix(base_css_path, asset_suffix),

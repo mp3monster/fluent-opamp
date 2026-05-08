@@ -12,11 +12,32 @@ class YamlRenderService:
         payload: dict[str, Any],
         include_comments: bool = False,
     ) -> str:
-        config = self._prune_optional_empty_sections(payload.get("config", {}), path="$")
+        normalized = self._normalize_fluentbit_route_blocks(payload.get("config", {}), path="$")
+        config = self._prune_optional_empty_sections(normalized, path="$")
         annotations = payload.get("annotations", {}) if include_comments else {}
         lines: list[str] = []
         self._emit_yaml(config, lines, indent=0, path="$", annotations=annotations)
         return "\n".join(lines) + "\n"
+
+    def _normalize_fluentbit_route_blocks(self, value: Any, *, path: str) -> Any:
+        if isinstance(value, dict):
+            result: dict[str, Any] = {}
+            for key, item in value.items():
+                output_key = key
+                if (
+                    key == "route"
+                    and path.startswith("$.pipeline.inputs[")
+                ):
+                    output_key = "routes"
+                child_path = f"{path}.{key}" if path != "$" else f"$.{key}"
+                result[output_key] = self._normalize_fluentbit_route_blocks(item, path=child_path)
+            return result
+        if isinstance(value, list):
+            return [
+                self._normalize_fluentbit_route_blocks(item, path=f"{path}[{index}]")
+                for index, item in enumerate(value)
+            ]
+        return value
 
     def _prune_optional_empty_sections(self, value: Any, *, path: str) -> Any:
         if isinstance(value, dict):
@@ -39,6 +60,8 @@ class YamlRenderService:
     def _should_skip_empty(*, path: str, key: str, value: Any) -> bool:
         if key == "service" and path == "$":
             return isinstance(value, dict) and YamlRenderService._dict_without_meta_is_empty(value)
+        if key == "parsers" and path == "$":
+            return isinstance(value, list) and len(value) == 0
         if key in {"inputs", "filters", "outputs"} and path == "$.pipeline":
             return isinstance(value, list) and len(value) == 0
         if key == "pipeline" and path == "$":
@@ -107,7 +130,7 @@ class YamlRenderService:
         if isinstance(value, dict):
             keys = [key for key in value.keys() if key != "_meta"]
             if path == "$":
-                preferred = ["service", "pipeline"]
+                preferred = ["service", "parsers", "pipeline"]
                 ordered = [key for key in preferred if key in value]
                 ordered.extend([key for key in keys if key not in ordered])
                 keys = ordered
