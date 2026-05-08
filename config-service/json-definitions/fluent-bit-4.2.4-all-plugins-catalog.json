@@ -441,7 +441,8 @@
             "description": "Specify the name of a parser to interpret the entry as a structured message.",
             "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/docker-events#configuration-parameters",
             "data_type": "string",
-            "validation_rule": null
+            "validation_rule": null,
+            "references_parser": true
           },
           {
             "name": "reconnect.retry_interval",
@@ -1037,7 +1038,8 @@
             "description": "Specify the name of a parser to interpret the entry as a structured message.",
             "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/exec#configuration-parameters",
             "data_type": "string",
-            "validation_rule": null
+            "validation_rule": null,
+            "references_parser": true
           },
           {
             "name": "propagate_exit_code",
@@ -1142,7 +1144,8 @@
             "description": "Specify the name of a parser to interpret the entry as a structured message.",
             "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/exec-wasi#configuration-parameters",
             "data_type": "string",
-            "validation_rule": null
+            "validation_rule": null,
+            "references_parser": true
           },
           {
             "name": "threaded",
@@ -4605,7 +4608,8 @@
             "description": "The name of the parser to invoke instead of the default JSON input parser.",
             "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/standard-input#configuration-parameters",
             "data_type": "string",
-            "validation_rule": null
+            "validation_rule": null,
+            "references_parser": true
           },
           {
             "name": "threaded",
@@ -4747,7 +4751,8 @@
             "description": "Specify an alternative parser for the message.",
             "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/syslog#configuration-parameters",
             "data_type": "string",
-            "validation_rule": null
+            "validation_rule": null,
+            "references_parser": true
           },
           {
             "name": "path",
@@ -5073,7 +5078,8 @@
             "description": "Specify an optional parser for the first line of the Docker multiline mode.",
             "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/tail#configuration-parameters",
             "data_type": "string",
-            "validation_rule": null
+            "validation_rule": null,
+            "references_parser": true
           },
           {
             "name": "event_batch_size",
@@ -5192,7 +5198,8 @@
             "description": "Specify the name of a parser to interpret the entry as a structured message.",
             "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/tail#configuration-parameters",
             "data_type": "string",
-            "validation_rule": null
+            "validation_rule": null,
+            "references_parser": true
           },
           {
             "name": "path",
@@ -5464,7 +5471,8 @@
             "description": "Optional [parser](/manual/4.2/data-pipeline/parsers.md) for line-delimited records.",
             "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/tcp#configuration-parameters",
             "data_type": "string",
-            "validation_rule": null
+            "validation_rule": null,
+            "references_parser": true
           },
           {
             "name": "port",
@@ -5642,7 +5650,8 @@
             "description": "Optional [parser](/manual/4.2/data-pipeline/parsers.md) for line-delimited records.",
             "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/udp#configuration-parameters",
             "data_type": "string",
-            "validation_rule": null
+            "validation_rule": null,
+            "references_parser": true
           },
           {
             "name": "port",
@@ -7106,7 +7115,8 @@
             "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/kubernetes#configuration-parameters",
             "default": "Off",
             "data_type": "string",
-            "validation_rule": null
+            "validation_rule": null,
+            "references_parser": true
           },
           {
             "name": "keep_log",
@@ -7285,7 +7295,8 @@
             "description": "Optional parser name to specify how to parse the data contained in the log key.",
             "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/kubernetes#configuration-parameters",
             "data_type": "string",
-            "validation_rule": null
+            "validation_rule": null,
+            "references_parser": true
           },
           {
             "name": "namespace_annotations",
@@ -7331,7 +7342,8 @@
             "data_type": "string",
             "validation_rule": {
               "kind": "regex_string"
-            }
+            },
+            "references_parser": true
           },
           {
             "name": "set_platform",
@@ -8083,7 +8095,8 @@
             "description": "Specify the parser name to interpret the field.",
             "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/parser#configuration-parameters",
             "data_type": "string",
-            "validation_rule": null
+            "validation_rule": null,
+            "references_parser": true
           },
           {
             "name": "preserve_key",
