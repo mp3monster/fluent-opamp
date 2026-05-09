@@ -10,8 +10,14 @@ On load, the UI will:
 2. Create new configuration
 3. Save the current configuration
 4. Save the current configuration to a new file via `Save As`
-5. Choose configuration type
-6. Choose configuration version
+5. Open the top-level `Help` page in a separate browser tab
+6. Choose configuration type
+7. Choose configuration version
+
+## Built-in help
+1. The top-right `Help` button opens a bundled in-application guide.
+2. The guide explains the major editor panels, nested blocks such as parsers, processors, and routes, and the meaning of icon buttons and color states.
+3. Field-level `?` buttons still open documentation for the specific service option, parser format, plugin, processor, or attribute they sit beside.
 
 ## Save behavior
 1. `New Configuration` clears the current open-file display.
@@ -30,6 +36,24 @@ On load, the UI will:
 4. The message bar will say when the file loaded with problems.
 5. Empty files are rejected as load errors and are not treated as valid configurations.
 
+## Parser panel placement
+For Fluent Bit, the `Parsers` panel appears immediately before `Add Plugin`.
+
+## Parser configuration
+Use the `Parsers` panel to define reusable Fluent Bit parsers:
+1. Expand or collapse the whole panel
+2. Choose a parser format (`json`, `regex`, `ltsv`, `logfmt`, and others defined for the selected version)
+3. Enter a parser name
+4. Click `Add Parser`
+5. Expand the parser card to edit required and optional parser attributes
+
+Validation behavior:
+1. Input plugin fields that reference parsers are matched against:
+   1. parsers defined in the `Parsers` panel
+   2. known built-in Fluent Bit parser names for the selected version
+2. Unknown parser references are shown as validation errors.
+3. Duplicate custom parser names are shown as validation errors.
+
 ## Add plugin configuration
 Use the `Add Plugin` controls:
 1. Select section (`inputs`, `filters`, `outputs`)
@@ -37,6 +61,22 @@ Use the `Add Plugin` controls:
 3. Click `Add Plugin`
 
 The editor displays a single plugin list view (not separate columns). Each plugin card still retains its pipeline section type.
+
+## Fluent Bit route panel
+For Fluent Bit 4.2+ input plugins, plugin cards can expose a nested `Route` panel.
+
+Within that frame you can:
+1. Add or remove the route block for the selected input
+2. Enable or disable `per_record_routing`
+3. Add route entries under signal groupings such as `logs`
+4. Define route conditions with one or more rules
+5. Choose one or more output names or aliases as destinations
+
+Notes:
+1. The editor stores this block internally as `route`.
+2. Native Fluent Bit YAML is rendered back as `routes`.
+3. Route-output matching is validated against configured output names and aliases where practical.
+4. `metrics` and `traces` route groups are surfaced, but Fluent Bit currently parses them without fully evaluating them.
 
 ## Fluent Bit processors
 For Fluent Bit `inputs` and `outputs`, plugin cards now include a nested `Processors` frame.
@@ -89,7 +129,12 @@ The UI includes a `Service Section` panel to manage top-level service settings:
 2. `Render Configuration` renders:
    - YAML for Fluent Bit
    - standard `.conf` text for Fluentd
-3. If the configuration changes after a successful render, the rendered output is highlighted until it is rendered again.
+3. The Validation panel includes an `Include loaded files` toggle.
+4. When enabled, validation sends any include documents already loaded into memory and asks the backend to merge them temporarily for validation only.
+5. If no include documents are loaded, the UI leaves the current document unchanged and shows a status message to make that clear.
+6. If the configuration changes after a successful render, the rendered output is highlighted until it is rendered again.
+7. When a configuration was loaded from a source file and the original source positions are still trustworthy, validation issues also show the corresponding source line number.
+8. After the configuration is edited in the UI, source-line hints are cleared so stale line numbers are not shown.
 
 ## Developer-only reload
 `Reload UI` button appears only when `APP_ENABLE_DEV_FEATURES` is enabled on the backend.
@@ -101,18 +146,12 @@ When backend read-only mode is enabled:
 3. Open file, validate, render, expand/collapse, and documentation help remain available.
 
 ## Notes on comments/annotations
-- The preferred comment model is now object-local metadata:
-  - `_meta.comment_lines`
-  - `_meta.field_comment_lines`
 - Comments are optional and can be included in YAML output if enabled.
 - The UI exposes comment editors for:
-  - the service block
-  - individual service fields
   - plugin cards
   - plugin attribute rows
 - Comment editors are opened from the right-hand notepad button on the related entity instead of always being shown inline.
-- The `_meta` question-mark button opens the bundled in-application help page that explains the metadata structure and rendering behavior.
-- Legacy `annotations` maps are migrated into `_meta` when older JSON documents are loaded.
+- Legacy `annotations` maps are migrated into the current internal comment metadata structure when older JSON documents are loaded.
 
 ## Current Fluentd UI scope
 Supported today:

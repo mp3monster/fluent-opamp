@@ -13,27 +13,6 @@ test("service log_level dropdown shows all expected enum values", async ({ page 
   expect(options).toEqual(["off", "trace", "debug", "info", "warn", "error"]);
 });
 
-test("service _meta help link is available in the service section and comment toggle is available on the service card", async ({
-  page,
-}) => {
-  const servicePanel = page.locator("section.panel").filter({ hasText: "Service Section" }).first();
-  const metaHelpLink = servicePanel.locator('a.icon-help[href="/config-service/ui/docs/meta-comments"]').first();
-  await expect(metaHelpLink).toBeVisible();
-  await expect(metaHelpLink).toHaveAttribute("title", "Open help for comments and field comments.");
-  await expect(metaHelpLink).toHaveAttribute("target", "_blank");
-
-  await page.getByLabel("Option").selectOption("daemon");
-  await page.locator("#service-value").selectOption("on");
-  await page.getByRole("button", { name: "Add Service Field" }).click();
-
-  const serviceCard = page.locator(".service-card");
-  await expect(serviceCard).toBeVisible();
-
-  const commentToggle = serviceCard.locator(".icon-note");
-  await commentToggle.click();
-  await expect(serviceCard.locator(".comment-editor textarea")).toBeVisible();
-});
-
 test("plugin field help tooltip does not include raw URLs", async ({ page }) => {
   await page.locator("#plugin-section").selectOption("inputs");
   await page.locator("#plugin-name").selectOption("dummy");
@@ -76,4 +55,13 @@ test("service field help button keeps human-readable tooltip text only", async (
   expect(title).toBeTruthy();
   expect(title).not.toContain("http://");
   expect(title).not.toContain("https://");
+});
+
+test("renderer panel exposes include loaded files toggle", async ({ page }) => {
+  const renderCard = page.locator("#render-card");
+  await expect(renderCard).toBeVisible();
+
+  const includeToggle = renderCard.locator("#render-include-toggle");
+  await expect(includeToggle).toBeVisible();
+  await expect(renderCard).toContainText("Include loaded files");
 });

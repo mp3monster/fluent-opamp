@@ -36,3 +36,12 @@ PYTHONPATH=config-service/src python3 -m config_service --config-path config-ser
 ## Verify service health
 - Backend: `http://localhost:8080/config-service/api/v1/health`
 - UI: `http://localhost:8080/config-service/ui`
+
+## Run browser UI behavior tests
+From repository root:
+
+```bash
+config-service/dev-tools/run_ui_quality_checks.sh
+```
+
+This runs the Playwright suite against the Python-served UI on port `8091`.

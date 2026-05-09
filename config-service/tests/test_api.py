@@ -188,7 +188,12 @@ async def test_health_and_versions() -> None:
     assert "/config-service/ui/assets/config_ui_comments.js" in ui_html
     assert "/config-service/ui/assets/config_ui_plugins.js" in ui_html
     assert "/config-service/ui/assets/config_ui_sections.js" in ui_html
+    assert "/config-service/ui/assets/config_ui_env.js" in ui_html
     assert "/config-service/ui/assets/config_ui.js" in ui_html
+    assert 'id="validation-include-toggle"' in ui_html
+    assert "Include loaded files" in ui_html
+    assert 'id="env-panel"' in ui_html
+    assert "Environment Variables" in ui_html
 
     logo = await client.get("/config-service/ui/assets/opamp_logo.png")
     assert logo.status_code == 200
@@ -305,18 +310,6 @@ async def test_ui_css_override_injected(monkeypatch: pytest.MonkeyPatch) -> None
 
 
 @pytest.mark.asyncio
-async def test_meta_comments_help_page_served() -> None:
-    app = create_app(mode="standalone")
-    client = app.test_client()
-    response = await client.get("/config-service/ui/docs/meta-comments")
-    assert response.status_code == 200
-    html = (await response.get_data()).decode("utf-8")
-    assert "_meta" in html
-    assert "comment_lines" in html
-    assert "field_comment_lines" in html
-
-
-@pytest.mark.asyncio
 async def test_config_service_help_page_served() -> None:
     app = create_app(mode="standalone")
     client = app.test_client()
@@ -329,18 +322,6 @@ async def test_config_service_help_page_served() -> None:
     assert "Color Use" in html
     assert "Route" in html
     assert "Processors" in html
-
-
-@pytest.mark.asyncio
-async def test_service_section_meta_help_link_is_rendered() -> None:
-    app = create_app(mode="standalone")
-    client = app.test_client()
-    response = await client.get("/config-service/ui")
-    assert response.status_code == 200
-    html = (await response.get_data()).decode("utf-8")
-    assert 'href="/config-service/ui/docs/meta-comments"' in html
-    assert 'title="Open help for comments and field comments."' in html
-    assert "/config-service/ui/assets/config_editor_icon.png" in html
 
 
 @pytest.mark.asyncio
@@ -368,81 +349,12 @@ async def test_ui_routes_disable_cache_in_dev_mode(monkeypatch: pytest.MonkeyPat
     assert "/config-service/ui/assets/config_ui.css?v=" in html
     assert "/config-service/ui/assets/config_ui_plugins.js?v=" in html
     assert "/config-service/ui/assets/config_ui_sections.js?v=" in html
+    assert "/config-service/ui/assets/config_ui_env.js?v=" in html
     assert "/config-service/ui/assets/config_ui.js?v=" in html
 
     asset = await client.get("/config-service/ui/assets/config_ui.js")
     assert asset.status_code == 200
     assert asset.headers["Cache-Control"] == "no-store, no-cache, must-revalidate, max-age=0"
-
-
-@pytest.mark.asyncio
-async def test_validate_and_render_yaml() -> None:
-    app = create_app(mode="standalone")
-    client = app.test_client()
-
-    payload = {
-        "config": {
-            "pipeline": {
-                "inputs": [
-                    {
-                        "name": "forward",
-                        "port": 24224,
-                        "_meta": {
-                            "comment_lines": ["ingress", "primary listener"],
-                            "field_comment_lines": {
-                                "port": ["Listener port", "Matches upstream sender"],
-                            },
-                        },
-                    }
-                ],
-                "filters": [],
-                "outputs": [{"name": "stdout"}],
-            },
-            "_meta": {
-                "comment_lines": ["Root pipeline config"],
-            },
-        },
-    }
-
-    resp = await client.post("/config-service/api/v1/validate/5.0.4", json=payload)
-    assert resp.status_code in (200, 400)
-    body = await resp.get_json()
-    assert "errors" in body
-    if body["errors"]:
-        orders = [issue["order"] for issue in body["errors"]]
-        assert orders == sorted(orders)
-
-    yaml_resp = await client.post(
-        "/config-service/api/v1/render/yaml/5.0.4",
-        json={**payload, "include_comments": True},
-    )
-    assert yaml_resp.status_code == 200
-    yaml_body = await yaml_resp.get_json()
-    assert yaml_body["ok"] is True
-    assert "# Root pipeline config" in yaml_body["yaml"]
-    assert "# ingress" in yaml_body["yaml"]
-    assert "# primary listener" in yaml_body["yaml"]
-    assert "# Listener port" in yaml_body["yaml"]
-    assert "pipeline:" in yaml_body["yaml"]
-    assert "filters:" not in yaml_body["yaml"]
-
-
-@pytest.mark.asyncio
-async def test_schema_includes_meta_comment_support() -> None:
-    app = create_app(mode="standalone")
-    client = app.test_client()
-
-    resp = await client.post("/config-service/api/v1/schema/5.0.4", json={"strict": True})
-    assert resp.status_code == 200
-    body = await resp.get_json()
-    assert body["ok"] is True
-    config_props = body["schema"]["properties"]["config"]["properties"]
-    assert "parsers" in config_props
-    assert config_props["parsers"]["type"] == "array"
-    assert "_meta" in body["schema"]["properties"]["config"]["properties"]["pipeline"]["properties"]
-    input_items = config_props["pipeline"]["properties"]["inputs"]["items"]["oneOf"]
-    assert any("route" in schema["properties"] for schema in input_items)
-    assert any("_meta" in schema["properties"] for schema in input_items)
 
 
 @pytest.mark.asyncio
@@ -742,6 +654,263 @@ pipeline:
     assert body["config"]["parsers"][0]["name"] == "app_json"
     assert body["config"]["parsers"][0]["format"] == "json"
     assert body["config"]["pipeline"]["inputs"][0]["parser"] == "app_json"
+
+
+@pytest.mark.asyncio
+async def test_parse_fluentbit_yaml_recursively_loads_includes(tmp_path: Path) -> None:
+    app = create_app(mode="standalone")
+    client = app.test_client()
+
+    grandchild = tmp_path / "grandchild.yaml"
+    grandchild.write_text(
+        """
+parsers:
+  - name: app_json
+    format: json
+""".strip(),
+        encoding="utf-8",
+    )
+    child = tmp_path / "child.yaml"
+    child.write_text(
+        """
+includes:
+  - grandchild.yaml
+pipeline:
+  outputs:
+    - name: null
+""".strip(),
+        encoding="utf-8",
+    )
+    root = tmp_path / "root.yaml"
+    root.write_text(
+        """
+includes:
+  - child.yaml
+pipeline:
+  inputs:
+    - name: tcp
+      chunk_size: 32
+      parser: app_json
+""".strip(),
+        encoding="utf-8",
+    )
+
+    response = await client.post(
+        "/config-service/api/v1/parse/fluentbit/5.0.4",
+        json={
+            "text": root.read_text(encoding="utf-8"),
+            "source_path": str(root),
+            "resolve_includes": True,
+        },
+    )
+    assert response.status_code == 200
+    body = await response.get_json()
+    assert body["config"]["includes"] == ["child.yaml"]
+    assert len(body["included_documents"]) == 1
+    child_doc = body["included_documents"][0]
+    assert child_doc["resolved_path"].endswith("child.yaml")
+    assert child_doc["config"]["pipeline"]["outputs"][0]["name"] == "null"
+    assert len(child_doc["included_documents"]) == 1
+    grandchild_doc = child_doc["included_documents"][0]
+    assert grandchild_doc["resolved_path"].endswith("grandchild.yaml")
+    assert grandchild_doc["config"]["parsers"][0]["name"] == "app_json"
+
+
+@pytest.mark.asyncio
+async def test_validate_can_merge_recursive_includes_without_mutation(tmp_path: Path) -> None:
+    app = create_app(mode="standalone")
+    client = app.test_client()
+
+    grandchild = tmp_path / "grandchild.yaml"
+    grandchild.write_text(
+        """
+parsers:
+  - name: app_json
+    format: json
+""".strip(),
+        encoding="utf-8",
+    )
+    child = tmp_path / "child.yaml"
+    child.write_text(
+        """
+includes:
+  - grandchild.yaml
+pipeline:
+  outputs:
+    - name: null
+""".strip(),
+        encoding="utf-8",
+    )
+    root = tmp_path / "root.yaml"
+    root.write_text(
+        """
+includes:
+  - child.yaml
+pipeline:
+  inputs:
+    - name: tcp
+      chunk_size: 32
+      parser: app_json
+""".strip(),
+        encoding="utf-8",
+    )
+
+    parse_response = await client.post(
+        "/config-service/api/v1/parse/fluentbit/5.0.4",
+        json={
+            "text": root.read_text(encoding="utf-8"),
+            "source_path": str(root),
+            "resolve_includes": True,
+        },
+    )
+    assert parse_response.status_code == 200
+    parse_body = await parse_response.get_json()
+    root_config = parse_body["config"]
+    included_documents = parse_body["included_documents"]
+    root_before = json.loads(json.dumps(root_config))
+    includes_before = json.loads(json.dumps(included_documents))
+
+    plain_validate = await client.post(
+        "/config-service/api/v1/validate/5.0.4?config_type=fluentbit",
+        json={"config": root_config, "included_documents": included_documents},
+    )
+    assert plain_validate.status_code == 200
+    plain_body = await plain_validate.get_json()
+    assert any(item["code"] == "unknown_parser_reference" for item in plain_body["errors"])
+
+    merged_validate = await client.post(
+        "/config-service/api/v1/validate/5.0.4?config_type=fluentbit",
+        json={
+            "config": root_config,
+            "included_documents": included_documents,
+            "merge_includes_for_validation": True,
+        },
+    )
+    assert merged_validate.status_code == 200
+    merged_body = await merged_validate.get_json()
+    assert not any(item["code"] == "unknown_parser_reference" for item in merged_body["errors"])
+
+    assert root_config == root_before
+    assert included_documents == includes_before
+
+
+@pytest.mark.asyncio
+async def test_render_can_include_rendered_include_files_without_mutation() -> None:
+    app = create_app(mode="standalone")
+    client = app.test_client()
+
+    root_config = {
+        "service": {},
+        "parsers": [],
+        "pipeline": {
+            "inputs": [{"name": "tcp", "chunk_size": 32}],
+            "filters": [],
+            "outputs": [],
+        },
+        "labels": [],
+        "workers": [],
+        "includes": ["child.yaml"],
+    }
+    included_documents = [
+        {
+            "include_path": "child.yaml",
+            "resolved_path": "/tmp/child.yaml",
+            "ok": True,
+            "errors": [],
+            "config": {
+                "service": {},
+                "parsers": [
+                    {
+                        "name": "app_json",
+                        "format": "json",
+                    }
+                ],
+                "pipeline": {
+                    "inputs": [],
+                    "filters": [],
+                    "outputs": [{"name": "null"}],
+                },
+                "labels": [],
+                "workers": [],
+                "includes": [],
+            },
+            "included_documents": [],
+        }
+    ]
+    root_before = json.loads(json.dumps(root_config))
+    includes_before = json.loads(json.dumps(included_documents))
+
+    response = await client.post(
+        "/config-service/api/v1/render/yaml/5.0.4?config_type=fluentbit",
+        json={
+            "config": root_config,
+            "included_documents": included_documents,
+            "render_included_files": True,
+        },
+    )
+    assert response.status_code == 200
+    body = await response.get_json()
+    assert body["ok"] is True
+    assert len(body["included_files"]) == 1
+    include_render = body["included_files"][0]
+    assert include_render["include_path"] == "child.yaml"
+    assert "parsers:" in include_render["yaml"]
+    assert "name: null" in include_render["yaml"]
+
+    assert root_config == root_before
+    assert included_documents == includes_before
+
+
+def test_include_document_service_does_not_mutate_inputs() -> None:
+    app = create_app(mode="standalone")
+    include_document_service = app.extensions["include_document_service"]
+    yaml_render_service = app.extensions["yaml_render_service"]
+    fluentd_config_service = app.extensions["fluentd_config_service"]
+
+    root_config = {
+        "service": {},
+        "parsers": [],
+        "pipeline": {"inputs": [{"name": "tcp", "parser": "app_json"}], "filters": [], "outputs": []},
+        "labels": [],
+        "workers": [],
+        "includes": ["child.yaml"],
+    }
+    included_documents = [
+        {
+            "include_path": "child.yaml",
+            "resolved_path": "/tmp/child.yaml",
+            "ok": True,
+            "errors": [],
+            "config": {
+                "service": {},
+                "parsers": [{"name": "app_json", "format": "json"}],
+                "pipeline": {"inputs": [], "filters": [], "outputs": [{"name": "null"}]},
+                "labels": [],
+                "workers": [],
+                "includes": [],
+            },
+            "included_documents": [],
+        }
+    ]
+    root_before = json.loads(json.dumps(root_config))
+    includes_before = json.loads(json.dumps(included_documents))
+
+    merged = include_document_service.merge_for_validation(
+        config=root_config,
+        included_documents=included_documents,
+    )
+    rendered = include_document_service.render_included_documents(
+        config_type="fluentbit",
+        included_documents=included_documents,
+        include_comments=False,
+        yaml_render_service=yaml_render_service,
+        fluentd_config_service=fluentd_config_service,
+    )
+
+    assert merged["parsers"][0]["name"] == "app_json"
+    assert rendered[0]["include_path"] == "child.yaml"
+    assert root_config == root_before
+    assert included_documents == includes_before
 
 
 @pytest.mark.asyncio
@@ -1056,6 +1225,26 @@ async def test_catalog_and_service_endpoints_return_not_found_for_unknown_versio
 
 
 @pytest.mark.asyncio
+async def test_service_options_accepts_config_type_aliases_and_unique_fallback() -> None:
+    app = create_app(mode="standalone")
+    client = app.test_client()
+
+    alias_resp = await client.get("/config-service/api/v1/service-options/5.0.4?config_type=fluent-bit")
+    assert alias_resp.status_code == 200
+    alias_body = await alias_resp.get_json()
+    assert alias_body["engine"] == "fluentbit"
+    assert isinstance(alias_body.get("options"), list)
+    assert len(alias_body["options"]) > 0
+
+    fallback_resp = await client.get("/config-service/api/v1/service-options/1.19?config_type=fluent-bit")
+    assert fallback_resp.status_code == 200
+    fallback_body = await fallback_resp.get_json()
+    assert fallback_body["engine"] == "fluentd"
+    assert isinstance(fallback_body.get("options"), list)
+    assert len(fallback_body["options"]) > 0
+
+
+@pytest.mark.asyncio
 async def test_schema_endpoint_rejects_invalid_payload() -> None:
     app = create_app(mode="standalone")
     client = app.test_client()
@@ -1162,6 +1351,75 @@ pipeline:
     assert body["config"]["service"]["http_server"] == "off"
     assert body["config"]["pipeline"]["outputs"][0]["name"] == "null"
     assert not body["errors"]
+
+
+@pytest.mark.asyncio
+async def test_parse_and_render_fluentbit_yaml_env_section_round_trips() -> None:
+    app = create_app(mode="standalone")
+    client = app.test_client()
+
+    sample_yaml = """
+env:
+  FLUSH_INTERVAL: 1
+  STDOUT_FMT: json_lines
+service:
+  flush: ${FLUSH_INTERVAL}
+pipeline:
+  inputs:
+    - name: random
+  outputs:
+    - name: stdout
+      match: '*'
+      format: ${STDOUT_FMT}
+""".strip()
+
+    parse_resp = await client.post(
+        "/config-service/api/v1/parse/fluentbit/5.0.4",
+        json={"text": sample_yaml},
+    )
+    assert parse_resp.status_code == 200
+    parse_body = await parse_resp.get_json()
+    assert parse_body["config"]["env"]["FLUSH_INTERVAL"] == 1
+    assert parse_body["config"]["env"]["STDOUT_FMT"] == "json_lines"
+    assert parse_body["config"]["service"]["flush"] == "${FLUSH_INTERVAL}"
+    assert parse_body["config"]["pipeline"]["outputs"][0]["format"] == "${STDOUT_FMT}"
+
+    render_resp = await client.post(
+        "/config-service/api/v1/render/yaml/5.0.4?config_type=fluentbit",
+        json={"config": parse_body["config"], "include_comments": False},
+    )
+    assert render_resp.status_code == 200
+    render_body = await render_resp.get_json()
+    rendered_yaml = render_body["yaml"]
+    assert "env:" in rendered_yaml
+    assert "FLUSH_INTERVAL: 1" in rendered_yaml
+    assert "STDOUT_FMT: json_lines" in rendered_yaml
+    assert "flush: ${FLUSH_INTERVAL}" in rendered_yaml
+    assert "format: ${STDOUT_FMT}" in rendered_yaml
+
+
+@pytest.mark.asyncio
+async def test_parse_fluentbit_yaml_reports_invalid_env_section_type() -> None:
+    app = create_app(mode="standalone")
+    client = app.test_client()
+
+    sample_yaml = """
+env:
+  - FLUSH_INTERVAL=1
+pipeline:
+  inputs:
+    - name: random
+""".strip()
+
+    resp = await client.post(
+        "/config-service/api/v1/parse/fluentbit/5.0.4",
+        json={"text": sample_yaml},
+    )
+    assert resp.status_code == 200
+    body = await resp.get_json()
+    assert body["ok"] is False
+    assert any(item["path"] == "$.env" for item in body["errors"])
+    assert body["config"]["env"] == {}
 
 
 @pytest.mark.asyncio

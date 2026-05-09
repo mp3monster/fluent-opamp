@@ -11,6 +11,7 @@
 - Catalog registry: `config-service/config/catalog-registry.json`
 - Validation registry: `config-service/config/validation-rules-registry.json`
 - Service registry: `config-service/config/service-registry.json`
+- Parser registry: `config-service/config/parser-registry.json`
 
 ## Environment variables
 - `CONFIG_TOOL_CONFIG_PATH`
@@ -19,6 +20,9 @@
 - `CONFIG_SERVICE_WEB_PORT`
   - Optional integer override for the config-service listen port.
   - Takes precedence over JSON file settings.
+- `CONFIG_TOOL_LOG_LEVEL`
+  - Optional standalone Python logging level override.
+  - Useful for forcing `DEBUG` during local development.
 - `CONFIG_SERVICE_UI_BASE_CSS_PATH`
   - Optional URL/path override for the primary UI stylesheet.
   - Takes precedence over JSON file settings.
@@ -102,6 +106,34 @@ Rules:
    2. `cardinality.maximum: 1`
    3. `options[]` metadata for UI and validation typing.
 
+## Parser registry format
+Path: `config-service/config/parser-registry.json`
+
+Example:
+```json
+{
+  "registry_version": "1.0.0",
+  "default_versions": {
+    "fluentbit": "5.0.4"
+  },
+  "parser_definitions_by_type": {
+    "fluentbit": {
+      "3.2.10": "config-service/json-definitions/fluent-bit-3.2.10-parser-options.json",
+      "4.2.4": "config-service/json-definitions/fluent-bit-4.2.4-parser-options.json",
+      "5.0.4": "config-service/json-definitions/fluent-bit-5.0.4-parser-options.json"
+    }
+  }
+}
+```
+
+Rules:
+1. `parser_definitions_by_type` must be a non-empty object.
+2. Each engine key must map to a non-empty object of `version -> JSON path`.
+3. Each referenced version maps to a JSON file that defines:
+   1. `section: parsers`
+   2. `builtin_parser_names[]`
+   3. `parser_formats` keyed by parser format (`json`, `regex`, `ltsv`, `logfmt`, and so on)
+
 ## Validation registry format
 Path: `config-service/config/validation-rules-registry.json`
 
@@ -128,6 +160,13 @@ Behavior:
 4. `provider.webui_port` in that same fallback JSON config file
 5. Default `8080`
 
+## Standalone log level resolution
+`config-service` resolves its standalone Python log level in this order:
+1. Environment variable `CONFIG_TOOL_LOG_LEVEL`
+2. `config-tool.log_level` in `config-service/config/config-service.json`
+3. `provider.log_level` in the JSON config file referenced by `OPAMP_CONFIG_PATH`
+4. Default `INFO`
+
 Default config file path:
 - `config-service/config/config-service.json`
 
@@ -139,6 +178,7 @@ Example:
 {
   "config-tool": {
     "web_port": 8090,
+    "log_level": "INFO",
     "ui_base_css_path": "/ui/assets/web_ui.css",
     "ui_css_overrides": [],
     "read_only": false

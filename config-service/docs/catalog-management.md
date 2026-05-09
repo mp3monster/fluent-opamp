@@ -10,6 +10,7 @@ Catalogs define plugin metadata used for:
 - `config-service/json-definitions/*.json`
 - Registered in `config-service/config/catalog-registry.json`
 - Service/system option definitions are registered in `config-service/config/service-registry.json`
+- Parser definitions are registered in `config-service/config/parser-registry.json`
 - Generated runtime schemas are written to `config-service/json-schemas/*.json`
 
 ## Expected plugin field metadata
@@ -44,21 +45,44 @@ Notes:
 ## Fluent Bit processor metadata
 Fluent Bit processor definitions are stored as shared catalog metadata under:
 1. `common.processors`
+2. `common.route`
 
-This keeps processor definitions versioned but avoids duplicating the same processor schema inside every input and output plugin.
+This keeps shared Fluent Bit editor metadata versioned but avoids duplicating the same schema fragments inside every plugin.
 
 Current model:
 1. Processors are attachable to Fluent Bit `inputs` and `outputs`
 2. Processor definitions are grouped by signal type (`logs`, `metrics`, `traces`)
 3. Log processors can additionally reuse filter plugin definitions as "filters as processors"
+4. Route definitions are attachable only to Fluent Bit `inputs`
+
+## Fluent Bit route metadata
+Fluent Bit conditional routing metadata is stored under `common.route`.
+
+This lets the UI and schema layer:
+1. add a nested Route panel only for supported Fluent Bit input plugins
+2. expose supported signal groupings such as `logs`, `metrics`, `traces`, and `any`
+3. describe supported condition contexts and operators
+4. keep the internal editor model as `route` while rendering native Fluent Bit YAML back as `routes`
+
+## Fluent Bit parser metadata
+Fluent Bit parser definitions are versioned separately from plugin catalogs:
+1. Parser definition files live under `config-service/json-definitions/fluent-bit-*-parser-options.json`
+2. They are registered in `config-service/config/parser-registry.json`
+3. Input plugin fields that point at parsers use `references_parser: true`
+
+This lets the UI build a dedicated Parsers section and lets validation match parser references against:
+1. user-defined parsers in `config.parsers`
+2. known built-in Fluent Bit parser names for that version
 
 ## Add a new version
 1. Add JSON catalog file under `config-service/json-definitions/`
 2. Add version entry under the correct engine in `catalog-registry.json`
 3. Add matching service definition entry in `service-registry.json`
-4. Optionally update `default_versions`
-4. Restart backend (or use dev reload flow) and verify:
+4. Add matching parser definition entry in `parser-registry.json` when the engine supports parser definitions
+5. Optionally update `default_versions`
+6. Restart backend (or use dev reload flow) and verify:
    - `GET /config-service/api/v1/versions?config_type=<engine>`
+   - `GET /config-service/api/v1/parser-options/{version}` for Fluent Bit
    - `POST /config-service/api/v1/catalog/{version}/validate`
 
 ## Fluentd artifacts
