@@ -35,6 +35,7 @@ from config_service.runtime_config import (
 from config_service.services.catalog_service import CatalogService
 from config_service.services.fluentbit_yaml_config_service import FluentBitYamlConfigService
 from config_service.services.fluentd_config_service import FluentdConfigService
+from config_service.services.include_document_service import IncludeDocumentService
 from config_service.services.issue_code_service import IssueCodeService
 from config_service.services.parser_definition_service import ParserDefinitionService
 from config_service.services.rule_engine_service import RuleEngineService
@@ -149,6 +150,13 @@ def create_app(*, mode: str = "standalone") -> Quart:
     rule_engine_service = RuleEngineService(rules_registry_service)
     validation_service = ValidationService(rule_engine_service)
 
+    fluentbit_yaml_config_service = FluentBitYamlConfigService()
+    fluentd_config_service = FluentdConfigService()
+    include_document_service = IncludeDocumentService(
+        fluentbit_yaml_config_service=fluentbit_yaml_config_service,
+        fluentd_config_service=fluentd_config_service,
+    )
+
     app.extensions["catalog_service"] = catalog_service
     app.extensions["rules_registry_service"] = rules_registry_service
     app.extensions["rule_engine_service"] = rule_engine_service
@@ -158,8 +166,9 @@ def create_app(*, mode: str = "standalone") -> Quart:
     app.extensions["schema_service"] = SchemaService()
     app.extensions["validation_service"] = validation_service
     app.extensions["yaml_render_service"] = YamlRenderService()
-    app.extensions["fluentbit_yaml_config_service"] = FluentBitYamlConfigService()
-    app.extensions["fluentd_config_service"] = FluentdConfigService()
+    app.extensions["fluentbit_yaml_config_service"] = fluentbit_yaml_config_service
+    app.extensions["fluentd_config_service"] = fluentd_config_service
+    app.extensions["include_document_service"] = include_document_service
 
     if mode == "standalone":
         @app.before_request
@@ -202,11 +211,11 @@ def create_app(*, mode: str = "standalone") -> Quart:
             return _apply_no_cache_headers(response)
         return response
 
-    @app.get("/config-service/ui/docs/meta-comments")
-    async def config_service_ui_meta_comments_help() -> Response:
+    @app.get("/config-service/ui/docs/help")
+    async def config_service_ui_help() -> Response:
         base_css_path = resolve_ui_base_css_path()
         asset_suffix = _asset_suffix()
-        html_template = (html_dir / "meta_comments_help.html").read_text(encoding="utf-8")
+        html_template = (html_dir / "config_ui_help.html").read_text(encoding="utf-8")
         rendered = html_template.replace(
             "__CONFIG_SERVICE_UI_BASE_CSS_PATH__",
             _append_suffix(base_css_path, asset_suffix),
@@ -220,11 +229,11 @@ def create_app(*, mode: str = "standalone") -> Quart:
             return _apply_no_cache_headers(response)
         return response
 
-    @app.get("/config-service/ui/docs/help")
-    async def config_service_ui_help() -> Response:
+    @app.get("/config-service/ui/docs/metadata-env")
+    async def config_service_ui_metadata_env_help() -> Response:
         base_css_path = resolve_ui_base_css_path()
         asset_suffix = _asset_suffix()
-        html_template = (html_dir / "config_ui_help.html").read_text(encoding="utf-8")
+        html_template = (html_dir / "metadata_env_help.html").read_text(encoding="utf-8")
         rendered = html_template.replace(
             "__CONFIG_SERVICE_UI_BASE_CSS_PATH__",
             _append_suffix(base_css_path, asset_suffix),

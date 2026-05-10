@@ -1,0 +1,73 @@
+<!--
+Copyright 2026 mp3monster.org
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Metadata Environment Variables Help</title>
+    <link rel="icon" type="image/png" href="/config-service/ui/assets/config_editor_icon.png__CONFIG_SERVICE_UI_ASSET_SUFFIX__" />
+    <link rel="stylesheet" href="__CONFIG_SERVICE_UI_BASE_CSS_PATH__" />
+  </head>
+  <body>
+    <main class="page-shell">
+      <header>
+        <h1>Metadata as Environment Variables</h1>
+        <p>How metadata keys are separated from normal environment variables, edited in the UI, and written back to files.</p>
+        <p><a class="button-link" href="/config-service/ui">Back to Config Service UI</a></p>
+      </header>
+
+      <section class="panel">
+        <h2>How It Works</h2>
+        <p>
+          Metadata variables are entries in the top-level Fluent Bit <code>env</code> section that start with
+          <code>_metadata.</code>. In the UI, these are shown in a dedicated panel and the prefix is hidden so you
+          can edit concise key names.
+        </p>
+        <p>
+          When saving or rendering to file, the prefix is always restored, so a key shown as
+          <code>config_version</code> is written as <code>_metadata.config_version</code>.
+        </p>
+      </section>
+
+      <section class="panel">
+        <h2>Preset Metadata Options</h2>
+        <p>The panel uses a selectable/creatable metadata key field so you can choose defaults or type custom keys.</p>
+        <ol>
+          <li><strong>Fluent Bit Version</strong>: key <code>fluent_bit_version</code>, value selected from configured versions.</li>
+          <li><strong>Configuration Date</strong>: key <code>configuration_date</code>, automatically set to the current date when edited.</li>
+          <li><strong>Configuration Version</strong>: key <code>config_version</code> (aligned with pre-commit/webhook naming).</li>
+        </ol>
+        <p>You can also add any custom metadata key/value pair.</p>
+      </section>
+
+      <section class="panel" id="header-comments">
+        <h2>Header Comments</h2>
+        <p>
+          Header comments let you maintain free-text notes at the top of a saved file. The editor shows plain text
+          without comment markers, and the correct comment prefix is restored on save:
+          <code>#</code> for Fluent Bit / Fluentd text and <code>//</code> for JSON documents.
+        </p>
+        <p>
+          Existing top-of-file comments are loaded into this field when a configuration is opened.
+        </p>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div>Licensed under Apache 2.0 • Attribution: <a href="https://mp3monster.org" target="_blank" rel="noopener noreferrer">mp3monster.org</a></div>
+      <div><a href="https://opentelemetry.io/docs/specs/opamp/" target="_blank" rel="noopener noreferrer">OpAMP Specification</a> • <a href="/doc-set">Latest docs</a></div>
+    </footer>
+  </body>
+</html>

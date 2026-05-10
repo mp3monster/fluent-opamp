@@ -18,12 +18,15 @@
   var API_BASE = "/config-service/api/v1";
   var LAST_FILE_COOKIE = "config_service_last_opened_name";
   var LAST_DOC_STORAGE = "config_service_last_opened_doc";
+  var LAST_HEADER_COMMENTS_STORAGE = "config_service_last_header_comments";
   var CUSTOM_SERVICE_OPTION = "__custom__";
   var HEADER_PREFIX = "config-service";
   var SERVICE_OPTIONS = [];
   var PARSER_FORMATS = [];
+  var serviceOptionsLoadInFlight = null;
   var lastUiErrorFingerprint = "";
   var lastUiErrorAt = 0;
+  var isReportingUiError = false;
 
   var state = {
     versions: [],
@@ -40,6 +43,8 @@
     issueCodeMap: {},
     pendingFocusFieldKey: "",
     serviceCollapsed: false,
+    servicePanelCollapsed: false,
+    envPanelCollapsed: false,
     parsersPanelCollapsed: false,
     validationCollapsed: false,
     yamlCollapsed: true,
@@ -54,6 +59,12 @@
     commentOpen: {},
     sourceLineMap: {},
     preserveSourceLineMapOnce: false,
+    includedDocuments: [],
+    mergeIncludesForValidation: false,
+    renderIncludesForRender: false,
+    metadataPanelCollapsed: false,
+    headerCommentsPanelCollapsed: true,
+    headerComments: "",
   };
 
   var uiHelpers = window.ConfigServiceUiHelpers || {};
@@ -117,6 +128,10 @@
     reloadUi: document.getElementById("reload-ui"),
     versionSelect: document.getElementById("version-select"),
     configTypeSelect: document.getElementById("config-type-select"),
+    headerCommentsToggle: document.getElementById("header-comments-toggle"),
+    headerCommentsBody: document.getElementById("header-comments-body"),
+    headerCommentsInput: document.getElementById("header-comments-input"),
+    headerCommentsHelpToggle: document.getElementById("header-comments-help-toggle"),
     pluginSection: document.getElementById("plugin-section"),
     pluginName: document.getElementById("plugin-name"),
     pluginHelpToggle: document.getElementById("plugin-help-toggle"),
@@ -134,6 +149,9 @@
     workersBody: document.getElementById("workers-body"),
     workerList: document.getElementById("worker-list"),
     addWorker: document.getElementById("add-worker"),
+    servicePanel: document.getElementById("service-panel"),
+    serviceToggle: document.getElementById("service-toggle"),
+    serviceBody: document.getElementById("service-body"),
     serviceList: document.getElementById("service-list"),
     serviceOption: document.getElementById("service-option"),
     serviceCustomKey: document.getElementById("service-custom-key"),
@@ -141,6 +159,22 @@
     serviceHelpToggle: document.getElementById("service-help-toggle"),
     addServiceField: document.getElementById("add-service-field"),
     serviceOptionMeta: document.getElementById("service-option-meta"),
+    envPanel: document.getElementById("env-panel"),
+    envToggle: document.getElementById("env-toggle"),
+    envBody: document.getElementById("env-body"),
+    envList: document.getElementById("env-list"),
+    envKeyInput: document.getElementById("env-key-input"),
+    envValueInput: document.getElementById("env-value-input"),
+    addEnvField: document.getElementById("add-env-field"),
+    metadataEnvPanel: document.getElementById("metadata-env-panel"),
+    metadataEnvToggle: document.getElementById("metadata-env-toggle"),
+    metadataEnvBody: document.getElementById("metadata-env-body"),
+    metadataEnvList: document.getElementById("metadata-env-list"),
+    metadataEnvHelpToggle: document.getElementById("metadata-env-help-toggle"),
+    metadataEnvKeyInput: document.getElementById("metadata-env-key-input"),
+    metadataEnvValueInput: document.getElementById("metadata-env-value-input"),
+    metadataEnvValueOptions: document.getElementById("metadata-env-value-options"),
+    addMetadataEnvField: document.getElementById("add-metadata-env-field"),
     parsersPanel: document.getElementById("parsers-panel"),
     parsersToggle: document.getElementById("parsers-toggle"),
     parsersBody: document.getElementById("parsers-body"),
@@ -150,6 +184,8 @@
     parserHelpToggle: document.getElementById("parser-help-toggle"),
     addParser: document.getElementById("add-parser"),
     parserFormatMeta: document.getElementById("parser-format-meta"),
+    addPluginPanel: document.getElementById("add-plugin-panel"),
+    pluginsPanel: document.getElementById("plugins-panel"),
     validateBtn: document.getElementById("validate-btn"),
     renderBtn: document.getElementById("render-btn"),
     statusPanel: document.getElementById("status-panel"),
@@ -157,10 +193,12 @@
     statusMessage: document.getElementById("status-message"),
     validationHeader: document.getElementById("validation-header"),
     validationCard: document.getElementById("validation-card"),
+    validationIncludeToggle: document.getElementById("validation-include-toggle"),
     validationToggle: document.getElementById("validation-toggle"),
     validationBody: document.getElementById("validation-body"),
     validationSummary: document.getElementById("validation-summary"),
     validationIssues: document.getElementById("validation-issues"),
+    renderIncludeToggle: document.getElementById("render-include-toggle"),
     yamlToggle: document.getElementById("yaml-toggle"),
     yamlBody: document.getElementById("yaml-body"),
     yamlOutput: document.getElementById("yaml-output"),
@@ -207,6 +245,20 @@
     }
     lastUiErrorFingerprint = fingerprint;
     lastUiErrorAt = now;
+    if (!isReportingUiError) {
+      isReportingUiError = true;
+      try {
+        console.error(
+          "[Config Service UI Error]",
+          String(payload.kind || "runtime_error"),
+          String(payload.message || "Unknown UI error"),
+          payload
+        );
+      } catch (_consoleErr) {
+        // Keep error reporting resilient.
+      }
+      isReportingUiError = false;
+    }
     fetch(API_BASE + "/client-errors", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -220,12 +272,64 @@
         column: payload.column === undefined ? null : payload.column,
       }),
       keepalive: true,
-    }).catch(function () {
-      // Avoid error-reporting loops when the backend is unavailable.
+    }).catch(function (err) {
+      if (!isReportingUiError) {
+        isReportingUiError = true;
+        try {
+          console.error(
+            "[Config Service UI Error] Failed to post UI error to backend:",
+            err && err.message ? err.message : String(err)
+          );
+        } catch (_consoleErr) {
+          // Avoid error-reporting loops when the backend is unavailable.
+        }
+        isReportingUiError = false;
+      }
     });
   }
 
+  function formatConsoleArgs(args) {
+    var parts = [];
+    for (var index = 0; index < args.length; index += 1) {
+      var item = args[index];
+      if (item === undefined) {
+        parts.push("undefined");
+      } else if (item === null) {
+        parts.push("null");
+      } else if (item instanceof Error) {
+        parts.push(item.message || String(item));
+      } else if (typeof item === "object") {
+        try {
+          parts.push(JSON.stringify(item));
+        } catch (_e) {
+          parts.push(String(item));
+        }
+      } else {
+        parts.push(String(item));
+      }
+    }
+    return parts.join(" ");
+  }
+
   function installGlobalUiErrorHandlers() {
+    if (!window.__CONFIG_SERVICE_UI_CONSOLE_ERROR_PATCHED__) {
+      window.__CONFIG_SERVICE_UI_CONSOLE_ERROR_PATCHED__ = true;
+      var originalConsoleError = console.error;
+      console.error = function () {
+        var args = Array.prototype.slice.call(arguments);
+        originalConsoleError.apply(console, args);
+        if (isReportingUiError) {
+          return;
+        }
+        reportUiError({
+          kind: "console_error",
+          message: formatConsoleArgs(args) || "console.error called",
+          source: "browser_console",
+          path: window.location.href,
+        });
+      };
+    }
+
     window.addEventListener("error", function (event) {
       var error = event && event.error;
       reportUiError({
@@ -292,6 +396,7 @@
       version: version,
       configType: configType || "fluentbit",
       config: {
+        env: {},
         service: {},
         parsers: [],
         pipeline: { inputs: [], filters: [], outputs: [] },
@@ -353,6 +458,20 @@
     return Boolean(state.readOnly);
   }
 
+  function normalizeConfigType(rawValue, fallback) {
+    var value = String(rawValue || "").trim().toLowerCase();
+    if (!value) {
+      return String(fallback || "fluentbit");
+    }
+    if (value === "fluentbit" || value === "fluent-bit" || value === "fluent_bit" || value === "fluent bit") {
+      return "fluentbit";
+    }
+    if (value === "fluentd" || value === "fluent-d" || value === "fluent_d" || value === "fluent d") {
+      return "fluentd";
+    }
+    return String(fallback || value);
+  }
+
   function setOpenFileDisplay(value) {
     state.currentFileDisplay = String(value || "").trim();
     if (el.openFileDisplay) {
@@ -368,6 +487,7 @@
       configType: state.configType,
       version: state.doc.version || state.selectedVersion,
       config: state.doc.config,
+      headerComments: state.headerComments || "",
     });
   }
 
@@ -399,6 +519,33 @@
     el.pluginName.disabled = readOnly;
     el.addLabel.disabled = readOnly;
     el.addWorker.disabled = readOnly;
+    if (el.envKeyInput) {
+      el.envKeyInput.disabled = readOnly;
+    }
+    if (el.envValueInput) {
+      el.envValueInput.disabled = readOnly;
+    }
+    if (el.addEnvField) {
+      el.addEnvField.disabled = readOnly;
+    }
+    if (el.metadataEnvKeyInput) {
+      el.metadataEnvKeyInput.disabled = readOnly;
+    }
+    if (el.metadataEnvValueInput) {
+      el.metadataEnvValueInput.disabled = readOnly;
+    }
+    if (el.addMetadataEnvField) {
+      el.addMetadataEnvField.disabled = readOnly;
+    }
+    if (el.headerCommentsInput) {
+      el.headerCommentsInput.disabled = readOnly;
+    }
+    if (el.validationIncludeToggle) {
+      el.validationIncludeToggle.disabled = false;
+    }
+    if (el.renderIncludeToggle) {
+      el.renderIncludeToggle.disabled = false;
+    }
     if (el.parserHelpToggle) {
       var parserFormat = selectedParserFormatDefinition();
       el.parserHelpToggle.disabled = !(parserFormat && parserFormat.doc_url);
@@ -434,29 +581,65 @@
     var meta = {
       configType: "",
       version: "",
+      headerComments: "",
       body: String(text || ""),
     };
     var lines = meta.body.replace(/\r\n/g, "\n").split("\n");
     var bodyStart = 0;
+    var headerCommentLines = [];
+    var sawConfigServiceHeader = false;
+
+    function parseCommentLine(rawLine) {
+      var match = /^(\/\/|#)\s?(.*)$/.exec(String(rawLine || ""));
+      if (!match) {
+        return null;
+      }
+      return {
+        prefix: match[1],
+        content: match[2],
+      };
+    }
+
     for (var index = 0; index < lines.length; index += 1) {
       var line = lines[index];
-      var trimmed = line.trim();
-      var match = /^(?:\/\/|#)\s*config-service:\s*(config_type|version)\s*=\s*(.+?)\s*$/.exec(trimmed);
-      if (match) {
-        if (match[1] === "config_type") {
-          meta.configType = match[2].trim();
-        } else if (match[1] === "version") {
-          meta.version = match[2].trim();
+      var trimmed = String(line || "").trim();
+      if (!trimmed) {
+        bodyStart = index + 1;
+        if (sawConfigServiceHeader || headerCommentLines.length > 0) {
+          headerCommentLines.push("");
+        }
+        continue;
+      }
+
+      var comment = parseCommentLine(line);
+      if (!comment) {
+        break;
+      }
+
+      var configHeaderMatch = /^config-service:\s*(config_type|version)\s*=\s*(.+?)\s*$/.exec(String(comment.content || "").trim());
+      if (configHeaderMatch) {
+        sawConfigServiceHeader = true;
+        if (configHeaderMatch[1] === "config_type") {
+          meta.configType = configHeaderMatch[2].trim();
+        } else if (configHeaderMatch[1] === "version") {
+          meta.version = configHeaderMatch[2].trim();
         }
         bodyStart = index + 1;
         continue;
       }
-      if (!trimmed) {
-        bodyStart = index + 1;
-        continue;
-      }
-      break;
+
+      headerCommentLines.push(String(comment.content || "").trimEnd());
+      bodyStart = index + 1;
     }
+
+    while (headerCommentLines.length > 0 && headerCommentLines[0].trim() === "") {
+      headerCommentLines.shift();
+    }
+    while (headerCommentLines.length > 0 && headerCommentLines[headerCommentLines.length - 1].trim() === "") {
+      headerCommentLines.pop();
+    }
+
+    meta.headerComments = headerCommentLines.join("\n");
     meta.body = lines.slice(bodyStart).join("\n");
     return meta;
   }
@@ -546,6 +729,14 @@
         var serviceMatch = /^([A-Za-z0-9_.-]+):(?:\s|$)/.exec(trimmed);
         if (serviceMatch) {
           map["$.service." + serviceMatch[1]] = lineNumber;
+        }
+        return;
+      }
+
+      if (rootSection === "env") {
+        var envMatch = /^([A-Za-z0-9_.-]+):(?:\s|$)/.exec(trimmed);
+        if (envMatch) {
+          map["$.env." + envMatch[1]] = lineNumber;
         }
         return;
       }
@@ -691,6 +882,31 @@
     return uiHelpers.prependConfigHeader(text, configType, version, commentPrefix);
   }
 
+  function normalizeHeaderCommentLines(text) {
+    var lines = String(text || "").replace(/\r\n/g, "\n").split("\n");
+    while (lines.length > 0 && lines[0].trim() === "") {
+      lines.shift();
+    }
+    while (lines.length > 0 && lines[lines.length - 1].trim() === "") {
+      lines.pop();
+    }
+    return lines;
+  }
+
+  function prependHeaderComments(text, commentPrefix) {
+    var lines = normalizeHeaderCommentLines(state.headerComments || "");
+    if (lines.length === 0) {
+      return String(text || "");
+    }
+    var prefix = commentPrefix || "#";
+    var headerBlock = lines
+      .map(function (line) {
+        return line.trim() === "" ? prefix : prefix + " " + line;
+      })
+      .join("\n");
+    return headerBlock + "\n" + String(text || "");
+  }
+
   function pluginGroups() {
     if (!state.catalog || !state.catalog.plugins) {
       return { inputs: {}, filters: {}, outputs: {} };
@@ -733,6 +949,11 @@
     if (!state.doc) {
       state.doc = emptyDoc(state.selectedVersion, state.configType);
     }
+    if (typeof state.headerComments !== "string") {
+      state.headerComments = "";
+    }
+    state.configType = normalizeConfigType(state.configType, "fluentbit");
+    state.doc.configType = normalizeConfigType(state.doc.configType || state.configType, state.configType);
     if (!state.doc.config || typeof state.doc.config !== "object") {
       state.doc.config = {};
     }
@@ -772,6 +993,9 @@
     }
     if (!state.doc.config.service || typeof state.doc.config.service !== "object") {
       state.doc.config.service = {};
+    }
+    if (!state.doc.config.env || typeof state.doc.config.env !== "object" || Array.isArray(state.doc.config.env)) {
+      state.doc.config.env = {};
     }
     if (!Array.isArray(state.doc.config.parsers)) {
       state.doc.config.parsers = [];
@@ -880,11 +1104,38 @@
     return commentHelpers.createCommentEditorPanel(target, labelText, fieldName, toggleKey);
   }
 
+  function todaysIsoDate() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  function refreshConfigurationDateMetadata() {
+    if (!state.doc || !state.doc.config || !state.doc.config.env || typeof state.doc.config.env !== "object") {
+      return false;
+    }
+    var metadataDateKey = "_metadata.configuration_date";
+    if (!Object.prototype.hasOwnProperty.call(state.doc.config.env, metadataDateKey)) {
+      return false;
+    }
+    var today = todaysIsoDate();
+    if (state.doc.config.env[metadataDateKey] === today) {
+      return false;
+    }
+    state.doc.config.env[metadataDateKey] = today;
+    return true;
+  }
+
+  function normalizedHeaderComments(value) {
+    return normalizeHeaderCommentLines(value || "").join("\n");
+  }
+
   function saveDoc() {
     if (!state.doc) {
       return;
     }
+    refreshConfigurationDateMetadata();
+    state.headerComments = normalizedHeaderComments(state.headerComments);
     localStorage.setItem(LAST_DOC_STORAGE, JSON.stringify(state.doc));
+    localStorage.setItem(LAST_HEADER_COMMENTS_STORAGE, state.headerComments || "");
     if (state.preserveSourceLineMapOnce) {
       state.preserveSourceLineMapOnce = false;
     } else {
@@ -1041,6 +1292,30 @@
     updateResultPanels();
   }
 
+  function formatRenderOutput(result, includeLoadedFiles) {
+    var mainRendered = result.yaml || result.text || "";
+    if (!includeLoadedFiles) {
+      return mainRendered;
+    }
+    var includedFiles = Array.isArray(result.included_files) ? result.included_files : [];
+    if (includedFiles.length === 0) {
+      return mainRendered;
+    }
+    var sections = [mainRendered];
+    includedFiles.forEach(function (item) {
+      var includePath = item && item.include_path ? String(item.include_path) : "unknown";
+      var includeRendered = item && (item.yaml || item.text) ? String(item.yaml || item.text) : "";
+      sections.push(
+        [
+          "",
+          "# Included file: " + includePath,
+          includeRendered,
+        ].join("\n")
+      );
+    });
+    return sections.join("\n");
+  }
+
   function updateResultPanels() {
     el.validationBody.classList.toggle("is-collapsed", state.validationCollapsed);
     el.validationToggle.textContent = state.validationCollapsed ? "Open" : "Collapse";
@@ -1049,9 +1324,25 @@
   }
 
   function updateSectionPanels() {
+    if (el.serviceBody && el.serviceToggle) {
+      el.serviceBody.classList.toggle("is-collapsed", state.servicePanelCollapsed);
+      el.serviceToggle.textContent = state.servicePanelCollapsed ? "Open" : "Collapse";
+    }
+    if (el.envBody && el.envToggle) {
+      el.envBody.classList.toggle("is-collapsed", state.envPanelCollapsed);
+      el.envToggle.textContent = state.envPanelCollapsed ? "Open" : "Collapse";
+    }
+    if (el.metadataEnvBody && el.metadataEnvToggle) {
+      el.metadataEnvBody.classList.toggle("is-collapsed", state.metadataPanelCollapsed);
+      el.metadataEnvToggle.textContent = state.metadataPanelCollapsed ? "Open" : "Collapse";
+    }
     if (el.parsersBody && el.parsersToggle) {
       el.parsersBody.classList.toggle("is-collapsed", state.parsersPanelCollapsed);
       el.parsersToggle.textContent = state.parsersPanelCollapsed ? "Open" : "Collapse";
+    }
+    if (el.headerCommentsBody && el.headerCommentsToggle) {
+      el.headerCommentsBody.classList.toggle("is-collapsed", state.headerCommentsPanelCollapsed);
+      el.headerCommentsToggle.textContent = state.headerCommentsPanelCollapsed ? "Open" : "Collapse";
     }
     if (el.pluginsBody && el.pluginsToggle) {
       el.pluginsBody.classList.toggle("is-collapsed", state.pluginsPanelCollapsed);
@@ -1106,15 +1397,17 @@
   }
 
   function loadVersionsForType(configType, preferredVersion) {
-    return fetchJson(API_BASE + "/versions?config_type=" + encodeURIComponent(configType)).then(function (data) {
+    var normalizedType = normalizeConfigType(configType, "fluentbit");
+    return fetchJson(API_BASE + "/versions?config_type=" + encodeURIComponent(normalizedType)).then(function (data) {
       var versions = Array.isArray(data.versions) ? data.versions.slice() : [];
       state.versions = versions;
       var currentPreferred = preferredVersion || state.selectedVersion || "";
       state.selectedVersion = resolvePreferredVersion(versions, currentPreferred, data.default || "");
+      state.configType = normalizeConfigType(data.config_type, normalizedType);
 
       if (state.doc) {
         state.doc.version = state.selectedVersion;
-        state.doc.configType = configType;
+        state.doc.configType = state.configType;
       }
 
       repopulateVersions();
@@ -1406,6 +1699,7 @@
         }),
       }).then(function (result) {
         var renderedText = prependConfigHeader(result.text || "", state.configType, state.doc.version, "#");
+        renderedText = prependHeaderComments(renderedText, "#");
         return {
           blob: new Blob([renderedText], { type: "text/plain" }),
           text: renderedText,
@@ -1413,6 +1707,7 @@
       });
     }
     var jsonText = prependConfigHeader(JSON.stringify(state.doc, null, 2), state.configType, state.doc.version, "//");
+    jsonText = prependHeaderComments(jsonText, "//");
     return Promise.resolve({
       blob: new Blob([jsonText], { type: "application/json" }),
       text: jsonText,
@@ -1428,7 +1723,8 @@
   }
 
   function currentApiQuery() {
-    return "?config_type=" + encodeURIComponent(state.configType || "fluentbit");
+    var configType = normalizeConfigType(state.configType, "fluentbit");
+    return "?config_type=" + encodeURIComponent(configType);
   }
 
   function triggerConfigDownload(forcePrompt) {
@@ -1484,6 +1780,18 @@
     var show = isFluentdMode();
     el.labelsPanel.classList.toggle("hidden", !show);
     el.workersPanel.classList.toggle("hidden", !show);
+    if (el.addPluginPanel) {
+      el.addPluginPanel.classList.toggle("hidden", show);
+    }
+    if (el.pluginsPanel) {
+      el.pluginsPanel.classList.toggle("hidden", false);
+    }
+    if (el.envPanel) {
+      el.envPanel.classList.toggle("hidden", show);
+    }
+    if (el.metadataEnvPanel) {
+      el.metadataEnvPanel.classList.toggle("hidden", show);
+    }
     if (el.parsersPanel) {
       el.parsersPanel.classList.toggle("hidden", show);
     }
@@ -1842,6 +2150,15 @@
     defaultForField: defaultForField,
   });
 
+  var envUi = window.ConfigServiceUiEnv.create({
+    state: state,
+    el: el,
+    saveDoc: saveDoc,
+    ensureDoc: ensureDoc,
+    isReadOnlyMode: isReadOnlyMode,
+    parseServiceValue: parseServiceValue,
+  });
+
   function moveWithinPipeline(pipeline, section, index, direction, pathPrefix) {
     if (isReadOnlyMode()) {
       return;
@@ -1913,6 +2230,10 @@ function parserFormatFields(parserFormat) {
 
   function renderService() {
     return sectionsUi.renderService();
+  }
+
+  function renderEnv() {
+    return envUi.renderEnv();
   }
 
 function renderPlugins() {
@@ -2168,8 +2489,20 @@ function renderPlugins() {
     }
   }
 
+  function renderHeaderComments() {
+    if (!el.headerCommentsInput) {
+      return;
+    }
+    var normalized = normalizedHeaderComments(state.headerComments || "");
+    if (el.headerCommentsInput.value !== normalized) {
+      el.headerCommentsInput.value = normalized;
+    }
+  }
+
   function renderAll() {
+    renderHeaderComments();
     renderService();
+    renderEnv();
     renderParsers();
     renderPlugins();
     renderLabelsAndWorkers();
@@ -2189,54 +2522,127 @@ function renderPlugins() {
   }
 
   function loadServiceOptions(version) {
-    return fetchJson(API_BASE + "/service-options/" + encodeURIComponent(version) + currentApiQuery())
-      .then(function (payload) {
-        if (!payload || !Array.isArray(payload.options)) {
-          return;
-        }
-        var parsed = payload.options
-          .filter(function (item) {
-            return item && typeof item.name === "string";
+    function parseServiceOptionsPayload(payload) {
+      var rawOptions = [];
+      if (payload && Array.isArray(payload.options)) {
+        rawOptions = payload.options;
+      } else if (payload && payload.options && typeof payload.options === "object") {
+        rawOptions = Object.keys(payload.options)
+          .map(function (key) {
+            var value = payload.options[key];
+            if (value && typeof value === "object") {
+              return Object.assign({ name: key }, value);
+            }
+            return null;
           })
-          .map(function (item) {
-            return {
-              name: item.name,
-              key: item.name,
-              data_type: item.data_type || "string",
-              default: Object.prototype.hasOwnProperty.call(item, "default") ? item.default : "",
-              description: item.description || "",
-              reference: item.reference || "",
-              called_enum_options: Array.isArray(item.called_enum_options) ? item.called_enum_options.slice() : [],
-              enum_options: Array.isArray(item.enum_options) ? item.enum_options.slice() : [],
-              validation_rule: item.validation_rule || null,
-            };
-          });
-        if (parsed.length > 0) {
-          SERVICE_OPTIONS = parsed;
-          rebuildServiceOptionIndex();
-          repopulateServiceOptionSelect();
-          renderService();
-        }
+          .filter(Boolean);
+      }
+      return rawOptions
+        .filter(function (item) {
+          return item && (typeof item.name === "string" || typeof item.key === "string");
+        })
+        .map(function (item) {
+          var optionKey = String(item.name || item.key || "").trim();
+          if (!optionKey) {
+            return null;
+          }
+          return {
+            name: optionKey,
+            key: optionKey,
+            data_type: item.data_type || "string",
+            default: Object.prototype.hasOwnProperty.call(item, "default") ? item.default : "",
+            description: item.description || "",
+            reference: item.reference || "",
+            called_enum_options: Array.isArray(item.called_enum_options) ? item.called_enum_options.slice() : [],
+            enum_options: Array.isArray(item.enum_options) ? item.enum_options.slice() : [],
+            validation_rule: item.validation_rule || null,
+          };
+        })
+        .filter(Boolean);
+    }
+
+    var normalizedType = normalizeConfigType(state.configType, "fluentbit");
+    var fallbackType = normalizedType === "fluentbit" ? "fluentd" : "fluentbit";
+    var queryCandidates = [normalizedType, fallbackType, ""];
+
+    function attemptLoad(index) {
+      if (index >= queryCandidates.length) {
+        return Promise.reject(new Error("Service options unavailable."));
+      }
+      var queryType = queryCandidates[index];
+      var url = API_BASE + "/service-options/" + encodeURIComponent(version);
+      if (queryType) {
+        url += "?config_type=" + encodeURIComponent(queryType);
+      }
+      return fetchJson(url)
+        .then(function (payload) {
+          var parsed = parseServiceOptionsPayload(payload);
+          if (parsed.length > 0) {
+            return parsed;
+          }
+          throw new Error("Empty service options payload.");
+        })
+        .catch(function () {
+          return attemptLoad(index + 1);
+        });
+    }
+
+    return attemptLoad(0)
+      .then(function (parsed) {
+        SERVICE_OPTIONS = parsed;
+        rebuildServiceOptionIndex();
+        repopulateServiceOptionSelect();
+        renderService();
       })
       .catch(function (_err) {
-        // Leave only the custom option available when service definitions cannot be loaded.
+        SERVICE_OPTIONS = [];
+        rebuildServiceOptionIndex();
+        repopulateServiceOptionSelect();
+        renderService();
+        setStatusMessage("Service option definitions could not be loaded; only custom keys are available.");
       });
   }
 
+  function ensureServiceOptionsLoaded(triggeredByUser) {
+    if (SERVICE_OPTIONS.length > 0) {
+      return Promise.resolve(true);
+    }
+    if (!state.selectedVersion) {
+      return Promise.resolve(false);
+    }
+    if (serviceOptionsLoadInFlight) {
+      return serviceOptionsLoadInFlight;
+    }
+    serviceOptionsLoadInFlight = loadServiceOptions(state.selectedVersion)
+      .then(function () {
+        return SERVICE_OPTIONS.length > 0;
+      })
+      .catch(function () {
+        return false;
+      })
+      .finally(function () {
+        serviceOptionsLoadInFlight = null;
+      });
+    return serviceOptionsLoadInFlight.then(function (loaded) {
+      if (!loaded && triggeredByUser) {
+        setStatusMessage("Service options are still unavailable. Check version/type selection.");
+      }
+      return loaded;
+    });
+  }
+
   function loadParserOptions(version) {
-    return fetchJson(API_BASE + "/parser-options/" + encodeURIComponent(version) + currentApiQuery())
-      .then(function (payload) {
-        if (!payload || !payload.parser_formats || typeof payload.parser_formats !== "object") {
-          PARSER_FORMATS = [];
-          rebuildParserFormatIndex();
-          repopulateParserFormatSelect();
-          renderParsers();
-          return;
-        }
-        PARSER_FORMATS = Object.keys(payload.parser_formats)
+    function parseParserFormatsPayload(payload) {
+      if (!payload || typeof payload !== "object") {
+        return [];
+      }
+
+      var parserFormats = payload.parser_formats;
+      if (parserFormats && typeof parserFormats === "object" && !Array.isArray(parserFormats)) {
+        return Object.keys(parserFormats)
           .sort()
           .map(function (key) {
-            var item = payload.parser_formats[key] || {};
+            var item = parserFormats[key] || {};
             return {
               key: key,
               title: item.title || key,
@@ -2245,6 +2651,70 @@ function renderPlugins() {
               fields: Array.isArray(item.fields) ? item.fields : [],
             };
           });
+      }
+
+      var options = Array.isArray(payload.options) ? payload.options : [];
+      return options
+        .map(function (item) {
+          if (!item || typeof item !== "object") {
+            return null;
+          }
+          var key = String(item.key || item.name || "").trim();
+          if (!key) {
+            return null;
+          }
+          return {
+            key: key,
+            title: item.title || key,
+            description: item.description || "",
+            doc_url: item.doc_url || "",
+            fields: Array.isArray(item.fields) ? item.fields : [],
+          };
+        })
+        .filter(Boolean)
+        .sort(function (left, right) {
+          return left.key.localeCompare(right.key);
+        });
+    }
+
+    var normalizedType = normalizeConfigType(state.configType, "fluentbit");
+    var queryCandidates = [];
+    if (normalizedType) {
+      queryCandidates.push(normalizedType);
+    }
+    if (normalizedType !== "fluentbit") {
+      queryCandidates.push("fluentbit");
+    }
+    if (normalizedType !== "fluentd") {
+      queryCandidates.push("fluentd");
+    }
+    queryCandidates.push("");
+
+    function attemptLoad(index) {
+      if (index >= queryCandidates.length) {
+        return Promise.reject(new Error("Parser options unavailable."));
+      }
+      var queryType = queryCandidates[index];
+      var url = API_BASE + "/parser-options/" + encodeURIComponent(version);
+      if (queryType) {
+        url += "?config_type=" + encodeURIComponent(queryType);
+      }
+      return fetchJson(url)
+        .then(function (payload) {
+          var parsed = parseParserFormatsPayload(payload);
+          if (parsed.length > 0) {
+            return parsed;
+          }
+          throw new Error("Empty parser options payload.");
+        })
+        .catch(function () {
+          return attemptLoad(index + 1);
+        });
+    }
+
+    return attemptLoad(0)
+      .then(function (parsed) {
+        PARSER_FORMATS = parsed;
         rebuildParserFormatIndex();
         repopulateParserFormatSelect();
         renderParsers();
@@ -2253,6 +2723,10 @@ function renderPlugins() {
         PARSER_FORMATS = [];
         rebuildParserFormatIndex();
         repopulateParserFormatSelect();
+        renderParsers();
+        if (!isFluentdMode()) {
+          setStatusMessage("Parser format definitions could not be loaded for this version/type.");
+        }
       });
   }
 
@@ -2265,6 +2739,12 @@ function renderPlugins() {
 
     el.newConfig.addEventListener("click", function () {
       state.doc = emptyDoc(state.selectedVersion, state.configType);
+      state.headerComments = "";
+      state.includedDocuments = [];
+      state.mergeIncludesForValidation = false;
+      if (el.validationIncludeToggle) {
+        el.validationIncludeToggle.checked = false;
+      }
       state.currentFileName = "";
       state.saveFileHandle = null;
       state.sourceLineMap = {};
@@ -2321,6 +2801,53 @@ function renderPlugins() {
       updateSectionPanels();
     });
 
+    if (el.serviceToggle) {
+      el.serviceToggle.addEventListener("click", function () {
+        state.servicePanelCollapsed = !state.servicePanelCollapsed;
+        updateSectionPanels();
+      });
+    }
+
+    if (el.envToggle) {
+      el.envToggle.addEventListener("click", function () {
+        state.envPanelCollapsed = !state.envPanelCollapsed;
+        updateSectionPanels();
+      });
+    }
+
+    if (el.metadataEnvToggle) {
+      el.metadataEnvToggle.addEventListener("click", function () {
+        state.metadataPanelCollapsed = !state.metadataPanelCollapsed;
+        updateSectionPanels();
+      });
+    }
+
+    if (el.headerCommentsToggle) {
+      el.headerCommentsToggle.addEventListener("click", function () {
+        state.headerCommentsPanelCollapsed = !state.headerCommentsPanelCollapsed;
+        updateSectionPanels();
+      });
+    }
+
+    if (el.metadataEnvHelpToggle) {
+      el.metadataEnvHelpToggle.addEventListener("click", function () {
+        window.open("/config-service/ui/docs/metadata-env", "_blank", "noopener,noreferrer");
+      });
+    }
+
+    if (el.headerCommentsHelpToggle) {
+      el.headerCommentsHelpToggle.addEventListener("click", function () {
+        window.open("/config-service/ui/docs/metadata-env#header-comments", "_blank", "noopener,noreferrer");
+      });
+    }
+
+    if (el.headerCommentsInput) {
+      el.headerCommentsInput.addEventListener("change", function () {
+        state.headerComments = normalizedHeaderComments(el.headerCommentsInput.value || "");
+        saveDoc();
+      });
+    }
+
     el.versionSelect.addEventListener("change", function () {
       state.selectedVersion = el.versionSelect.value;
       if (state.doc) {
@@ -2340,7 +2867,7 @@ function renderPlugins() {
     });
 
     el.configTypeSelect.addEventListener("change", function () {
-      state.configType = el.configTypeSelect.value;
+      state.configType = normalizeConfigType(el.configTypeSelect.value, "fluentbit");
       if (state.doc) {
         state.doc.configType = state.configType;
       }
@@ -2402,6 +2929,10 @@ function renderPlugins() {
         setValidationText("Catalog not loaded yet. Please wait and try again.");
         return;
       }
+      state.pluginSection = String((el.pluginSection && el.pluginSection.value) || state.pluginSection || "inputs").trim() || "inputs";
+      if ((!el.pluginName || !el.pluginName.value) && el.pluginName) {
+        repopulatePluginNameSelect();
+      }
       var selectedPluginName = String(el.pluginName.value || state.pluginName || "").trim();
       if (!selectedPluginName) {
         setValidationText("Select a plugin before adding.");
@@ -2426,8 +2957,9 @@ function renderPlugins() {
       state.doc.config.pipeline[state.pluginSection].push(instance);
       state.pluginName = selectedPluginName;
       saveDoc();
-      setValidationText("");
       renderAll();
+      updateAddPluginState();
+      setStatusMessage("Added plugin '" + selectedPluginName + "' to " + state.pluginSection + ".");
     });
 
     el.addServiceField.addEventListener("click", function () {
@@ -2456,8 +2988,22 @@ function renderPlugins() {
       renderService();
     });
 
+    envUi.bindEvents();
+
     el.serviceOption.addEventListener("change", function () {
       updateServiceOptionUI();
+    });
+
+    el.serviceOption.addEventListener("focus", function () {
+      if (SERVICE_OPTIONS.length === 0) {
+        ensureServiceOptionsLoaded(true);
+      }
+    });
+
+    el.serviceOption.addEventListener("pointerdown", function () {
+      if (SERVICE_OPTIONS.length === 0) {
+        ensureServiceOptionsLoaded(true);
+      }
     });
 
     el.serviceHelpToggle.addEventListener("click", function () {
@@ -2544,11 +3090,13 @@ function renderPlugins() {
         .text()
         .then(function (text) {
           var parsedHeader = parseConfigHeader(text);
+          state.headerComments = normalizedHeaderComments(parsedHeader.headerComments || "");
           if (/\.json$/i.test(file.name)) {
             var parsed = JSON.parse(parsedHeader.body);
             state.doc = parsed;
             ensureDoc();
-            state.configType = parsedHeader.configType || parsed.configType || "fluentbit";
+            state.includedDocuments = Array.isArray(parsed.included_documents) ? parsed.included_documents : [];
+            state.configType = normalizeConfigType(parsedHeader.configType || parsed.configType || "fluentbit", "fluentbit");
             state.doc.configType = state.configType;
             state.sourceLineMap = {};
             state.currentFileName = file.name;
@@ -2606,6 +3154,7 @@ function renderPlugins() {
                   config: result.config || emptyDoc(state.selectedVersion, "fluentbit").config,
                   annotations: {},
                 };
+                state.includedDocuments = Array.isArray(result.included_documents) ? result.included_documents : [];
                 ensureDoc();
                 state.currentFileName = file.name;
                 state.saveFileHandle = null;
@@ -2631,7 +3180,7 @@ function renderPlugins() {
               .then(renderAll);
           }
 
-          state.configType = parsedHeader.configType || "fluentd";
+          state.configType = normalizeConfigType(parsedHeader.configType || "fluentd", "fluentd");
           el.configTypeSelect.value = state.configType;
           state.sourceLineMap = buildSourceLineMap(parsedHeader.body, "fluentd", file.name);
           state.currentFileName = file.name;
@@ -2653,6 +3202,7 @@ function renderPlugins() {
               config: result.config || emptyDoc(state.selectedVersion, "fluentd").config,
               annotations: {},
             };
+            state.includedDocuments = Array.isArray(result.included_documents) ? result.included_documents : [];
             ensureDoc();
             state.preserveSourceLineMapOnce = true;
             saveDoc();
@@ -2678,13 +3228,30 @@ function renderPlugins() {
         });
     });
 
+    if (el.validationIncludeToggle) {
+      el.validationIncludeToggle.addEventListener("change", function () {
+        state.mergeIncludesForValidation = Boolean(el.validationIncludeToggle.checked);
+      });
+    }
+
+    if (el.renderIncludeToggle) {
+      el.renderIncludeToggle.addEventListener("change", function () {
+        state.renderIncludesForRender = Boolean(el.renderIncludeToggle.checked);
+      });
+    }
+
     el.validateBtn.addEventListener("click", function () {
       if (!state.doc) {
         return;
       }
+      if (state.mergeIncludesForValidation && (!Array.isArray(state.includedDocuments) || state.includedDocuments.length === 0)) {
+        setStatusMessage("Validation include merge is enabled, but no included files are loaded in memory.");
+      }
       var payload = {
         config: state.doc.config,
         annotations: state.doc.annotations || {},
+        included_documents: Array.isArray(state.includedDocuments) ? state.includedDocuments : [],
+        merge_includes_for_validation: Boolean(state.mergeIncludesForValidation),
         profile: "strict",
       };
       fetchJson(API_BASE + "/validate/" + encodeURIComponent(state.doc.version) + currentApiQuery(), {
@@ -2708,11 +3275,16 @@ function renderPlugins() {
       var payload = {
         config: state.doc.config,
         annotations: state.doc.annotations || {},
+        included_documents: Array.isArray(state.includedDocuments) ? state.includedDocuments : [],
         include_comments: true,
+        render_included_files: Boolean(state.renderIncludesForRender),
       };
       var endpoint = state.configType === "fluentd"
         ? API_BASE + "/render/fluentd/" + encodeURIComponent(state.doc.version)
         : API_BASE + "/render/yaml/" + encodeURIComponent(state.doc.version) + currentApiQuery();
+      if (state.renderIncludesForRender && (!Array.isArray(state.includedDocuments) || state.includedDocuments.length === 0)) {
+        setStatusMessage("Include rendering is enabled, but no included files are loaded in memory.");
+      }
       state.yamlCollapsed = false;
       updateResultPanels();
       fetchJson(endpoint, {
@@ -2721,8 +3293,10 @@ function renderPlugins() {
         body: JSON.stringify(payload),
       })
         .then(function (result) {
+          var renderedOutput = formatRenderOutput(result, state.renderIncludesForRender);
+          renderedOutput = prependHeaderComments(renderedOutput, "#");
           setStatusMessage("Rendered configuration updated.");
-          setYamlText(result.yaml || result.text || "", true);
+          setYamlText(renderedOutput, true);
         })
         .catch(function (err) {
           setStatusMessage("Rendering failed.");
@@ -2768,22 +3342,26 @@ function renderPlugins() {
     loadVersionsForType(state.configType)
       .then(function () {
         var cookieDoc = localStorage.getItem(LAST_DOC_STORAGE);
+        var cookieHeaderComments = localStorage.getItem(LAST_HEADER_COMMENTS_STORAGE);
         var cookieName = getCookie(LAST_FILE_COOKIE);
         if (cookieDoc && cookieName) {
           try {
             var parsed = JSON.parse(cookieDoc);
             state.doc = parsed;
-            state.configType = parsed.configType || "fluentbit";
+            state.headerComments = normalizedHeaderComments(cookieHeaderComments || "");
+            state.configType = normalizeConfigType(parsed.configType || "fluentbit", "fluentbit");
             state.currentFileName = cookieName;
             setOpenFileDisplay(/^new-\d+$/i.test(cookieName) ? "" : cookieName);
           } catch (_e) {
             clearCookie(LAST_FILE_COOKIE);
             localStorage.removeItem(LAST_DOC_STORAGE);
+            localStorage.removeItem(LAST_HEADER_COMMENTS_STORAGE);
           }
         }
 
         if (!state.doc) {
           state.doc = emptyDoc(state.selectedVersion, state.configType);
+          state.headerComments = normalizedHeaderComments(cookieHeaderComments || "");
         }
 
         ensureDoc();

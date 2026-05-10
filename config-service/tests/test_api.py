@@ -194,6 +194,9 @@ async def test_health_and_versions() -> None:
     assert "Include loaded files" in ui_html
     assert 'id="env-panel"' in ui_html
     assert "Environment Variables" in ui_html
+    assert 'id="metadata-env-panel"' in ui_html
+    assert "Metadata as Environment Variables" in ui_html
+    assert 'id="header-comments-input"' in ui_html
 
     logo = await client.get("/config-service/ui/assets/opamp_logo.png")
     assert logo.status_code == 200
@@ -322,6 +325,18 @@ async def test_config_service_help_page_served() -> None:
     assert "Color Use" in html
     assert "Route" in html
     assert "Processors" in html
+
+
+@pytest.mark.asyncio
+async def test_metadata_env_help_page_served() -> None:
+    app = create_app(mode="standalone")
+    client = app.test_client()
+    response = await client.get("/config-service/ui/docs/metadata-env")
+    assert response.status_code == 200
+    html = (await response.get_data()).decode("utf-8")
+    assert "Metadata as Environment Variables" in html
+    assert "Preset Metadata Options" in html
+    assert 'id="header-comments"' in html
 
 
 @pytest.mark.asyncio
@@ -1396,6 +1411,47 @@ pipeline:
     assert "STDOUT_FMT: json_lines" in rendered_yaml
     assert "flush: ${FLUSH_INTERVAL}" in rendered_yaml
     assert "format: ${STDOUT_FMT}" in rendered_yaml
+
+
+@pytest.mark.asyncio
+async def test_parse_and_render_fluentbit_yaml_metadata_env_round_trips() -> None:
+    app = create_app(mode="standalone")
+    client = app.test_client()
+
+    sample_yaml = """
+env:
+  LOG_LEVEL: info
+  _metadata.config_version: cfg-123
+  _metadata.configuration_date: 2026-05-09
+pipeline:
+  inputs:
+    - name: random
+  outputs:
+    - name: stdout
+      match: '*'
+""".strip()
+
+    parse_resp = await client.post(
+        "/config-service/api/v1/parse/fluentbit/5.0.4",
+        json={"text": sample_yaml},
+    )
+    assert parse_resp.status_code == 200
+    parse_body = await parse_resp.get_json()
+    assert parse_body["config"]["env"]["LOG_LEVEL"] == "info"
+    assert parse_body["config"]["env"]["_metadata.config_version"] == "cfg-123"
+    parsed_date_value = str(parse_body["config"]["env"]["_metadata.configuration_date"])
+    assert "2026" in parsed_date_value
+    assert "09" in parsed_date_value
+
+    render_resp = await client.post(
+        "/config-service/api/v1/render/yaml/5.0.4?config_type=fluentbit",
+        json={"config": parse_body["config"], "include_comments": False},
+    )
+    assert render_resp.status_code == 200
+    render_body = await render_resp.get_json()
+    rendered_yaml = render_body["yaml"]
+    assert "_metadata.config_version: cfg-123" in rendered_yaml
+    assert "_metadata.configuration_date:" in rendered_yaml
 
 
 @pytest.mark.asyncio

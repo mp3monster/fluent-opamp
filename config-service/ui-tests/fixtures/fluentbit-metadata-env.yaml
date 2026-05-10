@@ -1,0 +1,13 @@
+# imported from integration test
+env:
+  LOG_LEVEL: info
+  _metadata.config_version: cfg-001
+  _metadata.configuration_date: 2026-05-01
+service:
+  flush: 1
+pipeline:
+  inputs:
+    - name: dummy
+  outputs:
+    - name: stdout
+      match: '*'

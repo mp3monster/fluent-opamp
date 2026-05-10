@@ -467,6 +467,19 @@ textarea.code-input {
   font-size: 0.85rem;
 }
 
+#header-comments-body {
+  margin-top: 0.75rem;
+}
+
+#header-comments-body.is-collapsed {
+  display: none;
+}
+
+#header-comments-input {
+  min-height: 5.2rem;
+  resize: vertical;
+}
+
 .icon-help {
   display: inline-flex;
   align-items: center;
@@ -566,6 +579,19 @@ pre {
   flex-wrap: wrap;
 }
 
+.inline-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.88rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.inline-toggle input[type="checkbox"] {
+  margin: 0;
+}
+
 .result-head.is-valid {
   background: #e9f8ef;
   color: #166534;
@@ -602,6 +628,9 @@ pre {
 }
 
 #plugins-body.is-collapsed,
+#service-body.is-collapsed,
+#env-body.is-collapsed,
+#metadata-env-body.is-collapsed,
 #parsers-body.is-collapsed,
 #labels-body.is-collapsed,
 #workers-body.is-collapsed {

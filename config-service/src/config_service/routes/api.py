@@ -190,6 +190,7 @@ def create_api_blueprint() -> Blueprint:
     @bp.post("/validate/<version>")
     async def validate(version: str) -> Any:
         catalog_service = current_app.extensions["catalog_service"]
+        include_document_service = current_app.extensions["include_document_service"]
         parser_definition_service = current_app.extensions["parser_definition_service"]
         validation_service = current_app.extensions["validation_service"]
         body = await request.get_json(silent=True) or {}
@@ -205,9 +206,15 @@ def create_api_blueprint() -> Blueprint:
         parser_definition = None
         if str(config_type or "fluentbit").lower() == "fluentbit":
             parser_definition = parser_definition_service.get_definition(version, config_type="fluentbit")
+        payload = req.model_dump()
+        if req.merge_includes_for_validation:
+            payload["config"] = include_document_service.merge_for_validation(
+                config=req.config,
+                included_documents=req.included_documents,
+            )
         result = validation_service.validate(
             version=version,
-            payload=req.model_dump(),
+            payload=payload,
             catalog=catalog_payload,
             profile=req.profile,
             parser_definition=parser_definition,
@@ -217,7 +224,9 @@ def create_api_blueprint() -> Blueprint:
     @bp.post("/render/yaml/<version>")
     async def render_yaml(version: str) -> Any:
         catalog_service = current_app.extensions["catalog_service"]
+        include_document_service = current_app.extensions["include_document_service"]
         yaml_render_service = current_app.extensions["yaml_render_service"]
+        fluentd_config_service = current_app.extensions["fluentd_config_service"]
         body = await request.get_json(silent=True) or {}
         config_type = request.args.get("config_type", "fluentbit")
         try:
@@ -231,12 +240,22 @@ def create_api_blueprint() -> Blueprint:
         yaml_text = yaml_render_service.render(
             payload=req.model_dump(), include_comments=req.include_comments
         )
-        return jsonify({"ok": True, "yaml": yaml_text})
+        response: dict[str, Any] = {"ok": True, "yaml": yaml_text}
+        if req.render_included_files:
+            response["included_files"] = include_document_service.render_included_documents(
+                config_type=config_type,
+                included_documents=req.included_documents,
+                include_comments=req.include_comments,
+                yaml_render_service=yaml_render_service,
+                fluentd_config_service=fluentd_config_service,
+            )
+        return jsonify(response)
 
     @bp.post("/parse/fluentd/<version>")
     async def parse_fluentd(version: str) -> Any:
         catalog_service = current_app.extensions["catalog_service"]
         fluentd_config_service = current_app.extensions["fluentd_config_service"]
+        include_document_service = current_app.extensions["include_document_service"]
         body = await request.get_json(silent=True) or {}
         try:
             req = ParseTextRequest.model_validate(body)
@@ -265,12 +284,20 @@ def create_api_blueprint() -> Blueprint:
             config_payload = fluentd_config_service.parse(req.text)
         except ValueError as exc:
             return jsonify({"ok": False, "errors": [{"order": 1, "code": "fluentd_parse_error", "path": "$", "message": str(exc), "severity": "error", "source": "parser"}]}), HTTPStatus.BAD_REQUEST
-        return jsonify({"ok": True, "config": config_payload})
+        response: dict[str, Any] = {"ok": True, "config": config_payload}
+        if req.resolve_includes and req.source_path:
+            response["included_documents"] = include_document_service.resolve_include_documents(
+                config_type="fluentd",
+                source_path=req.source_path,
+                config=config_payload,
+            )
+        return jsonify(response)
 
     @bp.post("/parse/fluentbit/<version>")
     async def parse_fluentbit(version: str) -> Any:
         catalog_service = current_app.extensions["catalog_service"]
         fluentbit_yaml_config_service = current_app.extensions["fluentbit_yaml_config_service"]
+        include_document_service = current_app.extensions["include_document_service"]
         body = await request.get_json(silent=True) or {}
         try:
             req = ParseTextRequest.model_validate(body)
@@ -303,12 +330,20 @@ def create_api_blueprint() -> Blueprint:
                 ),
                 HTTPStatus.BAD_REQUEST,
             )
+        if req.resolve_includes and req.source_path:
+            result["included_documents"] = include_document_service.resolve_include_documents(
+                config_type="fluentbit",
+                source_path=req.source_path,
+                config=result.get("config", {}),
+            )
         return jsonify(result)
 
     @bp.post("/render/fluentd/<version>")
     async def render_fluentd(version: str) -> Any:
         catalog_service = current_app.extensions["catalog_service"]
         fluentd_config_service = current_app.extensions["fluentd_config_service"]
+        include_document_service = current_app.extensions["include_document_service"]
+        yaml_render_service = current_app.extensions["yaml_render_service"]
         body = await request.get_json(silent=True) or {}
         try:
             req = RenderTextRequest.model_validate(body)
@@ -318,6 +353,15 @@ def create_api_blueprint() -> Blueprint:
         except KeyError as exc:
             return jsonify({"ok": False, "error": str(exc)}), HTTPStatus.NOT_FOUND
         rendered = fluentd_config_service.render(req.config)
-        return jsonify({"ok": True, "text": rendered})
+        response: dict[str, Any] = {"ok": True, "text": rendered}
+        if req.render_included_files:
+            response["included_files"] = include_document_service.render_included_documents(
+                config_type="fluentd",
+                included_documents=req.included_documents,
+                include_comments=False,
+                yaml_render_service=yaml_render_service,
+                fluentd_config_service=fluentd_config_service,
+            )
+        return jsonify(response)
 
     return bp

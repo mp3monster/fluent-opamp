@@ -1,0 +1,12 @@
+{
+  "yamlExtensions": [
+    ".yaml",
+    ".yml"
+  ],
+  "saveSuffix": "-ui-validated",
+  "additionalPluginAttribute": {
+    "pluginName": "tail",
+    "field": "tag",
+    "value": "chapter.batch.validation"
+  }
+}

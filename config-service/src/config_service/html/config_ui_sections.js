@@ -24,8 +24,6 @@
     var isReadOnlyMode = deps.isReadOnlyMode;
     var createCommentToggleButton = deps.createCommentToggleButton;
     var createCommentEditorPanel = deps.createCommentEditorPanel;
-    var renameFieldComment = deps.renameFieldComment;
-    var clearFieldComment = deps.clearFieldComment;
     var renderFieldRow = deps.renderFieldRow;
     var createFieldHelpButton = deps.createFieldHelpButton;
     var applyRequiredLabelStyle = deps.applyRequiredLabelStyle;
@@ -269,14 +267,6 @@ function renderParserCard(parserInstance, parserIndex) {
 
     var actions = document.createElement("div");
     actions.className = "plugin-actions";
-    actions.appendChild(
-      createCommentToggleButton(
-        "service:comment",
-        state.doc.config.service,
-        "",
-        "service comment editor"
-      )
-    );
     var collapseBtn = document.createElement("button");
     collapseBtn.type = "button";
     collapseBtn.textContent = state.serviceCollapsed ? "Expand" : "Collapse";
@@ -293,15 +283,6 @@ function renderParserCard(parserInstance, parserIndex) {
       el.serviceList.appendChild(card);
       return;
     }
-
-    card.appendChild(
-      createCommentEditorPanel(
-        state.doc.config.service,
-        "Service Comment",
-        "",
-        "service:comment"
-      )
-    );
 
     var body = document.createElement("div");
     body.className = "field-grid";
@@ -325,7 +306,6 @@ function renderParserCard(parserInstance, parserIndex) {
           keyInput.value = key;
           return;
         }
-        renameFieldComment(state.doc.config.service, key, newKey);
         state.doc.config.service[newKey] = state.doc.config.service[key];
         delete state.doc.config.service[key];
         saveDoc();
@@ -397,41 +377,23 @@ function renderParserCard(parserInstance, parserIndex) {
       );
 
       row.appendChild(
-        createCommentToggleButton(
-          "service:" + key + ":comment",
-          state.doc.config.service,
-          key,
-          "comment editor for " + key
-        )
+      (function () {
+        var removeBtn = document.createElement("button");
+        removeBtn.type = "button";
+        removeBtn.textContent = "-";
+        removeBtn.className = "icon-remove right-align";
+        removeBtn.title = "Remove service field";
+        removeBtn.disabled = isReadOnlyMode();
+        removeBtn.addEventListener("click", function () {
+          delete state.doc.config.service[key];
+          saveDoc();
+          renderService();
+        });
+        return removeBtn;
+      })()
       );
 
-      var removeBtn = document.createElement("button");
-      removeBtn.type = "button";
-      removeBtn.textContent = "-";
-      removeBtn.className = "icon-remove right-align";
-      removeBtn.title = "Remove service field";
-      removeBtn.disabled = isReadOnlyMode();
-      removeBtn.addEventListener("click", function () {
-        clearFieldComment(state.doc.config.service, key);
-        delete state.doc.config.service[key];
-        saveDoc();
-        renderService();
-      });
-      row.appendChild(removeBtn);
-
-      var block = document.createElement("div");
-      block.className = "field-block";
-      block.classList.add("comment-group");
-      block.appendChild(row);
-      block.appendChild(
-        createCommentEditorPanel(
-          state.doc.config.service,
-          "Comment",
-          key,
-          "service:" + key + ":comment"
-        )
-      );
-      body.appendChild(block);
+      body.appendChild(row);
     });
 
     card.appendChild(body);

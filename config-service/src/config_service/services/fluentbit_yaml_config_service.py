@@ -66,6 +66,7 @@ class FluentBitYamlConfigService:
             raise ValueError("The Fluent Bit YAML root must be a mapping/object.")
 
         config: dict[str, Any] = {
+            "env": {},
             "service": {},
             "parsers": [],
             "pipeline": {"inputs": [], "filters": [], "outputs": []},
@@ -77,6 +78,27 @@ class FluentBitYamlConfigService:
         order = 1
 
         for key, value in loaded.items():
+            if key == "env":
+                if isinstance(value, dict):
+                    env_map: dict[str, Any] = {}
+                    for env_key, env_value in value.items():
+                        env_name = str(env_key).strip()
+                        if not env_name:
+                            continue
+                        env_map[env_name] = deepcopy(env_value)
+                    config["env"] = env_map
+                else:
+                    errors.append(
+                        _issue(
+                            order,
+                            "fluentbit_yaml_invalid_section",
+                            "$.env",
+                            "Ignored env section because it is not a mapping/object.",
+                        )
+                    )
+                    order += 1
+                continue
+
             if key == "service":
                 if isinstance(value, dict):
                     config["service"] = deepcopy(value)
@@ -104,6 +126,21 @@ class FluentBitYamlConfigService:
                 config["parsers"] = parsers_payload
                 errors.extend(parser_errors)
                 order += len(parser_errors)
+                continue
+
+            if key == "includes":
+                if isinstance(value, list):
+                    config["includes"] = [str(item).strip() for item in value if str(item).strip()]
+                else:
+                    errors.append(
+                        _issue(
+                            order,
+                            "fluentbit_yaml_invalid_section",
+                            "$.includes",
+                            "Ignored includes section because it is not a list.",
+                        )
+                    )
+                    order += 1
                 continue
 
             errors.append(

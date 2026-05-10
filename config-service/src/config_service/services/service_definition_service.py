@@ -49,6 +49,15 @@ class ServiceDefinitionService:
             return normalized
         return {}
 
+    @staticmethod
+    def _normalize_config_type(config_type: str) -> str:
+        normalized = str(config_type or "").strip().lower().replace("-", "").replace("_", "").replace(" ", "")
+        if normalized == "fluentbit":
+            return "fluentbit"
+        if normalized == "fluentd":
+            return "fluentd"
+        return str(config_type or "").strip()
+
     def load_all(self) -> None:
         loaded: dict[str, dict[str, dict[str, Any]]] = {}
         for config_type, version_map in self._registry_definitions_by_type().items():
@@ -95,10 +104,20 @@ class ServiceDefinitionService:
 
     def get_definition(self, version: str, config_type: str | None = None) -> dict[str, Any]:
         if config_type:
-            mapping = self._definitions_by_type.get(str(config_type), {})
-            if version not in mapping:
-                raise KeyError(f"Unsupported service-definition version for {config_type}: {version}")
-            return mapping[version]
+            normalized_type = self._normalize_config_type(str(config_type))
+            mapping = self._definitions_by_type.get(normalized_type, {})
+            if version in mapping:
+                return mapping[version]
+            # Fall back to a unique match across config types when alias/typing mismatches happen.
+            matches = [
+                payload
+                for version_map in self._definitions_by_type.values()
+                for candidate_version, payload in version_map.items()
+                if candidate_version == version
+            ]
+            if len(matches) == 1:
+                return matches[0]
+            raise KeyError(f"Unsupported service-definition version for {config_type}: {version}")
         matches = [
             payload
             for version_map in self._definitions_by_type.values()

@@ -60,6 +60,8 @@ class YamlRenderService:
     def _should_skip_empty(*, path: str, key: str, value: Any) -> bool:
         if key == "service" and path == "$":
             return isinstance(value, dict) and YamlRenderService._dict_without_meta_is_empty(value)
+        if key == "env" and path == "$":
+            return isinstance(value, dict) and YamlRenderService._dict_without_meta_is_empty(value)
         if key == "parsers" and path == "$":
             return isinstance(value, list) and len(value) == 0
         if key in {"inputs", "filters", "outputs"} and path == "$.pipeline":
@@ -130,7 +132,7 @@ class YamlRenderService:
         if isinstance(value, dict):
             keys = [key for key in value.keys() if key != "_meta"]
             if path == "$":
-                preferred = ["service", "parsers", "pipeline"]
+                preferred = ["env", "service", "parsers", "pipeline"]
                 ordered = [key for key in preferred if key in value]
                 ordered.extend([key for key in keys if key not in ordered])
                 keys = ordered

@@ -6,9 +6,11 @@
   "scripts": {
     "ui:test": "playwright test",
     "ui:test:headed": "playwright test --headed",
-    "ui:test:debug": "playwright test --debug"
+    "ui:test:debug": "playwright test --debug",
+    "ui:chapter-batch": "node dev-tools/playwright_chapter_batch_runner.mjs"
   },
   "devDependencies": {
-    "@playwright/test": "^1.54.2"
+    "@playwright/test": "^1.54.2",
+    "js-yaml": "^4.1.0"
   }
 }

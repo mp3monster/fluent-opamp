@@ -25,3 +25,9 @@ Developer quality checks:
 ```bash
 python3 config-service/dev-tools/run_backend_quality_checks.py
 ```
+
+Browser UI quality checks:
+
+```bash
+config-service/dev-tools/run_ui_quality_checks.sh
+```

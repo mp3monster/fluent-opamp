@@ -45,11 +45,15 @@
       "validation_rule": {
         "kind": "enum",
         "values": [
+          "yes",
+          "no",
           "on",
           "off"
         ]
       },
       "called_enum_options": [
+        "yes",
+        "no",
         "on",
         "off"
       ]
@@ -300,7 +304,11 @@
           "normal",
           "full"
         ]
-      }
+      },
+      "called_enum_options": [
+        "normal",
+        "full"
+      ]
     },
     {
       "name": "storage.checksum",
@@ -374,7 +382,7 @@
       "name": "dns.resolver",
       "required": false,
       "data_type": "enum",
-      "default": "LEGACY",
+      "default": "none",
       "description": "DNS resolver implementation.",
       "reference": "https://docs.fluentbit.io/manual/administration/configuring-fluent-bit/yaml/service-section",
       "validation_rule": {
@@ -574,7 +582,12 @@
           "filesystem",
           "memrb"
         ]
-      }
+      },
+      "called_enum_options": [
+        "memory",
+        "filesystem",
+        "memrb"
+      ]
     }
   ]
 }

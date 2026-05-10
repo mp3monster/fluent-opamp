@@ -12,19 +12,27 @@ class SchemaOptions(BaseModel):
 class ValidateRequest(BaseModel):
     config: dict[str, Any]
     annotations: dict[str, str] = Field(default_factory=dict)
+    included_documents: list[dict[str, Any]] = Field(default_factory=list)
+    merge_includes_for_validation: bool = False
     profile: str | None = None
 
 
 class RenderYamlRequest(BaseModel):
     config: dict[str, Any]
     annotations: dict[str, str] = Field(default_factory=dict)
+    included_documents: list[dict[str, Any]] = Field(default_factory=list)
     include_comments: bool = False
+    render_included_files: bool = False
 
 
 class ParseTextRequest(BaseModel):
     text: str
+    source_path: str | None = None
+    resolve_includes: bool = False
 
 
 class RenderTextRequest(BaseModel):
     config: dict[str, Any]
     annotations: dict[str, str] = Field(default_factory=dict)
+    included_documents: list[dict[str, Any]] = Field(default_factory=list)
+    render_included_files: bool = False

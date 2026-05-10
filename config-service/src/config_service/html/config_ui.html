@@ -79,6 +79,31 @@ limitations under the License.
           </label>
         </div>
         </div>
+        <div class="section-head">
+          <div>
+            <h3>Header Comments</h3>
+          </div>
+          <div class="plugin-actions">
+            <button
+              id="header-comments-help-toggle"
+              type="button"
+              class="icon-help"
+              title="Optional top-of-file comments. The UI omits comment markers and writes them back when saving."
+              aria-label="Open header comments help in a new tab"
+            >?</button>
+            <button id="header-comments-toggle" type="button">Open</button>
+          </div>
+        </div>
+        <div id="header-comments-body" class="is-collapsed">
+          <label>
+            Header Comments
+            <textarea
+              id="header-comments-input"
+              rows="3"
+              placeholder="Created by Team A&#10;Change summary..."
+            ></textarea>
+          </label>
+        </div>
       </section>
 
       <section id="status-panel" class="panel status-panel hidden" aria-live="polite">
@@ -88,22 +113,15 @@ limitations under the License.
         </p>
       </section>
 
-      <section class="panel">
+      <section id="service-panel" class="panel">
         <div class="section-head">
           <div>
             <h2>Service Section</h2>
             <p>Define service-level settings using known controls or custom keys.</p>
           </div>
-          <a
-            href="/config-service/ui/docs/meta-comments"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="icon-help"
-            title="Open help for comments and field comments."
-            aria-label="Open help for _meta comments"
-          >?</a>
+          <button id="service-toggle" type="button">Collapse</button>
         </div>
-        <div class="service-editor">
+        <div id="service-body" class="service-editor">
           <div class="service-configured">
             <h3>Configured Service Fields</h3>
             <div id="service-list"></div>
@@ -128,6 +146,88 @@ limitations under the License.
               <button id="add-service-field" type="button">Add Service Field</button>
             </div>
             <p id="service-option-meta" class="service-meta"></p>
+          </div>
+        </div>
+      </section>
+
+      <section id="env-panel" class="panel">
+        <div class="section-head">
+          <div>
+            <h2>Environment Variables</h2>
+            <p>Define top-level <code>env</code> variables for <code>${VAR_NAME}</code> interpolation.</p>
+          </div>
+          <button id="env-toggle" type="button">Collapse</button>
+        </div>
+        <div id="env-body" class="service-editor">
+          <div class="service-configured">
+            <h3>Configured Environment Variables</h3>
+            <div id="env-list"></div>
+          </div>
+          <div class="service-option-frame">
+            <div class="row">
+              <label>
+                Variable Name
+                <input id="env-key-input" type="text" placeholder="FLUSH_INTERVAL" />
+              </label>
+              <label>
+                Value
+                <input id="env-value-input" type="text" placeholder="1" />
+              </label>
+              <button id="add-env-field" type="button">Add Environment Variable</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="metadata-env-panel" class="panel">
+        <div class="section-head">
+          <div>
+            <h2>Metadata as Environment Variables</h2>
+            <p>Manage <code>_metadata.</code> values separately from normal <code>env</code> entries - this is a safe means to add helpful metadata without breaking configuration.</p>
+          </div>
+          <div class="plugin-actions">
+            <button
+              id="metadata-env-help-toggle"
+              type="button"
+              class="icon-help"
+              aria-label="Open metadata environment variable help in a new tab"
+            >?</button>
+            <button id="metadata-env-toggle" type="button">Collapse</button>
+          </div>
+        </div>
+        <div id="metadata-env-body" class="service-editor">
+          <div class="service-configured">
+            <h3>Configured Metadata Variables</h3>
+            <div id="metadata-env-list"></div>
+          </div>
+          <div class="service-option-frame">
+            <div class="row">
+              <label>
+                Metadata Key (Select or create)
+                <input
+                  id="metadata-env-key-input"
+                  type="text"
+                  list="metadata-env-key-options"
+                  placeholder="config_version"
+                />
+                <datalist id="metadata-env-key-options">
+                  <option value="fluent_bit_version">Fluent Bit Version</option>
+                  <option value="configuration_date">Configuration Date</option>
+                  <option value="config_version">Configuration Version</option>
+                </datalist>
+              </label>
+              <label>
+                Value
+                <input
+                  id="metadata-env-value-input"
+                  type="text"
+                  list="metadata-env-value-options"
+                  placeholder="5.0.4"
+                />
+                <datalist id="metadata-env-value-options"></datalist>
+              </label>
+              <button id="add-metadata-env-field" type="button">Add Metadata Variable</button>
+            </div>
           </div>
         </div>
       </section>
@@ -165,7 +265,7 @@ limitations under the License.
         </div>
       </section>
 
-      <section class="panel">
+      <section id="add-plugin-panel" class="panel">
         <div class="section-head">
           <h2>Add Plugin</h2>
         </div>
@@ -187,7 +287,7 @@ limitations under the License.
         </div>
       </section>
 
-      <section class="panel">
+      <section id="plugins-panel" class="panel">
         <div class="section-head">
           <div>
             <h2>Plugins</h2>
@@ -237,6 +337,10 @@ limitations under the License.
           <div id="validation-header" class="result-head">
             <h3>Validation</h3>
             <div class="result-actions">
+              <label class="inline-toggle" title="When enabled, validation will merge any include files already loaded into memory.">
+                <input id="validation-include-toggle" type="checkbox" />
+                Include loaded files
+              </label>
               <button id="validate-btn" type="button">Validate</button>
               <button id="validation-toggle" type="button">Collapse</button>
             </div>
@@ -250,6 +354,10 @@ limitations under the License.
           <div class="result-head">
             <h3>Rendered Configuration</h3>
             <div class="result-actions">
+              <label class="inline-toggle" title="When enabled, rendering also includes rendered output for include files loaded into memory.">
+                <input id="render-include-toggle" type="checkbox" />
+                Include loaded files
+              </label>
               <button id="render-btn" type="button">Render Configuration</button>
               <button id="yaml-toggle" type="button">Collapse</button>
             </div>
@@ -274,6 +382,7 @@ limitations under the License.
     <script src="/config-service/ui/assets/config_ui_comments.js__CONFIG_SERVICE_UI_ASSET_SUFFIX__"></script>
     <script src="/config-service/ui/assets/config_ui_plugins.js__CONFIG_SERVICE_UI_ASSET_SUFFIX__"></script>
     <script src="/config-service/ui/assets/config_ui_sections.js__CONFIG_SERVICE_UI_ASSET_SUFFIX__"></script>
+    <script src="/config-service/ui/assets/config_ui_env.js__CONFIG_SERVICE_UI_ASSET_SUFFIX__"></script>
     <script src="/config-service/ui/assets/config_ui.js__CONFIG_SERVICE_UI_ASSET_SUFFIX__"></script>
   </body>
 </html>
