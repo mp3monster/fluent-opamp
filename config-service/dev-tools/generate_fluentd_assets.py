@@ -20,6 +20,7 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 JSON_DEFINITIONS_DIR = REPO_ROOT / "config-service" / "json-definitions"
+SRC_JSON_DEFINITIONS_DIR = REPO_ROOT / "config-service" / "src" / "config_service" / "json-definitions"
 
 FLUENTD_LOG_LEVELS = ["trace", "debug", "info", "warn", "error", "fatal"]
 TIME_TYPES = ["float", "unixtime", "string"]
@@ -710,7 +711,7 @@ def filter_plugins(version: str) -> dict[str, Any]:
             doc_url="https://docs.fluentd.org/filter/grep",
             description="Keeps or drops records by matching field values with regular expressions.",
             directive_arg=directive_argument(
-                name="match_pattern",
+                name="match",
                 description="Tag pattern selecting events for this filter.",
                 reference=DOC_CONFIG,
                 validation_rule={"kind": "regex_string"},
@@ -723,7 +724,7 @@ def filter_plugins(version: str) -> dict[str, Any]:
             doc_url="https://docs.fluentd.org/filter/record_transformer",
             description="Adds, removes, or rewrites record fields.",
             directive_arg=directive_argument(
-                name="match_pattern",
+                name="match",
                 description="Tag pattern selecting events for this filter.",
                 reference=DOC_CONFIG,
                 validation_rule={"kind": "regex_string"},
@@ -745,7 +746,7 @@ def filter_plugins(version: str) -> dict[str, Any]:
             doc_url="https://docs.fluentd.org/filter/parser",
             description="Parses one field from each record and merges parsed content back into the event.",
             directive_arg=directive_argument(
-                name="match_pattern",
+                name="match",
                 description="Tag pattern selecting events for this filter.",
                 reference=DOC_CONFIG,
                 validation_rule={"kind": "regex_string"},
@@ -766,7 +767,7 @@ def filter_plugins(version: str) -> dict[str, Any]:
             doc_url="https://docs.fluentd.org/filter/stdout",
             description="Prints filtered records to stdout or Fluentd's own log stream.",
             directive_arg=directive_argument(
-                name="match_pattern",
+                name="match",
                 description="Tag pattern selecting events for this filter.",
                 reference=DOC_CONFIG,
                 validation_rule={"kind": "regex_string"},
@@ -784,7 +785,7 @@ def output_plugins(version: str) -> dict[str, Any]:
             doc_url="https://docs.fluentd.org/output/stdout",
             description="Writes matched records to stdout or the Fluentd log stream.",
             directive_arg=directive_argument(
-                name="match_pattern",
+                name="match",
                 description="Tag pattern selecting events for this output.",
                 reference=DOC_CONFIG,
                 validation_rule={"kind": "regex_string"},
@@ -797,7 +798,7 @@ def output_plugins(version: str) -> dict[str, Any]:
             doc_url="https://docs.fluentd.org/output/file",
             description="Writes matched records to files on disk.",
             directive_arg=directive_argument(
-                name="match_pattern",
+                name="match",
                 description="Tag pattern selecting events for this output.",
                 reference=DOC_CONFIG,
                 validation_rule={"kind": "regex_string"},
@@ -818,7 +819,7 @@ def output_plugins(version: str) -> dict[str, Any]:
             doc_url="https://docs.fluentd.org/output/forward",
             description="Forwards matched records to other Fluentd or Fluent Bit nodes.",
             directive_arg=directive_argument(
-                name="match_pattern",
+                name="match",
                 description="Tag pattern selecting events for this output.",
                 reference=DOC_CONFIG,
                 validation_rule={"kind": "regex_string"},
@@ -840,7 +841,7 @@ def output_plugins(version: str) -> dict[str, Any]:
             doc_url="https://docs.fluentd.org/output/null",
             description="Drops matched records.",
             directive_arg=directive_argument(
-                name="match_pattern",
+                name="match",
                 description="Tag pattern selecting events for this output.",
                 reference=DOC_CONFIG,
                 validation_rule={"kind": "regex_string"},
@@ -853,7 +854,7 @@ def output_plugins(version: str) -> dict[str, Any]:
             doc_url="https://docs.fluentd.org/output/copy",
             description="Duplicates matched records to multiple nested store outputs.",
             directive_arg=directive_argument(
-                name="match_pattern",
+                name="match",
                 description="Tag pattern selecting events for this output.",
                 reference=DOC_CONFIG,
                 validation_rule={"kind": "regex_string"},
@@ -871,7 +872,7 @@ def output_plugins(version: str) -> dict[str, Any]:
             doc_url="https://docs.fluentd.org/output/exec",
             description="Passes buffered event chunks to an external command.",
             directive_arg=directive_argument(
-                name="match_pattern",
+                name="match",
                 description="Tag pattern selecting events for this output.",
                 reference=DOC_CONFIG,
                 validation_rule={"kind": "regex_string"},
@@ -891,7 +892,7 @@ def output_plugins(version: str) -> dict[str, Any]:
             doc_url="https://docs.fluentd.org/output/exec_filter",
             description="Transforms events by piping them through an external command and reading the command output back as events.",
             directive_arg=directive_argument(
-                name="match_pattern",
+                name="match",
                 description="Tag pattern selecting events for this output.",
                 reference=DOC_CONFIG,
                 validation_rule={"kind": "regex_string"},
@@ -912,7 +913,7 @@ def output_plugins(version: str) -> dict[str, Any]:
             doc_url="https://docs.fluentd.org/output/relabel",
             description="Routes matched events to another label without changing the record payload.",
             directive_arg=directive_argument(
-                name="match_pattern",
+                name="match",
                 description="Tag pattern selecting events for this output.",
                 reference=DOC_CONFIG,
                 validation_rule={"kind": "regex_string"},
@@ -1036,16 +1037,21 @@ def write_json(path: Path, payload: dict[str, Any]) -> None:
 
 
 def main() -> None:
-    JSON_DEFINITIONS_DIR.mkdir(parents=True, exist_ok=True)
+    output_dirs = (JSON_DEFINITIONS_DIR, SRC_JSON_DEFINITIONS_DIR)
+    for directory in output_dirs:
+        directory.mkdir(parents=True, exist_ok=True)
     for version in ("1.19", "1.16", "1.8"):
-        write_json(
-            JSON_DEFINITIONS_DIR / f"fluentd-{version}-all-plugins-catalog.json",
-            build_catalog(version),
-        )
-        write_json(
-            JSON_DEFINITIONS_DIR / f"fluentd-{version}-service-options.json",
-            build_service_definition(version),
-        )
+        catalog_payload = build_catalog(version)
+        service_payload = build_service_definition(version)
+        for directory in output_dirs:
+            write_json(
+                directory / f"fluentd-{version}-all-plugins-catalog.json",
+                catalog_payload,
+            )
+            write_json(
+                directory / f"fluentd-{version}-service-options.json",
+                service_payload,
+            )
 
 
 if __name__ == "__main__":

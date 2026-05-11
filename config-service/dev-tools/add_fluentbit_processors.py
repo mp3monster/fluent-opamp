@@ -19,8 +19,15 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFINITIONS_DIR = REPO_ROOT / "config-service" / "json-definitions"
+SRC_DEFINITIONS_DIR = REPO_ROOT / "config-service" / "src" / "config_service" / "json-definitions"
 
 LOG_LEVELS = ["off", "trace", "debug", "info", "warn", "error"]
+ROUTER_REFERENCES = {
+    "3.2.10": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+    "4.2.4": "https://docs.fluentbit.io/manual/4.2/data-pipeline/router",
+    "5.0.4": "https://docs.fluentbit.io/manual/data-pipeline/router",
+}
+TAG_REQUIRED_BY_VERSION = {"3.2.10", "4.2.4"}
 
 
 def field(
@@ -336,17 +343,87 @@ def processors_definition(version: str) -> dict[str, Any]:
     }
 
 
+def _router_reference(version: str) -> str:
+    return ROUTER_REFERENCES.get(version, "https://docs.fluentbit.io/manual/data-pipeline/router")
+
+
+def _ensure_router_fields(payload: dict[str, Any], version: str) -> None:
+    plugins = payload.get("plugins", {})
+    if not isinstance(plugins, dict):
+        return
+    reference = _router_reference(version)
+
+    tag_field = field(
+        "tag",
+        description="Tag assigned to records emitted by this input plugin.",
+        reference=reference,
+    )
+    match_field = field(
+        "match",
+        description="Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+        reference=reference,
+    )
+    match_regex_field = field(
+        "match_regex",
+        description="Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+        reference=reference,
+    )
+
+    inputs = plugins.get("inputs", {})
+    for plugin_name, plugin_def in inputs.items():
+        fields = plugin_def.get("fields")
+        if not isinstance(fields, list):
+            continue
+        existing_fields = {
+            item.get("name"): item for item in fields if isinstance(item, dict)
+        }
+        existing = set(existing_fields.keys())
+        if "tag" not in existing:
+            tag_payload = dict(tag_field)
+            if (
+                version in TAG_REQUIRED_BY_VERSION
+                and str(plugin_name) != "forward"
+            ):
+                tag_payload["required"] = True
+            fields.append(tag_payload)
+        else:
+            tag_existing = existing_fields.get("tag")
+            if isinstance(tag_existing, dict):
+                tag_existing["reference"] = reference
+                if version in TAG_REQUIRED_BY_VERSION and str(plugin_name) != "forward":
+                    tag_existing["required"] = True
+
+    for section in ("filters", "outputs"):
+        section_map = plugins.get(section, {})
+        if not isinstance(section_map, dict):
+            continue
+        for plugin_def in section_map.values():
+            fields = plugin_def.get("fields")
+            if not isinstance(fields, list):
+                continue
+            existing = {item.get("name") for item in fields if isinstance(item, dict)}
+            if "match" not in existing:
+                fields.append(dict(match_field))
+            if "match_regex" not in existing:
+                fields.append(dict(match_regex_field))
+
+
 def update_catalog(path: Path) -> None:
     data = json.loads(path.read_text(encoding="utf-8"))
     version = str(data.get("fluent_bit_version"))
     common = data.setdefault("common", {})
     common["processors"] = processors_definition(version)
+    _ensure_router_fields(data, version)
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 
 
 def main() -> None:
     for version in ("3.2.10", "4.2.4", "5.0.4"):
-        update_catalog(DEFINITIONS_DIR / f"fluent-bit-{version}-all-plugins-catalog.json")
+        filename = f"fluent-bit-{version}-all-plugins-catalog.json"
+        update_catalog(DEFINITIONS_DIR / filename)
+        src_path = SRC_DEFINITIONS_DIR / filename
+        if src_path.exists():
+            update_catalog(src_path)
 
 
 if __name__ == "__main__":

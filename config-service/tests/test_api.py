@@ -254,6 +254,7 @@ async def test_health_and_versions() -> None:
     issue_body = await issue_codes.get_json()
     assert "codes" in issue_body
     assert "missing_required_field" in issue_body["codes"]
+    assert "missing_match_selector" in issue_body["codes"]
 
 
 def test_fluent_bit_catalogs_have_no_other_yaml_keyword_plugin_name_conflicts() -> None:
@@ -271,6 +272,65 @@ def test_fluent_bit_catalogs_have_no_other_yaml_keyword_plugin_name_conflicts() 
         ("fluent-bit-4.2.4-all-plugins-catalog.json", "outputs", "null"),
         ("fluent-bit-5.0.4-all-plugins-catalog.json", "outputs", "null"),
     ]
+
+
+def test_fluent_bit_catalogs_include_router_fields_for_all_plugins() -> None:
+    base = Path(__file__).resolve().parents[1] / "json-definitions"
+    missing: list[tuple[str, str, str, str]] = []
+    for path in sorted(base.glob("fluent-bit-*-all-plugins-catalog.json")):
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        plugins = payload.get("plugins", {})
+
+        for section, field_name in (("inputs", "tag"), ("filters", "match"), ("filters", "match_regex"), ("outputs", "match"), ("outputs", "match_regex")):
+            section_plugins = plugins.get(section, {})
+            if not isinstance(section_plugins, dict):
+                continue
+            for plugin_name, plugin_def in section_plugins.items():
+                fields = plugin_def.get("fields", [])
+                names = {field.get("name") for field in fields if isinstance(field, dict)}
+                if field_name not in names:
+                    missing.append((path.name, section, plugin_name, field_name))
+
+    assert missing == []
+
+
+def test_fluent_bit_older_catalogs_require_tag_for_inputs_except_forward() -> None:
+    base = Path(__file__).resolve().parents[1] / "json-definitions"
+    missing_required: list[tuple[str, str]] = []
+    for version in ("3.2.10", "4.2.4"):
+        path = base / f"fluent-bit-{version}-all-plugins-catalog.json"
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        inputs = payload.get("plugins", {}).get("inputs", {})
+        for plugin_name, plugin_def in inputs.items():
+            if plugin_name == "forward":
+                continue
+            fields = [field for field in plugin_def.get("fields", []) if isinstance(field, dict)]
+            tag_field = next((field for field in fields if field.get("name") == "tag"), None)
+            if not isinstance(tag_field, dict) or tag_field.get("required") is not True:
+                missing_required.append((version, plugin_name))
+
+    assert missing_required == []
+
+
+def test_fluentd_catalogs_expose_match_directive_argument_for_filters_and_outputs() -> None:
+    base = Path(__file__).resolve().parents[1] / "json-definitions"
+    mismatches: list[tuple[str, str, str, str]] = []
+    for path in sorted(base.glob("fluentd-*-all-plugins-catalog.json")):
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        plugins = payload.get("plugins", {})
+        for section in ("filters", "outputs"):
+            section_plugins = plugins.get(section, {})
+            if not isinstance(section_plugins, dict):
+                continue
+            for plugin_name, plugin_def in section_plugins.items():
+                directive_argument = plugin_def.get("directive_argument")
+                argument_name = ""
+                if isinstance(directive_argument, dict):
+                    argument_name = str(directive_argument.get("name") or "")
+                if argument_name != "match":
+                    mismatches.append((path.name, section, plugin_name, argument_name))
+
+    assert mismatches == []
 
 
 @pytest.mark.asyncio
@@ -1067,6 +1127,58 @@ async def test_fluentbit_processors_validate_and_render() -> None:
 
 
 @pytest.mark.asyncio
+async def test_validate_requires_match_or_match_regex_when_both_fields_exist() -> None:
+    app = create_app(mode="standalone")
+    client = app.test_client()
+
+    payload = {
+        "config": {
+            "pipeline": {
+                "inputs": [{"name": "dummy"}],
+                "filters": [],
+                "outputs": [{"name": "null"}],
+            }
+        }
+    }
+
+    resp = await client.post(
+        "/config-service/api/v1/validate/5.0.4?config_type=fluentbit",
+        json=payload,
+    )
+    assert resp.status_code in (200, 400)
+    body = await resp.get_json()
+    assert "errors" in body
+    selector_errors = [item for item in body["errors"] if item["code"] == "missing_match_selector"]
+    assert selector_errors
+    assert selector_errors[0]["path"] == "$.config.pipeline.outputs[0]"
+
+
+@pytest.mark.asyncio
+async def test_validate_accepts_match_or_match_regex_when_either_is_present() -> None:
+    app = create_app(mode="standalone")
+    client = app.test_client()
+
+    payload = {
+        "config": {
+            "pipeline": {
+                "inputs": [{"name": "dummy"}],
+                "filters": [{"name": "grep", "regex": "message error", "match_regex": "^app\\."}],
+                "outputs": [{"name": "null", "match": "*"}],
+            }
+        }
+    }
+
+    resp = await client.post(
+        "/config-service/api/v1/validate/5.0.4?config_type=fluentbit",
+        json=payload,
+    )
+    assert resp.status_code in (200, 400)
+    body = await resp.get_json()
+    assert "errors" in body
+    assert not [item for item in body["errors"] if item["code"] == "missing_match_selector"]
+
+
+@pytest.mark.asyncio
 async def test_lua_code_validation_returns_normalized_errors() -> None:
     app = create_app(mode="standalone")
     client = app.test_client()
@@ -1185,7 +1297,9 @@ async def test_parse_and_render_fluentd_config() -> None:
     assert parsed_body["ok"] is True
     assert parsed_body["config"]["service"]["log_level"] == "info"
     assert parsed_body["config"]["pipeline"]["inputs"][0]["name"] == "tail"
+    assert parsed_body["config"]["pipeline"]["filters"][0]["match"] == "app.**"
     assert parsed_body["config"]["pipeline"]["outputs"][0]["name"] == "copy"
+    assert parsed_body["config"]["pipeline"]["outputs"][0]["match"] == "app.**"
 
     rendered_resp = await client.post(
         "/config-service/api/v1/render/fluentd/1.19",
@@ -1208,6 +1322,49 @@ async def test_schema_endpoint_supports_fluentd() -> None:
     body = await resp.get_json()
     assert body["ok"] is True
     assert "labels" in body["schema"]["properties"]["config"]["properties"]
+    filter_plugins = body["schema"]["properties"]["config"]["properties"]["pipeline"]["properties"]["filters"]["items"]["oneOf"]
+    grep_schema = next(
+        item
+        for item in filter_plugins
+        if item.get("properties", {}).get("name", {}).get("const") == "grep"
+    )
+    assert "match" in grep_schema["properties"]
+    assert "allOf" in grep_schema
+
+
+@pytest.mark.asyncio
+async def test_validate_fluentd_accepts_match_and_legacy_directive_arg() -> None:
+    app = create_app(mode="standalone")
+    client = app.test_client()
+
+    base_config = {
+        "service": {"log_level": "info"},
+        "pipeline": {
+            "inputs": [{"name": "tail", "tag": "app.logs", "path": "/var/log/app.log"}],
+            "filters": [],
+            "outputs": [{"name": "stdout"}],
+        },
+    }
+
+    canonical = json.loads(json.dumps(base_config))
+    canonical["pipeline"]["outputs"][0]["match"] = "app.**"
+    canonical_resp = await client.post(
+        "/config-service/api/v1/validate/1.19?config_type=fluentd",
+        json={"config": canonical},
+    )
+    assert canonical_resp.status_code == 200
+    canonical_body = await canonical_resp.get_json()
+    assert canonical_body["ok"] is True
+
+    legacy = json.loads(json.dumps(base_config))
+    legacy["pipeline"]["outputs"][0]["directive_arg"] = "app.**"
+    legacy_resp = await client.post(
+        "/config-service/api/v1/validate/1.19?config_type=fluentd",
+        json={"config": legacy},
+    )
+    assert legacy_resp.status_code == 200
+    legacy_body = await legacy_resp.get_json()
+    assert legacy_body["ok"] is True
 
 
 @pytest.mark.asyncio
@@ -1503,3 +1660,148 @@ async def test_render_fluentd_rejects_invalid_request_payload() -> None:
     body = await resp.get_json()
     assert body["ok"] is False
     assert body["errors"][0]["code"] == "pydantic_validation_error"
+
+
+@pytest.mark.asyncio
+async def test_ui_prepare_file_extracts_header_metadata_and_line_map() -> None:
+    app = create_app(mode="standalone")
+    client = app.test_client()
+
+    text = (
+        "# config-service: config_type=fluentbit\n"
+        "# config-service: version=5.0.4\n"
+        "# Owned by Team A\n"
+        "\n"
+        "pipeline:\n"
+        "  inputs:\n"
+        "    - name: tail\n"
+    )
+
+    response = await client.post(
+        "/config-service/api/v1/ui/prepare-file",
+        json={
+            "text": text,
+            "file_name": "example.yaml",
+            "config_type": "fluentbit",
+        },
+    )
+    assert response.status_code == 200
+    body = await response.get_json()
+    assert body["ok"] is True
+    assert body["config_type"] == "fluentbit"
+    assert body["version"] == "5.0.4"
+    assert body["header_comments"] == "Owned by Team A"
+    assert body["body"].startswith("pipeline:")
+    assert body["source_line_map"]["$.pipeline"] >= 1
+
+
+@pytest.mark.asyncio
+async def test_render_yaml_returns_backend_composed_rendered_output() -> None:
+    app = create_app(mode="standalone")
+    client = app.test_client()
+
+    response = await client.post(
+        "/config-service/api/v1/render/yaml/5.0.4?config_type=fluentbit",
+        json={
+            "config": {
+                "pipeline": {
+                    "inputs": [{"name": "tail", "path": "/var/log/app.log"}],
+                    "filters": [],
+                    "outputs": [{"name": "stdout"}],
+                },
+            },
+            "header_comments": "Owned by Team A\nValidated before deploy",
+            "render_included_files": True,
+            "included_documents": [
+                {
+                    "include_path": "child.yaml",
+                    "ok": True,
+                    "config": {
+                        "pipeline": {
+                            "inputs": [],
+                            "filters": [],
+                            "outputs": [{"name": "null"}],
+                        },
+                    },
+                    "included_documents": [],
+                }
+            ],
+        },
+    )
+    assert response.status_code == 200
+    body = await response.get_json()
+    assert body["ok"] is True
+    assert body["rendered_output"].startswith("# Owned by Team A\n# Validated before deploy\n")
+    assert "# Included file: child.yaml" in body["rendered_output"]
+
+
+@pytest.mark.asyncio
+async def test_render_fluentd_returns_backend_composed_rendered_output() -> None:
+    app = create_app(mode="standalone")
+    client = app.test_client()
+
+    response = await client.post(
+        "/config-service/api/v1/render/fluentd/1.19",
+        json={
+            "config": {
+                "service": {"log_level": "info"},
+                "pipeline": {"inputs": [], "filters": [], "outputs": []},
+            },
+            "header_comments": "Owned by Team A",
+        },
+    )
+    assert response.status_code == 200
+    body = await response.get_json()
+    assert body["ok"] is True
+    assert body["rendered_output"].startswith("# Owned by Team A\n")
+
+
+@pytest.mark.asyncio
+async def test_render_yaml_can_include_config_service_header_in_rendered_output() -> None:
+    app = create_app(mode="standalone")
+    client = app.test_client()
+
+    response = await client.post(
+        "/config-service/api/v1/render/yaml/5.0.4?config_type=fluentbit",
+        json={
+            "config": {
+                "pipeline": {
+                    "inputs": [{"name": "tail", "path": "/var/log/app.log"}],
+                    "filters": [],
+                    "outputs": [{"name": "stdout"}],
+                },
+            },
+            "header_comments": "Owned by Team A",
+            "include_config_header": True,
+        },
+    )
+    assert response.status_code == 200
+    body = await response.get_json()
+    assert body["ok"] is True
+    assert body["rendered_output"].startswith(
+        "# Owned by Team A\n# config-service: config_type=fluentbit\n# config-service: version=5.0.4\n"
+    )
+
+
+@pytest.mark.asyncio
+async def test_render_fluentd_can_include_config_service_header_in_rendered_output() -> None:
+    app = create_app(mode="standalone")
+    client = app.test_client()
+
+    response = await client.post(
+        "/config-service/api/v1/render/fluentd/1.19",
+        json={
+            "config": {
+                "service": {"log_level": "info"},
+                "pipeline": {"inputs": [], "filters": [], "outputs": []},
+            },
+            "header_comments": "Owned by Team A",
+            "include_config_header": True,
+        },
+    )
+    assert response.status_code == 200
+    body = await response.get_json()
+    assert body["ok"] is True
+    assert body["rendered_output"].startswith(
+        "# Owned by Team A\n# config-service: config_type=fluentd\n# config-service: version=1.19\n"
+    )

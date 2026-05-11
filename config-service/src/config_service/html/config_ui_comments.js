@@ -16,6 +16,8 @@
   "use strict";
 
   function create(deps) {
+    // Encapsulates comment metadata behavior so the main UI can stay focused on
+    // rendering and event flow.
     function ensureMetaBlock(target) {
       if (!target || typeof target !== "object" || Array.isArray(target)) {
         return null;
@@ -179,6 +181,7 @@
     }
 
     function migrateLegacyAnnotationsToMeta() {
+      // One-way migration for older `annotations` shape into `_meta` blocks.
       if (!deps.state.doc || !deps.state.doc.annotations || Object.keys(deps.state.doc.annotations).length === 0) {
         return;
       }
@@ -231,6 +234,7 @@
     }
 
     function createCommentToggleButton(toggleKey, target, fieldName, labelText) {
+      // Compact toggle button used across cards for optional comment editors.
       var btn = document.createElement("button");
       var isOpen = isCommentEditorOpen(toggleKey, target, fieldName);
       var hasContent = hasCommentText(target, fieldName);

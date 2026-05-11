@@ -42,6 +42,7 @@ from config_service.services.rule_engine_service import RuleEngineService
 from config_service.services.rules_registry_service import RulesRegistryService
 from config_service.services.schema_service import SchemaService
 from config_service.services.service_definition_service import ServiceDefinitionService
+from config_service.services.ui_document_service import UiDocumentService
 from config_service.services.validation_service import ValidationService
 from config_service.services.yaml_render_service import YamlRenderService
 
@@ -166,6 +167,7 @@ def create_app(*, mode: str = "standalone") -> Quart:
     app.extensions["schema_service"] = SchemaService()
     app.extensions["validation_service"] = validation_service
     app.extensions["yaml_render_service"] = YamlRenderService()
+    app.extensions["ui_document_service"] = UiDocumentService()
     app.extensions["fluentbit_yaml_config_service"] = fluentbit_yaml_config_service
     app.extensions["fluentd_config_service"] = fluentd_config_service
     app.extensions["include_document_service"] = include_document_service

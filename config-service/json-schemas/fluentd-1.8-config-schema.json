@@ -658,6 +658,14 @@
                             "items": {
                               "type": "object",
                               "properties": {
+                                "protocol": {
+                                  "type": "string",
+                                  "description": "Transport protocol specified by the <transport ARG> directive.",
+                                  "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                                  "x-doc-required": true,
+                                  "x-config-data-type": "enum",
+                                  "x-references-parser": false
+                                },
                                 "directive_arg": {
                                   "type": "string",
                                   "description": "Transport protocol specified by the <transport ARG> directive.",
@@ -777,10 +785,24 @@
                                   "additionalProperties": false
                                 }
                               },
-                              "required": [
-                                "directive_arg"
-                              ],
-                              "additionalProperties": false
+                              "required": [],
+                              "additionalProperties": false,
+                              "allOf": [
+                                {
+                                  "anyOf": [
+                                    {
+                                      "required": [
+                                        "protocol"
+                                      ]
+                                    },
+                                    {
+                                      "required": [
+                                        "directive_arg"
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
                             }
                           },
                           "includes": {
@@ -1230,6 +1252,14 @@
                             "items": {
                               "type": "object",
                               "properties": {
+                                "protocol": {
+                                  "type": "string",
+                                  "description": "Transport protocol specified by the <transport ARG> directive.",
+                                  "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                                  "x-doc-required": true,
+                                  "x-config-data-type": "enum",
+                                  "x-references-parser": false
+                                },
                                 "directive_arg": {
                                   "type": "string",
                                   "description": "Transport protocol specified by the <transport ARG> directive.",
@@ -1349,10 +1379,24 @@
                                   "additionalProperties": false
                                 }
                               },
-                              "required": [
-                                "directive_arg"
-                              ],
-                              "additionalProperties": false
+                              "required": [],
+                              "additionalProperties": false,
+                              "allOf": [
+                                {
+                                  "anyOf": [
+                                    {
+                                      "required": [
+                                        "protocol"
+                                      ]
+                                    },
+                                    {
+                                      "required": [
+                                        "directive_arg"
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
                             }
                           },
                           "extract": {
@@ -1898,6 +1942,14 @@
                             "items": {
                               "type": "object",
                               "properties": {
+                                "protocol": {
+                                  "type": "string",
+                                  "description": "Transport protocol specified by the <transport ARG> directive.",
+                                  "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                                  "x-doc-required": true,
+                                  "x-config-data-type": "enum",
+                                  "x-references-parser": false
+                                },
                                 "directive_arg": {
                                   "type": "string",
                                   "description": "Transport protocol specified by the <transport ARG> directive.",
@@ -2017,10 +2069,24 @@
                                   "additionalProperties": false
                                 }
                               },
-                              "required": [
-                                "directive_arg"
-                              ],
-                              "additionalProperties": false
+                              "required": [],
+                              "additionalProperties": false,
+                              "allOf": [
+                                {
+                                  "anyOf": [
+                                    {
+                                      "required": [
+                                        "protocol"
+                                      ]
+                                    },
+                                    {
+                                      "required": [
+                                        "directive_arg"
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
                             }
                           },
                           "extract": {
@@ -2281,6 +2347,14 @@
                             "items": {
                               "type": "object",
                               "properties": {
+                                "protocol": {
+                                  "type": "string",
+                                  "description": "Transport protocol specified by the <transport ARG> directive.",
+                                  "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                                  "x-doc-required": true,
+                                  "x-config-data-type": "enum",
+                                  "x-references-parser": false
+                                },
                                 "directive_arg": {
                                   "type": "string",
                                   "description": "Transport protocol specified by the <transport ARG> directive.",
@@ -2400,10 +2474,24 @@
                                   "additionalProperties": false
                                 }
                               },
-                              "required": [
-                                "directive_arg"
-                              ],
-                              "additionalProperties": false
+                              "required": [],
+                              "additionalProperties": false,
+                              "allOf": [
+                                {
+                                  "anyOf": [
+                                    {
+                                      "required": [
+                                        "protocol"
+                                      ]
+                                    },
+                                    {
+                                      "required": [
+                                        "directive_arg"
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
                             }
                           },
                           "includes": {
@@ -2848,6 +2936,14 @@
                             "items": {
                               "type": "object",
                               "properties": {
+                                "protocol": {
+                                  "type": "string",
+                                  "description": "Transport protocol specified by the <transport ARG> directive.",
+                                  "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                                  "x-doc-required": true,
+                                  "x-config-data-type": "enum",
+                                  "x-references-parser": false
+                                },
                                 "directive_arg": {
                                   "type": "string",
                                   "description": "Transport protocol specified by the <transport ARG> directive.",
@@ -2967,10 +3063,24 @@
                                   "additionalProperties": false
                                 }
                               },
-                              "required": [
-                                "directive_arg"
-                              ],
-                              "additionalProperties": false
+                              "required": [],
+                              "additionalProperties": false,
+                              "allOf": [
+                                {
+                                  "anyOf": [
+                                    {
+                                      "required": [
+                                        "protocol"
+                                      ]
+                                    },
+                                    {
+                                      "required": [
+                                        "directive_arg"
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
                             }
                           },
                           "includes": {
@@ -3409,6 +3519,14 @@
                             "items": {
                               "type": "object",
                               "properties": {
+                                "protocol": {
+                                  "type": "string",
+                                  "description": "Transport protocol specified by the <transport ARG> directive.",
+                                  "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                                  "x-doc-required": true,
+                                  "x-config-data-type": "enum",
+                                  "x-references-parser": false
+                                },
                                 "directive_arg": {
                                   "type": "string",
                                   "description": "Transport protocol specified by the <transport ARG> directive.",
@@ -3528,10 +3646,24 @@
                                   "additionalProperties": false
                                 }
                               },
-                              "required": [
-                                "directive_arg"
-                              ],
-                              "additionalProperties": false
+                              "required": [],
+                              "additionalProperties": false,
+                              "allOf": [
+                                {
+                                  "anyOf": [
+                                    {
+                                      "required": [
+                                        "protocol"
+                                      ]
+                                    },
+                                    {
+                                      "required": [
+                                        "directive_arg"
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
                             }
                           },
                           "includes": {
@@ -4359,6 +4491,14 @@
                         "const": "grep",
                         "title": "Plugin"
                       },
+                      "match": {
+                        "type": "string",
+                        "description": "Tag pattern selecting events for this filter.",
+                        "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                        "x-doc-required": true,
+                        "x-config-data-type": "string",
+                        "x-references-parser": false
+                      },
                       "directive_arg": {
                         "type": "string",
                         "description": "Tag pattern selecting events for this filter.",
@@ -4578,10 +4718,25 @@
                       }
                     },
                     "required": [
-                      "name",
-                      "directive_arg"
+                      "name"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": false,
+                    "allOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "required": [
+                              "match"
+                            ]
+                          },
+                          {
+                            "required": [
+                              "directive_arg"
+                            ]
+                          }
+                        ]
+                      }
+                    ]
                   },
                   {
                     "type": "object",
@@ -4591,6 +4746,14 @@
                         "type": "string",
                         "const": "record_transformer",
                         "title": "Plugin"
+                      },
+                      "match": {
+                        "type": "string",
+                        "description": "Tag pattern selecting events for this filter.",
+                        "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                        "x-doc-required": true,
+                        "x-config-data-type": "string",
+                        "x-references-parser": false
                       },
                       "directive_arg": {
                         "type": "string",
@@ -4793,10 +4956,25 @@
                       }
                     },
                     "required": [
-                      "name",
-                      "directive_arg"
+                      "name"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": false,
+                    "allOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "required": [
+                              "match"
+                            ]
+                          },
+                          {
+                            "required": [
+                              "directive_arg"
+                            ]
+                          }
+                        ]
+                      }
+                    ]
                   },
                   {
                     "type": "object",
@@ -4806,6 +4984,14 @@
                         "type": "string",
                         "const": "parser",
                         "title": "Plugin"
+                      },
+                      "match": {
+                        "type": "string",
+                        "description": "Tag pattern selecting events for this filter.",
+                        "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                        "x-doc-required": true,
+                        "x-config-data-type": "string",
+                        "x-references-parser": false
                       },
                       "directive_arg": {
                         "type": "string",
@@ -5212,10 +5398,25 @@
                     },
                     "required": [
                       "name",
-                      "directive_arg",
                       "key_name"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": false,
+                    "allOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "required": [
+                              "match"
+                            ]
+                          },
+                          {
+                            "required": [
+                              "directive_arg"
+                            ]
+                          }
+                        ]
+                      }
+                    ]
                   },
                   {
                     "type": "object",
@@ -5225,6 +5426,14 @@
                         "type": "string",
                         "const": "stdout",
                         "title": "Plugin"
+                      },
+                      "match": {
+                        "type": "string",
+                        "description": "Tag pattern selecting events for this filter.",
+                        "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                        "x-doc-required": true,
+                        "x-config-data-type": "string",
+                        "x-references-parser": false
                       },
                       "directive_arg": {
                         "type": "string",
@@ -5430,10 +5639,25 @@
                       }
                     },
                     "required": [
-                      "name",
-                      "directive_arg"
+                      "name"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": false,
+                    "allOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "required": [
+                              "match"
+                            ]
+                          },
+                          {
+                            "required": [
+                              "directive_arg"
+                            ]
+                          }
+                        ]
+                      }
+                    ]
                   }
                 ]
               }
@@ -5450,6 +5674,14 @@
                         "type": "string",
                         "const": "stdout",
                         "title": "Plugin"
+                      },
+                      "match": {
+                        "type": "string",
+                        "description": "Tag pattern selecting events for this output.",
+                        "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                        "x-doc-required": true,
+                        "x-config-data-type": "string",
+                        "x-references-parser": false
                       },
                       "directive_arg": {
                         "type": "string",
@@ -5655,10 +5887,25 @@
                       }
                     },
                     "required": [
-                      "name",
-                      "directive_arg"
+                      "name"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": false,
+                    "allOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "required": [
+                              "match"
+                            ]
+                          },
+                          {
+                            "required": [
+                              "directive_arg"
+                            ]
+                          }
+                        ]
+                      }
+                    ]
                   },
                   {
                     "type": "object",
@@ -5668,6 +5915,14 @@
                         "type": "string",
                         "const": "file",
                         "title": "Plugin"
+                      },
+                      "match": {
+                        "type": "string",
+                        "description": "Tag pattern selecting events for this output.",
+                        "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                        "x-doc-required": true,
+                        "x-config-data-type": "string",
+                        "x-references-parser": false
                       },
                       "directive_arg": {
                         "type": "string",
@@ -6415,10 +6670,25 @@
                     },
                     "required": [
                       "name",
-                      "directive_arg",
                       "path"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": false,
+                    "allOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "required": [
+                              "match"
+                            ]
+                          },
+                          {
+                            "required": [
+                              "directive_arg"
+                            ]
+                          }
+                        ]
+                      }
+                    ]
                   },
                   {
                     "type": "object",
@@ -6428,6 +6698,14 @@
                         "type": "string",
                         "const": "forward",
                         "title": "Plugin"
+                      },
+                      "match": {
+                        "type": "string",
+                        "description": "Tag pattern selecting events for this output.",
+                        "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                        "x-doc-required": true,
+                        "x-config-data-type": "string",
+                        "x-references-parser": false
                       },
                       "directive_arg": {
                         "type": "string",
@@ -6937,6 +7215,14 @@
                             "items": {
                               "type": "object",
                               "properties": {
+                                "protocol": {
+                                  "type": "string",
+                                  "description": "Transport protocol specified by the <transport ARG> directive.",
+                                  "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                                  "x-doc-required": true,
+                                  "x-config-data-type": "enum",
+                                  "x-references-parser": false
+                                },
                                 "directive_arg": {
                                   "type": "string",
                                   "description": "Transport protocol specified by the <transport ARG> directive.",
@@ -7056,10 +7342,24 @@
                                   "additionalProperties": false
                                 }
                               },
-                              "required": [
-                                "directive_arg"
-                              ],
-                              "additionalProperties": false
+                              "required": [],
+                              "additionalProperties": false,
+                              "allOf": [
+                                {
+                                  "anyOf": [
+                                    {
+                                      "required": [
+                                        "protocol"
+                                      ]
+                                    },
+                                    {
+                                      "required": [
+                                        "directive_arg"
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
                             }
                           },
                           "includes": {
@@ -7145,10 +7445,25 @@
                       }
                     },
                     "required": [
-                      "name",
-                      "directive_arg"
+                      "name"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": false,
+                    "allOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "required": [
+                              "match"
+                            ]
+                          },
+                          {
+                            "required": [
+                              "directive_arg"
+                            ]
+                          }
+                        ]
+                      }
+                    ]
                   },
                   {
                     "type": "object",
@@ -7158,6 +7473,14 @@
                         "type": "string",
                         "const": "null",
                         "title": "Plugin"
+                      },
+                      "match": {
+                        "type": "string",
+                        "description": "Tag pattern selecting events for this output.",
+                        "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                        "x-doc-required": true,
+                        "x-config-data-type": "string",
+                        "x-references-parser": false
                       },
                       "directive_arg": {
                         "type": "string",
@@ -7508,10 +7831,25 @@
                       }
                     },
                     "required": [
-                      "name",
-                      "directive_arg"
+                      "name"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": false,
+                    "allOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "required": [
+                              "match"
+                            ]
+                          },
+                          {
+                            "required": [
+                              "directive_arg"
+                            ]
+                          }
+                        ]
+                      }
+                    ]
                   },
                   {
                     "type": "object",
@@ -7521,6 +7859,14 @@
                         "type": "string",
                         "const": "copy",
                         "title": "Plugin"
+                      },
+                      "match": {
+                        "type": "string",
+                        "description": "Tag pattern selecting events for this output.",
+                        "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                        "x-doc-required": true,
+                        "x-config-data-type": "string",
+                        "x-references-parser": false
                       },
                       "directive_arg": {
                         "type": "string",
@@ -7686,10 +8032,25 @@
                       }
                     },
                     "required": [
-                      "name",
-                      "directive_arg"
+                      "name"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": false,
+                    "allOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "required": [
+                              "match"
+                            ]
+                          },
+                          {
+                            "required": [
+                              "directive_arg"
+                            ]
+                          }
+                        ]
+                      }
+                    ]
                   },
                   {
                     "type": "object",
@@ -7699,6 +8060,14 @@
                         "type": "string",
                         "const": "exec",
                         "title": "Plugin"
+                      },
+                      "match": {
+                        "type": "string",
+                        "description": "Tag pattern selecting events for this output.",
+                        "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                        "x-doc-required": true,
+                        "x-config-data-type": "string",
+                        "x-references-parser": false
                       },
                       "directive_arg": {
                         "type": "string",
@@ -8431,10 +8800,25 @@
                     },
                     "required": [
                       "name",
-                      "directive_arg",
                       "command"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": false,
+                    "allOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "required": [
+                              "match"
+                            ]
+                          },
+                          {
+                            "required": [
+                              "directive_arg"
+                            ]
+                          }
+                        ]
+                      }
+                    ]
                   },
                   {
                     "type": "object",
@@ -8444,6 +8828,14 @@
                         "type": "string",
                         "const": "exec_filter",
                         "title": "Plugin"
+                      },
+                      "match": {
+                        "type": "string",
+                        "description": "Tag pattern selecting events for this output.",
+                        "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                        "x-doc-required": true,
+                        "x-config-data-type": "string",
+                        "x-references-parser": false
                       },
                       "directive_arg": {
                         "type": "string",
@@ -9446,10 +9838,25 @@
                     },
                     "required": [
                       "name",
-                      "directive_arg",
                       "command"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": false,
+                    "allOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "required": [
+                              "match"
+                            ]
+                          },
+                          {
+                            "required": [
+                              "directive_arg"
+                            ]
+                          }
+                        ]
+                      }
+                    ]
                   },
                   {
                     "type": "object",
@@ -9459,6 +9866,14 @@
                         "type": "string",
                         "const": "relabel",
                         "title": "Plugin"
+                      },
+                      "match": {
+                        "type": "string",
+                        "description": "Tag pattern selecting events for this output.",
+                        "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                        "x-doc-required": true,
+                        "x-config-data-type": "string",
+                        "x-references-parser": false
                       },
                       "directive_arg": {
                         "type": "string",
@@ -9525,10 +9940,25 @@
                     },
                     "required": [
                       "name",
-                      "directive_arg",
                       "@label"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": false,
+                    "allOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "required": [
+                              "match"
+                            ]
+                          },
+                          {
+                            "required": [
+                              "directive_arg"
+                            ]
+                          }
+                        ]
+                      }
+                    ]
                   }
                 ]
               }
@@ -10195,6 +10625,14 @@
                                   "items": {
                                     "type": "object",
                                     "properties": {
+                                      "protocol": {
+                                        "type": "string",
+                                        "description": "Transport protocol specified by the <transport ARG> directive.",
+                                        "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                                        "x-doc-required": true,
+                                        "x-config-data-type": "enum",
+                                        "x-references-parser": false
+                                      },
                                       "directive_arg": {
                                         "type": "string",
                                         "description": "Transport protocol specified by the <transport ARG> directive.",
@@ -10314,10 +10752,24 @@
                                         "additionalProperties": false
                                       }
                                     },
-                                    "required": [
-                                      "directive_arg"
-                                    ],
-                                    "additionalProperties": false
+                                    "required": [],
+                                    "additionalProperties": false,
+                                    "allOf": [
+                                      {
+                                        "anyOf": [
+                                          {
+                                            "required": [
+                                              "protocol"
+                                            ]
+                                          },
+                                          {
+                                            "required": [
+                                              "directive_arg"
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
                                   }
                                 },
                                 "includes": {
@@ -10767,6 +11219,14 @@
                                   "items": {
                                     "type": "object",
                                     "properties": {
+                                      "protocol": {
+                                        "type": "string",
+                                        "description": "Transport protocol specified by the <transport ARG> directive.",
+                                        "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                                        "x-doc-required": true,
+                                        "x-config-data-type": "enum",
+                                        "x-references-parser": false
+                                      },
                                       "directive_arg": {
                                         "type": "string",
                                         "description": "Transport protocol specified by the <transport ARG> directive.",
@@ -10886,10 +11346,24 @@
                                         "additionalProperties": false
                                       }
                                     },
-                                    "required": [
-                                      "directive_arg"
-                                    ],
-                                    "additionalProperties": false
+                                    "required": [],
+                                    "additionalProperties": false,
+                                    "allOf": [
+                                      {
+                                        "anyOf": [
+                                          {
+                                            "required": [
+                                              "protocol"
+                                            ]
+                                          },
+                                          {
+                                            "required": [
+                                              "directive_arg"
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
                                   }
                                 },
                                 "extract": {
@@ -11435,6 +11909,14 @@
                                   "items": {
                                     "type": "object",
                                     "properties": {
+                                      "protocol": {
+                                        "type": "string",
+                                        "description": "Transport protocol specified by the <transport ARG> directive.",
+                                        "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                                        "x-doc-required": true,
+                                        "x-config-data-type": "enum",
+                                        "x-references-parser": false
+                                      },
                                       "directive_arg": {
                                         "type": "string",
                                         "description": "Transport protocol specified by the <transport ARG> directive.",
@@ -11554,10 +12036,24 @@
                                         "additionalProperties": false
                                       }
                                     },
-                                    "required": [
-                                      "directive_arg"
-                                    ],
-                                    "additionalProperties": false
+                                    "required": [],
+                                    "additionalProperties": false,
+                                    "allOf": [
+                                      {
+                                        "anyOf": [
+                                          {
+                                            "required": [
+                                              "protocol"
+                                            ]
+                                          },
+                                          {
+                                            "required": [
+                                              "directive_arg"
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
                                   }
                                 },
                                 "extract": {
@@ -11818,6 +12314,14 @@
                                   "items": {
                                     "type": "object",
                                     "properties": {
+                                      "protocol": {
+                                        "type": "string",
+                                        "description": "Transport protocol specified by the <transport ARG> directive.",
+                                        "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                                        "x-doc-required": true,
+                                        "x-config-data-type": "enum",
+                                        "x-references-parser": false
+                                      },
                                       "directive_arg": {
                                         "type": "string",
                                         "description": "Transport protocol specified by the <transport ARG> directive.",
@@ -11937,10 +12441,24 @@
                                         "additionalProperties": false
                                       }
                                     },
-                                    "required": [
-                                      "directive_arg"
-                                    ],
-                                    "additionalProperties": false
+                                    "required": [],
+                                    "additionalProperties": false,
+                                    "allOf": [
+                                      {
+                                        "anyOf": [
+                                          {
+                                            "required": [
+                                              "protocol"
+                                            ]
+                                          },
+                                          {
+                                            "required": [
+                                              "directive_arg"
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
                                   }
                                 },
                                 "includes": {
@@ -12385,6 +12903,14 @@
                                   "items": {
                                     "type": "object",
                                     "properties": {
+                                      "protocol": {
+                                        "type": "string",
+                                        "description": "Transport protocol specified by the <transport ARG> directive.",
+                                        "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                                        "x-doc-required": true,
+                                        "x-config-data-type": "enum",
+                                        "x-references-parser": false
+                                      },
                                       "directive_arg": {
                                         "type": "string",
                                         "description": "Transport protocol specified by the <transport ARG> directive.",
@@ -12504,10 +13030,24 @@
                                         "additionalProperties": false
                                       }
                                     },
-                                    "required": [
-                                      "directive_arg"
-                                    ],
-                                    "additionalProperties": false
+                                    "required": [],
+                                    "additionalProperties": false,
+                                    "allOf": [
+                                      {
+                                        "anyOf": [
+                                          {
+                                            "required": [
+                                              "protocol"
+                                            ]
+                                          },
+                                          {
+                                            "required": [
+                                              "directive_arg"
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
                                   }
                                 },
                                 "includes": {
@@ -12946,6 +13486,14 @@
                                   "items": {
                                     "type": "object",
                                     "properties": {
+                                      "protocol": {
+                                        "type": "string",
+                                        "description": "Transport protocol specified by the <transport ARG> directive.",
+                                        "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                                        "x-doc-required": true,
+                                        "x-config-data-type": "enum",
+                                        "x-references-parser": false
+                                      },
                                       "directive_arg": {
                                         "type": "string",
                                         "description": "Transport protocol specified by the <transport ARG> directive.",
@@ -13065,10 +13613,24 @@
                                         "additionalProperties": false
                                       }
                                     },
-                                    "required": [
-                                      "directive_arg"
-                                    ],
-                                    "additionalProperties": false
+                                    "required": [],
+                                    "additionalProperties": false,
+                                    "allOf": [
+                                      {
+                                        "anyOf": [
+                                          {
+                                            "required": [
+                                              "protocol"
+                                            ]
+                                          },
+                                          {
+                                            "required": [
+                                              "directive_arg"
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
                                   }
                                 },
                                 "includes": {
@@ -13896,6 +14458,14 @@
                               "const": "grep",
                               "title": "Plugin"
                             },
+                            "match": {
+                              "type": "string",
+                              "description": "Tag pattern selecting events for this filter.",
+                              "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                              "x-doc-required": true,
+                              "x-config-data-type": "string",
+                              "x-references-parser": false
+                            },
                             "directive_arg": {
                               "type": "string",
                               "description": "Tag pattern selecting events for this filter.",
@@ -14115,10 +14685,25 @@
                             }
                           },
                           "required": [
-                            "name",
-                            "directive_arg"
+                            "name"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": false,
+                          "allOf": [
+                            {
+                              "anyOf": [
+                                {
+                                  "required": [
+                                    "match"
+                                  ]
+                                },
+                                {
+                                  "required": [
+                                    "directive_arg"
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
                         },
                         {
                           "type": "object",
@@ -14128,6 +14713,14 @@
                               "type": "string",
                               "const": "record_transformer",
                               "title": "Plugin"
+                            },
+                            "match": {
+                              "type": "string",
+                              "description": "Tag pattern selecting events for this filter.",
+                              "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                              "x-doc-required": true,
+                              "x-config-data-type": "string",
+                              "x-references-parser": false
                             },
                             "directive_arg": {
                               "type": "string",
@@ -14330,10 +14923,25 @@
                             }
                           },
                           "required": [
-                            "name",
-                            "directive_arg"
+                            "name"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": false,
+                          "allOf": [
+                            {
+                              "anyOf": [
+                                {
+                                  "required": [
+                                    "match"
+                                  ]
+                                },
+                                {
+                                  "required": [
+                                    "directive_arg"
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
                         },
                         {
                           "type": "object",
@@ -14343,6 +14951,14 @@
                               "type": "string",
                               "const": "parser",
                               "title": "Plugin"
+                            },
+                            "match": {
+                              "type": "string",
+                              "description": "Tag pattern selecting events for this filter.",
+                              "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                              "x-doc-required": true,
+                              "x-config-data-type": "string",
+                              "x-references-parser": false
                             },
                             "directive_arg": {
                               "type": "string",
@@ -14749,10 +15365,25 @@
                           },
                           "required": [
                             "name",
-                            "directive_arg",
                             "key_name"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": false,
+                          "allOf": [
+                            {
+                              "anyOf": [
+                                {
+                                  "required": [
+                                    "match"
+                                  ]
+                                },
+                                {
+                                  "required": [
+                                    "directive_arg"
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
                         },
                         {
                           "type": "object",
@@ -14762,6 +15393,14 @@
                               "type": "string",
                               "const": "stdout",
                               "title": "Plugin"
+                            },
+                            "match": {
+                              "type": "string",
+                              "description": "Tag pattern selecting events for this filter.",
+                              "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                              "x-doc-required": true,
+                              "x-config-data-type": "string",
+                              "x-references-parser": false
                             },
                             "directive_arg": {
                               "type": "string",
@@ -14967,10 +15606,25 @@
                             }
                           },
                           "required": [
-                            "name",
-                            "directive_arg"
+                            "name"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": false,
+                          "allOf": [
+                            {
+                              "anyOf": [
+                                {
+                                  "required": [
+                                    "match"
+                                  ]
+                                },
+                                {
+                                  "required": [
+                                    "directive_arg"
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
                         }
                       ]
                     }
@@ -14987,6 +15641,14 @@
                               "type": "string",
                               "const": "stdout",
                               "title": "Plugin"
+                            },
+                            "match": {
+                              "type": "string",
+                              "description": "Tag pattern selecting events for this output.",
+                              "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                              "x-doc-required": true,
+                              "x-config-data-type": "string",
+                              "x-references-parser": false
                             },
                             "directive_arg": {
                               "type": "string",
@@ -15192,10 +15854,25 @@
                             }
                           },
                           "required": [
-                            "name",
-                            "directive_arg"
+                            "name"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": false,
+                          "allOf": [
+                            {
+                              "anyOf": [
+                                {
+                                  "required": [
+                                    "match"
+                                  ]
+                                },
+                                {
+                                  "required": [
+                                    "directive_arg"
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
                         },
                         {
                           "type": "object",
@@ -15205,6 +15882,14 @@
                               "type": "string",
                               "const": "file",
                               "title": "Plugin"
+                            },
+                            "match": {
+                              "type": "string",
+                              "description": "Tag pattern selecting events for this output.",
+                              "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                              "x-doc-required": true,
+                              "x-config-data-type": "string",
+                              "x-references-parser": false
                             },
                             "directive_arg": {
                               "type": "string",
@@ -15952,10 +16637,25 @@
                           },
                           "required": [
                             "name",
-                            "directive_arg",
                             "path"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": false,
+                          "allOf": [
+                            {
+                              "anyOf": [
+                                {
+                                  "required": [
+                                    "match"
+                                  ]
+                                },
+                                {
+                                  "required": [
+                                    "directive_arg"
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
                         },
                         {
                           "type": "object",
@@ -15965,6 +16665,14 @@
                               "type": "string",
                               "const": "forward",
                               "title": "Plugin"
+                            },
+                            "match": {
+                              "type": "string",
+                              "description": "Tag pattern selecting events for this output.",
+                              "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                              "x-doc-required": true,
+                              "x-config-data-type": "string",
+                              "x-references-parser": false
                             },
                             "directive_arg": {
                               "type": "string",
@@ -16474,6 +17182,14 @@
                                   "items": {
                                     "type": "object",
                                     "properties": {
+                                      "protocol": {
+                                        "type": "string",
+                                        "description": "Transport protocol specified by the <transport ARG> directive.",
+                                        "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                                        "x-doc-required": true,
+                                        "x-config-data-type": "enum",
+                                        "x-references-parser": false
+                                      },
                                       "directive_arg": {
                                         "type": "string",
                                         "description": "Transport protocol specified by the <transport ARG> directive.",
@@ -16593,10 +17309,24 @@
                                         "additionalProperties": false
                                       }
                                     },
-                                    "required": [
-                                      "directive_arg"
-                                    ],
-                                    "additionalProperties": false
+                                    "required": [],
+                                    "additionalProperties": false,
+                                    "allOf": [
+                                      {
+                                        "anyOf": [
+                                          {
+                                            "required": [
+                                              "protocol"
+                                            ]
+                                          },
+                                          {
+                                            "required": [
+                                              "directive_arg"
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
                                   }
                                 },
                                 "includes": {
@@ -16682,10 +17412,25 @@
                             }
                           },
                           "required": [
-                            "name",
-                            "directive_arg"
+                            "name"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": false,
+                          "allOf": [
+                            {
+                              "anyOf": [
+                                {
+                                  "required": [
+                                    "match"
+                                  ]
+                                },
+                                {
+                                  "required": [
+                                    "directive_arg"
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
                         },
                         {
                           "type": "object",
@@ -16695,6 +17440,14 @@
                               "type": "string",
                               "const": "null",
                               "title": "Plugin"
+                            },
+                            "match": {
+                              "type": "string",
+                              "description": "Tag pattern selecting events for this output.",
+                              "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                              "x-doc-required": true,
+                              "x-config-data-type": "string",
+                              "x-references-parser": false
                             },
                             "directive_arg": {
                               "type": "string",
@@ -17045,10 +17798,25 @@
                             }
                           },
                           "required": [
-                            "name",
-                            "directive_arg"
+                            "name"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": false,
+                          "allOf": [
+                            {
+                              "anyOf": [
+                                {
+                                  "required": [
+                                    "match"
+                                  ]
+                                },
+                                {
+                                  "required": [
+                                    "directive_arg"
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
                         },
                         {
                           "type": "object",
@@ -17058,6 +17826,14 @@
                               "type": "string",
                               "const": "copy",
                               "title": "Plugin"
+                            },
+                            "match": {
+                              "type": "string",
+                              "description": "Tag pattern selecting events for this output.",
+                              "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                              "x-doc-required": true,
+                              "x-config-data-type": "string",
+                              "x-references-parser": false
                             },
                             "directive_arg": {
                               "type": "string",
@@ -17223,10 +17999,25 @@
                             }
                           },
                           "required": [
-                            "name",
-                            "directive_arg"
+                            "name"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": false,
+                          "allOf": [
+                            {
+                              "anyOf": [
+                                {
+                                  "required": [
+                                    "match"
+                                  ]
+                                },
+                                {
+                                  "required": [
+                                    "directive_arg"
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
                         },
                         {
                           "type": "object",
@@ -17236,6 +18027,14 @@
                               "type": "string",
                               "const": "exec",
                               "title": "Plugin"
+                            },
+                            "match": {
+                              "type": "string",
+                              "description": "Tag pattern selecting events for this output.",
+                              "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                              "x-doc-required": true,
+                              "x-config-data-type": "string",
+                              "x-references-parser": false
                             },
                             "directive_arg": {
                               "type": "string",
@@ -17968,10 +18767,25 @@
                           },
                           "required": [
                             "name",
-                            "directive_arg",
                             "command"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": false,
+                          "allOf": [
+                            {
+                              "anyOf": [
+                                {
+                                  "required": [
+                                    "match"
+                                  ]
+                                },
+                                {
+                                  "required": [
+                                    "directive_arg"
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
                         },
                         {
                           "type": "object",
@@ -17981,6 +18795,14 @@
                               "type": "string",
                               "const": "exec_filter",
                               "title": "Plugin"
+                            },
+                            "match": {
+                              "type": "string",
+                              "description": "Tag pattern selecting events for this output.",
+                              "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                              "x-doc-required": true,
+                              "x-config-data-type": "string",
+                              "x-references-parser": false
                             },
                             "directive_arg": {
                               "type": "string",
@@ -18983,10 +19805,25 @@
                           },
                           "required": [
                             "name",
-                            "directive_arg",
                             "command"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": false,
+                          "allOf": [
+                            {
+                              "anyOf": [
+                                {
+                                  "required": [
+                                    "match"
+                                  ]
+                                },
+                                {
+                                  "required": [
+                                    "directive_arg"
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
                         },
                         {
                           "type": "object",
@@ -18996,6 +19833,14 @@
                               "type": "string",
                               "const": "relabel",
                               "title": "Plugin"
+                            },
+                            "match": {
+                              "type": "string",
+                              "description": "Tag pattern selecting events for this output.",
+                              "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                              "x-doc-required": true,
+                              "x-config-data-type": "string",
+                              "x-references-parser": false
                             },
                             "directive_arg": {
                               "type": "string",
@@ -19062,10 +19907,25 @@
                           },
                           "required": [
                             "name",
-                            "directive_arg",
                             "@label"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": false,
+                          "allOf": [
+                            {
+                              "anyOf": [
+                                {
+                                  "required": [
+                                    "match"
+                                  ]
+                                },
+                                {
+                                  "required": [
+                                    "directive_arg"
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
                         }
                       ]
                     }
@@ -19766,6 +20626,14 @@
                                   "items": {
                                     "type": "object",
                                     "properties": {
+                                      "protocol": {
+                                        "type": "string",
+                                        "description": "Transport protocol specified by the <transport ARG> directive.",
+                                        "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                                        "x-doc-required": true,
+                                        "x-config-data-type": "enum",
+                                        "x-references-parser": false
+                                      },
                                       "directive_arg": {
                                         "type": "string",
                                         "description": "Transport protocol specified by the <transport ARG> directive.",
@@ -19885,10 +20753,24 @@
                                         "additionalProperties": false
                                       }
                                     },
-                                    "required": [
-                                      "directive_arg"
-                                    ],
-                                    "additionalProperties": false
+                                    "required": [],
+                                    "additionalProperties": false,
+                                    "allOf": [
+                                      {
+                                        "anyOf": [
+                                          {
+                                            "required": [
+                                              "protocol"
+                                            ]
+                                          },
+                                          {
+                                            "required": [
+                                              "directive_arg"
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
                                   }
                                 },
                                 "includes": {
@@ -20338,6 +21220,14 @@
                                   "items": {
                                     "type": "object",
                                     "properties": {
+                                      "protocol": {
+                                        "type": "string",
+                                        "description": "Transport protocol specified by the <transport ARG> directive.",
+                                        "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                                        "x-doc-required": true,
+                                        "x-config-data-type": "enum",
+                                        "x-references-parser": false
+                                      },
                                       "directive_arg": {
                                         "type": "string",
                                         "description": "Transport protocol specified by the <transport ARG> directive.",
@@ -20457,10 +21347,24 @@
                                         "additionalProperties": false
                                       }
                                     },
-                                    "required": [
-                                      "directive_arg"
-                                    ],
-                                    "additionalProperties": false
+                                    "required": [],
+                                    "additionalProperties": false,
+                                    "allOf": [
+                                      {
+                                        "anyOf": [
+                                          {
+                                            "required": [
+                                              "protocol"
+                                            ]
+                                          },
+                                          {
+                                            "required": [
+                                              "directive_arg"
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
                                   }
                                 },
                                 "extract": {
@@ -21006,6 +21910,14 @@
                                   "items": {
                                     "type": "object",
                                     "properties": {
+                                      "protocol": {
+                                        "type": "string",
+                                        "description": "Transport protocol specified by the <transport ARG> directive.",
+                                        "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                                        "x-doc-required": true,
+                                        "x-config-data-type": "enum",
+                                        "x-references-parser": false
+                                      },
                                       "directive_arg": {
                                         "type": "string",
                                         "description": "Transport protocol specified by the <transport ARG> directive.",
@@ -21125,10 +22037,24 @@
                                         "additionalProperties": false
                                       }
                                     },
-                                    "required": [
-                                      "directive_arg"
-                                    ],
-                                    "additionalProperties": false
+                                    "required": [],
+                                    "additionalProperties": false,
+                                    "allOf": [
+                                      {
+                                        "anyOf": [
+                                          {
+                                            "required": [
+                                              "protocol"
+                                            ]
+                                          },
+                                          {
+                                            "required": [
+                                              "directive_arg"
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
                                   }
                                 },
                                 "extract": {
@@ -21389,6 +22315,14 @@
                                   "items": {
                                     "type": "object",
                                     "properties": {
+                                      "protocol": {
+                                        "type": "string",
+                                        "description": "Transport protocol specified by the <transport ARG> directive.",
+                                        "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                                        "x-doc-required": true,
+                                        "x-config-data-type": "enum",
+                                        "x-references-parser": false
+                                      },
                                       "directive_arg": {
                                         "type": "string",
                                         "description": "Transport protocol specified by the <transport ARG> directive.",
@@ -21508,10 +22442,24 @@
                                         "additionalProperties": false
                                       }
                                     },
-                                    "required": [
-                                      "directive_arg"
-                                    ],
-                                    "additionalProperties": false
+                                    "required": [],
+                                    "additionalProperties": false,
+                                    "allOf": [
+                                      {
+                                        "anyOf": [
+                                          {
+                                            "required": [
+                                              "protocol"
+                                            ]
+                                          },
+                                          {
+                                            "required": [
+                                              "directive_arg"
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
                                   }
                                 },
                                 "includes": {
@@ -21956,6 +22904,14 @@
                                   "items": {
                                     "type": "object",
                                     "properties": {
+                                      "protocol": {
+                                        "type": "string",
+                                        "description": "Transport protocol specified by the <transport ARG> directive.",
+                                        "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                                        "x-doc-required": true,
+                                        "x-config-data-type": "enum",
+                                        "x-references-parser": false
+                                      },
                                       "directive_arg": {
                                         "type": "string",
                                         "description": "Transport protocol specified by the <transport ARG> directive.",
@@ -22075,10 +23031,24 @@
                                         "additionalProperties": false
                                       }
                                     },
-                                    "required": [
-                                      "directive_arg"
-                                    ],
-                                    "additionalProperties": false
+                                    "required": [],
+                                    "additionalProperties": false,
+                                    "allOf": [
+                                      {
+                                        "anyOf": [
+                                          {
+                                            "required": [
+                                              "protocol"
+                                            ]
+                                          },
+                                          {
+                                            "required": [
+                                              "directive_arg"
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
                                   }
                                 },
                                 "includes": {
@@ -22517,6 +23487,14 @@
                                   "items": {
                                     "type": "object",
                                     "properties": {
+                                      "protocol": {
+                                        "type": "string",
+                                        "description": "Transport protocol specified by the <transport ARG> directive.",
+                                        "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                                        "x-doc-required": true,
+                                        "x-config-data-type": "enum",
+                                        "x-references-parser": false
+                                      },
                                       "directive_arg": {
                                         "type": "string",
                                         "description": "Transport protocol specified by the <transport ARG> directive.",
@@ -22636,10 +23614,24 @@
                                         "additionalProperties": false
                                       }
                                     },
-                                    "required": [
-                                      "directive_arg"
-                                    ],
-                                    "additionalProperties": false
+                                    "required": [],
+                                    "additionalProperties": false,
+                                    "allOf": [
+                                      {
+                                        "anyOf": [
+                                          {
+                                            "required": [
+                                              "protocol"
+                                            ]
+                                          },
+                                          {
+                                            "required": [
+                                              "directive_arg"
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
                                   }
                                 },
                                 "includes": {
@@ -23467,6 +24459,14 @@
                               "const": "grep",
                               "title": "Plugin"
                             },
+                            "match": {
+                              "type": "string",
+                              "description": "Tag pattern selecting events for this filter.",
+                              "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                              "x-doc-required": true,
+                              "x-config-data-type": "string",
+                              "x-references-parser": false
+                            },
                             "directive_arg": {
                               "type": "string",
                               "description": "Tag pattern selecting events for this filter.",
@@ -23686,10 +24686,25 @@
                             }
                           },
                           "required": [
-                            "name",
-                            "directive_arg"
+                            "name"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": false,
+                          "allOf": [
+                            {
+                              "anyOf": [
+                                {
+                                  "required": [
+                                    "match"
+                                  ]
+                                },
+                                {
+                                  "required": [
+                                    "directive_arg"
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
                         },
                         {
                           "type": "object",
@@ -23699,6 +24714,14 @@
                               "type": "string",
                               "const": "record_transformer",
                               "title": "Plugin"
+                            },
+                            "match": {
+                              "type": "string",
+                              "description": "Tag pattern selecting events for this filter.",
+                              "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                              "x-doc-required": true,
+                              "x-config-data-type": "string",
+                              "x-references-parser": false
                             },
                             "directive_arg": {
                               "type": "string",
@@ -23901,10 +24924,25 @@
                             }
                           },
                           "required": [
-                            "name",
-                            "directive_arg"
+                            "name"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": false,
+                          "allOf": [
+                            {
+                              "anyOf": [
+                                {
+                                  "required": [
+                                    "match"
+                                  ]
+                                },
+                                {
+                                  "required": [
+                                    "directive_arg"
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
                         },
                         {
                           "type": "object",
@@ -23914,6 +24952,14 @@
                               "type": "string",
                               "const": "parser",
                               "title": "Plugin"
+                            },
+                            "match": {
+                              "type": "string",
+                              "description": "Tag pattern selecting events for this filter.",
+                              "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                              "x-doc-required": true,
+                              "x-config-data-type": "string",
+                              "x-references-parser": false
                             },
                             "directive_arg": {
                               "type": "string",
@@ -24320,10 +25366,25 @@
                           },
                           "required": [
                             "name",
-                            "directive_arg",
                             "key_name"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": false,
+                          "allOf": [
+                            {
+                              "anyOf": [
+                                {
+                                  "required": [
+                                    "match"
+                                  ]
+                                },
+                                {
+                                  "required": [
+                                    "directive_arg"
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
                         },
                         {
                           "type": "object",
@@ -24333,6 +25394,14 @@
                               "type": "string",
                               "const": "stdout",
                               "title": "Plugin"
+                            },
+                            "match": {
+                              "type": "string",
+                              "description": "Tag pattern selecting events for this filter.",
+                              "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                              "x-doc-required": true,
+                              "x-config-data-type": "string",
+                              "x-references-parser": false
                             },
                             "directive_arg": {
                               "type": "string",
@@ -24538,10 +25607,25 @@
                             }
                           },
                           "required": [
-                            "name",
-                            "directive_arg"
+                            "name"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": false,
+                          "allOf": [
+                            {
+                              "anyOf": [
+                                {
+                                  "required": [
+                                    "match"
+                                  ]
+                                },
+                                {
+                                  "required": [
+                                    "directive_arg"
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
                         }
                       ]
                     }
@@ -24558,6 +25642,14 @@
                               "type": "string",
                               "const": "stdout",
                               "title": "Plugin"
+                            },
+                            "match": {
+                              "type": "string",
+                              "description": "Tag pattern selecting events for this output.",
+                              "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                              "x-doc-required": true,
+                              "x-config-data-type": "string",
+                              "x-references-parser": false
                             },
                             "directive_arg": {
                               "type": "string",
@@ -24763,10 +25855,25 @@
                             }
                           },
                           "required": [
-                            "name",
-                            "directive_arg"
+                            "name"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": false,
+                          "allOf": [
+                            {
+                              "anyOf": [
+                                {
+                                  "required": [
+                                    "match"
+                                  ]
+                                },
+                                {
+                                  "required": [
+                                    "directive_arg"
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
                         },
                         {
                           "type": "object",
@@ -24776,6 +25883,14 @@
                               "type": "string",
                               "const": "file",
                               "title": "Plugin"
+                            },
+                            "match": {
+                              "type": "string",
+                              "description": "Tag pattern selecting events for this output.",
+                              "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                              "x-doc-required": true,
+                              "x-config-data-type": "string",
+                              "x-references-parser": false
                             },
                             "directive_arg": {
                               "type": "string",
@@ -25523,10 +26638,25 @@
                           },
                           "required": [
                             "name",
-                            "directive_arg",
                             "path"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": false,
+                          "allOf": [
+                            {
+                              "anyOf": [
+                                {
+                                  "required": [
+                                    "match"
+                                  ]
+                                },
+                                {
+                                  "required": [
+                                    "directive_arg"
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
                         },
                         {
                           "type": "object",
@@ -25536,6 +26666,14 @@
                               "type": "string",
                               "const": "forward",
                               "title": "Plugin"
+                            },
+                            "match": {
+                              "type": "string",
+                              "description": "Tag pattern selecting events for this output.",
+                              "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                              "x-doc-required": true,
+                              "x-config-data-type": "string",
+                              "x-references-parser": false
                             },
                             "directive_arg": {
                               "type": "string",
@@ -26045,6 +27183,14 @@
                                   "items": {
                                     "type": "object",
                                     "properties": {
+                                      "protocol": {
+                                        "type": "string",
+                                        "description": "Transport protocol specified by the <transport ARG> directive.",
+                                        "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                                        "x-doc-required": true,
+                                        "x-config-data-type": "enum",
+                                        "x-references-parser": false
+                                      },
                                       "directive_arg": {
                                         "type": "string",
                                         "description": "Transport protocol specified by the <transport ARG> directive.",
@@ -26164,10 +27310,24 @@
                                         "additionalProperties": false
                                       }
                                     },
-                                    "required": [
-                                      "directive_arg"
-                                    ],
-                                    "additionalProperties": false
+                                    "required": [],
+                                    "additionalProperties": false,
+                                    "allOf": [
+                                      {
+                                        "anyOf": [
+                                          {
+                                            "required": [
+                                              "protocol"
+                                            ]
+                                          },
+                                          {
+                                            "required": [
+                                              "directive_arg"
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
                                   }
                                 },
                                 "includes": {
@@ -26253,10 +27413,25 @@
                             }
                           },
                           "required": [
-                            "name",
-                            "directive_arg"
+                            "name"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": false,
+                          "allOf": [
+                            {
+                              "anyOf": [
+                                {
+                                  "required": [
+                                    "match"
+                                  ]
+                                },
+                                {
+                                  "required": [
+                                    "directive_arg"
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
                         },
                         {
                           "type": "object",
@@ -26266,6 +27441,14 @@
                               "type": "string",
                               "const": "null",
                               "title": "Plugin"
+                            },
+                            "match": {
+                              "type": "string",
+                              "description": "Tag pattern selecting events for this output.",
+                              "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                              "x-doc-required": true,
+                              "x-config-data-type": "string",
+                              "x-references-parser": false
                             },
                             "directive_arg": {
                               "type": "string",
@@ -26616,10 +27799,25 @@
                             }
                           },
                           "required": [
-                            "name",
-                            "directive_arg"
+                            "name"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": false,
+                          "allOf": [
+                            {
+                              "anyOf": [
+                                {
+                                  "required": [
+                                    "match"
+                                  ]
+                                },
+                                {
+                                  "required": [
+                                    "directive_arg"
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
                         },
                         {
                           "type": "object",
@@ -26629,6 +27827,14 @@
                               "type": "string",
                               "const": "copy",
                               "title": "Plugin"
+                            },
+                            "match": {
+                              "type": "string",
+                              "description": "Tag pattern selecting events for this output.",
+                              "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                              "x-doc-required": true,
+                              "x-config-data-type": "string",
+                              "x-references-parser": false
                             },
                             "directive_arg": {
                               "type": "string",
@@ -26794,10 +28000,25 @@
                             }
                           },
                           "required": [
-                            "name",
-                            "directive_arg"
+                            "name"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": false,
+                          "allOf": [
+                            {
+                              "anyOf": [
+                                {
+                                  "required": [
+                                    "match"
+                                  ]
+                                },
+                                {
+                                  "required": [
+                                    "directive_arg"
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
                         },
                         {
                           "type": "object",
@@ -26807,6 +28028,14 @@
                               "type": "string",
                               "const": "exec",
                               "title": "Plugin"
+                            },
+                            "match": {
+                              "type": "string",
+                              "description": "Tag pattern selecting events for this output.",
+                              "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                              "x-doc-required": true,
+                              "x-config-data-type": "string",
+                              "x-references-parser": false
                             },
                             "directive_arg": {
                               "type": "string",
@@ -27539,10 +28768,25 @@
                           },
                           "required": [
                             "name",
-                            "directive_arg",
                             "command"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": false,
+                          "allOf": [
+                            {
+                              "anyOf": [
+                                {
+                                  "required": [
+                                    "match"
+                                  ]
+                                },
+                                {
+                                  "required": [
+                                    "directive_arg"
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
                         },
                         {
                           "type": "object",
@@ -27552,6 +28796,14 @@
                               "type": "string",
                               "const": "exec_filter",
                               "title": "Plugin"
+                            },
+                            "match": {
+                              "type": "string",
+                              "description": "Tag pattern selecting events for this output.",
+                              "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                              "x-doc-required": true,
+                              "x-config-data-type": "string",
+                              "x-references-parser": false
                             },
                             "directive_arg": {
                               "type": "string",
@@ -28554,10 +29806,25 @@
                           },
                           "required": [
                             "name",
-                            "directive_arg",
                             "command"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": false,
+                          "allOf": [
+                            {
+                              "anyOf": [
+                                {
+                                  "required": [
+                                    "match"
+                                  ]
+                                },
+                                {
+                                  "required": [
+                                    "directive_arg"
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
                         },
                         {
                           "type": "object",
@@ -28567,6 +29834,14 @@
                               "type": "string",
                               "const": "relabel",
                               "title": "Plugin"
+                            },
+                            "match": {
+                              "type": "string",
+                              "description": "Tag pattern selecting events for this output.",
+                              "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                              "x-doc-required": true,
+                              "x-config-data-type": "string",
+                              "x-references-parser": false
                             },
                             "directive_arg": {
                               "type": "string",
@@ -28633,10 +29908,25 @@
                           },
                           "required": [
                             "name",
-                            "directive_arg",
                             "@label"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": false,
+                          "allOf": [
+                            {
+                              "anyOf": [
+                                {
+                                  "required": [
+                                    "match"
+                                  ]
+                                },
+                                {
+                                  "required": [
+                                    "directive_arg"
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
                         }
                       ]
                     }
@@ -29309,6 +30599,14 @@
                                         "items": {
                                           "type": "object",
                                           "properties": {
+                                            "protocol": {
+                                              "type": "string",
+                                              "description": "Transport protocol specified by the <transport ARG> directive.",
+                                              "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                                              "x-doc-required": true,
+                                              "x-config-data-type": "enum",
+                                              "x-references-parser": false
+                                            },
                                             "directive_arg": {
                                               "type": "string",
                                               "description": "Transport protocol specified by the <transport ARG> directive.",
@@ -29428,10 +30726,24 @@
                                               "additionalProperties": false
                                             }
                                           },
-                                          "required": [
-                                            "directive_arg"
-                                          ],
-                                          "additionalProperties": false
+                                          "required": [],
+                                          "additionalProperties": false,
+                                          "allOf": [
+                                            {
+                                              "anyOf": [
+                                                {
+                                                  "required": [
+                                                    "protocol"
+                                                  ]
+                                                },
+                                                {
+                                                  "required": [
+                                                    "directive_arg"
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
                                         }
                                       },
                                       "includes": {
@@ -29881,6 +31193,14 @@
                                         "items": {
                                           "type": "object",
                                           "properties": {
+                                            "protocol": {
+                                              "type": "string",
+                                              "description": "Transport protocol specified by the <transport ARG> directive.",
+                                              "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                                              "x-doc-required": true,
+                                              "x-config-data-type": "enum",
+                                              "x-references-parser": false
+                                            },
                                             "directive_arg": {
                                               "type": "string",
                                               "description": "Transport protocol specified by the <transport ARG> directive.",
@@ -30000,10 +31320,24 @@
                                               "additionalProperties": false
                                             }
                                           },
-                                          "required": [
-                                            "directive_arg"
-                                          ],
-                                          "additionalProperties": false
+                                          "required": [],
+                                          "additionalProperties": false,
+                                          "allOf": [
+                                            {
+                                              "anyOf": [
+                                                {
+                                                  "required": [
+                                                    "protocol"
+                                                  ]
+                                                },
+                                                {
+                                                  "required": [
+                                                    "directive_arg"
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
                                         }
                                       },
                                       "extract": {
@@ -30549,6 +31883,14 @@
                                         "items": {
                                           "type": "object",
                                           "properties": {
+                                            "protocol": {
+                                              "type": "string",
+                                              "description": "Transport protocol specified by the <transport ARG> directive.",
+                                              "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                                              "x-doc-required": true,
+                                              "x-config-data-type": "enum",
+                                              "x-references-parser": false
+                                            },
                                             "directive_arg": {
                                               "type": "string",
                                               "description": "Transport protocol specified by the <transport ARG> directive.",
@@ -30668,10 +32010,24 @@
                                               "additionalProperties": false
                                             }
                                           },
-                                          "required": [
-                                            "directive_arg"
-                                          ],
-                                          "additionalProperties": false
+                                          "required": [],
+                                          "additionalProperties": false,
+                                          "allOf": [
+                                            {
+                                              "anyOf": [
+                                                {
+                                                  "required": [
+                                                    "protocol"
+                                                  ]
+                                                },
+                                                {
+                                                  "required": [
+                                                    "directive_arg"
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
                                         }
                                       },
                                       "extract": {
@@ -30932,6 +32288,14 @@
                                         "items": {
                                           "type": "object",
                                           "properties": {
+                                            "protocol": {
+                                              "type": "string",
+                                              "description": "Transport protocol specified by the <transport ARG> directive.",
+                                              "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                                              "x-doc-required": true,
+                                              "x-config-data-type": "enum",
+                                              "x-references-parser": false
+                                            },
                                             "directive_arg": {
                                               "type": "string",
                                               "description": "Transport protocol specified by the <transport ARG> directive.",
@@ -31051,10 +32415,24 @@
                                               "additionalProperties": false
                                             }
                                           },
-                                          "required": [
-                                            "directive_arg"
-                                          ],
-                                          "additionalProperties": false
+                                          "required": [],
+                                          "additionalProperties": false,
+                                          "allOf": [
+                                            {
+                                              "anyOf": [
+                                                {
+                                                  "required": [
+                                                    "protocol"
+                                                  ]
+                                                },
+                                                {
+                                                  "required": [
+                                                    "directive_arg"
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
                                         }
                                       },
                                       "includes": {
@@ -31499,6 +32877,14 @@
                                         "items": {
                                           "type": "object",
                                           "properties": {
+                                            "protocol": {
+                                              "type": "string",
+                                              "description": "Transport protocol specified by the <transport ARG> directive.",
+                                              "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                                              "x-doc-required": true,
+                                              "x-config-data-type": "enum",
+                                              "x-references-parser": false
+                                            },
                                             "directive_arg": {
                                               "type": "string",
                                               "description": "Transport protocol specified by the <transport ARG> directive.",
@@ -31618,10 +33004,24 @@
                                               "additionalProperties": false
                                             }
                                           },
-                                          "required": [
-                                            "directive_arg"
-                                          ],
-                                          "additionalProperties": false
+                                          "required": [],
+                                          "additionalProperties": false,
+                                          "allOf": [
+                                            {
+                                              "anyOf": [
+                                                {
+                                                  "required": [
+                                                    "protocol"
+                                                  ]
+                                                },
+                                                {
+                                                  "required": [
+                                                    "directive_arg"
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
                                         }
                                       },
                                       "includes": {
@@ -32060,6 +33460,14 @@
                                         "items": {
                                           "type": "object",
                                           "properties": {
+                                            "protocol": {
+                                              "type": "string",
+                                              "description": "Transport protocol specified by the <transport ARG> directive.",
+                                              "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                                              "x-doc-required": true,
+                                              "x-config-data-type": "enum",
+                                              "x-references-parser": false
+                                            },
                                             "directive_arg": {
                                               "type": "string",
                                               "description": "Transport protocol specified by the <transport ARG> directive.",
@@ -32179,10 +33587,24 @@
                                               "additionalProperties": false
                                             }
                                           },
-                                          "required": [
-                                            "directive_arg"
-                                          ],
-                                          "additionalProperties": false
+                                          "required": [],
+                                          "additionalProperties": false,
+                                          "allOf": [
+                                            {
+                                              "anyOf": [
+                                                {
+                                                  "required": [
+                                                    "protocol"
+                                                  ]
+                                                },
+                                                {
+                                                  "required": [
+                                                    "directive_arg"
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
                                         }
                                       },
                                       "includes": {
@@ -33010,6 +34432,14 @@
                                     "const": "grep",
                                     "title": "Plugin"
                                   },
+                                  "match": {
+                                    "type": "string",
+                                    "description": "Tag pattern selecting events for this filter.",
+                                    "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                                    "x-doc-required": true,
+                                    "x-config-data-type": "string",
+                                    "x-references-parser": false
+                                  },
                                   "directive_arg": {
                                     "type": "string",
                                     "description": "Tag pattern selecting events for this filter.",
@@ -33229,10 +34659,25 @@
                                   }
                                 },
                                 "required": [
-                                  "name",
-                                  "directive_arg"
+                                  "name"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": false,
+                                "allOf": [
+                                  {
+                                    "anyOf": [
+                                      {
+                                        "required": [
+                                          "match"
+                                        ]
+                                      },
+                                      {
+                                        "required": [
+                                          "directive_arg"
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ]
                               },
                               {
                                 "type": "object",
@@ -33242,6 +34687,14 @@
                                     "type": "string",
                                     "const": "record_transformer",
                                     "title": "Plugin"
+                                  },
+                                  "match": {
+                                    "type": "string",
+                                    "description": "Tag pattern selecting events for this filter.",
+                                    "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                                    "x-doc-required": true,
+                                    "x-config-data-type": "string",
+                                    "x-references-parser": false
                                   },
                                   "directive_arg": {
                                     "type": "string",
@@ -33444,10 +34897,25 @@
                                   }
                                 },
                                 "required": [
-                                  "name",
-                                  "directive_arg"
+                                  "name"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": false,
+                                "allOf": [
+                                  {
+                                    "anyOf": [
+                                      {
+                                        "required": [
+                                          "match"
+                                        ]
+                                      },
+                                      {
+                                        "required": [
+                                          "directive_arg"
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ]
                               },
                               {
                                 "type": "object",
@@ -33457,6 +34925,14 @@
                                     "type": "string",
                                     "const": "parser",
                                     "title": "Plugin"
+                                  },
+                                  "match": {
+                                    "type": "string",
+                                    "description": "Tag pattern selecting events for this filter.",
+                                    "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                                    "x-doc-required": true,
+                                    "x-config-data-type": "string",
+                                    "x-references-parser": false
                                   },
                                   "directive_arg": {
                                     "type": "string",
@@ -33863,10 +35339,25 @@
                                 },
                                 "required": [
                                   "name",
-                                  "directive_arg",
                                   "key_name"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": false,
+                                "allOf": [
+                                  {
+                                    "anyOf": [
+                                      {
+                                        "required": [
+                                          "match"
+                                        ]
+                                      },
+                                      {
+                                        "required": [
+                                          "directive_arg"
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ]
                               },
                               {
                                 "type": "object",
@@ -33876,6 +35367,14 @@
                                     "type": "string",
                                     "const": "stdout",
                                     "title": "Plugin"
+                                  },
+                                  "match": {
+                                    "type": "string",
+                                    "description": "Tag pattern selecting events for this filter.",
+                                    "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                                    "x-doc-required": true,
+                                    "x-config-data-type": "string",
+                                    "x-references-parser": false
                                   },
                                   "directive_arg": {
                                     "type": "string",
@@ -34081,10 +35580,25 @@
                                   }
                                 },
                                 "required": [
-                                  "name",
-                                  "directive_arg"
+                                  "name"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": false,
+                                "allOf": [
+                                  {
+                                    "anyOf": [
+                                      {
+                                        "required": [
+                                          "match"
+                                        ]
+                                      },
+                                      {
+                                        "required": [
+                                          "directive_arg"
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ]
                               }
                             ]
                           }
@@ -34101,6 +35615,14 @@
                                     "type": "string",
                                     "const": "stdout",
                                     "title": "Plugin"
+                                  },
+                                  "match": {
+                                    "type": "string",
+                                    "description": "Tag pattern selecting events for this output.",
+                                    "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                                    "x-doc-required": true,
+                                    "x-config-data-type": "string",
+                                    "x-references-parser": false
                                   },
                                   "directive_arg": {
                                     "type": "string",
@@ -34306,10 +35828,25 @@
                                   }
                                 },
                                 "required": [
-                                  "name",
-                                  "directive_arg"
+                                  "name"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": false,
+                                "allOf": [
+                                  {
+                                    "anyOf": [
+                                      {
+                                        "required": [
+                                          "match"
+                                        ]
+                                      },
+                                      {
+                                        "required": [
+                                          "directive_arg"
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ]
                               },
                               {
                                 "type": "object",
@@ -34319,6 +35856,14 @@
                                     "type": "string",
                                     "const": "file",
                                     "title": "Plugin"
+                                  },
+                                  "match": {
+                                    "type": "string",
+                                    "description": "Tag pattern selecting events for this output.",
+                                    "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                                    "x-doc-required": true,
+                                    "x-config-data-type": "string",
+                                    "x-references-parser": false
                                   },
                                   "directive_arg": {
                                     "type": "string",
@@ -35066,10 +36611,25 @@
                                 },
                                 "required": [
                                   "name",
-                                  "directive_arg",
                                   "path"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": false,
+                                "allOf": [
+                                  {
+                                    "anyOf": [
+                                      {
+                                        "required": [
+                                          "match"
+                                        ]
+                                      },
+                                      {
+                                        "required": [
+                                          "directive_arg"
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ]
                               },
                               {
                                 "type": "object",
@@ -35079,6 +36639,14 @@
                                     "type": "string",
                                     "const": "forward",
                                     "title": "Plugin"
+                                  },
+                                  "match": {
+                                    "type": "string",
+                                    "description": "Tag pattern selecting events for this output.",
+                                    "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                                    "x-doc-required": true,
+                                    "x-config-data-type": "string",
+                                    "x-references-parser": false
                                   },
                                   "directive_arg": {
                                     "type": "string",
@@ -35588,6 +37156,14 @@
                                         "items": {
                                           "type": "object",
                                           "properties": {
+                                            "protocol": {
+                                              "type": "string",
+                                              "description": "Transport protocol specified by the <transport ARG> directive.",
+                                              "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                                              "x-doc-required": true,
+                                              "x-config-data-type": "enum",
+                                              "x-references-parser": false
+                                            },
                                             "directive_arg": {
                                               "type": "string",
                                               "description": "Transport protocol specified by the <transport ARG> directive.",
@@ -35707,10 +37283,24 @@
                                               "additionalProperties": false
                                             }
                                           },
-                                          "required": [
-                                            "directive_arg"
-                                          ],
-                                          "additionalProperties": false
+                                          "required": [],
+                                          "additionalProperties": false,
+                                          "allOf": [
+                                            {
+                                              "anyOf": [
+                                                {
+                                                  "required": [
+                                                    "protocol"
+                                                  ]
+                                                },
+                                                {
+                                                  "required": [
+                                                    "directive_arg"
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
                                         }
                                       },
                                       "includes": {
@@ -35796,10 +37386,25 @@
                                   }
                                 },
                                 "required": [
-                                  "name",
-                                  "directive_arg"
+                                  "name"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": false,
+                                "allOf": [
+                                  {
+                                    "anyOf": [
+                                      {
+                                        "required": [
+                                          "match"
+                                        ]
+                                      },
+                                      {
+                                        "required": [
+                                          "directive_arg"
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ]
                               },
                               {
                                 "type": "object",
@@ -35809,6 +37414,14 @@
                                     "type": "string",
                                     "const": "null",
                                     "title": "Plugin"
+                                  },
+                                  "match": {
+                                    "type": "string",
+                                    "description": "Tag pattern selecting events for this output.",
+                                    "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                                    "x-doc-required": true,
+                                    "x-config-data-type": "string",
+                                    "x-references-parser": false
                                   },
                                   "directive_arg": {
                                     "type": "string",
@@ -36159,10 +37772,25 @@
                                   }
                                 },
                                 "required": [
-                                  "name",
-                                  "directive_arg"
+                                  "name"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": false,
+                                "allOf": [
+                                  {
+                                    "anyOf": [
+                                      {
+                                        "required": [
+                                          "match"
+                                        ]
+                                      },
+                                      {
+                                        "required": [
+                                          "directive_arg"
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ]
                               },
                               {
                                 "type": "object",
@@ -36172,6 +37800,14 @@
                                     "type": "string",
                                     "const": "copy",
                                     "title": "Plugin"
+                                  },
+                                  "match": {
+                                    "type": "string",
+                                    "description": "Tag pattern selecting events for this output.",
+                                    "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                                    "x-doc-required": true,
+                                    "x-config-data-type": "string",
+                                    "x-references-parser": false
                                   },
                                   "directive_arg": {
                                     "type": "string",
@@ -36337,10 +37973,25 @@
                                   }
                                 },
                                 "required": [
-                                  "name",
-                                  "directive_arg"
+                                  "name"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": false,
+                                "allOf": [
+                                  {
+                                    "anyOf": [
+                                      {
+                                        "required": [
+                                          "match"
+                                        ]
+                                      },
+                                      {
+                                        "required": [
+                                          "directive_arg"
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ]
                               },
                               {
                                 "type": "object",
@@ -36350,6 +38001,14 @@
                                     "type": "string",
                                     "const": "exec",
                                     "title": "Plugin"
+                                  },
+                                  "match": {
+                                    "type": "string",
+                                    "description": "Tag pattern selecting events for this output.",
+                                    "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                                    "x-doc-required": true,
+                                    "x-config-data-type": "string",
+                                    "x-references-parser": false
                                   },
                                   "directive_arg": {
                                     "type": "string",
@@ -37082,10 +38741,25 @@
                                 },
                                 "required": [
                                   "name",
-                                  "directive_arg",
                                   "command"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": false,
+                                "allOf": [
+                                  {
+                                    "anyOf": [
+                                      {
+                                        "required": [
+                                          "match"
+                                        ]
+                                      },
+                                      {
+                                        "required": [
+                                          "directive_arg"
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ]
                               },
                               {
                                 "type": "object",
@@ -37095,6 +38769,14 @@
                                     "type": "string",
                                     "const": "exec_filter",
                                     "title": "Plugin"
+                                  },
+                                  "match": {
+                                    "type": "string",
+                                    "description": "Tag pattern selecting events for this output.",
+                                    "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                                    "x-doc-required": true,
+                                    "x-config-data-type": "string",
+                                    "x-references-parser": false
                                   },
                                   "directive_arg": {
                                     "type": "string",
@@ -38097,10 +39779,25 @@
                                 },
                                 "required": [
                                   "name",
-                                  "directive_arg",
                                   "command"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": false,
+                                "allOf": [
+                                  {
+                                    "anyOf": [
+                                      {
+                                        "required": [
+                                          "match"
+                                        ]
+                                      },
+                                      {
+                                        "required": [
+                                          "directive_arg"
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ]
                               },
                               {
                                 "type": "object",
@@ -38110,6 +39807,14 @@
                                     "type": "string",
                                     "const": "relabel",
                                     "title": "Plugin"
+                                  },
+                                  "match": {
+                                    "type": "string",
+                                    "description": "Tag pattern selecting events for this output.",
+                                    "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+                                    "x-doc-required": true,
+                                    "x-config-data-type": "string",
+                                    "x-references-parser": false
                                   },
                                   "directive_arg": {
                                     "type": "string",
@@ -38176,10 +39881,25 @@
                                 },
                                 "required": [
                                   "name",
-                                  "directive_arg",
                                   "@label"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": false,
+                                "allOf": [
+                                  {
+                                    "anyOf": [
+                                      {
+                                        "required": [
+                                          "match"
+                                        ]
+                                      },
+                                      {
+                                        "required": [
+                                          "directive_arg"
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ]
                               }
                             ]
                           }

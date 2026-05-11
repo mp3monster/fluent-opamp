@@ -512,16 +512,18 @@ class ValidationService:
         issues: list[dict[str, Any]] = []
         fields = {field["name"]: field for field in plugin_def.get("fields", [])}
         directive_arg = plugin_def.get("directive_argument")
-        if isinstance(directive_arg, dict) and directive_arg.get("required") is True and "directive_arg" not in plugin_instance:
-            issues.append(
-                {
-                    "code": "missing_required_field",
-                    "path": f"{path}.directive_arg",
-                    "message": "Required directive argument is missing.",
-                    "severity": "error",
-                    "source": "semantic",
-                }
-            )
+        directive_arg_keys = self._directive_argument_keys(directive_arg)
+        if isinstance(directive_arg, dict) and directive_arg.get("required") is True:
+            if not any(key in plugin_instance for key in directive_arg_keys):
+                issues.append(
+                    {
+                        "code": "missing_required_field",
+                        "path": f"{path}.{directive_arg_keys[0]}",
+                        "message": "Required directive argument is missing.",
+                        "severity": "error",
+                        "source": "semantic",
+                    }
+                )
         for required in [name for name, field in fields.items() if field.get("required") is True]:
             if required not in plugin_instance:
                 issues.append(
@@ -534,7 +536,9 @@ class ValidationService:
                     }
                 )
         for key in plugin_instance:
-            if key in {"name", "directive_arg", "children", "processors", "route", "_meta"}:
+            if key in {"name", "children", "processors", "route", "_meta"}:
+                continue
+            if key in directive_arg_keys:
                 continue
             if key not in fields:
                 issues.append(
@@ -546,6 +550,13 @@ class ValidationService:
                         "source": "semantic",
                     }
                 )
+        issues.extend(
+            self._validate_match_selector_presence(
+                path=path,
+                plugin_instance=plugin_instance,
+                fields=fields,
+            )
+        )
         issues.extend(
             self._validate_parser_references(
                 path=path,
@@ -575,6 +586,44 @@ class ValidationService:
                 )
             )
         return issues
+
+    @staticmethod
+    def _directive_argument_keys(directive_arg: dict[str, Any] | Any) -> list[str]:
+        if not isinstance(directive_arg, dict):
+            return ["directive_arg"]
+        configured_name = str(directive_arg.get("name") or "").strip()
+        if not configured_name or configured_name == "directive_arg":
+            return ["directive_arg"]
+        return [configured_name, "directive_arg"]
+
+    def _validate_match_selector_presence(
+        self,
+        *,
+        path: str,
+        plugin_instance: dict[str, Any],
+        fields: dict[str, dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """Require at least one routing selector when both are defined by schema metadata."""
+        if "match" not in fields or "match_regex" not in fields:
+            return []
+
+        match_value = plugin_instance.get("match")
+        regex_value = plugin_instance.get("match_regex")
+
+        has_match = isinstance(match_value, str) and bool(match_value.strip())
+        has_match_regex = isinstance(regex_value, str) and bool(regex_value.strip())
+        if has_match or has_match_regex:
+            return []
+
+        return [
+            {
+                "code": "missing_match_selector",
+                "path": path,
+                "message": "At least one of 'match' or 'match_regex' must be provided.",
+                "severity": "error",
+                "source": "semantic",
+            }
+        ]
 
     def _validate_parser_references(
         self,

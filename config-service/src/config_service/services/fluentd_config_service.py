@@ -248,8 +248,10 @@ class FluentdConfigService:
         name_value = params.pop("@type", params.pop("type", None))
         plugin: dict[str, Any] = {"name": name_value or node["name"]}
         if node.get("arg") and section_name in {"filter", "match"} and not nested_output:
+            plugin["match"] = node["arg"]
             plugin["directive_arg"] = node["arg"]
         if section_name == "transport" and node.get("arg"):
+            plugin["protocol"] = node["arg"]
             plugin["directive_arg"] = node["arg"]
         if section_name == "buffer" and node.get("arg"):
             plugin["chunk_keys"] = [part.strip() for part in node["arg"].split(",") if part.strip()]
@@ -289,6 +291,8 @@ class FluentdConfigService:
         if name in {"transport", "extract", "inject"}:
             payload = self._params_dict(node)
             if node.get("arg"):
+                if name == "transport":
+                    payload["protocol"] = node["arg"]
                 payload["directive_arg"] = node["arg"]
             return payload
         return self._params_dict(node)
@@ -346,7 +350,8 @@ class FluentdConfigService:
     def _render_plugin(self, plugin: dict[str, Any], directive_name: str, *, indent: int) -> list[str]:
         arg = ""
         if directive_name in {"filter", "match"}:
-            arg = " " + str(plugin.get("directive_arg") or "**")
+            arg_value = plugin.get("match", plugin.get("directive_arg"))
+            arg = " " + str(arg_value or "**")
         lines = [self._indent(indent) + f"<{directive_name}{arg}>"]
         lines.extend(self._render_plugin_body(plugin, indent=indent + 2))
         lines.append(self._indent(indent) + f"</{directive_name}>")
@@ -355,7 +360,7 @@ class FluentdConfigService:
     def _render_plugin_body(self, plugin: dict[str, Any], *, indent: int) -> list[str]:
         lines = [self._indent(indent) + f"@type {_format_scalar(plugin.get('name', ''))}"]
         for key, value in plugin.items():
-            if key in {"name", "directive_arg", "children", "_meta"}:
+            if key in {"name", "match", "directive_arg", "children", "_meta"}:
                 continue
             if key == "chunk_keys":
                 continue
@@ -398,11 +403,15 @@ class FluentdConfigService:
             return self._render_nested_plugin(section_name, item, indent=indent)
         if section_name in {"transport", "extract", "inject"}:
             arg = ""
-            if "directive_arg" in item:
+            if section_name == "transport":
+                protocol = item.get("protocol", item.get("directive_arg"))
+                if protocol is not None:
+                    arg = " " + str(protocol or "")
+            elif "directive_arg" in item:
                 arg = " " + str(item.get("directive_arg") or "")
             lines = [self._indent(indent) + f"<{section_name}{arg}>"]
             for key, value in item.items():
-                if key in {"directive_arg", "_meta"}:
+                if key in {"directive_arg", "_meta"} or (section_name == "transport" and key == "protocol"):
                     continue
                 lines.append(self._indent(indent + 2) + f"{key} {_format_scalar(value)}")
             lines.append(self._indent(indent) + f"</{section_name}>")

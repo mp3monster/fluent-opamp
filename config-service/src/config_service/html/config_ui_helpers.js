@@ -16,6 +16,7 @@
   "use strict";
 
   function prependConfigHeader(text, configType, version, commentPrefix) {
+    // Adds a stable metadata header used when files are reloaded later.
     var prefix = commentPrefix || "#";
     var header = [
       prefix + " config-service: config_type=" + String(configType || ""),
@@ -25,16 +26,17 @@
   }
 
   function versionAtLeast(actual, minimum) {
-    var a = String(actual || "").split(".").map(function (part) {
+    // Semantic-ish numeric compare that tolerates uneven dot segment lengths.
+    var actualParts = String(actual || "").split(".").map(function (part) {
       return Number(part || 0);
     });
-    var b = String(minimum || "").split(".").map(function (part) {
+    var minimumParts = String(minimum || "").split(".").map(function (part) {
       return Number(part || 0);
     });
-    var length = Math.max(a.length, b.length);
+    var length = Math.max(actualParts.length, minimumParts.length);
     for (var index = 0; index < length; index += 1) {
-      var left = a[index] || 0;
-      var right = b[index] || 0;
+      var left = actualParts[index] || 0;
+      var right = minimumParts[index] || 0;
       if (left > right) {
         return true;
       }
@@ -69,23 +71,24 @@
     if (Object.prototype.hasOwnProperty.call(field, "default")) {
       return field.default;
     }
-    var t = String(field.data_type || "string").toLowerCase();
-    if (t === "integer" || t === "number" || t === "float") {
+    var dataType = String(field.data_type || "string").toLowerCase();
+    if (dataType === "integer" || dataType === "number" || dataType === "float") {
       return 0;
     }
-    if (t === "boolean") {
+    if (dataType === "boolean") {
       return false;
     }
-    if (t === "array" || t === "list") {
+    if (dataType === "array" || dataType === "list") {
       return [];
     }
-    if (t === "object" || t === "map") {
+    if (dataType === "object" || dataType === "map") {
       return {};
     }
     return "";
   }
 
   function normalizeEnumAliasValue(enumOptions, value) {
+    // Maps common bool-like aliases to enum values for on/off style fields.
     var options = Array.isArray(enumOptions) ? enumOptions.map(function (item) { return String(item); }) : [];
     if (options.length === 0) {
       return value;
@@ -108,19 +111,28 @@
   }
 
   function parseTextValue(raw, dataType) {
-    var t = String(dataType || "string").toLowerCase();
-    if (t === "integer") {
-      var i = Number(raw);
-      return Number.isFinite(i) ? Math.trunc(i) : 0;
+    var normalizedDataType = String(dataType || "string").toLowerCase();
+    if (normalizedDataType === "integer") {
+      var integerValue = Number(raw);
+      return Number.isFinite(integerValue) ? Math.trunc(integerValue) : 0;
     }
-    if (t === "number" || t === "float") {
-      var n = Number(raw);
-      return Number.isFinite(n) ? n : 0;
+    if (normalizedDataType === "number" || normalizedDataType === "float") {
+      var numberValue = Number(raw);
+      return Number.isFinite(numberValue) ? numberValue : 0;
     }
-    if (t === "array" || t === "list" || t === "object" || t === "map") {
+    if (
+      normalizedDataType === "array" ||
+      normalizedDataType === "list" ||
+      normalizedDataType === "object" ||
+      normalizedDataType === "map"
+    ) {
       try {
-        return raw ? JSON.parse(raw) : t === "array" || t === "list" ? [] : {};
-      } catch (_e) {
+        return raw
+          ? JSON.parse(raw)
+          : normalizedDataType === "array" || normalizedDataType === "list"
+            ? []
+            : {};
+      } catch (_parseError) {
         return raw;
       }
     }
@@ -128,52 +140,67 @@
   }
 
   function parseServiceValue(raw) {
-    var v = String(raw || "").trim();
-    if (v === "true") {
+    // Best-effort parse used by free-form service/env inputs.
+    var textValue = String(raw || "").trim();
+    if (textValue === "true") {
       return true;
     }
-    if (v === "false") {
+    if (textValue === "false") {
       return false;
     }
-    if (v !== "" && !Number.isNaN(Number(v))) {
-      return Number(v);
+    if (textValue !== "" && !Number.isNaN(Number(textValue))) {
+      return Number(textValue);
     }
     try {
-      if ((v.startsWith("{") && v.endsWith("}")) || (v.startsWith("[") && v.endsWith("]"))) {
-        return JSON.parse(v);
+      if (
+        (textValue.startsWith("{") && textValue.endsWith("}")) ||
+        (textValue.startsWith("[") && textValue.endsWith("]"))
+      ) {
+        return JSON.parse(textValue);
       }
-    } catch (_e) {
+    } catch (_parseError) {
       return raw;
     }
     return raw;
   }
 
   function parseServiceValueByType(raw, dataType) {
-    var t = String(dataType || "string").toLowerCase();
-    if (t === "enum") {
+    // Type-aware parse for schema-defined fields.
+    var normalizedDataType = String(dataType || "string").toLowerCase();
+    if (normalizedDataType === "enum") {
       return String(raw || "");
     }
-    if (t === "boolean") {
-      var v = String(raw || "").trim().toLowerCase();
-      return v === "true" || v === "1" || v === "yes" || v === "on";
+    if (normalizedDataType === "boolean") {
+      var normalizedBooleanText = String(raw || "").trim().toLowerCase();
+      return (
+        normalizedBooleanText === "true" ||
+        normalizedBooleanText === "1" ||
+        normalizedBooleanText === "yes" ||
+        normalizedBooleanText === "on"
+      );
     }
-    if (t === "integer") {
-      var i = Number(raw);
-      return Number.isFinite(i) ? Math.trunc(i) : 0;
+    if (normalizedDataType === "integer") {
+      var integerValue = Number(raw);
+      return Number.isFinite(integerValue) ? Math.trunc(integerValue) : 0;
     }
-    if (t === "number" || t === "float") {
-      var f = Number(raw);
-      return Number.isFinite(f) ? f : 0;
+    if (normalizedDataType === "number" || normalizedDataType === "float") {
+      var floatValue = Number(raw);
+      return Number.isFinite(floatValue) ? floatValue : 0;
     }
     return parseServiceValue(raw);
   }
 
   function fieldInputValue(value, dataType) {
-    var t = String(dataType || "string").toLowerCase();
-    if (t === "array" || t === "list" || t === "object" || t === "map") {
+    var normalizedDataType = String(dataType || "string").toLowerCase();
+    if (
+      normalizedDataType === "array" ||
+      normalizedDataType === "list" ||
+      normalizedDataType === "object" ||
+      normalizedDataType === "map"
+    ) {
       try {
         return JSON.stringify(value === undefined ? null : value);
-      } catch (_e) {
+      } catch (_serializeError) {
         return String(value || "");
       }
     }
@@ -184,6 +211,7 @@
   }
 
   function parseFlexibleRouteValue(raw) {
+    // Route rules can hold scalar or structured values; parse conservatively.
     var text = String(raw || "").trim();
     if (text === "") {
       return "";
@@ -198,7 +226,7 @@
       ) {
         return JSON.parse(text);
       }
-    } catch (_e) {
+    } catch (_parseError) {
       return raw;
     }
     if (!Number.isNaN(Number(text)) && text !== "") {
@@ -214,7 +242,7 @@
     if (typeof value === "object") {
       try {
         return JSON.stringify(value);
-      } catch (_e) {
+      } catch (_serializeError) {
         return String(value);
       }
     }

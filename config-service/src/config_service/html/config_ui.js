@@ -15,6 +15,7 @@
 (function () {
   "use strict";
 
+  // Central runtime constants for storage and API integration.
   var API_BASE = "/config-service/api/v1";
   var LAST_FILE_COOKIE = "config_service_last_opened_name";
   var LAST_DOC_STORAGE = "config_service_last_opened_doc";
@@ -28,6 +29,8 @@
   var lastUiErrorAt = 0;
   var isReportingUiError = false;
 
+  // Single source of truth for UI runtime state.
+  // Most render functions are projections of this object.
   var state = {
     versions: [],
     selectedVersion: "",
@@ -118,6 +121,9 @@
     window.location.assign(url.toString());
   }
 
+  // Cache DOM lookups once during startup.
+  // We intentionally keep this flat so render/event code can reference
+  // stable element handles without repeated selector queries.
   var el = {
     openFile: document.getElementById("open-file"),
     openFileDisplay: document.getElementById("open-file-display"),
@@ -206,12 +212,13 @@
   };
 
   function fetchJson(url, options) {
+    // Normalize API responses: throw for non-2xx and keep payload details.
     return fetch(url, options || {}).then(function (resp) {
       return resp.text().then(function (text) {
         var data = {};
         try {
           data = text ? JSON.parse(text) : {};
-        } catch (_e) {
+        } catch (_parseError) {
           data = { error: text };
         }
         if (!resp.ok) {
@@ -230,6 +237,7 @@
   }
 
   function reportUiError(details) {
+    // Deduplicate bursts of identical client errors to avoid telemetry spam.
     var payload = details && typeof details === "object" ? details : {};
     var fingerprint = JSON.stringify({
       kind: payload.kind || "",
@@ -301,7 +309,7 @@
       } else if (typeof item === "object") {
         try {
           parts.push(JSON.stringify(item));
-        } catch (_e) {
+        } catch (_serializeError) {
           parts.push(String(item));
         }
       } else {
@@ -364,22 +372,20 @@
   }
 
   function setCookie(name, value) {
-    var expires = new Date();
-    expires.setDate(expires.getDate() + 30);
+    // Session cookie: intentionally omit expires/max-age so persistence ends
+    // when the browser session closes.
     document.cookie =
       name +
       "=" +
       encodeURIComponent(value) +
-      "; expires=" +
-      expires.toUTCString() +
       "; path=/; SameSite=Lax";
   }
 
   function getCookie(name) {
     var prefix = name + "=";
     var parts = document.cookie.split(";");
-    for (var i = 0; i < parts.length; i += 1) {
-      var part = parts[i].trim();
+    for (var partIndex = 0; partIndex < parts.length; partIndex += 1) {
+      var part = parts[partIndex].trim();
       if (part.indexOf(prefix) === 0) {
         return decodeURIComponent(part.substring(prefix.length));
       }
@@ -409,11 +415,11 @@
   }
 
   function compareVersionStrings(left, right) {
-    var a = String(left || "").split(".").map(function (part) { return Number(part) || 0; });
-    var b = String(right || "").split(".").map(function (part) { return Number(part) || 0; });
-    var length = Math.max(a.length, b.length);
+    var leftParts = String(left || "").split(".").map(function (part) { return Number(part) || 0; });
+    var rightParts = String(right || "").split(".").map(function (part) { return Number(part) || 0; });
+    var length = Math.max(leftParts.length, rightParts.length);
     for (var index = 0; index < length; index += 1) {
-      var diff = (a[index] || 0) - (b[index] || 0);
+      var diff = (leftParts[index] || 0) - (rightParts[index] || 0);
       if (diff !== 0) {
         return diff;
       }
@@ -577,73 +583,6 @@
     );
   }
 
-  function parseConfigHeader(text) {
-    var meta = {
-      configType: "",
-      version: "",
-      headerComments: "",
-      body: String(text || ""),
-    };
-    var lines = meta.body.replace(/\r\n/g, "\n").split("\n");
-    var bodyStart = 0;
-    var headerCommentLines = [];
-    var sawConfigServiceHeader = false;
-
-    function parseCommentLine(rawLine) {
-      var match = /^(\/\/|#)\s?(.*)$/.exec(String(rawLine || ""));
-      if (!match) {
-        return null;
-      }
-      return {
-        prefix: match[1],
-        content: match[2],
-      };
-    }
-
-    for (var index = 0; index < lines.length; index += 1) {
-      var line = lines[index];
-      var trimmed = String(line || "").trim();
-      if (!trimmed) {
-        bodyStart = index + 1;
-        if (sawConfigServiceHeader || headerCommentLines.length > 0) {
-          headerCommentLines.push("");
-        }
-        continue;
-      }
-
-      var comment = parseCommentLine(line);
-      if (!comment) {
-        break;
-      }
-
-      var configHeaderMatch = /^config-service:\s*(config_type|version)\s*=\s*(.+?)\s*$/.exec(String(comment.content || "").trim());
-      if (configHeaderMatch) {
-        sawConfigServiceHeader = true;
-        if (configHeaderMatch[1] === "config_type") {
-          meta.configType = configHeaderMatch[2].trim();
-        } else if (configHeaderMatch[1] === "version") {
-          meta.version = configHeaderMatch[2].trim();
-        }
-        bodyStart = index + 1;
-        continue;
-      }
-
-      headerCommentLines.push(String(comment.content || "").trimEnd());
-      bodyStart = index + 1;
-    }
-
-    while (headerCommentLines.length > 0 && headerCommentLines[0].trim() === "") {
-      headerCommentLines.shift();
-    }
-    while (headerCommentLines.length > 0 && headerCommentLines[headerCommentLines.length - 1].trim() === "") {
-      headerCommentLines.pop();
-    }
-
-    meta.headerComments = headerCommentLines.join("\n");
-    meta.body = lines.slice(bodyStart).join("\n");
-    return meta;
-  }
-
   function normalizeIssuePath(path) {
     var text = String(path || "").trim();
     if (!text) {
@@ -684,206 +623,16 @@
     return null;
   }
 
-  function buildSourceLineMap(text, configType, fileName) {
-    if (!text) {
-      return {};
-    }
-    if (configType === "fluentbit" || /\.ya?ml$/i.test(String(fileName || ""))) {
-      return buildFluentBitYamlLineMap(text);
-    }
-    if (configType === "fluentd" || /\.conf$/i.test(String(fileName || ""))) {
-      return buildFluentdLineMap(text);
-    }
-    return {};
-  }
-
-  function buildFluentBitYamlLineMap(text) {
-    var map = {};
-    var lines = String(text || "").replace(/\r\n/g, "\n").split("\n");
-    var rootSection = "";
-    var pipelineSection = "";
-    var indices = { inputs: -1, filters: -1, outputs: -1 };
-    var currentPluginIndex = -1;
-
-    lines.forEach(function (rawLine, index) {
-      var lineNumber = index + 1;
-      var trimmed = rawLine.trim();
-      if (!trimmed || trimmed.charAt(0) === "#") {
-        return;
-      }
-      var indent = rawLine.length - rawLine.replace(/^\s+/, "").length;
-
-      if (indent === 0) {
-        rootSection = "";
-        pipelineSection = "";
-        currentPluginIndex = -1;
-        var rootMatch = /^([A-Za-z0-9_.-]+):(?:\s|$)/.exec(trimmed);
-        if (rootMatch) {
-          rootSection = rootMatch[1];
-          map["$." + rootSection] = lineNumber;
-        }
-        return;
-      }
-
-      if (rootSection === "service") {
-        var serviceMatch = /^([A-Za-z0-9_.-]+):(?:\s|$)/.exec(trimmed);
-        if (serviceMatch) {
-          map["$.service." + serviceMatch[1]] = lineNumber;
-        }
-        return;
-      }
-
-      if (rootSection === "env") {
-        var envMatch = /^([A-Za-z0-9_.-]+):(?:\s|$)/.exec(trimmed);
-        if (envMatch) {
-          map["$.env." + envMatch[1]] = lineNumber;
-        }
-        return;
-      }
-
-      if (rootSection === "parsers") {
-        if (indent >= 2 && /^-\s*/.test(trimmed)) {
-          currentPluginIndex += 1;
-          var parserBasePath = "$.parsers[" + currentPluginIndex + "]";
-          map[parserBasePath] = lineNumber;
-          var inlineParser = trimmed.replace(/^-\s*/, "");
-          var inlineParserMatch = /^([A-Za-z0-9_.-]+):(?:\s|$)/.exec(inlineParser);
-          if (inlineParserMatch) {
-            map[parserBasePath + "." + inlineParserMatch[1]] = lineNumber;
-          }
-          return;
-        }
-
-        if (currentPluginIndex >= 0) {
-          var parserFieldMatch = /^([A-Za-z0-9_.-]+):(?:\s|$)/.exec(trimmed);
-          if (parserFieldMatch) {
-            map["$.parsers[" + currentPluginIndex + "]." + parserFieldMatch[1]] = lineNumber;
-          }
-        }
-        return;
-      }
-
-      if (rootSection !== "pipeline") {
-        return;
-      }
-
-      if (indent === 2) {
-        var sectionMatch = /^(inputs|filters|outputs):(?:\s|$)/.exec(trimmed);
-        if (sectionMatch) {
-          pipelineSection = sectionMatch[1];
-          currentPluginIndex = -1;
-          indices[pipelineSection] = -1;
-          map["$.pipeline." + pipelineSection] = lineNumber;
-        } else {
-          pipelineSection = "";
-        }
-        return;
-      }
-
-      if (!pipelineSection) {
-        return;
-      }
-
-      if (indent >= 4 && /^-\s*/.test(trimmed)) {
-        indices[pipelineSection] += 1;
-        currentPluginIndex = indices[pipelineSection];
-        var basePath = "$.pipeline." + pipelineSection + "[" + currentPluginIndex + "]";
-        map[basePath] = lineNumber;
-        var inline = trimmed.replace(/^-\s*/, "");
-        var inlineMatch = /^([A-Za-z0-9_.-]+):(?:\s|$)/.exec(inline);
-        if (inlineMatch) {
-          map[basePath + "." + inlineMatch[1]] = lineNumber;
-        }
-        return;
-      }
-
-      if (currentPluginIndex >= 0) {
-        var fieldMatch = /^([A-Za-z0-9_.-]+):(?:\s|$)/.exec(trimmed);
-        if (fieldMatch) {
-          map["$.pipeline." + pipelineSection + "[" + currentPluginIndex + "]." + fieldMatch[1]] = lineNumber;
-        }
-      }
-    });
-
-    return map;
-  }
-
-  function buildFluentdLineMap(text) {
-    var map = {};
-    var lines = String(text || "").replace(/\r\n/g, "\n").split("\n");
-    var stack = [];
-    var indices = { inputs: -1, filters: -1, outputs: -1 };
-
-    lines.forEach(function (rawLine, index) {
-      var lineNumber = index + 1;
-      var trimmed = rawLine.trim();
-      if (!trimmed || trimmed.charAt(0) === "#") {
-        return;
-      }
-
-      var endMatch = /^<\/([@A-Za-z_][\w@-]*)>$/.exec(trimmed);
-      if (endMatch) {
-        stack.pop();
-        return;
-      }
-
-      if (/^<system>$/.test(trimmed)) {
-        stack = [{ type: "service", path: "$.service" }];
-        map["$.service"] = lineNumber;
-        return;
-      }
-
-      var sourceMatch = /^<(source|filter|match)(?:\s+.*)?>$/.exec(trimmed);
-      if (sourceMatch) {
-        var sectionMap = { source: "inputs", filter: "filters", match: "outputs" };
-        var section = sectionMap[sourceMatch[1]];
-        indices[section] += 1;
-        var path = "$.pipeline." + section + "[" + indices[section] + "]";
-        stack = [{ type: sourceMatch[1], path: path }];
-        map[path] = lineNumber;
-        return;
-      }
-
-      if (/^<(label|worker)(?:\s+.*)?>$/.test(trimmed)) {
-        stack = [{ type: "container", path: "" }];
-        return;
-      }
-
-      if (trimmed.charAt(0) === "<") {
-        stack.push({ type: "nested", path: "" });
-        return;
-      }
-
-      if (stack.length === 0) {
-        return;
-      }
-
-      var current = stack[stack.length - 1];
-      if (!current || !current.path) {
-        return;
-      }
-
-      var parts = trimmed.split(/\s+/, 2);
-      var key = parts[0] || "";
-      if (!key) {
-        return;
-      }
-      if (key === "@type") {
-        map[current.path + ".name"] = lineNumber;
-        return;
-      }
-      map[current.path + "." + key] = lineNumber;
-    });
-
-    return map;
-  }
-
   function prependConfigHeader(text, configType, version, commentPrefix) {
     return uiHelpers.prependConfigHeader(text, configType, version, commentPrefix);
   }
 
   function normalizeHeaderCommentLines(text) {
-    var lines = String(text || "").replace(/\r\n/g, "\n").split("\n");
+    var normalizedText = String(text || "")
+      .replace(/\r\n/g, "\n")
+      .replace(/\\r\\n/g, "\n")
+      .replace(/\\n/g, "\n");
+    var lines = normalizedText.split("\n");
     while (lines.length > 0 && lines[0].trim() === "") {
       lines.shift();
     }
@@ -946,6 +695,8 @@
   }
 
   function ensureDoc() {
+    // Normalize and migrate older document shapes into the current in-memory
+    // contract expected by render/save/validate logic.
     if (!state.doc) {
       state.doc = emptyDoc(state.selectedVersion, state.configType);
     }
@@ -1158,9 +909,10 @@
   }
 
   function renderValidationState(result) {
+    // Convert backend validation payload into user-facing summary + issue list.
     var errors = (result && Array.isArray(result.errors)) ? result.errors.slice() : [];
-    errors.sort(function (a, b) {
-      return Number((a && a.order) || 0) - Number((b && b.order) || 0);
+    errors.sort(function (leftIssue, rightIssue) {
+      return Number((leftIssue && leftIssue.order) || 0) - Number((rightIssue && rightIssue.order) || 0);
     });
     var hasBlockingErrors = errors.some(function (issue) {
       return String((issue && issue.severity) || "error").toLowerCase() === "error";
@@ -1292,30 +1044,6 @@
     updateResultPanels();
   }
 
-  function formatRenderOutput(result, includeLoadedFiles) {
-    var mainRendered = result.yaml || result.text || "";
-    if (!includeLoadedFiles) {
-      return mainRendered;
-    }
-    var includedFiles = Array.isArray(result.included_files) ? result.included_files : [];
-    if (includedFiles.length === 0) {
-      return mainRendered;
-    }
-    var sections = [mainRendered];
-    includedFiles.forEach(function (item) {
-      var includePath = item && item.include_path ? String(item.include_path) : "unknown";
-      var includeRendered = item && (item.yaml || item.text) ? String(item.yaml || item.text) : "";
-      sections.push(
-        [
-          "",
-          "# Included file: " + includePath,
-          includeRendered,
-        ].join("\n")
-      );
-    });
-    return sections.join("\n");
-  }
-
   function updateResultPanels() {
     el.validationBody.classList.toggle("is-collapsed", state.validationCollapsed);
     el.validationToggle.textContent = state.validationCollapsed ? "Open" : "Collapse";
@@ -1324,6 +1052,7 @@
   }
 
   function updateSectionPanels() {
+    // Keep panel collapsed/open CSS and toggle labels synchronized with state.
     if (el.serviceBody && el.serviceToggle) {
       el.serviceBody.classList.toggle("is-collapsed", state.servicePanelCollapsed);
       el.serviceToggle.textContent = state.servicePanelCollapsed ? "Open" : "Collapse";
@@ -1386,10 +1115,10 @@
       el.versionSelect.disabled = true;
       return;
     }
-    state.versions.forEach(function (v) {
+    state.versions.forEach(function (versionValue) {
       var opt = document.createElement("option");
-      opt.value = v;
-      opt.textContent = v;
+      opt.value = versionValue;
+      opt.textContent = versionValue;
       el.versionSelect.appendChild(opt);
     });
     el.versionSelect.disabled = isReadOnlyMode() ? true : false;
@@ -1696,10 +1425,11 @@
         body: JSON.stringify({
           config: state.doc.config,
           annotations: state.doc.annotations || {},
+          header_comments: normalizedHeaderComments(state.headerComments || ""),
+          include_config_header: true,
         }),
       }).then(function (result) {
-        var renderedText = prependConfigHeader(result.text || "", state.configType, state.doc.version, "#");
-        renderedText = prependHeaderComments(renderedText, "#");
+        var renderedText = String(result.rendered_output || result.text || "");
         return {
           blob: new Blob([renderedText], { type: "text/plain" }),
           text: renderedText,
@@ -1725,6 +1455,18 @@
   function currentApiQuery() {
     var configType = normalizeConfigType(state.configType, "fluentbit");
     return "?config_type=" + encodeURIComponent(configType);
+  }
+
+  function prepareFileForLoad(text, fileName, configTypeHint) {
+    return fetchJson(API_BASE + "/ui/prepare-file", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text: String(text || ""),
+        file_name: String(fileName || ""),
+        config_type: String(configTypeHint || ""),
+      }),
+    });
   }
 
   function triggerConfigDownload(forcePrompt) {
@@ -1888,9 +1630,9 @@
 
   function fluentbitRouteSignalByName(signalName) {
     var signals = fluentbitRouteSignals();
-    for (var i = 0; i < signals.length; i += 1) {
-      if (signals[i] && signals[i].name === signalName) {
-        return signals[i];
+    for (var signalIndex = 0; signalIndex < signals.length; signalIndex += 1) {
+      if (signals[signalIndex] && signals[signalIndex].name === signalName) {
+        return signals[signalIndex];
       }
     }
     return null;
@@ -1965,6 +1707,7 @@
   }
 
   function renderFieldRow(instance, field, options) {
+    // Shared schema-driven field renderer used by plugin/service/parser UIs.
     options = options || {};
     var block = document.createElement("div");
     block.className = "field-block";
@@ -2500,6 +2243,7 @@ function renderPlugins() {
   }
 
   function renderAll() {
+    // Global rerender entry point; this ordering keeps cross-panel state stable.
     renderHeaderComments();
     renderService();
     renderEnv();
@@ -2731,6 +2475,7 @@ function renderPlugins() {
   }
 
   function initEvents() {
+    // Wire all DOM event handlers once at startup.
     window.addEventListener("resize", function () {
       Array.prototype.forEach.call(document.querySelectorAll("textarea.code-input"), function (node) {
         prepareCodeTextarea(node);
@@ -2842,10 +2587,12 @@ function renderPlugins() {
     }
 
     if (el.headerCommentsInput) {
-      el.headerCommentsInput.addEventListener("change", function () {
+      var syncHeaderCommentsFromInput = function () {
         state.headerComments = normalizedHeaderComments(el.headerCommentsInput.value || "");
         saveDoc();
-      });
+      };
+      el.headerCommentsInput.addEventListener("input", syncHeaderCommentsFromInput);
+      el.headerCommentsInput.addEventListener("change", syncHeaderCommentsFromInput);
     }
 
     el.versionSelect.addEventListener("change", function () {
@@ -3089,14 +2836,17 @@ function renderPlugins() {
       file
         .text()
         .then(function (text) {
-          var parsedHeader = parseConfigHeader(text);
-          state.headerComments = normalizedHeaderComments(parsedHeader.headerComments || "");
+          return prepareFileForLoad(text, file.name, state.configType).then(function (preparedFile) {
+            state.headerComments = normalizedHeaderComments(preparedFile.header_comments || "");
           if (/\.json$/i.test(file.name)) {
-            var parsed = JSON.parse(parsedHeader.body);
+            var parsed = JSON.parse(preparedFile.body || "");
             state.doc = parsed;
             ensureDoc();
             state.includedDocuments = Array.isArray(parsed.included_documents) ? parsed.included_documents : [];
-            state.configType = normalizeConfigType(parsedHeader.configType || parsed.configType || "fluentbit", "fluentbit");
+            state.configType = normalizeConfigType(
+              preparedFile.config_type || parsed.configType || "fluentbit",
+              "fluentbit"
+            );
             state.doc.configType = state.configType;
             state.sourceLineMap = {};
             state.currentFileName = file.name;
@@ -3106,7 +2856,7 @@ function renderPlugins() {
             setCookie(LAST_FILE_COOKIE, file.name);
             return loadVersionsForType(
               state.configType,
-              parsedHeader.version || parsed.version || state.selectedVersion
+              preparedFile.version || parsed.version || state.selectedVersion
             )
               .then(function () {
                 state.doc.version = state.selectedVersion;
@@ -3138,13 +2888,13 @@ function renderPlugins() {
           if (/\.ya?ml$/i.test(file.name)) {
             state.configType = "fluentbit";
             el.configTypeSelect.value = state.configType;
-            state.sourceLineMap = buildSourceLineMap(parsedHeader.body, "fluentbit", file.name);
-            return loadVersionsForType(state.configType, parsedHeader.version || state.selectedVersion)
+            state.sourceLineMap = preparedFile.source_line_map || {};
+            return loadVersionsForType(state.configType, preparedFile.version || state.selectedVersion)
               .then(function () {
                 return fetchJson(API_BASE + "/parse/fluentbit/" + encodeURIComponent(state.selectedVersion), {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ text: parsedHeader.body }),
+                  body: JSON.stringify({ text: preparedFile.body || "" }),
                 });
               })
               .then(function (result) {
@@ -3180,19 +2930,19 @@ function renderPlugins() {
               .then(renderAll);
           }
 
-          state.configType = normalizeConfigType(parsedHeader.configType || "fluentd", "fluentd");
+          state.configType = normalizeConfigType(preparedFile.config_type || "fluentd", "fluentd");
           el.configTypeSelect.value = state.configType;
-          state.sourceLineMap = buildSourceLineMap(parsedHeader.body, "fluentd", file.name);
+          state.sourceLineMap = preparedFile.source_line_map || {};
           state.currentFileName = file.name;
           state.saveFileHandle = null;
           setOpenFileDisplay(selectedDisplay);
           setCookie(LAST_FILE_COOKIE, file.name);
-          return loadVersionsForType(state.configType, parsedHeader.version || state.selectedVersion)
+          return loadVersionsForType(state.configType, preparedFile.version || state.selectedVersion)
             .then(function () {
               return fetchJson(API_BASE + "/parse/fluentd/" + encodeURIComponent(state.selectedVersion), {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ text: parsedHeader.body }),
+                body: JSON.stringify({ text: preparedFile.body || "" }),
               });
             })
             .then(function (result) {
@@ -3216,6 +2966,7 @@ function renderPlugins() {
               return loadParserOptions(state.selectedVersion);
             })
             .then(renderAll);
+        });
         })
         .catch(function (err) {
           if (err && err.payload && Array.isArray(err.payload.errors)) {
@@ -3272,12 +3023,17 @@ function renderPlugins() {
         setStatusMessage("Load or create a configuration before rendering.");
         return;
       }
+      var currentHeaderComments = normalizedHeaderComments(
+        (el.headerCommentsInput && el.headerCommentsInput.value) || state.headerComments || ""
+      );
+      state.headerComments = currentHeaderComments;
       var payload = {
         config: state.doc.config,
         annotations: state.doc.annotations || {},
         included_documents: Array.isArray(state.includedDocuments) ? state.includedDocuments : [],
         include_comments: true,
         render_included_files: Boolean(state.renderIncludesForRender),
+        header_comments: currentHeaderComments,
       };
       var endpoint = state.configType === "fluentd"
         ? API_BASE + "/render/fluentd/" + encodeURIComponent(state.doc.version)
@@ -3293,8 +3049,12 @@ function renderPlugins() {
         body: JSON.stringify(payload),
       })
         .then(function (result) {
-          var renderedOutput = formatRenderOutput(result, state.renderIncludesForRender);
-          renderedOutput = prependHeaderComments(renderedOutput, "#");
+          var renderedOutput = String(
+            result.rendered_output ||
+            result.yaml ||
+            result.text ||
+            ""
+          );
           setStatusMessage("Rendered configuration updated.");
           setYamlText(renderedOutput, true);
         })
@@ -3352,7 +3112,7 @@ function renderPlugins() {
             state.configType = normalizeConfigType(parsed.configType || "fluentbit", "fluentbit");
             state.currentFileName = cookieName;
             setOpenFileDisplay(/^new-\d+$/i.test(cookieName) ? "" : cookieName);
-          } catch (_e) {
+          } catch (_storedDocumentParseError) {
             clearCookie(LAST_FILE_COOKIE);
             localStorage.removeItem(LAST_DOC_STORAGE);
             localStorage.removeItem(LAST_HEADER_COMMENTS_STORAGE);

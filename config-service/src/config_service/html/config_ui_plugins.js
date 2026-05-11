@@ -16,6 +16,7 @@
   "use strict";
 
   function create(deps) {
+    // Renderer for plugin cards and Fluent Bit-specific route/processor editors.
     var state = deps.state;
     var saveDoc = deps.saveDoc;
     var renderAll = deps.renderAll;
@@ -41,6 +42,7 @@
     var formatFlexibleRouteValue = deps.formatFlexibleRouteValue;
 
 function renderProcessorCondition(instance, procPathPrefix) {
+    // Condition block is nested JSON-like data, so we use a compact focused UI.
     var frame = document.createElement("div");
     frame.className = "nested-panel";
     var title = document.createElement("h4");
@@ -84,7 +86,7 @@ function renderProcessorCondition(instance, procPathPrefix) {
     var rulesInput = document.createElement("textarea");
     try {
       rulesInput.value = JSON.stringify((instance.condition && instance.condition.rules) || [], null, 2);
-    } catch (_e) {
+    } catch (_serializeError) {
       rulesInput.value = "[]";
     }
     rulesInput.placeholder = '[{"field":"$level","op":"eq","value":"error"}]';
@@ -292,6 +294,7 @@ function renderProcessorCondition(instance, procPathPrefix) {
   }
 
   function renderFluentbitProcessorsPanel(section, index, instance, keyPrefix, pluginPath) {
+    // Fluent Bit processors are grouped by signal type (logs/metrics/traces).
     ensureFluentbitProcessors(instance);
 
     var frame = document.createElement("div");
@@ -794,6 +797,7 @@ function renderProcessorCondition(instance, procPathPrefix) {
   }
 
   function renderFluentbitRoutePanel(instance, pluginPath) {
+    // Fluent Bit route editor supports per-signal routing with conditions.
     ensureFluentbitRoute(instance);
 
     var routeRoot = fluentbitRouteRoot();
@@ -915,6 +919,8 @@ function renderProcessorCondition(instance, procPathPrefix) {
   }
 
 function renderPluginCard(flatIndex, section, index, instance, pipeline, keyPrefix, pathPrefix) {
+    // Main plugin card renderer for inputs/filters/outputs.
+    // Includes move/reorder controls plus optional Fluent Bit extensions.
     var pluginDef = getPluginDefinition(section, instance.name);
     var card = document.createElement("div");
     card.className = "plugin-card";
@@ -1071,8 +1077,8 @@ function renderPluginCard(flatIndex, section, index, instance, pipeline, keyPref
 
       card.appendChild(fieldsWrap);
 
-      var missingOptional = fields.filter(function (f) {
-        return !f.required && !Object.prototype.hasOwnProperty.call(instance, f.name);
+      var missingOptional = fields.filter(function (fieldDefinition) {
+        return !fieldDefinition.required && !Object.prototype.hasOwnProperty.call(instance, fieldDefinition.name);
       });
       if (missingOptional.length > 0) {
         var optionalRow = document.createElement("div");
@@ -1082,10 +1088,10 @@ function renderPluginCard(flatIndex, section, index, instance, pipeline, keyPref
         emptyOpt.value = "";
         emptyOpt.textContent = "Select optional attribute...";
         optionalSel.appendChild(emptyOpt);
-        missingOptional.forEach(function (f) {
+        missingOptional.forEach(function (fieldDefinition) {
           var opt = document.createElement("option");
-          opt.value = f.name;
-          opt.textContent = f.name;
+          opt.value = fieldDefinition.name;
+          opt.textContent = fieldDefinition.name;
           optionalSel.appendChild(opt);
         });
         optionalRow.appendChild(optionalSel);
@@ -1104,8 +1110,8 @@ function renderPluginCard(flatIndex, section, index, instance, pipeline, keyPref
           if (!selected) {
             return;
           }
-          var field = fields.find(function (f) {
-            return f.name === selected;
+          var field = fields.find(function (fieldDefinition) {
+            return fieldDefinition.name === selected;
           });
           if (!field) {
             return;

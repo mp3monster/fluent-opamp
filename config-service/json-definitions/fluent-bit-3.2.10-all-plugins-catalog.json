@@ -53,6 +53,14 @@
             "validation_rule": {
               "kind": "boolean"
             }
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -99,6 +107,14 @@
             "required": false,
             "description": "Specify the ID (PID) of a running process in the system.",
             "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/cpu-metrics#configuration-parameters",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
             "data_type": "string",
             "validation_rule": null
           }
@@ -161,6 +177,14 @@
             "validation_rule": {
               "kind": "boolean"
             }
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -251,6 +275,14 @@
             "validation_rule": {
               "kind": "boolean"
             }
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -319,6 +351,14 @@
             "description": "Used to specify the container directory if Docker is configured with a custom \"data-root\" directory.",
             "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-metrics#configuration-parameters",
             "default": "/var/lib/docker/containers",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
             "data_type": "string",
             "validation_rule": null
           }
@@ -457,6 +497,14 @@
             "validation_rule": {
               "kind": "boolean"
             }
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -543,6 +591,14 @@
             "validation_rule": {
               "kind": "boolean"
             }
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -639,6 +695,14 @@
             "required": false,
             "description": "Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs).",
             "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec#configuration-parameters",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
             "data_type": "string",
             "validation_rule": null
           }
@@ -755,6 +819,14 @@
             "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec-wasi#configuration-parameters",
             "data_type": "string",
             "validation_rule": null
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -770,7 +842,16 @@
       "ebpf": {
         "title": "Ebpf",
         "doc_url": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/ebpf",
-        "fields": [],
+        "fields": [
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          }
+        ],
         "extraction": {
           "status": "no_table_under_config_heading",
           "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/ebpf#configuration-example"
@@ -814,6 +895,14 @@
             "validation_rule": {
               "kind": "boolean"
             }
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -905,7 +994,7 @@
             "name": "tag",
             "required": false,
             "description": "Override the tag of the forwarded events with the defined value.",
-            "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/forward#configuration-parameters",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
             "data_type": "string",
             "validation_rule": null
           },
@@ -1058,6 +1147,14 @@
             "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/head#configuration-parameters",
             "data_type": "string",
             "validation_rule": null
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -1151,6 +1248,14 @@
             "required": false,
             "description": "Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs).",
             "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/health#configuration-parameters",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
             "data_type": "string",
             "validation_rule": null
           }
@@ -1252,6 +1357,14 @@
             "validation_rule": {
               "kind": "boolean"
             }
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -1357,6 +1470,14 @@
             "validation_rule": {
               "kind": "boolean"
             }
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -1396,6 +1517,14 @@
             "validation_rule": {
               "kind": "boolean"
             }
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -1560,6 +1689,14 @@
             "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/kubernetes-events#configuration",
             "data_type": "string",
             "validation_rule": null
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -1576,7 +1713,16 @@
       "memory-metrics": {
         "title": "Memory Metrics",
         "doc_url": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/memory-metrics",
-        "fields": [],
+        "fields": [
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          }
+        ],
         "extraction": {
           "status": "no_table_under_config_heading",
           "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/memory-metrics#configuration-file"
@@ -1627,6 +1773,14 @@
             "validation_rule": {
               "kind": "boolean"
             }
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -1708,6 +1862,14 @@
             "validation_rule": {
               "kind": "boolean"
             }
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -1777,6 +1939,14 @@
             "validation_rule": {
               "kind": "boolean"
             }
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -2087,6 +2257,14 @@
             "validation_rule": {
               "kind": "regex_string"
             }
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -2128,9 +2306,9 @@
           },
           {
             "name": "tag",
-            "required": false,
+            "required": true,
             "description": "Tag for all the data ingested by this plugin.",
-            "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/opentelemetry#configuration-a-hrefconfiguration-idconfigurationa",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
             "data_type": "string",
             "validation_rule": null
           },
@@ -2286,6 +2464,14 @@
             "validation_rule": {
               "kind": "boolean"
             }
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -2352,6 +2538,14 @@
             "description": "To specify which process level of metrics are collected from the host operating system.",
             "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/process-exporter-metrics#configuration",
             "default": "cpu,io,memory,state,context_switches,fd,start_time,thread_wchan,thread",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
             "data_type": "string",
             "validation_rule": null
           }
@@ -2436,6 +2630,14 @@
             "required": false,
             "description": "Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs).",
             "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/process#configuration-parameters",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
             "data_type": "string",
             "validation_rule": null
           }
@@ -2540,6 +2742,14 @@
             "validation_rule": {
               "kind": "boolean"
             }
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -2608,6 +2818,14 @@
             "validation_rule": {
               "kind": "boolean"
             }
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -2660,6 +2878,14 @@
             "required": false,
             "description": "Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs).",
             "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/random#configuration-parameters",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
             "data_type": "string",
             "validation_rule": null
           }
@@ -2725,6 +2951,14 @@
             "required": false,
             "description": "Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs).",
             "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/serial-interface#configuration-parameters",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
             "data_type": "string",
             "validation_rule": null
           }
@@ -2846,6 +3080,14 @@
             "validation_rule": {
               "kind": "boolean"
             }
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -2894,6 +3136,14 @@
             "validation_rule": {
               "kind": "boolean"
             }
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -2950,6 +3200,14 @@
             "description": "Ingested record will be marked as a metric record rather than a log record.",
             "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/statsd#configuration-parameters-a-hrefconfig-idconfiga",
             "default": "off",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
             "data_type": "string",
             "validation_rule": null
           }
@@ -3079,6 +3337,14 @@
             "validation_rule": {
               "kind": "boolean"
             }
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -3150,9 +3416,9 @@
           },
           {
             "name": "tag",
-            "required": false,
+            "required": true,
             "description": "The tag is used to route messages but on Systemd plugin there is an extra functionality: if the tag includes a star/wildcard, it will be expanded with the Systemd Unit file (_SYSTEMD_UNIT, e.g.",
-            "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/systemd#configuration-parameters",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
             "data_type": "string",
             "validation_rule": null
           },
@@ -3448,9 +3714,9 @@
           },
           {
             "name": "tag",
-            "required": false,
+            "required": true,
             "description": "Set a tag (with regex-extract fields) that will be placed on lines read.",
-            "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/tail#configuration-parameters-a-hrefconfig-idconfiga",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
             "data_type": "string",
             "validation_rule": null
           },
@@ -3592,6 +3858,14 @@
             "validation_rule": {
               "kind": "boolean"
             }
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -3656,6 +3930,14 @@
             "required": false,
             "description": "Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs).",
             "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/thermal#configuration-parameters",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
             "data_type": "string",
             "validation_rule": null
           }
@@ -3754,6 +4036,14 @@
             "validation_rule": {
               "kind": "boolean"
             }
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -3812,6 +4102,14 @@
             "validation_rule": {
               "kind": "boolean"
             }
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -3955,6 +4253,14 @@
             "validation_rule": {
               "kind": "boolean"
             }
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -4236,6 +4542,14 @@
             "default": "\"cpu,cpu_info,os,net,logical_disk,cs,thermalzone,logon,system,service\"",
             "data_type": "string",
             "validation_rule": null
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "description": "Tag assigned to records emitted by this input plugin.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -4396,6 +4710,22 @@
               "kind": "range",
               "min": 0
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -4460,6 +4790,22 @@
             "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/checklist#configuration-parameters",
             "data_type": "string",
             "validation_rule": null
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -4516,6 +4862,22 @@
               "kind": "regex",
               "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -4588,6 +4950,22 @@
             "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/expect#configuration-parameters",
             "data_type": "string",
             "validation_rule": null
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -4625,6 +5003,22 @@
             "required": false,
             "description": "Defines the KEY LOOKUP_KEY VALUE triplet.",
             "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/geoip2-filter#configuration-parameters-a-hrefconfig-idconfiga",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
             "data_type": "string",
             "validation_rule": null
           }
@@ -4666,6 +5060,22 @@
             "required": false,
             "description": "Specify a logical operator: AND, OR or legacy (default).",
             "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/grep#configuration-parameters",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
             "data_type": "string",
             "validation_rule": null
           }
@@ -5058,6 +5468,22 @@
             "default": "Off",
             "data_type": "string",
             "validation_rule": null
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -5188,6 +5614,22 @@
               "kind": "regex",
               "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -5277,6 +5719,22 @@
             "validation_rule": {
               "kind": "boolean"
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -5331,6 +5789,22 @@
             "validation_rule": {
               "kind": "boolean"
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -5385,6 +5859,22 @@
             "required": false,
             "description": "If set, the plugin appends Uuid to each record.",
             "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/record-modifier#configuration-parameters",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
             "data_type": "string",
             "validation_rule": null
           }
@@ -5502,6 +5992,22 @@
               "kind": "list",
               "delimiter": ","
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -5588,6 +6094,22 @@
               "kind": "regex",
               "pattern": "^\\\\d+([KMGTP]i?[Bb]?|[KMGTP])?$"
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -5649,6 +6171,22 @@
             "required": false,
             "description": "Remove prefix from affected keys if it matches this string",
             "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/nest#configuration-parameters",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
             "data_type": "string",
             "validation_rule": null
           }
@@ -5727,6 +6265,22 @@
             "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/nightfall#configuration-parameters",
             "data_type": "string",
             "validation_rule": null
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -5778,6 +6332,22 @@
               "kind": "regex",
               "pattern": "^\\\\d+([KMGTP]i?[Bb]?|[KMGTP])?$"
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -5793,7 +6363,24 @@
       "standard-output": {
         "title": "Standard Output",
         "doc_url": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/standard-output",
-        "fields": [],
+        "fields": [
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          }
+        ],
         "extraction": {
           "status": "no_config_heading",
           "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/standard-output"
@@ -5841,6 +6428,22 @@
             "required": false,
             "description": "Specify the key name for kernel version.",
             "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/sysinfo#configuration-prameters",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
             "data_type": "string",
             "validation_rule": null
           }
@@ -5896,6 +6499,22 @@
             "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/throttle#configuration-parameters",
             "data_type": "string",
             "validation_rule": null
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -5942,6 +6561,22 @@
             "required": false,
             "description": "This parameter is for string source.",
             "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/type-converter#configuration-parameters",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
             "data_type": "string",
             "validation_rule": null
           }
@@ -5992,6 +6627,22 @@
             "required": false,
             "description": "Divide input values to normalization_value",
             "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/tensorflow#configuration-parameters",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
             "data_type": "string",
             "validation_rule": null
           }
@@ -6067,6 +6718,22 @@
               "kind": "regex",
               "pattern": "^\\\\d+([KMGTP]i?[Bb]?|[KMGTP])?$"
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -6243,6 +6910,22 @@
             "validation_rule": {
               "kind": "integer"
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -6366,6 +7049,22 @@
             "validation_rule": {
               "kind": "integer"
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -6493,6 +7192,22 @@
             "validation_rule": {
               "kind": "integer"
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -6778,6 +7493,22 @@
               "kind": "range",
               "min": 0
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -6905,6 +7636,22 @@
               "kind": "range",
               "min": 0
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -7073,6 +7820,22 @@
               "kind": "range",
               "min": 0
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -7154,6 +7917,22 @@
               "kind": "range",
               "min": 0
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -7261,6 +8040,22 @@
               "kind": "range",
               "min": 0
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -7277,7 +8072,24 @@
       "counter": {
         "title": "Counter",
         "doc_url": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/counter",
-        "fields": [],
+        "fields": [
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          }
+        ],
         "extraction": {
           "status": "no_table_under_config_heading",
           "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/counter#configuration-file"
@@ -7343,6 +8155,22 @@
             "description": "Specify an optional HTTP URI for the target web server listening for traces",
             "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/dash0#configuration-parameters",
             "default": "/v1/traces",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
             "data_type": "string",
             "validation_rule": null
           }
@@ -7500,6 +8328,22 @@
             "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/datadog#configuration-parameters",
             "data_type": "string",
             "validation_rule": null
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -7610,6 +8454,22 @@
             "description": "TLS verification.",
             "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/dynatrace#configuration-parameters",
             "default": "on",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
             "data_type": "string",
             "validation_rule": null
           }
@@ -7990,6 +8850,22 @@
               "kind": "range",
               "min": 0
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -8050,6 +8926,22 @@
               "kind": "range",
               "min": 0
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -8090,6 +8982,22 @@
               "kind": "range",
               "min": 0
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -8207,6 +9115,22 @@
               "kind": "range",
               "min": 0
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -8350,6 +9274,14 @@
               "kind": "range",
               "min": 0
             }
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -8450,6 +9382,22 @@
               "kind": "range",
               "min": 0
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -8583,6 +9531,22 @@
               "kind": "range",
               "min": 0
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -8846,6 +9810,22 @@
               "kind": "range",
               "min": 0
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -9000,6 +9980,22 @@
               "kind": "range",
               "min": 0
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -9142,6 +10138,22 @@
               "kind": "range",
               "min": 0
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -9255,6 +10267,22 @@
               "kind": "range",
               "min": 0
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -9373,6 +10401,22 @@
             "validation_rule": {
               "kind": "integer"
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -9585,6 +10629,22 @@
               "kind": "range",
               "min": 0
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -9635,6 +10695,22 @@
               "kind": "range",
               "min": 0
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -9651,7 +10727,24 @@
       "new-relic": {
         "title": "New Relic",
         "doc_url": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/new-relic",
-        "fields": [],
+        "fields": [
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          }
+        ],
         "extraction": {
           "status": "no_table_under_config_heading",
           "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/new-relic#configuration-parameters"
@@ -9661,7 +10754,24 @@
       "null": {
         "title": "NULL",
         "doc_url": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/null",
-        "fields": [],
+        "fields": [
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          }
+        ],
         "extraction": {
           "status": "no_table_under_config_heading",
           "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/null#configuration-parameters"
@@ -9758,6 +10868,22 @@
               "kind": "range",
               "min": 0
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -9774,7 +10900,24 @@
       "openobserve": {
         "title": "OpenObserve",
         "doc_url": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/openobserve",
-        "fields": [],
+        "fields": [
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          }
+        ],
         "extraction": {
           "status": "no_config_heading",
           "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/openobserve"
@@ -10133,6 +11276,22 @@
             "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/opensearch#configuration-parameters",
             "data_type": "string",
             "validation_rule": null
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -10149,7 +11308,24 @@
       "opentelemetry": {
         "title": "OpenTelemetry",
         "doc_url": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/opentelemetry",
-        "fields": [],
+        "fields": [
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          }
+        ],
         "extraction": {
           "status": "no_config_heading",
           "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/opentelemetry"
@@ -10204,6 +11380,22 @@
               "kind": "range",
               "min": 0
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -10351,6 +11543,22 @@
               "kind": "range",
               "min": 0
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -10367,7 +11575,24 @@
       "prometheus-exporter": {
         "title": "Prometheus Exporter",
         "doc_url": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/prometheus-exporter",
-        "fields": [],
+        "fields": [
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          }
+        ],
         "extraction": {
           "status": "no_config_heading",
           "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/prometheus-exporter"
@@ -10377,7 +11602,24 @@
       "prometheus-remote-write": {
         "title": "Prometheus Remote Write",
         "doc_url": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/prometheus-remote-write",
-        "fields": [],
+        "fields": [
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          }
+        ],
         "extraction": {
           "status": "no_config_heading",
           "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/prometheus-remote-write"
@@ -10447,6 +11689,22 @@
               "kind": "range",
               "min": 0
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -10483,6 +11741,22 @@
               "kind": "range",
               "min": 0
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -10595,6 +11869,22 @@
               "kind": "range",
               "min": 0
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -10847,6 +12137,22 @@
             "default": "<https://logging.googleapis.com>",
             "data_type": "string",
             "validation_rule": null
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -10902,6 +12208,22 @@
               "kind": "range",
               "min": 0
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -11114,6 +12436,22 @@
               "kind": "range",
               "min": 0
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -11191,6 +12529,22 @@
               "kind": "range",
               "min": 0
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -11252,6 +12606,22 @@
               "kind": "range",
               "min": 0
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -11311,6 +12681,22 @@
               "kind": "range",
               "min": 0
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {
@@ -11405,6 +12791,22 @@
               "kind": "range",
               "min": 0
             }
+          },
+          {
+            "name": "match",
+            "required": false,
+            "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
+          },
+          {
+            "name": "match_regex",
+            "required": false,
+            "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+            "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+            "data_type": "string",
+            "validation_rule": null
           }
         ],
         "extraction": {

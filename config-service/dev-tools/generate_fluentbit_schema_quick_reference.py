@@ -11,23 +11,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import argparse
 import json
 import re
 from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SCHEMA_PATH = REPO_ROOT / "json-schemas" / "fluentbit-5.0.4-config-schema.json"
-OUTPUT_PATH = REPO_ROOT / "dev-notes" / "fluent-bit-5.0.4-schema-quick-reference.md"
 SECTION_TITLES = {
     "inputs": "Inputs",
     "filters": "Filters",
     "outputs": "Outputs",
 }
+DEFAULT_VERSIONS = ("3.2.10", "4.2.4", "5.0.4")
 
 
-def load_schema() -> dict[str, Any]:
-    return json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+def schema_path(version: str) -> Path:
+    return REPO_ROOT / "json-schemas" / f"fluentbit-{version}-config-schema.json"
+
+
+def output_path(version: str) -> Path:
+    return REPO_ROOT / "dev-notes" / f"fluent-bit-{version}-schema-quick-reference.md"
+
+
+def load_schema(version: str) -> dict[str, Any]:
+    return json.loads(schema_path(version).read_text(encoding="utf-8"))
 
 
 def plugin_variants(schema: dict[str, Any], section: str) -> list[dict[str, Any]]:
@@ -164,12 +172,13 @@ def build_section(section: str, variants: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
-def generate_markdown(schema: dict[str, Any]) -> str:
+def generate_markdown(schema: dict[str, Any], version: str) -> str:
+    version_schema_path = schema_path(version)
     lines = [
-        "# Fluent Bit 5.0.4 Schema Quick Reference",
+        f"# Fluent Bit {version} Schema Quick Reference",
         "",
-        "Generated from the local Fluent Bit 5.0.4 JSON schema only:",
-        f"- `{SCHEMA_PATH.relative_to(REPO_ROOT)}`",
+        f"Generated from the local Fluent Bit {version} JSON schema only:",
+        f"- `{version_schema_path.relative_to(REPO_ROOT)}`",
         "",
         "Scope:",
         "1. Pipeline plugin definitions only",
@@ -194,10 +203,27 @@ def generate_markdown(schema: dict[str, Any]) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Generate Fluent Bit schema quick reference markdown.",
+    )
+    parser.add_argument(
+        "--version",
+        action="append",
+        dest="versions",
+        help="Fluent Bit version to generate. Repeat for multiple versions.",
+    )
+    return parser.parse_args()
+
+
 def main() -> None:
-    schema = load_schema()
-    OUTPUT_PATH.write_text(generate_markdown(schema), encoding="utf-8")
-    print(f"Wrote {OUTPUT_PATH}")
+    args = parse_args()
+    versions = tuple(args.versions) if args.versions else DEFAULT_VERSIONS
+    for version in versions:
+        schema = load_schema(version)
+        version_output_path = output_path(version)
+        version_output_path.write_text(generate_markdown(schema, version), encoding="utf-8")
+        print(f"Wrote {version_output_path}")
 
 
 if __name__ == "__main__":

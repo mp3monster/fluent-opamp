@@ -16,6 +16,8 @@
   "use strict";
 
   function create(deps) {
+    // Renderer for Service + Parser sections.
+    // Plugin-specific rendering lives in config_ui_plugins.js.
     var state = deps.state;
     var el = deps.el;
     var saveDoc = deps.saveDoc;
@@ -38,6 +40,7 @@
     var defaultForField = deps.defaultForField;
 
 function renderParserCard(parserInstance, parserIndex) {
+    // Schema-driven parser card with required and optional field handling.
     var parserFormat = getParserFormatByKey(String(parserInstance.format || ""));
     var card = document.createElement("div");
     card.className = "plugin-card";
@@ -242,6 +245,8 @@ function renderParserCard(parserInstance, parserIndex) {
   }
 
   function renderService() {
+    // Service section is key/value based but enriched with schema metadata
+    // where available (enum values, descriptions, references).
     ensureDoc();
     el.serviceList.innerHTML = "";
     var entries = Object.entries(state.doc.config.service || {}).filter(function (entry) {
@@ -331,7 +336,7 @@ function renderParserCard(parserInstance, parserIndex) {
         if (typeof value === "object") {
           try {
             valueInput.value = JSON.stringify(value, null, 2);
-          } catch (_e) {
+          } catch (_serializeError) {
             valueInput.value = String(value);
           }
         } else {
@@ -344,7 +349,7 @@ function renderParserCard(parserInstance, parserIndex) {
         if (typeof value === "object") {
           try {
             valueInput.value = JSON.stringify(value);
-          } catch (_e) {
+          } catch (_serializeError) {
             valueInput.value = String(value);
           }
         } else {

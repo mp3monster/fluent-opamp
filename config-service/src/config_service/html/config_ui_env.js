@@ -16,6 +16,8 @@
   "use strict";
 
   function create(deps) {
+    // Dedicated environment-variable renderer/editor.
+    // Metadata variables are treated as a separate view but share storage.
     var state = deps.state;
     var el = deps.el;
     var saveDoc = deps.saveDoc;
@@ -37,6 +39,7 @@
     }
 
     function normalizeMetadataKeyInput(rawKey) {
+      // Defensive cleanup so malformed prefixes like _.metadata.* are normalized.
       var key = String(rawKey || "").trim();
       if (!key) {
         return "";
@@ -61,6 +64,7 @@
     }
 
     function renderNormalEnv() {
+      // Render non-metadata variables only.
       if (!el.envList) {
         return;
       }
@@ -193,6 +197,7 @@
     }
 
     function renderMetadataEnv() {
+      // Render only _metadata.* entries and hide the storage prefix in UI.
       if (!el.metadataEnvList) {
         return;
       }
@@ -278,6 +283,7 @@
     }
 
     function bindEvents() {
+      // Bind add/edit handlers once per control (guarded via dataset flags).
       if (el.addEnvField && el.addEnvField.dataset.boundEnvHandler !== "true") {
         el.addEnvField.addEventListener("click", function () {
           ensureDoc();

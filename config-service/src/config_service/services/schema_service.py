@@ -85,6 +85,13 @@ class SchemaService:
             payload["default"] = field["default"]
         return payload
 
+    @staticmethod
+    def _directive_argument_names(directive_argument: dict[str, Any]) -> tuple[str, str | None]:
+        configured_name = str(directive_argument.get("name") or "").strip()
+        if not configured_name or configured_name == "directive_arg":
+            return "directive_arg", None
+        return configured_name, "directive_arg"
+
     def _plugin_schema(
         self,
         plugin_name: str,
@@ -102,12 +109,27 @@ class SchemaService:
             "name": {"type": "string", "const": plugin_name, "title": "Plugin"}
         }
         required = ["name"]
+        all_of: list[dict[str, Any]] = []
 
         directive_arg = plugin_def.get("directive_argument")
         if allow_directive_arg and isinstance(directive_arg, dict):
-            props["directive_arg"] = self._field_schema(directive_arg)
+            canonical_name, alias_name = self._directive_argument_names(directive_arg)
+            field_schema = self._field_schema(directive_arg)
+            props[canonical_name] = field_schema
+            if alias_name:
+                props[alias_name] = dict(field_schema)
             if directive_arg.get("required") is True:
-                required.append("directive_arg")
+                if alias_name:
+                    all_of.append(
+                        {
+                            "anyOf": [
+                                {"required": [canonical_name]},
+                                {"required": [alias_name]},
+                            ]
+                        }
+                    )
+                else:
+                    required.append(canonical_name)
 
         for field in plugin_def.get("fields", []):
             field_name = field["name"]
@@ -157,13 +179,16 @@ class SchemaService:
                 strict_mode=strict_mode,
             )
 
-        return self._with_object_meta({
+        schema = {
             "type": "object",
             "title": plugin_def.get("title", plugin_name),
             "properties": props,
             "required": required,
             "additionalProperties": not strict_mode,
-        })
+        }
+        if all_of:
+            schema["allOf"] = all_of
+        return self._with_object_meta(schema)
 
     def _compile_fluentbit_schema(
         self,
@@ -655,18 +680,36 @@ class SchemaService:
 
         props: dict[str, Any] = {}
         required: list[str] = []
+        all_of: list[dict[str, Any]] = []
         directive_arg = nested_def.get("directive_argument")
         if isinstance(directive_arg, dict):
-            props["directive_arg"] = self._field_schema(directive_arg)
+            canonical_name, alias_name = self._directive_argument_names(directive_arg)
+            field_schema = self._field_schema(directive_arg)
+            props[canonical_name] = field_schema
+            if alias_name:
+                props[alias_name] = dict(field_schema)
             if directive_arg.get("required") is True:
-                required.append("directive_arg")
+                if alias_name:
+                    all_of.append(
+                        {
+                            "anyOf": [
+                                {"required": [canonical_name]},
+                                {"required": [alias_name]},
+                            ]
+                        }
+                    )
+                else:
+                    required.append(canonical_name)
         for field in nested_def.get("fields", []):
             props[field["name"]] = self._field_schema(field)
             if field.get("required") is True:
                 required.append(field["name"])
-        return self._with_object_meta({
+        schema = {
             "type": "object",
             "properties": props,
             "required": required,
             "additionalProperties": not strict_mode,
-        })
+        }
+        if all_of:
+            schema["allOf"] = all_of
+        return self._with_object_meta(schema)

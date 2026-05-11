@@ -1241,7 +1241,7 @@
           }
         ],
         "directive_argument": {
-          "name": "match_pattern",
+          "name": "match",
           "required": true,
           "description": "Tag pattern selecting events for this filter.",
           "reference": "https://docs.fluentd.org/configuration/config-file",
@@ -1355,7 +1355,7 @@
           }
         ],
         "directive_argument": {
-          "name": "match_pattern",
+          "name": "match",
           "required": true,
           "description": "Tag pattern selecting events for this filter.",
           "reference": "https://docs.fluentd.org/configuration/config-file",
@@ -1457,7 +1457,7 @@
           }
         ],
         "directive_argument": {
-          "name": "match_pattern",
+          "name": "match",
           "required": true,
           "description": "Tag pattern selecting events for this filter.",
           "reference": "https://docs.fluentd.org/configuration/config-file",
@@ -1518,7 +1518,7 @@
           }
         ],
         "directive_argument": {
-          "name": "match_pattern",
+          "name": "match",
           "required": true,
           "description": "Tag pattern selecting events for this filter.",
           "reference": "https://docs.fluentd.org/configuration/config-file",
@@ -1581,7 +1581,7 @@
           }
         ],
         "directive_argument": {
-          "name": "match_pattern",
+          "name": "match",
           "required": true,
           "description": "Tag pattern selecting events for this output.",
           "reference": "https://docs.fluentd.org/configuration/config-file",
@@ -1715,7 +1715,7 @@
           }
         ],
         "directive_argument": {
-          "name": "match_pattern",
+          "name": "match",
           "required": true,
           "description": "Tag pattern selecting events for this output.",
           "reference": "https://docs.fluentd.org/configuration/config-file",
@@ -1858,7 +1858,7 @@
           }
         ],
         "directive_argument": {
-          "name": "match_pattern",
+          "name": "match",
           "required": true,
           "description": "Tag pattern selecting events for this output.",
           "reference": "https://docs.fluentd.org/configuration/config-file",
@@ -1919,7 +1919,7 @@
           }
         ],
         "directive_argument": {
-          "name": "match_pattern",
+          "name": "match",
           "required": true,
           "description": "Tag pattern selecting events for this output.",
           "reference": "https://docs.fluentd.org/configuration/config-file",
@@ -1991,7 +1991,7 @@
           }
         ],
         "directive_argument": {
-          "name": "match_pattern",
+          "name": "match",
           "required": true,
           "description": "Tag pattern selecting events for this output.",
           "reference": "https://docs.fluentd.org/configuration/config-file",
@@ -2097,7 +2097,7 @@
           }
         ],
         "directive_argument": {
-          "name": "match_pattern",
+          "name": "match",
           "required": true,
           "description": "Tag pattern selecting events for this output.",
           "reference": "https://docs.fluentd.org/configuration/config-file",
@@ -2244,7 +2244,7 @@
           }
         ],
         "directive_argument": {
-          "name": "match_pattern",
+          "name": "match",
           "required": true,
           "description": "Tag pattern selecting events for this output.",
           "reference": "https://docs.fluentd.org/configuration/config-file",
@@ -2304,7 +2304,7 @@
           }
         ],
         "directive_argument": {
-          "name": "match_pattern",
+          "name": "match",
           "required": true,
           "description": "Tag pattern selecting events for this output.",
           "reference": "https://docs.fluentd.org/configuration/config-file",

@@ -25,6 +25,7 @@ if str(SRC_ROOT) not in sys.path:
 
 CONFIG_DIR = ROOT / "config"
 OUTPUT_DIR = ROOT / "json-schemas"
+SRC_OUTPUT_DIR = SRC_ROOT / "config_service" / "json-schemas"
 
 
 def main() -> None:
@@ -36,12 +37,15 @@ def main() -> None:
     schema_service = SchemaService()
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    SRC_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     for config_type in catalog_service.get_supported_config_types():
         for version in catalog_service.get_versions(config_type=config_type):
             catalog = catalog_service.get_catalog(version, config_type=config_type)
             schema = schema_service.compile_schema(catalog, strict_mode=True)
-            output_path = OUTPUT_DIR / f"{config_type}-{version}-config-schema.json"
-            output_path.write_text(json.dumps(schema, indent=2) + "\n", encoding="utf-8")
+            filename = f"{config_type}-{version}-config-schema.json"
+            schema_text = json.dumps(schema, indent=2) + "\n"
+            (OUTPUT_DIR / filename).write_text(schema_text, encoding="utf-8")
+            (SRC_OUTPUT_DIR / filename).write_text(schema_text, encoding="utf-8")
 
 
 if __name__ == "__main__":

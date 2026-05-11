@@ -26,6 +26,7 @@ from config_service.models.contracts import (
     RenderTextRequest,
     RenderYamlRequest,
     SchemaOptions,
+    UiPrepareFileRequest,
     ValidateRequest,
 )
 
@@ -154,6 +155,33 @@ def create_api_blueprint() -> Blueprint:
         issue_code_service = current_app.extensions["issue_code_service"]
         return jsonify(issue_code_service.get_all())
 
+    @bp.post("/ui/prepare-file")
+    async def ui_prepare_file() -> Any:
+        ui_document_service = current_app.extensions["ui_document_service"]
+        body = await request.get_json(silent=True) or {}
+        try:
+            req = UiPrepareFileRequest.model_validate(body)
+        except ValidationError as exc:
+            return jsonify({"ok": False, "errors": _normalize_pydantic_issues(exc.errors())}), HTTPStatus.BAD_REQUEST
+
+        parsed = ui_document_service.parse_config_header(req.text)
+        effective_config_type = str(req.config_type or parsed.get("config_type") or "").strip().lower()
+        source_line_map = ui_document_service.build_source_line_map(
+            parsed.get("body", ""),
+            effective_config_type,
+            req.file_name,
+        )
+        return jsonify(
+            {
+                "ok": True,
+                "config_type": parsed.get("config_type", ""),
+                "version": parsed.get("version", ""),
+                "header_comments": parsed.get("header_comments", ""),
+                "body": parsed.get("body", ""),
+                "source_line_map": source_line_map,
+            }
+        )
+
     @bp.post("/catalog/<version>/validate")
     async def validate_catalog(version: str) -> Any:
         catalog_service = current_app.extensions["catalog_service"]
@@ -225,6 +253,7 @@ def create_api_blueprint() -> Blueprint:
     async def render_yaml(version: str) -> Any:
         catalog_service = current_app.extensions["catalog_service"]
         include_document_service = current_app.extensions["include_document_service"]
+        ui_document_service = current_app.extensions["ui_document_service"]
         yaml_render_service = current_app.extensions["yaml_render_service"]
         fluentd_config_service = current_app.extensions["fluentd_config_service"]
         body = await request.get_json(silent=True) or {}
@@ -240,15 +269,27 @@ def create_api_blueprint() -> Blueprint:
         yaml_text = yaml_render_service.render(
             payload=req.model_dump(), include_comments=req.include_comments
         )
+        included_files: list[dict[str, Any]] = []
         response: dict[str, Any] = {"ok": True, "yaml": yaml_text}
         if req.render_included_files:
-            response["included_files"] = include_document_service.render_included_documents(
+            included_files = include_document_service.render_included_documents(
                 config_type=config_type,
                 included_documents=req.included_documents,
                 include_comments=req.include_comments,
                 yaml_render_service=yaml_render_service,
                 fluentd_config_service=fluentd_config_service,
             )
+            response["included_files"] = included_files
+        response["rendered_output"] = ui_document_service.compose_render_output(
+            main_rendered=yaml_text,
+            include_loaded_files=req.render_included_files,
+            included_files=included_files,
+            header_comments=req.header_comments,
+            include_config_header=req.include_config_header,
+            config_type=config_type,
+            version=version,
+            comment_prefix="#",
+        )
         return jsonify(response)
 
     @bp.post("/parse/fluentd/<version>")
@@ -343,6 +384,7 @@ def create_api_blueprint() -> Blueprint:
         catalog_service = current_app.extensions["catalog_service"]
         fluentd_config_service = current_app.extensions["fluentd_config_service"]
         include_document_service = current_app.extensions["include_document_service"]
+        ui_document_service = current_app.extensions["ui_document_service"]
         yaml_render_service = current_app.extensions["yaml_render_service"]
         body = await request.get_json(silent=True) or {}
         try:
@@ -353,15 +395,27 @@ def create_api_blueprint() -> Blueprint:
         except KeyError as exc:
             return jsonify({"ok": False, "error": str(exc)}), HTTPStatus.NOT_FOUND
         rendered = fluentd_config_service.render(req.config)
+        included_files: list[dict[str, Any]] = []
         response: dict[str, Any] = {"ok": True, "text": rendered}
         if req.render_included_files:
-            response["included_files"] = include_document_service.render_included_documents(
+            included_files = include_document_service.render_included_documents(
                 config_type="fluentd",
                 included_documents=req.included_documents,
                 include_comments=False,
                 yaml_render_service=yaml_render_service,
                 fluentd_config_service=fluentd_config_service,
             )
+            response["included_files"] = included_files
+        response["rendered_output"] = ui_document_service.compose_render_output(
+            main_rendered=rendered,
+            include_loaded_files=req.render_included_files,
+            included_files=included_files,
+            header_comments=req.header_comments,
+            include_config_header=req.include_config_header,
+            config_type="fluentd",
+            version=version,
+            comment_prefix="#",
+        )
         return jsonify(response)
 
     return bp
