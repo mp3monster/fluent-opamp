@@ -17,9 +17,22 @@ from typing import Any
 
 from config_service.rule_engine.base import RuleAdapter, RuleContext
 
+KEY_PIPELINE = "pipeline"
+KEY_PLUGINS = "plugins"
+KEY_INPUTS = "inputs"
+KEY_FILTERS = "filters"
+KEY_OUTPUTS = "outputs"
+KEY_NAME = "name"
+KEY_FIELDS = "fields"
+KEY_DATA_TYPE = "data_type"
+KEY_VALIDATION_RULE = "validation_rule"
+KEY_KIND = "kind"
+KEY_LANGUAGE = "language"
+
 try:
     from luaparser import ast as lua_ast
 except ImportError:  # pragma: no cover - exercised via runtime fallback
+    # Mitigates optional dependency environments where luaparser is not installed.
     lua_ast = None
 
 
@@ -42,12 +55,12 @@ class LuaCodeSyntaxAdapter(RuleAdapter):
     def evaluate(self, context: RuleContext) -> list[dict[str, Any]]:
         """Scan pipeline plugins and validate only Lua-targeted `code` fields."""
         issues: list[dict[str, Any]] = []
-        pipeline = context.config.get("pipeline", {})
+        pipeline = context.config.get(KEY_PIPELINE, {})
         if not isinstance(pipeline, dict):
             return issues
 
-        plugin_groups = context.catalog.get("plugins", {})
-        for section in ("inputs", "filters", "outputs"):
+        plugin_groups = context.catalog.get(KEY_PLUGINS, {})
+        for section in (KEY_INPUTS, KEY_FILTERS, KEY_OUTPUTS):
             items = pipeline.get(section, [])
             if not isinstance(items, list):
                 continue
@@ -55,7 +68,7 @@ class LuaCodeSyntaxAdapter(RuleAdapter):
             for idx, plugin_instance in enumerate(items):
                 if not isinstance(plugin_instance, dict):
                     continue
-                plugin_name = plugin_instance.get("name")
+                plugin_name = plugin_instance.get(KEY_NAME)
                 if not isinstance(plugin_name, str) or not plugin_name:
                     continue
                 plugin_def = section_defs.get(plugin_name)
@@ -79,20 +92,16 @@ class LuaCodeSyntaxAdapter(RuleAdapter):
     ) -> list[dict[str, Any]]:
         """Find Lua code fields on a plugin instance and validate their source."""
         issues: list[dict[str, Any]] = []
-        for field in plugin_def.get("fields", []):
+        plugin_name = str(plugin_instance.get(KEY_NAME, "")).strip().lower()
+        for field in plugin_def.get(KEY_FIELDS, []):
             if not isinstance(field, dict):
                 continue
-            if str(field.get("data_type", "")).lower() != "code":
+            if str(field.get(KEY_DATA_TYPE, "")).lower() != "code":
                 continue
-            validation_rule = field.get("validation_rule")
-            if not isinstance(validation_rule, dict):
-                continue
-            if str(validation_rule.get("kind", "")).lower() != "code_syntax":
-                continue
-            if str(validation_rule.get("language", "")).lower() != "lua":
+            if not self._targets_lua(field=field, plugin_name=plugin_name):
                 continue
 
-            field_name = str(field.get("name", ""))
+            field_name = str(field.get(KEY_NAME, ""))
             if not field_name:
                 continue
             code_value = plugin_instance.get(field_name)
@@ -111,6 +120,17 @@ class LuaCodeSyntaxAdapter(RuleAdapter):
             )
         return issues
 
+    @staticmethod
+    def _targets_lua(*, field: dict[str, Any], plugin_name: str) -> bool:
+        """Route `code` fields to Lua validation when explicitly or contextually Lua."""
+        validation_rule = field.get(KEY_VALIDATION_RULE)
+        if isinstance(validation_rule, dict):
+            kind = str(validation_rule.get(KEY_KIND, "")).lower()
+            language = str(validation_rule.get(KEY_LANGUAGE, "")).lower()
+            if kind == "code_syntax" and language:
+                return language == "lua"
+        return plugin_name == "lua"
+
     def _validate_lua_source(self, *, source: str, path: str) -> list[dict[str, Any]]:
         """Run luaparser and normalize syntax failures into UI-friendly issues."""
         if lua_ast is None:
@@ -125,6 +145,7 @@ class LuaCodeSyntaxAdapter(RuleAdapter):
         try:
             lua_ast.parse(source)
         except Exception as exc:  # luaparser raises SyntaxException with formatted text
+            # Mitigates parser crashes/format variance by converting to stable API errors.
             message = str(exc).strip() or "Lua syntax validation failed."
             match = self._LINE_COL_RE.search(message)
             if match:

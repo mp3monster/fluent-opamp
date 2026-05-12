@@ -1,3 +1,16 @@
+#!/usr/bin/env python3
+# Copyright 2026 mp3monster.org
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# 
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -10,6 +23,8 @@ ERR_UI_AUTH_CONFIG_INVALID = "invalid ui-use-authorization configuration"
 
 @dataclass(frozen=True)
 class UIAuthResult:
+    """Normalized auth decision used by config-service HTTP handlers."""
+
     allowed: bool
     status_code: int = HTTPStatus.OK
     error: str = ""
@@ -32,7 +47,8 @@ def evaluate_ui_http_auth(
         provider_auth = import_module("opamp_provider.auth")
         opamp_protocol = import_module("opamp_provider.opamp_protocol")
     except ModuleNotFoundError:
-        # Standalone fallback when provider modules are not importable.
+        # Mitigates local/dev standalone runs where provider package is absent.
+        # In that mode we keep UI routes usable by allowing requests through.
         return UIAuthResult(allowed=True)
 
     decision: Any = opamp_protocol.evaluate_non_opamp_http_auth(

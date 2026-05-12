@@ -3,6 +3,14 @@
     "web_port": 8080,
     "ui_base_css_path": "/config-service/ui/assets/config_ui.css",
     "ui_css_overrides": [],
+    "ui_collapsed_sections": [
+      "environment_variables",
+      "upstream_servers",
+      "parsers",
+      "service",
+      "rendered_configuration",
+      "metadata_environment_variables"
+    ],
     "read_only": false
   }
 }

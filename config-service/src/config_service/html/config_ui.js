@@ -29,12 +29,35 @@
   var lastUiErrorAt = 0;
   var isReportingUiError = false;
 
+  function normalizedCollapsedSectionSet() {
+    var raw = window.__CONFIG_SERVICE_UI_COLLAPSED_SECTIONS__;
+    var values = [];
+    if (Array.isArray(raw)) {
+      values = raw.slice();
+    } else if (typeof raw === "string") {
+      values = raw.split(",");
+    }
+    var out = {};
+    values.forEach(function (value) {
+      var normalized = String(value || "")
+        .trim()
+        .toLowerCase()
+        .replace(/[\s\-]+/g, "_");
+      if (!normalized) {
+        return;
+      }
+      out[normalized] = true;
+    });
+    return out;
+  }
+
   // Single source of truth for UI runtime state.
   // Most render functions are projections of this object.
   var state = {
     versions: [],
     selectedVersion: "",
     catalog: null,
+    compiledSchema: null,
     configType: "fluentbit",
     doc: null,
     collapse: {},
@@ -48,9 +71,10 @@
     serviceCollapsed: false,
     servicePanelCollapsed: false,
     envPanelCollapsed: false,
+    upstreamServersPanelCollapsed: false,
     parsersPanelCollapsed: false,
     validationCollapsed: false,
-    yamlCollapsed: true,
+    yamlCollapsed: false,
     pluginsPanelCollapsed: false,
     labelsPanelCollapsed: true,
     workersPanelCollapsed: true,
@@ -69,6 +93,26 @@
     headerCommentsPanelCollapsed: true,
     headerComments: "",
   };
+  (function applyInitialPanelCollapseConfig() {
+    var collapsed = normalizedCollapsedSectionSet();
+    var has = function (key) {
+      return Boolean(collapsed[key]);
+    };
+    state.servicePanelCollapsed = has("service");
+    state.envPanelCollapsed = has("environment_variables") || has("env");
+    state.metadataPanelCollapsed =
+      has("metadata_environment_variables") ||
+      has("metadata_env") ||
+      has("metadata_as_environment_variables");
+    state.upstreamServersPanelCollapsed = has("upstream_servers") || has("upstream");
+    state.parsersPanelCollapsed = has("parsers");
+    state.pluginsPanelCollapsed = has("plugins");
+    state.labelsPanelCollapsed = has("labels");
+    state.workersPanelCollapsed = has("workers");
+    state.validationCollapsed = has("validation");
+    state.headerCommentsPanelCollapsed = has("header_comments");
+    state.yamlCollapsed = has("rendered_configuration") || has("rendered");
+  })();
 
   var uiHelpers = window.ConfigServiceUiHelpers || {};
   var commentHelpers = window.ConfigServiceUiComments.create({
@@ -181,6 +225,13 @@
     metadataEnvValueInput: document.getElementById("metadata-env-value-input"),
     metadataEnvValueOptions: document.getElementById("metadata-env-value-options"),
     addMetadataEnvField: document.getElementById("add-metadata-env-field"),
+    upstreamServersPanel: document.getElementById("upstream-servers-panel"),
+    upstreamServersToggle: document.getElementById("upstream-servers-toggle"),
+    upstreamServersBody: document.getElementById("upstream-servers-body"),
+    upstreamServersList: document.getElementById("upstream-servers-list"),
+    upstreamServersHelpToggle: document.getElementById("upstream-servers-help-toggle"),
+    upstreamServersMeta: document.getElementById("upstream-servers-meta"),
+    addUpstreamServerGroup: document.getElementById("add-upstream-server-group"),
     parsersPanel: document.getElementById("parsers-panel"),
     parsersToggle: document.getElementById("parsers-toggle"),
     parsersBody: document.getElementById("parsers-body"),
@@ -405,6 +456,7 @@
         env: {},
         service: {},
         parsers: [],
+        upstream_servers: [],
         pipeline: { inputs: [], filters: [], outputs: [] },
         labels: [],
         workers: [],
@@ -542,6 +594,9 @@
     }
     if (el.addMetadataEnvField) {
       el.addMetadataEnvField.disabled = readOnly;
+    }
+    if (el.addUpstreamServerGroup) {
+      el.addUpstreamServerGroup.disabled = readOnly;
     }
     if (el.headerCommentsInput) {
       el.headerCommentsInput.disabled = readOnly;
@@ -751,6 +806,17 @@
     if (!Array.isArray(state.doc.config.parsers)) {
       state.doc.config.parsers = [];
     }
+    if (!Array.isArray(state.doc.config.upstream_servers)) {
+      state.doc.config.upstream_servers = [];
+    }
+    state.doc.config.upstream_servers.forEach(function (group) {
+      if (!group || typeof group !== "object") {
+        return;
+      }
+      if (!Array.isArray(group.nodes)) {
+        group.nodes = [];
+      }
+    });
     if (!state.doc.config.pipeline || typeof state.doc.config.pipeline !== "object") {
       state.doc.config.pipeline = {};
     }
@@ -1065,6 +1131,10 @@
       el.metadataEnvBody.classList.toggle("is-collapsed", state.metadataPanelCollapsed);
       el.metadataEnvToggle.textContent = state.metadataPanelCollapsed ? "Open" : "Collapse";
     }
+    if (el.upstreamServersBody && el.upstreamServersToggle) {
+      el.upstreamServersBody.classList.toggle("is-collapsed", state.upstreamServersPanelCollapsed);
+      el.upstreamServersToggle.textContent = state.upstreamServersPanelCollapsed ? "Open" : "Collapse";
+    }
     if (el.parsersBody && el.parsersToggle) {
       el.parsersBody.classList.toggle("is-collapsed", state.parsersPanelCollapsed);
       el.parsersToggle.textContent = state.parsersPanelCollapsed ? "Open" : "Collapse";
@@ -1354,10 +1424,11 @@
       return key !== "_meta";
     }).length;
     var parserCount = Array.isArray(state.doc.config.parsers) ? state.doc.config.parsers.length : 0;
+    var upstreamGroupCount = Array.isArray(state.doc.config.upstream_servers) ? state.doc.config.upstream_servers.length : 0;
     var pluginCount = flattenPlugins().length;
     var labelCount = Array.isArray(state.doc.config.labels) ? state.doc.config.labels.length : 0;
     var workerCount = Array.isArray(state.doc.config.workers) ? state.doc.config.workers.length : 0;
-    return serviceCount > 0 || parserCount > 0 || pluginCount > 0 || labelCount > 0 || workerCount > 0;
+    return serviceCount > 0 || parserCount > 0 || upstreamGroupCount > 0 || pluginCount > 0 || labelCount > 0 || workerCount > 0;
   }
 
   function updateConfigTypeDisabledState() {
@@ -1533,6 +1604,9 @@
     }
     if (el.metadataEnvPanel) {
       el.metadataEnvPanel.classList.toggle("hidden", show);
+    }
+    if (el.upstreamServersPanel) {
+      el.upstreamServersPanel.classList.toggle("hidden", show);
     }
     if (el.parsersPanel) {
       el.parsersPanel.classList.toggle("hidden", show);
@@ -1851,7 +1925,9 @@
     movePluginToSection: movePluginToSection,
     moveWithinPipeline: moveWithinPipeline,
     setValidationText: setValidationText,
+    ensureDoc: ensureDoc,
     ensureFluentbitProcessors: ensureFluentbitProcessors,
+    fluentbitProcessorRoot: fluentbitProcessorRoot,
     fluentbitProcessorSignals: fluentbitProcessorSignals,
     fluentbitSignalProcessorMap: fluentbitSignalProcessorMap,
     fluentbitProcessorDefinition: fluentbitProcessorDefinition,
@@ -1860,6 +1936,7 @@
     fluentbitRouteSignals: fluentbitRouteSignals,
     fluentbitRouteSignalByName: fluentbitRouteSignalByName,
     createFieldHelpButton: createFieldHelpButton,
+    applyRequiredLabelStyle: applyRequiredLabelStyle,
     parseFlexibleRouteValue: parseFlexibleRouteValue,
     formatFlexibleRouteValue: formatFlexibleRouteValue,
   });
@@ -1977,6 +2054,514 @@ function parserFormatFields(parserFormat) {
 
   function renderEnv() {
     return envUi.renderEnv();
+  }
+
+  function normalizeSchemaFieldDataType(prop, enumValues) {
+    if (Array.isArray(enumValues) && enumValues.length > 0) {
+      return "enum";
+    }
+    var rawType = String((prop && (prop["x-config-data-type"] || prop.type)) || "string").toLowerCase();
+    if (
+      rawType === "string" ||
+      rawType === "boolean" ||
+      rawType === "integer" ||
+      rawType === "number" ||
+      rawType === "array" ||
+      rawType === "object" ||
+      rawType === "list" ||
+      rawType === "map" ||
+      rawType === "code" ||
+      rawType === "enum"
+    ) {
+      return rawType;
+    }
+    return "string";
+  }
+
+  function schemaFieldDefinition(name, prop, requiredLookup, defaultReference) {
+    var enumValues = Array.isArray(prop && prop.enum) ? prop.enum.slice() : [];
+    return {
+      name: String(name || "").trim(),
+      data_type: normalizeSchemaFieldDataType(prop, enumValues),
+      required: Boolean(requiredLookup && requiredLookup[name]),
+      description: String((prop && prop.description) || ""),
+      reference: String((prop && prop["x-doc-reference"]) || defaultReference || ""),
+      called_enum_options: enumValues,
+    };
+  }
+
+  function fallbackUpstreamServersSchemaDefinition() {
+    var reference = "https://docs.fluentbit.io/manual/administration/configuring-fluent-bit/yaml/upstream-servers-section";
+    return {
+      description: "Root-level upstream server groups for output plugin load-balancing.",
+      reference: reference,
+      groupFields: [
+        {
+          name: "name",
+          data_type: "string",
+          required: true,
+          description: "Upstream group identifier.",
+          reference: reference,
+          called_enum_options: [],
+        },
+      ],
+      nodeFields: [
+        {
+          name: "name",
+          data_type: "string",
+          required: true,
+          description: "Node identifier.",
+          reference: reference,
+          called_enum_options: [],
+        },
+        {
+          name: "host",
+          data_type: "string",
+          required: true,
+          description: "Host/IP address for the upstream node.",
+          reference: reference,
+          called_enum_options: [],
+        },
+        {
+          name: "port",
+          data_type: "integer",
+          required: true,
+          description: "TCP port for the upstream node endpoint.",
+          reference: reference,
+          called_enum_options: [],
+        },
+        {
+          name: "tls",
+          data_type: "boolean",
+          required: false,
+          description: "Enable TLS for this node connection.",
+          reference: reference,
+          called_enum_options: [],
+        },
+        {
+          name: "tls_verify",
+          data_type: "boolean",
+          required: false,
+          description: "Verify TLS peer certificate when TLS is enabled.",
+          reference: reference,
+          called_enum_options: [],
+        },
+        {
+          name: "shared_key",
+          data_type: "string",
+          required: false,
+          description: "Shared key for secured upstream communication.",
+          reference: reference,
+          called_enum_options: [],
+        },
+      ],
+    };
+  }
+
+  function upstreamServersSchemaDefinition() {
+    var fallback = fallbackUpstreamServersSchemaDefinition();
+    var root =
+      state.compiledSchema &&
+      state.compiledSchema.properties &&
+      state.compiledSchema.properties.config &&
+      state.compiledSchema.properties.config.properties &&
+      state.compiledSchema.properties.config.properties.upstream_servers;
+    if (!root || typeof root !== "object") {
+      return fallback;
+    }
+
+    var reference = String(root["x-doc-reference"] || fallback.reference || "");
+    var groupSchema = root.items && typeof root.items === "object" ? root.items : {};
+    var groupProps = groupSchema.properties && typeof groupSchema.properties === "object" ? groupSchema.properties : {};
+    var groupRequired = {};
+    (Array.isArray(groupSchema.required) ? groupSchema.required : []).forEach(function (name) {
+      groupRequired[String(name)] = true;
+    });
+
+    var nodeArraySchema = groupProps.nodes && typeof groupProps.nodes === "object" ? groupProps.nodes : {};
+    var nodeSchema = nodeArraySchema.items && typeof nodeArraySchema.items === "object" ? nodeArraySchema.items : {};
+    var nodeProps = nodeSchema.properties && typeof nodeSchema.properties === "object" ? nodeSchema.properties : {};
+    var nodeRequired = {};
+    (Array.isArray(nodeSchema.required) ? nodeSchema.required : []).forEach(function (name) {
+      nodeRequired[String(name)] = true;
+    });
+
+    var groupFields = Object.keys(groupProps)
+      .filter(function (name) {
+        return name !== "_meta" && name !== "nodes";
+      })
+      .map(function (name) {
+        return schemaFieldDefinition(name, groupProps[name], groupRequired, reference);
+      })
+      .filter(function (field) {
+        return Boolean(field && field.name);
+      });
+
+    var nodeFields = Object.keys(nodeProps)
+      .filter(function (name) {
+        return name !== "_meta";
+      })
+      .map(function (name) {
+        return schemaFieldDefinition(name, nodeProps[name], nodeRequired, reference);
+      })
+      .filter(function (field) {
+        return Boolean(field && field.name);
+      });
+
+    return {
+      description: String(root.description || fallback.description || ""),
+      reference: reference,
+      groupFields: groupFields.length > 0 ? groupFields : fallback.groupFields,
+      nodeFields: nodeFields.length > 0 ? nodeFields : fallback.nodeFields,
+    };
+  }
+
+  function newUpstreamNode(schemaDef) {
+    var definition = schemaDef || upstreamServersSchemaDefinition();
+    var instance = {};
+    (definition.nodeFields || []).forEach(function (field) {
+      if (field && field.required) {
+        instance[field.name] = defaultForField(field);
+      }
+    });
+    return instance;
+  }
+
+  function newUpstreamGroup(schemaDef) {
+    var definition = schemaDef || upstreamServersSchemaDefinition();
+    var instance = { nodes: [] };
+    (definition.groupFields || []).forEach(function (field) {
+      if (field && field.required) {
+        instance[field.name] = defaultForField(field);
+      }
+    });
+    instance.nodes.push(newUpstreamNode(definition));
+    return instance;
+  }
+
+  function renderOptionalFieldAdder(instance, fields, keyPrefix) {
+    var missingOptional = fields.filter(function (field) {
+      return !field.required && !Object.prototype.hasOwnProperty.call(instance, field.name);
+    });
+    if (missingOptional.length === 0) {
+      return null;
+    }
+
+    var optionalRow = document.createElement("div");
+    optionalRow.className = "optional-row";
+
+    var optionalSel = document.createElement("select");
+    var emptyOpt = document.createElement("option");
+    emptyOpt.value = "";
+    emptyOpt.textContent = "Select optional attribute...";
+    optionalSel.appendChild(emptyOpt);
+    missingOptional.forEach(function (field) {
+      var option = document.createElement("option");
+      option.value = field.name;
+      option.textContent = field.name;
+      optionalSel.appendChild(option);
+    });
+    optionalSel.disabled = isReadOnlyMode();
+    optionalRow.appendChild(optionalSel);
+
+    var optionalDivider = document.createElement("span");
+    optionalDivider.className = "optional-divider";
+    optionalDivider.setAttribute("aria-hidden", "true");
+    optionalRow.appendChild(optionalDivider);
+
+    var addOptional = document.createElement("button");
+    addOptional.type = "button";
+    addOptional.textContent = "Add Optional";
+    addOptional.disabled = isReadOnlyMode();
+    addOptional.addEventListener("click", function () {
+      var selected = optionalSel.value;
+      if (!selected) {
+        return;
+      }
+      var field = fields.find(function (candidate) {
+        return candidate.name === selected;
+      });
+      if (!field) {
+        return;
+      }
+      instance[field.name] = defaultForField(field);
+      state.pendingFocusFieldKey = keyPrefix + ":" + field.name;
+      saveDoc();
+      renderAll();
+    });
+    optionalRow.appendChild(addOptional);
+    return optionalRow;
+  }
+
+  function renderUpstreamNodeCard(group, groupIndex, node, nodeIndex, schemaDef) {
+    var collapseKey = "upstream-node:" + groupIndex + ":" + nodeIndex;
+    var collapsed = Boolean(state.collapse[collapseKey]);
+    var card = document.createElement("div");
+    card.className = "plugin-card";
+
+    var head = document.createElement("div");
+    head.className = "plugin-head";
+    var left = document.createElement("div");
+    left.className = "plugin-head-main";
+    var title = document.createElement("strong");
+    title.textContent = "#" + (nodeIndex + 1) + " Node: " + String(node.name || "(unnamed)");
+    left.appendChild(title);
+    head.appendChild(left);
+
+    var actions = document.createElement("div");
+    actions.className = "plugin-actions";
+    actions.appendChild(createCommentToggleButton(collapseKey + ":comment", node, "", "upstream node comment editor"));
+
+    var collapseBtn = document.createElement("button");
+    collapseBtn.type = "button";
+    collapseBtn.textContent = collapsed ? "Expand" : "Collapse";
+    collapseBtn.addEventListener("click", function () {
+      state.collapse[collapseKey] = !collapsed;
+      renderAll();
+    });
+    actions.appendChild(collapseBtn);
+
+    var removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.textContent = "-";
+    removeBtn.className = "icon-remove";
+    removeBtn.title = "Remove upstream node";
+    removeBtn.disabled = isReadOnlyMode();
+    removeBtn.addEventListener("click", function () {
+      group.nodes.splice(nodeIndex, 1);
+      saveDoc();
+      renderAll();
+    });
+    actions.appendChild(removeBtn);
+    head.appendChild(actions);
+    card.appendChild(head);
+
+    if (collapsed) {
+      return card;
+    }
+
+    card.appendChild(createCommentEditorPanel(node, "Node Comment", "", collapseKey + ":comment"));
+
+    var body = document.createElement("div");
+    body.className = "field-grid";
+    var fields = Array.isArray(schemaDef.nodeFields) ? schemaDef.nodeFields : [];
+
+    var requiredFields = fields.filter(function (field) {
+      return Boolean(field.required);
+    });
+    var currentOptionalFields = fields.filter(function (field) {
+      return !field.required && Object.prototype.hasOwnProperty.call(node, field.name);
+    });
+
+    requiredFields.forEach(function (field) {
+      body.appendChild(
+        renderFieldRow(node, field, {
+          optional: false,
+          focusKey: collapseKey + ":" + field.name,
+          commentTarget: node,
+          commentFieldName: field.name,
+          commentToggleKey: collapseKey + ":" + field.name + ":comment",
+        })
+      );
+    });
+
+    currentOptionalFields.forEach(function (field) {
+      body.appendChild(
+        renderFieldRow(node, field, {
+          optional: true,
+          focusKey: collapseKey + ":" + field.name,
+          commentTarget: node,
+          commentFieldName: field.name,
+          commentToggleKey: collapseKey + ":" + field.name + ":comment",
+          onRemove: function () {
+            delete node[field.name];
+            clearFieldComment(node, field.name);
+            saveDoc();
+            renderAll();
+          },
+        })
+      );
+    });
+    card.appendChild(body);
+
+    var optionalRow = renderOptionalFieldAdder(node, fields, collapseKey);
+    if (optionalRow) {
+      card.appendChild(optionalRow);
+    }
+    return card;
+  }
+
+  function renderUpstreamGroupCard(group, groupIndex, schemaDef) {
+    if (!Array.isArray(group.nodes)) {
+      group.nodes = [];
+    }
+    var collapseKey = "upstream-group:" + groupIndex;
+    var collapsed = Boolean(state.collapse[collapseKey]);
+    var card = document.createElement("div");
+    card.className = "plugin-card";
+
+    var head = document.createElement("div");
+    head.className = "plugin-head";
+    var left = document.createElement("div");
+    left.className = "plugin-head-main";
+    var title = document.createElement("strong");
+    title.textContent = "#" + (groupIndex + 1) + " Group: " + String(group.name || "(unnamed)");
+    left.appendChild(title);
+    head.appendChild(left);
+
+    var actions = document.createElement("div");
+    actions.className = "plugin-actions";
+    actions.appendChild(createCommentToggleButton(collapseKey + ":comment", group, "", "upstream group comment editor"));
+
+    var collapseBtn = document.createElement("button");
+    collapseBtn.type = "button";
+    collapseBtn.textContent = collapsed ? "Expand" : "Collapse";
+    collapseBtn.addEventListener("click", function () {
+      state.collapse[collapseKey] = !collapsed;
+      renderAll();
+    });
+    actions.appendChild(collapseBtn);
+
+    var removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.textContent = "-";
+    removeBtn.className = "icon-remove";
+    removeBtn.title = "Remove upstream server group";
+    removeBtn.disabled = isReadOnlyMode();
+    removeBtn.addEventListener("click", function () {
+      state.doc.config.upstream_servers.splice(groupIndex, 1);
+      saveDoc();
+      renderAll();
+    });
+    actions.appendChild(removeBtn);
+    head.appendChild(actions);
+    card.appendChild(head);
+
+    if (collapsed) {
+      return card;
+    }
+
+    card.appendChild(createCommentEditorPanel(group, "Group Comment", "", collapseKey + ":comment"));
+
+    var body = document.createElement("div");
+    body.className = "field-grid";
+    var fields = Array.isArray(schemaDef.groupFields) ? schemaDef.groupFields : [];
+
+    var requiredFields = fields.filter(function (field) {
+      return Boolean(field.required);
+    });
+    var currentOptionalFields = fields.filter(function (field) {
+      return !field.required && Object.prototype.hasOwnProperty.call(group, field.name);
+    });
+
+    requiredFields.forEach(function (field) {
+      body.appendChild(
+        renderFieldRow(group, field, {
+          optional: false,
+          focusKey: collapseKey + ":" + field.name,
+          commentTarget: group,
+          commentFieldName: field.name,
+          commentToggleKey: collapseKey + ":" + field.name + ":comment",
+        })
+      );
+    });
+
+    currentOptionalFields.forEach(function (field) {
+      body.appendChild(
+        renderFieldRow(group, field, {
+          optional: true,
+          focusKey: collapseKey + ":" + field.name,
+          commentTarget: group,
+          commentFieldName: field.name,
+          commentToggleKey: collapseKey + ":" + field.name + ":comment",
+          onRemove: function () {
+            delete group[field.name];
+            clearFieldComment(group, field.name);
+            saveDoc();
+            renderAll();
+          },
+        })
+      );
+    });
+    card.appendChild(body);
+
+    var optionalRow = renderOptionalFieldAdder(group, fields, collapseKey);
+    if (optionalRow) {
+      card.appendChild(optionalRow);
+    }
+
+    var nodesPanel = document.createElement("div");
+    nodesPanel.className = "nested-panel";
+    var nodesHeading = document.createElement("h4");
+    nodesHeading.textContent = "Nodes";
+    nodesPanel.appendChild(nodesHeading);
+
+    var nodesControls = document.createElement("div");
+    nodesControls.className = "row";
+    var addNode = document.createElement("button");
+    addNode.type = "button";
+    addNode.textContent = "Add Node";
+    addNode.disabled = isReadOnlyMode();
+    addNode.addEventListener("click", function () {
+      group.nodes.push(newUpstreamNode(schemaDef));
+      saveDoc();
+      renderAll();
+    });
+    nodesControls.appendChild(addNode);
+    nodesPanel.appendChild(nodesControls);
+
+    var nodesHolder = document.createElement("div");
+    nodesHolder.className = "container-stack";
+    if (!Array.isArray(group.nodes) || group.nodes.length === 0) {
+      var emptyNodes = document.createElement("p");
+      emptyNodes.textContent = "No nodes configured.";
+      nodesHolder.appendChild(emptyNodes);
+    } else {
+      group.nodes.forEach(function (node, nodeIndex) {
+        if (!node || typeof node !== "object") {
+          node = {};
+          group.nodes[nodeIndex] = node;
+        }
+        nodesHolder.appendChild(renderUpstreamNodeCard(group, groupIndex, node, nodeIndex, schemaDef));
+      });
+    }
+    nodesPanel.appendChild(nodesHolder);
+    card.appendChild(nodesPanel);
+    return card;
+  }
+
+  function renderUpstreamServers() {
+    ensureDoc();
+    if (!el.upstreamServersList) {
+      return;
+    }
+    el.upstreamServersList.innerHTML = "";
+    var schemaDef = upstreamServersSchemaDefinition();
+    if (el.upstreamServersMeta) {
+      el.upstreamServersMeta.textContent = String(schemaDef.description || "");
+    }
+    if (el.upstreamServersHelpToggle) {
+      var hasReference = Boolean(schemaDef.reference);
+      el.upstreamServersHelpToggle.disabled = !hasReference;
+      el.upstreamServersHelpToggle.title = hasReference
+        ? "Open upstream servers documentation."
+        : "No linked upstream server documentation is available for this schema.";
+    }
+
+    if (!Array.isArray(state.doc.config.upstream_servers) || state.doc.config.upstream_servers.length === 0) {
+      var empty = document.createElement("p");
+      empty.textContent = "No upstream server groups configured.";
+      el.upstreamServersList.appendChild(empty);
+      return;
+    }
+
+    state.doc.config.upstream_servers.forEach(function (group, groupIndex) {
+      if (!group || typeof group !== "object") {
+        group = {};
+        state.doc.config.upstream_servers[groupIndex] = group;
+      }
+      el.upstreamServersList.appendChild(renderUpstreamGroupCard(group, groupIndex, schemaDef));
+    });
   }
 
 function renderPlugins() {
@@ -2242,26 +2827,63 @@ function renderPlugins() {
     }
   }
 
+  function safeRenderSection(name, renderFn) {
+    try {
+      renderFn();
+    } catch (err) {
+      reportUiError({
+        kind: "render_error",
+        message: "Failed rendering section '" + String(name || "unknown") + "': " + String((err && err.message) || err),
+        source: "config_ui.js",
+        path: window.location.href,
+        stack: err && err.stack ? String(err.stack) : "",
+      });
+    }
+  }
+
   function renderAll() {
     // Global rerender entry point; this ordering keeps cross-panel state stable.
-    renderHeaderComments();
-    renderService();
-    renderEnv();
-    renderParsers();
-    renderPlugins();
-    renderLabelsAndWorkers();
-    updateConfigTypeDisabledState();
-    updateReadOnlyState();
-    updateSectionPanels();
+    safeRenderSection("header_comments", renderHeaderComments);
+    safeRenderSection("service", renderService);
+    safeRenderSection("environment_variables", renderEnv);
+    safeRenderSection("plugins", renderPlugins);
+    safeRenderSection("upstream_servers", renderUpstreamServers);
+    safeRenderSection("parsers", renderParsers);
+    safeRenderSection("labels_workers", renderLabelsAndWorkers);
+    safeRenderSection("config_type_state", updateConfigTypeDisabledState);
+    safeRenderSection("read_only_state", updateReadOnlyState);
+    safeRenderSection("panel_visibility", updateSectionPanels);
+  }
+
+  function loadRuntimeSchema(version) {
+    if (!version) {
+      state.compiledSchema = null;
+      return Promise.resolve(null);
+    }
+    return fetchJson(API_BASE + "/schema/" + encodeURIComponent(version) + currentApiQuery(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ strict: false }),
+    })
+      .then(function (payload) {
+        state.compiledSchema = payload && payload.schema ? payload.schema : null;
+        return state.compiledSchema;
+      })
+      .catch(function () {
+        state.compiledSchema = null;
+        return null;
+      });
   }
 
   function loadCatalog(version) {
     return fetchJson(API_BASE + "/catalog/" + encodeURIComponent(version) + currentApiQuery()).then(function (catalog) {
       state.catalog = catalog;
       state.catalogLoaded = true;
-      repopulatePluginNameSelect();
-      renderAll();
-      return catalog;
+      return loadRuntimeSchema(version).then(function () {
+        repopulatePluginNameSelect();
+        renderAll();
+        return catalog;
+      });
     });
   }
 
@@ -2567,6 +3189,13 @@ function renderPlugins() {
       });
     }
 
+    if (el.upstreamServersToggle) {
+      el.upstreamServersToggle.addEventListener("click", function () {
+        state.upstreamServersPanelCollapsed = !state.upstreamServersPanelCollapsed;
+        updateSectionPanels();
+      });
+    }
+
     if (el.headerCommentsToggle) {
       el.headerCommentsToggle.addEventListener("click", function () {
         state.headerCommentsPanelCollapsed = !state.headerCommentsPanelCollapsed;
@@ -2577,6 +3206,17 @@ function renderPlugins() {
     if (el.metadataEnvHelpToggle) {
       el.metadataEnvHelpToggle.addEventListener("click", function () {
         window.open("/config-service/ui/docs/metadata-env", "_blank", "noopener,noreferrer");
+      });
+    }
+
+    if (el.upstreamServersHelpToggle) {
+      el.upstreamServersHelpToggle.addEventListener("click", function () {
+        var schemaDef = upstreamServersSchemaDefinition();
+        if (!schemaDef || !schemaDef.reference) {
+          setValidationText("No linked documentation is available for upstream servers in this schema.");
+          return;
+        }
+        window.open(schemaDef.reference, "_blank", "noopener,noreferrer");
       });
     }
 
@@ -2620,11 +3260,12 @@ function renderPlugins() {
       }
       loadVersionsForType(state.configType)
         .then(function () {
-          if (!state.selectedVersion) {
-            state.catalog = null;
-            state.catalogLoaded = false;
-            SERVICE_OPTIONS = [];
-            PARSER_FORMATS = [];
+              if (!state.selectedVersion) {
+                state.catalog = null;
+                state.catalogLoaded = false;
+                state.compiledSchema = null;
+                SERVICE_OPTIONS = [];
+                PARSER_FORMATS = [];
             rebuildServiceOptionIndex();
             rebuildParserFormatIndex();
             repopulateServiceOptionSelect();
@@ -2803,6 +3444,20 @@ function renderPlugins() {
       setValidationText("");
       renderAll();
     });
+
+    if (el.addUpstreamServerGroup) {
+      el.addUpstreamServerGroup.addEventListener("click", function () {
+        ensureDoc();
+        if (isFluentdMode()) {
+          return;
+        }
+        var schemaDef = upstreamServersSchemaDefinition();
+        state.doc.config.upstream_servers.push(newUpstreamGroup(schemaDef));
+        saveDoc();
+        setValidationText("");
+        renderAll();
+      });
+    }
 
     el.addLabel.addEventListener("click", function () {
       ensureDoc();

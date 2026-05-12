@@ -23,6 +23,9 @@ class SchemaService:
         "hash": "object",
         "enum": "string",
     }
+    FLUENTBIT_UPSTREAM_DOC_PATH = (
+        "/administration/configuring-fluent-bit/yaml/upstream-servers-section"
+    )
 
     @staticmethod
     def _meta_schema() -> dict[str, Any]:
@@ -190,6 +193,88 @@ class SchemaService:
             schema["allOf"] = all_of
         return self._with_object_meta(schema)
 
+    @staticmethod
+    def _fluentbit_doc_series_from_catalog(catalog: dict[str, Any]) -> str:
+        """Return `<major>.<minor>` series used by versioned Fluent Bit doc URLs."""
+        version = str(catalog.get("fluent_bit_version") or "")
+        parts = version.split(".")
+        if len(parts) >= 2 and parts[0].isdigit() and parts[1].isdigit():
+            return f"{parts[0]}.{parts[1]}"
+        return "5.0"
+
+    def _fluentbit_upstream_doc_url(self, catalog: dict[str, Any]) -> str:
+        """Build version-aware documentation URL for `upstream_servers`."""
+        return (
+            "https://docs.fluentbit.io/manual/"
+            f"{self._fluentbit_doc_series_from_catalog(catalog)}"
+            f"{self.FLUENTBIT_UPSTREAM_DOC_PATH}"
+        )
+
+    def _fluentbit_upstream_servers_schema(self, *, strict_mode: bool, catalog: dict[str, Any]) -> dict[str, Any]:
+        """Schema for YAML `upstream_servers` root section supported in Fluent Bit v3.2+."""
+        doc_url = self._fluentbit_upstream_doc_url(catalog)
+        node_schema = self._with_object_meta({
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Node identifier.",
+                    "x-doc-reference": doc_url,
+                },
+                "host": {
+                    "type": "string",
+                    "description": "Host/IP address for the upstream node.",
+                    "x-doc-reference": doc_url,
+                },
+                "port": {
+                    "type": "integer",
+                    "description": "TCP port for the upstream node endpoint.",
+                    "x-doc-reference": doc_url,
+                },
+                "tls": {
+                    "type": "boolean",
+                    "description": "Enable TLS for this node connection.",
+                    "x-doc-reference": doc_url,
+                },
+                "tls_verify": {
+                    "type": "boolean",
+                    "description": "Verify TLS peer certificate when TLS is enabled.",
+                    "x-doc-reference": doc_url,
+                },
+                "shared_key": {
+                    "type": "string",
+                    "description": "Shared key for secured upstream communication.",
+                    "x-doc-reference": doc_url,
+                },
+            },
+            "required": ["name", "host", "port"],
+            "additionalProperties": not strict_mode,
+        })
+        group_schema = self._with_object_meta({
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Upstream group identifier.",
+                    "x-doc-reference": doc_url,
+                },
+                "nodes": {
+                    "type": "array",
+                    "items": node_schema,
+                    "description": "List of upstream nodes used for round-robin routing.",
+                    "x-doc-reference": doc_url,
+                },
+            },
+            "required": ["name", "nodes"],
+            "additionalProperties": not strict_mode,
+        })
+        return {
+            "type": "array",
+            "items": group_schema,
+            "description": "Root-level upstream server groups for output plugin load-balancing.",
+            "x-doc-reference": doc_url,
+        }
+
     def _compile_fluentbit_schema(
         self,
         catalog: dict[str, Any],
@@ -231,6 +316,10 @@ class SchemaService:
                         "parsers": self._parser_list_schema(
                             parser_definition,
                             strict_mode=strict_mode,
+                        ),
+                        "upstream_servers": self._fluentbit_upstream_servers_schema(
+                            strict_mode=strict_mode,
+                            catalog=catalog,
                         ),
                         "pipeline": self._with_object_meta({
                             "type": "object",

@@ -29,6 +29,7 @@ CFG_CONFIG_TOOL_WEB_PORT = "web_port"
 CFG_CONFIG_TOOL_UI_BASE_CSS_PATH = "ui_base_css_path"
 CFG_CONFIG_TOOL_LOG_LEVEL = "log_level"
 CFG_CONFIG_TOOL_UI_CSS_OVERRIDES = "ui_css_overrides"
+CFG_CONFIG_TOOL_UI_COLLAPSED_SECTIONS = "ui_collapsed_sections"
 CFG_CONFIG_TOOL_READ_ONLY = "read_only"
 CFG_CONFIG_SERVICE = "config_service"
 CFG_CONFIG_SERVICE_WEB_PORT = "web_port"
@@ -163,6 +164,19 @@ def resolve_ui_css_overrides() -> list[str]:
     config_tool_raw = raw.get(CFG_CONFIG_TOOL, {})
     if isinstance(config_tool_raw, dict):
         configured = config_tool_raw.get(CFG_CONFIG_TOOL_UI_CSS_OVERRIDES, [])
+        if isinstance(configured, str):
+            return [value.strip() for value in configured.split(",") if value.strip()]
+        if isinstance(configured, list):
+            return [str(value).strip() for value in configured if str(value).strip()]
+    return []
+
+
+def resolve_ui_collapsed_sections() -> list[str]:
+    """Return configured UI section keys that should render collapsed by default."""
+    raw = _load_json(get_effective_config_path())
+    config_tool_raw = raw.get(CFG_CONFIG_TOOL, {})
+    if isinstance(config_tool_raw, dict):
+        configured = config_tool_raw.get(CFG_CONFIG_TOOL_UI_COLLAPSED_SECTIONS, [])
         if isinstance(configured, str):
             return [value.strip() for value in configured.split(",") if value.strip()]
         if isinstance(configured, list):

@@ -62,12 +62,16 @@ class YamlRenderService:
             return isinstance(value, dict) and YamlRenderService._dict_without_meta_is_empty(value)
         if key == "env" and path == "$":
             return isinstance(value, dict) and YamlRenderService._dict_without_meta_is_empty(value)
+        if key == "upstream_servers" and path == "$":
+            return isinstance(value, list) and len(value) == 0
         if key == "parsers" and path == "$":
             return isinstance(value, list) and len(value) == 0
         if key in {"inputs", "filters", "outputs"} and path == "$.pipeline":
             return isinstance(value, list) and len(value) == 0
         if key == "pipeline" and path == "$":
             return isinstance(value, dict) and YamlRenderService._dict_without_meta_is_empty(value)
+        if key == "processors":
+            return isinstance(value, dict) and YamlRenderService._processors_without_meta_is_empty(value)
         if key in {"labels", "workers", "includes"}:
             if isinstance(value, list) and len(value) == 0:
                 return True
@@ -76,6 +80,23 @@ class YamlRenderService:
     @staticmethod
     def _dict_without_meta_is_empty(value: dict[str, Any]) -> bool:
         return len([key for key in value.keys() if key != "_meta"]) == 0
+
+    @staticmethod
+    def _processors_without_meta_is_empty(value: dict[str, Any]) -> bool:
+        for key, item in value.items():
+            if key == "_meta":
+                continue
+            if isinstance(item, list):
+                if len(item) > 0:
+                    return False
+                continue
+            if isinstance(item, dict):
+                if not YamlRenderService._dict_without_meta_is_empty(item):
+                    return False
+                continue
+            if item not in (None, ""):
+                return False
+        return True
 
     @staticmethod
     def _extract_meta(value: Any) -> dict[str, Any]:
@@ -132,7 +153,7 @@ class YamlRenderService:
         if isinstance(value, dict):
             keys = [key for key in value.keys() if key != "_meta"]
             if path == "$":
-                preferred = ["env", "service", "parsers", "pipeline"]
+                preferred = ["env", "service", "parsers", "upstream_servers", "pipeline"]
                 ordered = [key for key in preferred if key in value]
                 ordered.extend([key for key in keys if key not in ordered])
                 keys = ordered
@@ -142,7 +163,9 @@ class YamlRenderService:
                 ordered.extend([key for key in keys if key not in ordered])
                 keys = ordered
 
-            for key in keys:
+            for index, key in enumerate(keys):
+                if path == "$" and index > 0:
+                    lines.extend(["", ""])
                 item = value[key]
                 key_path = f"{path}.{key}" if path != "$" else f"$.{key}"
                 field_comment_lines = self._field_comment_lines(meta, key)

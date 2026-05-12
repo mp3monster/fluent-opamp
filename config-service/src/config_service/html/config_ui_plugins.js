@@ -29,7 +29,9 @@
     var movePluginToSection = deps.movePluginToSection;
     var moveWithinPipeline = deps.moveWithinPipeline;
     var setValidationText = deps.setValidationText;
+    var ensureDoc = deps.ensureDoc;
     var ensureFluentbitProcessors = deps.ensureFluentbitProcessors;
+    var fluentbitProcessorRoot = deps.fluentbitProcessorRoot;
     var fluentbitProcessorSignals = deps.fluentbitProcessorSignals;
     var fluentbitSignalProcessorMap = deps.fluentbitSignalProcessorMap;
     var fluentbitProcessorDefinition = deps.fluentbitProcessorDefinition;
@@ -38,6 +40,7 @@
     var fluentbitRouteSignals = deps.fluentbitRouteSignals;
     var fluentbitRouteSignalByName = deps.fluentbitRouteSignalByName;
     var createFieldHelpButton = deps.createFieldHelpButton;
+    var applyRequiredLabelStyle = deps.applyRequiredLabelStyle;
     var parseFlexibleRouteValue = deps.parseFlexibleRouteValue;
     var formatFlexibleRouteValue = deps.formatFlexibleRouteValue;
 
@@ -412,6 +415,51 @@ function renderProcessorCondition(instance, procPathPrefix) {
     });
 
     return frame;
+  }
+
+  function renderAddFluentbitProcessorsPanel(instance) {
+    var root = fluentbitProcessorRoot() || {};
+    var addProcessorsWrap = document.createElement("div");
+    addProcessorsWrap.className = "nested-panel";
+
+    var addProcessorsHead = document.createElement("div");
+    addProcessorsHead.className = "plugin-head";
+    var addProcessorsHeadMain = document.createElement("div");
+    addProcessorsHeadMain.className = "plugin-head-main";
+    var addProcessorsTitle = document.createElement("h4");
+    addProcessorsTitle.textContent = "Processors";
+    addProcessorsHeadMain.appendChild(addProcessorsTitle);
+    addProcessorsHead.appendChild(addProcessorsHeadMain);
+
+    var addProcessorsActions = document.createElement("div");
+    addProcessorsActions.className = "plugin-actions";
+    var addProcessorsHelp = document.createElement("button");
+    addProcessorsHelp.type = "button";
+    addProcessorsHelp.textContent = "?";
+    addProcessorsHelp.className = "icon-help";
+    addProcessorsHelp.title = String(root.description || "Open Fluent Bit processor documentation.");
+    addProcessorsHelp.disabled = !root.doc_url;
+    addProcessorsHelp.addEventListener("click", function () {
+      if (root.doc_url) {
+        window.open(root.doc_url, "_blank", "noopener,noreferrer");
+      }
+    });
+    addProcessorsActions.appendChild(addProcessorsHelp);
+    addProcessorsHead.appendChild(addProcessorsActions);
+    addProcessorsWrap.appendChild(addProcessorsHead);
+
+    var addProcessorsBtn = document.createElement("button");
+    addProcessorsBtn.type = "button";
+    addProcessorsBtn.textContent = "Add Processors";
+    addProcessorsBtn.disabled = isReadOnlyMode();
+    addProcessorsBtn.addEventListener("click", function () {
+      instance.processors = { logs: [] };
+      saveDoc();
+      renderAll();
+    });
+    addProcessorsWrap.appendChild(addProcessorsBtn);
+
+    return addProcessorsWrap;
   }
 
   function availableRouteOutputTargets() {
@@ -841,8 +889,7 @@ function renderProcessorCondition(instance, procPathPrefix) {
     headingRow.appendChild(headingActions);
     frame.appendChild(headingRow);
 
-    frame.appendChild(
-      renderFieldRow(instance.route, {
+    var perRecordRoutingBlock = renderFieldRow(instance.route, {
         name: "per_record_routing",
         data_type: "boolean",
         required: false,
@@ -851,8 +898,12 @@ function renderProcessorCondition(instance, procPathPrefix) {
       }, {
         optional: false,
         focusKey: pluginPath + ":route:per_record_routing",
-      })
-    );
+      });
+    var perRecordRoutingRow = perRecordRoutingBlock.querySelector(".field-row");
+    if (perRecordRoutingRow) {
+      perRecordRoutingRow.classList.add("route-per-record-row");
+    }
+    frame.appendChild(perRecordRoutingBlock);
 
     var controls = document.createElement("div");
     controls.className = "optional-row";
@@ -1171,7 +1222,11 @@ function renderPluginCard(flatIndex, section, index, instance, pipeline, keyPref
       }
 
       if (state.configType === "fluentbit" && (section === "inputs" || section === "outputs") && fluentbitProcessorRoot()) {
-        card.appendChild(renderFluentbitProcessorsPanel(section, index, instance, keyPrefix || "main", pluginPath));
+        if (instance.processors && typeof instance.processors === "object") {
+          card.appendChild(renderFluentbitProcessorsPanel(section, index, instance, keyPrefix || "main", pluginPath));
+        } else {
+          card.appendChild(renderAddFluentbitProcessorsPanel(instance));
+        }
       }
     }
 

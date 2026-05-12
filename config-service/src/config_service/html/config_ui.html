@@ -20,7 +20,8 @@ limitations under the License.
     <link rel="icon" type="image/png" href="/config-service/ui/assets/config_editor_icon.png__CONFIG_SERVICE_UI_ASSET_SUFFIX__" />
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
     <script>
-      window.__CONFIG_SERVICE_UI_CSS_OVERRIDES__ = __CONFIG_SERVICE_UI_CSS_OVERRIDES__;
+      window.__CONFIG_SERVICE_UI_CSS_OVERRIDES__ = __CONFIG_SERVICE_UI_CSS_OVERRIDES_VALUE__;
+      window.__CONFIG_SERVICE_UI_COLLAPSED_SECTIONS__ = __CONFIG_SERVICE_UI_COLLAPSED_SECTIONS_VALUE__;
     </script>
     <link rel="stylesheet" href="__CONFIG_SERVICE_UI_BASE_CSS_PATH__" />
   </head>
@@ -232,6 +233,36 @@ limitations under the License.
         </div>
       </section>
 
+      <section id="upstream-servers-panel" class="panel">
+        <div class="section-head">
+          <div>
+            <h2>Upstream Servers</h2>
+            <p>Configure root-level <code>upstream_servers</code> groups and nodes used by Fluent Bit output load balancing.</p>
+          </div>
+          <div class="plugin-actions">
+            <button
+              id="upstream-servers-help-toggle"
+              type="button"
+              class="icon-help"
+              aria-label="Open upstream servers help in a new tab"
+            >?</button>
+            <button id="upstream-servers-toggle" type="button">Collapse</button>
+          </div>
+        </div>
+        <div id="upstream-servers-body" class="service-editor">
+          <div class="service-configured">
+            <h3>Configured Upstream Server Groups</h3>
+            <div id="upstream-servers-list"></div>
+          </div>
+          <div class="service-option-frame">
+            <div class="row">
+              <button id="add-upstream-server-group" type="button">Add Upstream Server Group</button>
+            </div>
+            <p id="upstream-servers-meta" class="service-meta"></p>
+          </div>
+        </div>
+      </section>
+
       <section id="parsers-panel" class="panel">
         <div class="section-head">
           <div>
@@ -339,7 +370,7 @@ limitations under the License.
             <div class="result-actions">
               <label class="inline-toggle" title="When enabled, validation will merge any include files already loaded into memory.">
                 <input id="validation-include-toggle" type="checkbox" />
-                Include loaded files
+                Use Included files
               </label>
               <button id="validate-btn" type="button">Validate</button>
               <button id="validation-toggle" type="button">Collapse</button>
@@ -356,7 +387,7 @@ limitations under the License.
             <div class="result-actions">
               <label class="inline-toggle" title="When enabled, rendering also includes rendered output for include files loaded into memory.">
                 <input id="render-include-toggle" type="checkbox" />
-                Include loaded files
+                add incude files to render
               </label>
               <button id="render-btn" type="button">Render Configuration</button>
               <button id="yaml-toggle" type="button">Collapse</button>

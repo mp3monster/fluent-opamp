@@ -7,10 +7,14 @@
     "ui:test": "playwright test",
     "ui:test:headed": "playwright test --headed",
     "ui:test:debug": "playwright test --debug",
-    "ui:chapter-batch": "node dev-tools/playwright_chapter_batch_runner.mjs"
+    "ui:chapter-batch": "node dev-tools/playwright_chapter_batch_runner.mjs",
+    "ui:unit": "vitest run",
+    "ui:unit:watch": "vitest"
   },
   "devDependencies": {
     "@playwright/test": "^1.54.2",
-    "js-yaml": "^4.1.0"
+    "js-yaml": "^4.1.0",
+    "jsdom": "^26.1.0",
+    "vitest": "^2.1.8"
   }
 }

@@ -14,10 +14,20 @@ Example:
     "web_port": 8080,
     "ui_base_css_path": "/config-service/ui/assets/config_ui.css",
     "ui_css_overrides": [],
+    "ui_collapsed_sections": [
+      "environment_variables",
+      "metadata_environment_variables",
+      "upstream_servers",
+      "parsers",
+      "service",
+      "rendered_configuration"
+    ],
     "read_only": false
   }
 }
 ```
+
+For the complete list of supported `ui_collapsed_sections` values and aliases, see [Configuration Reference](./configuration.md).
 
 ## Build the wheel
 From repository root:

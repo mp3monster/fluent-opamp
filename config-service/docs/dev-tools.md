@@ -9,8 +9,11 @@ Script:
 
 Purpose:
 1. Reads the local Fluent Bit JSON schema files
-2. Generates Markdown quick references for pipeline plugins
-3. Produces grouped sections for:
+2. Generates Markdown quick references for:
+   - `config.env` environment variables
+   - `config.upstream_servers` upstream server groups
+   - pipeline plugins
+3. Produces grouped pipeline sections for:
    - `inputs`
    - `filters`
    - `outputs`

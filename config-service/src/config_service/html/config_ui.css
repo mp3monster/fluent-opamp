@@ -300,6 +300,16 @@ button:hover {
   flex: 1;
 }
 
+.field-row.route-per-record-row {
+  align-items: flex-start;
+}
+
+.field-row.route-per-record-row input[type="checkbox"] {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  margin-top: 0.3rem;
+}
+
 .readonly-value {
   flex: 1;
   min-height: 2.25rem;
@@ -631,6 +641,7 @@ pre {
 #service-body.is-collapsed,
 #env-body.is-collapsed,
 #metadata-env-body.is-collapsed,
+#upstream-servers-body.is-collapsed,
 #parsers-body.is-collapsed,
 #labels-body.is-collapsed,
 #workers-body.is-collapsed {

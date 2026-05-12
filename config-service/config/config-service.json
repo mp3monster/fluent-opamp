@@ -4,6 +4,14 @@
     "log_level": "INFO",
     "ui_base_css_path": "/config-service/ui/assets/config_ui.css",
     "ui_css_overrides": [],
+    "ui_collapsed_sections": [
+      "environment_variables",
+      "upstream_servers",
+      "metadata_environment_variables",
+      "parsers",
+      "service",
+      "rendered_configuration"
+    ],
     "read_only": false
   }
 }

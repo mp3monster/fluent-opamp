@@ -1,13 +1,64 @@
+#!/usr/bin/env python3
+# Copyright 2026 mp3monster.org
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from config_service.services.rule_engine_service import RuleEngineService
 
+KEY_CONFIG = "config"
+KEY_PIPELINE = "pipeline"
+KEY_PARSERS = "parsers"
+KEY_UPSTREAM_SERVERS = "upstream_servers"
+KEY_PLUGINS = "plugins"
+KEY_COMMON = "common"
+KEY_INPUTS = "inputs"
+KEY_FILTERS = "filters"
+KEY_OUTPUTS = "outputs"
+KEY_NAME = "name"
+KEY_NODES = "nodes"
+KEY_HOST = "host"
+KEY_PORT = "port"
+KEY_TLS = "tls"
+KEY_TLS_VERIFY = "tls_verify"
+KEY_SHARED_KEY = "shared_key"
+KEY_FIELDS = "fields"
+KEY_REQUIRED = "required"
+KEY_CHILDREN = "children"
+KEY_PROCESSORS = "processors"
+KEY_ROUTE = "route"
+KEY_META = "_meta"
+KEY_LABELS = "labels"
+KEY_WORKERS = "workers"
+KEY_SIGNALS = "signals"
+KEY_CONDITION = "condition"
+KEY_DIRECTIVE_ARGUMENT = "directive_argument"
+
 
 class ValidationService:
+    """Validate config payloads against catalog metadata and semantic constraints.
+
+    This service coordinates two layers of validation:
+    1. Semantic/schema-shape checks implemented in this class.
+    2. Rule-engine checks delegated to `RuleEngineService`.
+    """
+
     def __init__(self, rule_engine_service: RuleEngineService) -> None:
+        """Store the rule engine dependency used for profile-based validation."""
         self.rule_engine_service = rule_engine_service
+        self._numeric_env_var_pattern = re.compile(r"^\$\{(?P<name>[A-Za-z_][A-Za-z0-9_]*)\}$")
 
     def validate(
         self,
@@ -18,7 +69,13 @@ class ValidationService:
         profile: str | None,
         parser_definition: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        config = payload.get("config")
+        """Run semantic + rule-engine validation and return normalized issues.
+
+        The method first validates payload shape, then dispatches to Fluent Bit or
+        Fluentd semantic validation based on catalog engine metadata, and finally
+        executes ruleset adapters selected by profile.
+        """
+        config = payload.get(KEY_CONFIG)
         if not isinstance(config, dict):
             return {
                 "ok": False,
@@ -55,6 +112,7 @@ class ValidationService:
         return {"ok": not has_error, "errors": errors}
 
     def _normalize_errors(self, issues: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Normalize issue shape and add stable ordering for UI/API consumers."""
         normalized: list[dict[str, Any]] = []
         for index, issue in enumerate(issues, start=1):
             item = dict(issue)
@@ -74,13 +132,19 @@ class ValidationService:
         *,
         parser_definition: dict[str, Any] | None,
     ) -> list[dict[str, Any]]:
+        """Validate Fluent Bit pipeline sections and parser definitions."""
         issues: list[dict[str, Any]] = []
         parser_issues, custom_parser_names, builtin_parser_names = self._validate_fluentbit_parsers(
-            config.get("parsers"),
+            config.get(KEY_PARSERS),
             parser_definition,
         )
         issues.extend(parser_issues)
-        pipeline = config.get("pipeline")
+        issues.extend(
+            self._validate_fluentbit_upstream_servers(
+                config.get(KEY_UPSTREAM_SERVERS),
+            )
+        )
+        pipeline = config.get(KEY_PIPELINE)
         if not isinstance(pipeline, dict):
             issues.append(
                 {
@@ -93,10 +157,10 @@ class ValidationService:
             )
             return issues
 
-        plugins = catalog.get("plugins", {})
-        processors_def = catalog.get("common", {}).get("processors", {})
-        route_def = catalog.get("common", {}).get("route", {})
-        for section in ("inputs", "filters", "outputs"):
+        plugins = catalog.get(KEY_PLUGINS, {})
+        processors_def = catalog.get(KEY_COMMON, {}).get(KEY_PROCESSORS, {})
+        route_def = catalog.get(KEY_COMMON, {}).get(KEY_ROUTE, {})
+        for section in (KEY_INPUTS, KEY_FILTERS, KEY_OUTPUTS):
             issues.extend(
                 self._validate_plugin_list(
                     section_items=pipeline.get(section),
@@ -106,7 +170,7 @@ class ValidationService:
                     nested_sections={},
                     allow_children=False,
                     fluentbit_processors=processors_def,
-                    fluentbit_filter_plugins=plugins.get("filters", {}),
+                    fluentbit_filter_plugins=plugins.get(KEY_FILTERS, {}),
                     known_parser_names=custom_parser_names | builtin_parser_names,
                     fluentbit_route=route_def,
                     pipeline=pipeline,
@@ -114,11 +178,238 @@ class ValidationService:
             )
         return issues
 
+    def _is_numeric_env_var(self, value: Any) -> bool:
+        """Return true when value is a Fluent Bit env placeholder like `${MY_VAR}`."""
+        return isinstance(value, str) and bool(self._numeric_env_var_pattern.fullmatch(value))
+
+    def _validate_fluentbit_upstream_servers(self, upstream_payload: Any) -> list[dict[str, Any]]:
+        """Validate Fluent Bit root-level `upstream_servers` groups and nodes.
+
+        High-complexity flow notes:
+        - First branch validates top-level container shape (`list` expected).
+        - Group-level branches enforce object shape, required keys, and known fields.
+        - Node-level branches validate required fields and key type constraints.
+        """
+        issues: list[dict[str, Any]] = []
+        if upstream_payload is None:
+            return issues
+        if not isinstance(upstream_payload, list):
+            return [
+                {
+                    "code": "invalid_section_type",
+                    "path": "$.config.upstream_servers",
+                    "message": "upstream_servers must be an array.",
+                    "severity": "error",
+                    "source": "schema",
+                }
+            ]
+
+        seen_group_names: set[str] = set()
+        for group_index, group_item in enumerate(upstream_payload):
+            group_path = f"$.config.upstream_servers[{group_index}]"
+            if not isinstance(group_item, dict):
+                issues.append(
+                    {
+                        "code": "invalid_plugin_item",
+                        "path": group_path,
+                        "message": "Upstream server group must be an object.",
+                        "severity": "error",
+                        "source": "schema",
+                    }
+                )
+                continue
+
+            group_name = group_item.get(KEY_NAME)
+            if not isinstance(group_name, str) or not group_name.strip():
+                issues.append(
+                    {
+                        "code": "missing_required_field",
+                        "path": f"{group_path}.name",
+                        "message": "Upstream server group requires a non-empty name.",
+                        "severity": "error",
+                        "source": "semantic",
+                    }
+                )
+            else:
+                normalized_group_name = group_name.strip()
+                if normalized_group_name in seen_group_names:
+                    issues.append(
+                        {
+                            "code": "duplicate_upstream_group_name",
+                            "path": f"{group_path}.name",
+                            "message": f"Upstream server group '{normalized_group_name}' is defined more than once.",
+                            "severity": "warning",
+                            "source": "semantic",
+                        }
+                    )
+                else:
+                    seen_group_names.add(normalized_group_name)
+
+            nodes = group_item.get(KEY_NODES)
+            if not isinstance(nodes, list):
+                issues.append(
+                    {
+                        "code": "invalid_section_type",
+                        "path": f"{group_path}.nodes",
+                        "message": "Upstream server group nodes must be an array.",
+                        "severity": "error",
+                        "source": "schema",
+                    }
+                )
+                nodes = []
+
+            for key in group_item:
+                if key in {KEY_NAME, KEY_NODES, KEY_META}:
+                    continue
+                issues.append(
+                    {
+                        "code": "unknown_field",
+                        "path": f"{group_path}.{key}",
+                        "message": f"Unknown field '{key}' for upstream server group.",
+                        "severity": "warning",
+                        "source": "semantic",
+                    }
+                )
+
+            seen_node_names: set[str] = set()
+            for node_index, node_item in enumerate(nodes):
+                node_path = f"{group_path}.nodes[{node_index}]"
+                if not isinstance(node_item, dict):
+                    issues.append(
+                        {
+                            "code": "invalid_plugin_item",
+                            "path": node_path,
+                            "message": "Upstream server node must be an object.",
+                            "severity": "error",
+                            "source": "schema",
+                        }
+                    )
+                    continue
+
+                node_name = node_item.get(KEY_NAME)
+                if not isinstance(node_name, str) or not node_name.strip():
+                    issues.append(
+                        {
+                            "code": "missing_required_field",
+                            "path": f"{node_path}.name",
+                            "message": "Upstream server node requires a non-empty name.",
+                            "severity": "error",
+                            "source": "semantic",
+                        }
+                    )
+                else:
+                    normalized_node_name = node_name.strip()
+                    if normalized_node_name in seen_node_names:
+                        issues.append(
+                            {
+                                "code": "duplicate_upstream_node_name",
+                                "path": f"{node_path}.name",
+                                "message": f"Upstream server node '{normalized_node_name}' is defined more than once in this group.",
+                                "severity": "warning",
+                                "source": "semantic",
+                            }
+                        )
+                    else:
+                        seen_node_names.add(normalized_node_name)
+
+                host_value = node_item.get(KEY_HOST)
+                if not isinstance(host_value, str) or not host_value.strip():
+                    issues.append(
+                        {
+                            "code": "missing_required_field",
+                            "path": f"{node_path}.host",
+                            "message": "Upstream server node requires a non-empty host.",
+                            "severity": "error",
+                            "source": "semantic",
+                        }
+                    )
+
+                port_value = node_item.get(KEY_PORT)
+                if KEY_PORT not in node_item:
+                    issues.append(
+                        {
+                            "code": "missing_required_field",
+                            "path": f"{node_path}.port",
+                            "message": "Upstream server node requires a port.",
+                            "severity": "error",
+                            "source": "semantic",
+                        }
+                    )
+                elif isinstance(port_value, bool) or (
+                    not isinstance(port_value, int) and not self._is_numeric_env_var(port_value)
+                ):
+                    issues.append(
+                        {
+                            "code": "invalid_type",
+                            "path": f"{node_path}.port",
+                            "message": "Upstream server node port must be an integer or an environment variable placeholder.",
+                            "severity": "error",
+                            "source": "schema",
+                        }
+                    )
+
+                tls_value = node_item.get(KEY_TLS)
+                if tls_value is not None and not isinstance(tls_value, bool):
+                    issues.append(
+                        {
+                            "code": "invalid_type",
+                            "path": f"{node_path}.tls",
+                            "message": "Upstream server node tls must be true or false.",
+                            "severity": "error",
+                            "source": "schema",
+                        }
+                    )
+
+                tls_verify_value = node_item.get(KEY_TLS_VERIFY)
+                if tls_verify_value is not None and not isinstance(tls_verify_value, bool):
+                    issues.append(
+                        {
+                            "code": "invalid_type",
+                            "path": f"{node_path}.tls_verify",
+                            "message": "Upstream server node tls_verify must be true or false.",
+                            "severity": "error",
+                            "source": "schema",
+                        }
+                    )
+
+                shared_key_value = node_item.get(KEY_SHARED_KEY)
+                if shared_key_value is not None and not isinstance(shared_key_value, str):
+                    issues.append(
+                        {
+                            "code": "invalid_type",
+                            "path": f"{node_path}.shared_key",
+                            "message": "Upstream server node shared_key must be a string.",
+                            "severity": "error",
+                            "source": "schema",
+                        }
+                    )
+
+                for key in node_item:
+                    if key in {KEY_NAME, KEY_HOST, KEY_PORT, KEY_TLS, KEY_TLS_VERIFY, KEY_SHARED_KEY, KEY_META}:
+                        continue
+                    issues.append(
+                        {
+                            "code": "unknown_field",
+                            "path": f"{node_path}.{key}",
+                            "message": f"Unknown field '{key}' for upstream server node.",
+                            "severity": "warning",
+                            "source": "semantic",
+                        }
+                    )
+        return issues
+
     def _validate_fluentbit_parsers(
         self,
         parsers_payload: Any,
         parser_definition: dict[str, Any] | None,
     ) -> tuple[list[dict[str, Any]], set[str], set[str]]:
+        """Validate Fluent Bit `parsers` blocks and collect known parser names.
+
+        High-complexity flow notes:
+        - First branch validates container shape (`list` expected).
+        - Per-parser branches enforce identity (`name`), format support, required
+          format fields, and unknown key detection.
+        """
         issues: list[dict[str, Any]] = []
         custom_parser_names: set[str] = set()
         builtin_parser_names = (
@@ -144,6 +435,7 @@ class ValidationService:
             if isinstance(parser_definition, dict)
             else {}
         )
+        # Iterate each parser definition and validate shape before semantic checks.
         for idx, parser_instance in enumerate(parsers_payload):
             path = f"$.config.parsers[{idx}]"
             if not isinstance(parser_instance, dict):
@@ -158,7 +450,8 @@ class ValidationService:
                 )
                 continue
 
-            parser_name = parser_instance.get("name")
+            parser_name = parser_instance.get(KEY_NAME)
+            # Enforce parser uniqueness so parser references resolve deterministically.
             if not isinstance(parser_name, str) or not parser_name:
                 issues.append(
                     {
@@ -206,11 +499,12 @@ class ValidationService:
                     }
                 )
                 continue
-            fields = {field["name"]: field for field in format_def.get("fields", [])}
+            fields = {field[KEY_NAME]: field for field in format_def.get(KEY_FIELDS, [])}
+            # Validate required parser-format-specific keys.
             for required in [
                 name
                 for name, field in fields.items()
-                if field.get("required") is True
+                if field.get(KEY_REQUIRED) is True
             ]:
                 value = parser_instance.get(required)
                 if value is None or (isinstance(value, str) and not value):
@@ -223,8 +517,9 @@ class ValidationService:
                             "source": "semantic",
                         }
                     )
+            # Warn on unknown keys to surface typos without blocking hard.
             for key in parser_instance:
-                if key in {"name", "format", "_meta"}:
+                if key in {KEY_NAME, "format", KEY_META}:
                     continue
                 if key not in fields:
                     issues.append(
@@ -239,8 +534,15 @@ class ValidationService:
         return issues, custom_parser_names, builtin_parser_names
 
     def _validate_fluentd_config(self, config: dict[str, Any], catalog: dict[str, Any]) -> list[dict[str, Any]]:
+        """Validate Fluentd pipeline plus optional labels/workers trees.
+
+        High-complexity flow notes:
+        - Validates top-level pipeline sections first.
+        - Then validates optional `labels` and `workers` containers, each of which
+          recursively reuse plugin-list checks.
+        """
         issues: list[dict[str, Any]] = []
-        pipeline = config.get("pipeline")
+        pipeline = config.get(KEY_PIPELINE)
         if not isinstance(pipeline, dict):
             return [
                 {
@@ -252,9 +554,9 @@ class ValidationService:
                 }
             ]
 
-        plugin_groups = catalog.get("plugins", {})
+        plugin_groups = catalog.get(KEY_PLUGINS, {})
         nested_sections = catalog.get("nested_sections", {})
-        for section in ("inputs", "filters", "outputs"):
+        for section in (KEY_INPUTS, KEY_FILTERS, KEY_OUTPUTS):
             issues.extend(
                 self._validate_plugin_list(
                     section_items=pipeline.get(section),
@@ -271,7 +573,7 @@ class ValidationService:
                 )
             )
 
-        labels = config.get("labels", [])
+        labels = config.get(KEY_LABELS, [])
         if labels is not None and not isinstance(labels, list):
             issues.append(
                 {
@@ -293,7 +595,7 @@ class ValidationService:
                     )
                 )
 
-        workers = config.get("workers", [])
+        workers = config.get(KEY_WORKERS, [])
         if workers is not None and not isinstance(workers, list):
             issues.append(
                 {
@@ -324,6 +626,7 @@ class ValidationService:
         plugin_groups: dict[str, Any],
         nested_sections: dict[str, Any],
     ) -> list[dict[str, Any]]:
+        """Validate a Fluentd label object and its nested pipeline sections."""
         issues: list[dict[str, Any]] = []
         if not isinstance(payload, dict):
             return [
@@ -335,7 +638,7 @@ class ValidationService:
                     "source": "schema",
                 }
             ]
-        if not isinstance(payload.get("name"), str) or not payload.get("name"):
+        if not isinstance(payload.get(KEY_NAME), str) or not payload.get(KEY_NAME):
             issues.append(
                 {
                     "code": "missing_required_field",
@@ -345,7 +648,7 @@ class ValidationService:
                     "source": "semantic",
                 }
             )
-        pipeline = payload.get("pipeline", {})
+        pipeline = payload.get(KEY_PIPELINE, {})
         if not isinstance(pipeline, dict):
             issues.append(
                 {
@@ -357,7 +660,7 @@ class ValidationService:
                 }
             )
             return issues
-        for section in ("inputs", "filters", "outputs"):
+        for section in (KEY_INPUTS, KEY_FILTERS, KEY_OUTPUTS):
             issues.extend(
                 self._validate_plugin_list(
                     section_items=pipeline.get(section),
@@ -383,6 +686,7 @@ class ValidationService:
         plugin_groups: dict[str, Any],
         nested_sections: dict[str, Any],
     ) -> list[dict[str, Any]]:
+        """Validate Fluentd worker block and any nested worker-specific labels."""
         issues = self._validate_label_like(
             payload,
             path_prefix=path_prefix,
@@ -390,7 +694,7 @@ class ValidationService:
             nested_sections=nested_sections,
         )
         if isinstance(payload, dict):
-            labels = payload.get("labels", [])
+            labels = payload.get(KEY_LABELS, [])
             if labels is not None and not isinstance(labels, list):
                 issues.append(
                     {
@@ -428,6 +732,7 @@ class ValidationService:
         fluentbit_route: dict[str, Any] | None,
         pipeline: dict[str, Any],
     ) -> list[dict[str, Any]]:
+        """Validate a section list (`inputs`/`filters`/`outputs`) of plugin items."""
         issues: list[dict[str, Any]] = []
         if section_items is None:
             return issues
@@ -441,6 +746,7 @@ class ValidationService:
                     "source": "schema",
                 }
             ]
+        # Loop each plugin instance so we can report path-specific issues.
         for idx, plugin_instance in enumerate(section_items):
             path = f"{path_prefix}[{idx}]"
             if not isinstance(plugin_instance, dict):
@@ -454,7 +760,7 @@ class ValidationService:
                     }
                 )
                 continue
-            plugin_name = plugin_instance.get("name")
+            plugin_name = plugin_instance.get(KEY_NAME)
             if not isinstance(plugin_name, str) or not plugin_name:
                 issues.append(
                     {
@@ -509,10 +815,20 @@ class ValidationService:
         fluentbit_route: dict[str, Any] | None,
         pipeline: dict[str, Any],
     ) -> list[dict[str, Any]]:
+        """Validate one plugin payload against catalog fields and nested semantics.
+
+        High-complexity flow notes:
+        - Required-field checks run before unknown-field checks so users see missing
+          essentials even when extra keys are present.
+        - Optional feature blocks (`children`, `processors`, `route`) are delegated
+          to specialized validators to keep issue paths accurate.
+        """
         issues: list[dict[str, Any]] = []
-        fields = {field["name"]: field for field in plugin_def.get("fields", [])}
-        directive_arg = plugin_def.get("directive_argument")
+        fields = {field[KEY_NAME]: field for field in plugin_def.get(KEY_FIELDS, [])}
+        directive_arg = plugin_def.get(KEY_DIRECTIVE_ARGUMENT)
         directive_arg_keys = self._directive_argument_keys(directive_arg)
+        # Directive arguments are pseudo-fields (e.g. Fluentd <match ARG>), so they
+        # are validated separately from regular plugin fields.
         if isinstance(directive_arg, dict) and directive_arg.get("required") is True:
             if not any(key in plugin_instance for key in directive_arg_keys):
                 issues.append(
@@ -536,7 +852,7 @@ class ValidationService:
                     }
                 )
         for key in plugin_instance:
-            if key in {"name", "children", "processors", "route", "_meta"}:
+            if key in {KEY_NAME, KEY_CHILDREN, KEY_PROCESSORS, KEY_ROUTE, KEY_META}:
                 continue
             if key in directive_arg_keys:
                 continue
@@ -545,7 +861,7 @@ class ValidationService:
                     {
                         "code": "unknown_field",
                         "path": f"{path}.{key}",
-                        "message": f"Unknown field '{key}' for plugin '{plugin_instance.get('name')}'.",
+                        "message": f"Unknown field '{key}' for plugin '{plugin_instance.get(KEY_NAME)}'.",
                         "severity": "warning",
                         "source": "semantic",
                     }
@@ -565,9 +881,11 @@ class ValidationService:
                 known_parser_names=known_parser_names,
             )
         )
+        # Delegate nested children/processors/routes so each subsystem can enforce
+        # its own schema and semantic constraints.
         if allow_children:
             issues.extend(self._validate_children(path, plugin_instance, plugin_def, nested_sections))
-        if fluentbit_processors and section in {"inputs", "outputs"}:
+        if fluentbit_processors and section in {KEY_INPUTS, KEY_OUTPUTS}:
             issues.extend(
                 self._validate_fluentbit_processors(
                     path=path,
@@ -576,19 +894,20 @@ class ValidationService:
                     filter_plugins=fluentbit_filter_plugins or {},
                 )
             )
-        if fluentbit_route and section == "inputs":
+        if fluentbit_route and section == KEY_INPUTS:
             issues.extend(
                 self._validate_fluentbit_route(
                     path=path,
                     plugin_instance=plugin_instance,
                     route_def=fluentbit_route,
-                    outputs=pipeline.get("outputs") if isinstance(pipeline, dict) else [],
+                    outputs=pipeline.get(KEY_OUTPUTS) if isinstance(pipeline, dict) else [],
                 )
             )
         return issues
 
     @staticmethod
     def _directive_argument_keys(directive_arg: dict[str, Any] | Any) -> list[str]:
+        """Return accepted directive-argument keys, including legacy alias support."""
         if not isinstance(directive_arg, dict):
             return ["directive_arg"]
         configured_name = str(directive_arg.get("name") or "").strip()
@@ -603,7 +922,7 @@ class ValidationService:
         plugin_instance: dict[str, Any],
         fields: dict[str, dict[str, Any]],
     ) -> list[dict[str, Any]]:
-        """Require at least one routing selector when both are defined by schema metadata."""
+        """Require at least one routing selector when both selector fields exist."""
         if "match" not in fields or "match_regex" not in fields:
             return []
 
@@ -633,6 +952,7 @@ class ValidationService:
         fields: dict[str, dict[str, Any]],
         known_parser_names: set[str],
     ) -> list[dict[str, Any]]:
+        """Validate parser-reference fields against known custom and built-in names."""
         issues: list[dict[str, Any]] = []
         if not known_parser_names:
             return issues
@@ -662,8 +982,16 @@ class ValidationService:
         processors_def: dict[str, Any],
         filter_plugins: dict[str, Any],
     ) -> list[dict[str, Any]]:
+        """Validate Fluent Bit processor graph for one plugin instance.
+
+        High-complexity flow notes:
+        - Validate processors container shape first.
+        - Per signal: verify signal is known and list-shaped.
+        - Per processor: verify existence, required fields, unknown fields, and
+          optional condition semantics.
+        """
         issues: list[dict[str, Any]] = []
-        processors = plugin_instance.get("processors")
+        processors = plugin_instance.get(KEY_PROCESSORS)
         if processors is None:
             return issues
         if not isinstance(processors, dict):
@@ -676,9 +1004,10 @@ class ValidationService:
                     "source": "schema",
                 }
             ]
-        signals = processors_def.get("signals", {})
+        signals = processors_def.get(KEY_SIGNALS, {})
+        # Process signal by signal to preserve precise JSON paths in errors.
         for signal_name, items in processors.items():
-            signal_path = f"{path}.processors.{signal_name}"
+            signal_path = f"{path}.{KEY_PROCESSORS}.{signal_name}"
             signal_def = signals.get(signal_name)
             if signal_def is None:
                 issues.append(
@@ -702,9 +1031,10 @@ class ValidationService:
                     }
                 )
                 continue
-            available = dict(signal_def.get("processors", {}))
+            available = dict(signal_def.get(KEY_PROCESSORS, {}))
             if signal_name == "logs" and signal_def.get("allow_filters_as_processors"):
                 available.update(filter_plugins)
+            # Validate each processor instance within this signal stream.
             for idx, processor in enumerate(items):
                 proc_path = f"{signal_path}[{idx}]"
                 if not isinstance(processor, dict):
@@ -718,7 +1048,7 @@ class ValidationService:
                         }
                     )
                     continue
-                proc_name = processor.get("name")
+                proc_name = processor.get(KEY_NAME)
                 if not isinstance(proc_name, str) or not proc_name:
                     issues.append(
                         {
@@ -742,7 +1072,7 @@ class ValidationService:
                         }
                     )
                     continue
-                fields = {field["name"]: field for field in proc_def.get("fields", [])}
+                fields = {field[KEY_NAME]: field for field in proc_def.get(KEY_FIELDS, [])}
                 for required in [name for name, field in fields.items() if field.get("required") is True]:
                     if required not in processor:
                         issues.append(
@@ -755,7 +1085,7 @@ class ValidationService:
                             }
                         )
                 for key in processor:
-                    if key in {"name", "condition", "_meta"}:
+                    if key in {KEY_NAME, KEY_CONDITION, KEY_META}:
                         continue
                     if key not in fields:
                         issues.append(
@@ -767,22 +1097,22 @@ class ValidationService:
                                 "source": "semantic",
                             }
                         )
-                if "condition" in processor:
+                if KEY_CONDITION in processor:
                     if not proc_def.get("supports_condition"):
                         issues.append(
                             {
                                 "code": "unknown_field",
-                                "path": f"{proc_path}.condition",
+                                "path": f"{proc_path}.{KEY_CONDITION}",
                                 "message": f"Processor '{proc_name}' does not support conditional processing.",
                                 "severity": "warning",
                                 "source": "semantic",
                             }
                         )
-                    elif not isinstance(processor["condition"], dict):
+                    elif not isinstance(processor[KEY_CONDITION], dict):
                         issues.append(
                             {
                                 "code": "invalid_section_type",
-                                "path": f"{proc_path}.condition",
+                                "path": f"{proc_path}.{KEY_CONDITION}",
                                 "message": "condition must be an object.",
                                 "severity": "error",
                                 "source": "schema",
@@ -798,8 +1128,15 @@ class ValidationService:
         route_def: dict[str, Any],
         outputs: Any,
     ) -> list[dict[str, Any]]:
+        """Validate Fluent Bit route rules attached to an input plugin.
+
+        High-complexity flow notes:
+        - Top-level route keys are split into known scalar flags and signal blocks.
+        - Each signal block is validated as a list of route items.
+        - Cross-check ensures `per_record_routing=true` when conditional routes exist.
+        """
         issues: list[dict[str, Any]] = []
-        route_payload = plugin_instance.get("route")
+        route_payload = plugin_instance.get(KEY_ROUTE)
         if route_payload is None:
             return issues
         if not isinstance(route_payload, dict):
@@ -813,22 +1150,24 @@ class ValidationService:
                 }
             ]
 
+        # Build allow-lists from catalog metadata to validate unknown keys/signals.
         top_level_fields = {
-            field["name"]: field
+            field[KEY_NAME]: field
             for field in route_def.get("top_level_fields", [])
-            if isinstance(field, dict) and isinstance(field.get("name"), str)
+            if isinstance(field, dict) and isinstance(field.get(KEY_NAME), str)
         }
         allowed_signals = {
-            str(signal.get("name")): signal
+            str(signal.get(KEY_NAME)): signal
             for signal in route_def.get("signals", [])
-            if isinstance(signal, dict) and isinstance(signal.get("name"), str)
+            if isinstance(signal, dict) and isinstance(signal.get(KEY_NAME), str)
         }
         seen_route_names: set[str] = set()
         available_output_refs = self._route_output_reference_names(outputs)
         has_any_routes = False
 
+        # Evaluate each route key: top-level flags vs signal-specific rule arrays.
         for key, value in route_payload.items():
-            if key == "_meta":
+            if key == KEY_META:
                 continue
             if key in top_level_fields:
                 if key == "per_record_routing" and not isinstance(value, bool):
@@ -881,6 +1220,7 @@ class ValidationService:
                     }
                 )
 
+            # Validate route entries one by one so errors retain stable indices.
             for idx, route_item in enumerate(value):
                 issues.extend(
                     self._validate_route_item(
@@ -911,6 +1251,13 @@ class ValidationService:
         seen_route_names: set[str],
         available_output_refs: set[str],
     ) -> list[dict[str, Any]]:
+        """Validate one route item: identity, condition, and destinations.
+
+        High-complexity flow notes:
+        - Validate object shape and unique route name.
+        - Validate condition subtree (delegated).
+        - Validate destination outputs and optionally cross-check references.
+        """
         issues: list[dict[str, Any]] = []
         if not isinstance(route_item, dict):
             return [
@@ -923,7 +1270,7 @@ class ValidationService:
                 }
             ]
 
-        route_name = route_item.get("name")
+        route_name = route_item.get(KEY_NAME)
         if not isinstance(route_name, str) or not route_name:
             issues.append(
                 {
@@ -947,12 +1294,12 @@ class ValidationService:
         else:
             seen_route_names.add(route_name)
 
-        condition = route_item.get("condition")
+        condition = route_item.get(KEY_CONDITION)
         if not isinstance(condition, dict):
             issues.append(
                 {
                     "code": "missing_required_field",
-                    "path": f"{path_prefix}.condition",
+                    "path": f"{path_prefix}.{KEY_CONDITION}",
                     "message": "Route entry requires a condition object.",
                     "severity": "error",
                     "source": "semantic",
@@ -960,11 +1307,11 @@ class ValidationService:
             )
         else:
             issues.extend(
-                self._validate_route_condition(
-                    condition,
-                    path_prefix=f"{path_prefix}.condition",
+                    self._validate_route_condition(
+                        condition,
+                        path_prefix=f"{path_prefix}.{KEY_CONDITION}",
+                    )
                 )
-            )
 
         destination = route_item.get("to")
         if not isinstance(destination, dict):
@@ -978,12 +1325,12 @@ class ValidationService:
                 }
             )
         else:
-            route_outputs = destination.get("outputs")
+            route_outputs = destination.get(KEY_OUTPUTS)
             if not isinstance(route_outputs, list) or not route_outputs:
                 issues.append(
                     {
                         "code": "missing_required_field",
-                        "path": f"{path_prefix}.to.outputs",
+                        "path": f"{path_prefix}.to.{KEY_OUTPUTS}",
                         "message": "Route entry requires at least one output destination.",
                         "severity": "error",
                         "source": "semantic",
@@ -991,7 +1338,7 @@ class ValidationService:
                 )
             else:
                 for idx, output_name in enumerate(route_outputs):
-                    output_path = f"{path_prefix}.to.outputs[{idx}]"
+                    output_path = f"{path_prefix}.to.{KEY_OUTPUTS}[{idx}]"
                     if not isinstance(output_name, str) or not output_name:
                         issues.append(
                             {
@@ -1021,6 +1368,13 @@ class ValidationService:
         *,
         path_prefix: str,
     ) -> list[dict[str, Any]]:
+        """Validate route condition operator and rule-list semantics.
+
+        High-complexity flow notes:
+        - Early-return on `default: true` because no rule list is required.
+        - Enforces allowed condition operator and non-empty rules.
+        - Iterates each rule validating context, operator, and required operands.
+        """
         issues: list[dict[str, Any]] = []
         if condition.get("default") is True:
             return issues
@@ -1071,6 +1425,7 @@ class ValidationService:
             "not_regex",
             "regex",
         }
+        # Validate each rule in-place to preserve detailed index paths.
         for idx, rule in enumerate(rules):
             rule_path = f"{path_prefix}.rules[{idx}]"
             if not isinstance(rule, dict):
@@ -1127,6 +1482,13 @@ class ValidationService:
         return issues
 
     def _route_output_reference_names(self, outputs: Any) -> set[str]:
+        """Compute accepted route output references from configured outputs.
+
+        Supports:
+        - direct plugin name (e.g. `null`)
+        - indexed duplicate name alias (`null.0`, `null.1`, ...)
+        - explicit configured `alias`
+        """
         names: set[str] = set()
         if not isinstance(outputs, list):
             return names
@@ -1134,7 +1496,7 @@ class ValidationService:
         for output in outputs:
             if not isinstance(output, dict):
                 continue
-            plugin_name = output.get("name")
+            plugin_name = output.get(KEY_NAME)
             if isinstance(plugin_name, str) and plugin_name:
                 names.add(plugin_name)
                 sequence = counters.get(plugin_name, 0)
@@ -1152,8 +1514,16 @@ class ValidationService:
         plugin_def: dict[str, Any],
         nested_sections: dict[str, Any],
     ) -> list[dict[str, Any]]:
+        """Validate Fluentd nested child sections for a plugin instance.
+
+        High-complexity flow notes:
+        - Validate children container type and section allow-list first.
+        - Apply nested cardinality constraints before deep item validation.
+        - For plugin-backed sections, validate nested plugin `name` and required
+          fields against either variant schema or flat field schema.
+        """
         issues: list[dict[str, Any]] = []
-        children = plugin_instance.get("children")
+        children = plugin_instance.get(KEY_CHILDREN)
         if children is None:
             return issues
         if not isinstance(children, dict):
@@ -1171,6 +1541,7 @@ class ValidationService:
             for item in plugin_def.get("allowed_children", [])
             if isinstance(item, dict) and isinstance(item.get("section"), str)
         }
+        # Validate each nested child section against the plugin's allow-list.
         for child_name, child_items in children.items():
             if child_name == "includes":
                 continue
@@ -1179,7 +1550,7 @@ class ValidationService:
                     {
                         "code": "unknown_nested_section",
                         "path": f"{path}.children.{child_name}",
-                        "message": f"Nested section '{child_name}' is not allowed for plugin '{plugin_instance.get('name')}'.",
+                        "message": f"Nested section '{child_name}' is not allowed for plugin '{plugin_instance.get(KEY_NAME)}'.",
                         "severity": "error",
                         "source": "semantic",
                     }
@@ -1212,11 +1583,12 @@ class ValidationService:
             if nested_def.get("reuses_output_plugins") is True:
                 continue
             fields = {
-                field["name"]: field
-                for field in nested_def.get("fields", [])
+                field[KEY_NAME]: field
+                for field in nested_def.get(KEY_FIELDS, [])
                 if isinstance(field, dict)
             }
             variants = nested_def.get("variants", {})
+            # Deep-validate each child item according to plugin-backed vs flat mode.
             for idx, child_item in enumerate(child_items):
                 if not isinstance(child_item, dict):
                     issues.append(
@@ -1229,7 +1601,7 @@ class ValidationService:
                         }
                     )
                     continue
-                if nested_def.get("plugin_backed") is True and variants and "name" not in child_item:
+                if nested_def.get("plugin_backed") is True and variants and KEY_NAME not in child_item:
                     issues.append(
                         {
                             "code": "missing_plugin_name",
@@ -1241,21 +1613,21 @@ class ValidationService:
                     )
                     continue
                 if nested_def.get("plugin_backed") is True and variants:
-                    variant = variants.get(child_item.get("name"))
+                    variant = variants.get(child_item.get(KEY_NAME))
                     if variant is None:
                         issues.append(
                             {
                                 "code": "unknown_plugin",
                                 "path": f"{path}.children.{child_name}[{idx}].name",
-                                "message": f"Unknown nested plugin '{child_item.get('name')}' in section '{child_name}'.",
+                                "message": f"Unknown nested plugin '{child_item.get(KEY_NAME)}' in section '{child_name}'.",
                                 "severity": "error",
                                 "source": "semantic",
                             }
                         )
                         continue
-                    required_fields = [f["name"] for f in variant.get("fields", []) if f.get("required") is True]
+                    required_fields = [f[KEY_NAME] for f in variant.get(KEY_FIELDS, []) if f.get(KEY_REQUIRED) is True]
                 else:
-                    required_fields = [name for name, field in fields.items() if field.get("required") is True]
+                    required_fields = [name for name, field in fields.items() if field.get(KEY_REQUIRED) is True]
                 for required in required_fields:
                     if required not in child_item:
                         issues.append(

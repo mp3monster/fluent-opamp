@@ -26,6 +26,7 @@ from config_service.auth_integration import evaluate_ui_http_auth
 from config_service.routes.api import create_api_blueprint
 from config_service.runtime_config import (
     ENV_CONFIG_TOOL_CONFIG_PATH,
+    resolve_ui_collapsed_sections,
     resolve_log_level_name,
     resolve_read_only,
     resolve_ui_base_css_path,
@@ -197,8 +198,12 @@ def create_app(*, mode: str = "standalone") -> Quart:
         asset_suffix = _asset_suffix()
         html_template = (html_dir / "config_ui.html").read_text(encoding="utf-8")
         rendered = html_template.replace(
-            "__CONFIG_SERVICE_UI_CSS_OVERRIDES__",
+            "__CONFIG_SERVICE_UI_CSS_OVERRIDES_VALUE__",
             json.dumps(css_overrides),
+        )
+        rendered = rendered.replace(
+            "__CONFIG_SERVICE_UI_COLLAPSED_SECTIONS_VALUE__",
+            json.dumps(resolve_ui_collapsed_sections()),
         )
         rendered = rendered.replace(
             "__CONFIG_SERVICE_UI_BASE_CSS_PATH__",

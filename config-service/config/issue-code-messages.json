@@ -132,6 +132,10 @@
     "unknown_route_output_reference": {
       "label": "Unknown route output",
       "description": "A route points at an output name or alias that is not currently configured."
+    },
+    "missing_match_selector": {
+      "label": "Missing match selector",
+      "description": "A filter or output plugin requires at least one routing selector: match or match_regex."
     }
   }
 }

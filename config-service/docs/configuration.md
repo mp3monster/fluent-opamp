@@ -181,10 +181,39 @@ Example:
     "log_level": "INFO",
     "ui_base_css_path": "/ui/assets/web_ui.css",
     "ui_css_overrides": [],
+    "ui_collapsed_sections": [
+      "environment_variables",
+      "metadata_environment_variables",
+      "upstream_servers",
+      "parsers",
+      "service",
+      "rendered_configuration"
+    ],
     "read_only": false
   }
 }
 ```
+
+Standalone config-tool keys:
+1. `web_port`: HTTP listen port for standalone mode.
+2. `log_level`: Python backend log level (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`).
+3. `ui_base_css_path`: URL/path for the primary UI stylesheet.
+4. `ui_css_overrides`: extra stylesheet URL/path entries loaded after the base stylesheet.
+5. `ui_collapsed_sections`: list of section keys that should render collapsed by default. If omitted, sections default to expanded.
+6. `read_only`: when true, disable editing and saving in the UI.
+
+Supported `ui_collapsed_sections` values:
+1. `service`
+2. `environment_variables` (alias: `env`)
+3. `metadata_environment_variables` (aliases: `metadata_env`, legacy `metadata_as_environment_variables`)
+4. `upstream_servers` (alias: `upstream`)
+5. `parsers`
+6. `plugins`
+7. `labels`
+8. `workers`
+9. `validation`
+10. `rendered_configuration` (alias: `rendered`)
+11. `header_comments`
 
 Read-only mode:
 1. Set `config-tool.read_only` to `true` to disable editing and save actions in the UI.
