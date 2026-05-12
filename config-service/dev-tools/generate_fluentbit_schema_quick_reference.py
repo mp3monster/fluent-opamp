@@ -24,8 +24,8 @@ SECTION_TITLES = {
     "outputs": "Outputs",
 }
 DEFAULT_VERSIONS = ("3.2.10", "4.2.4", "5.0.4")
-ENV_ANCHOR = "environment-config-env"
-UPSTREAM_SERVERS_ANCHOR = "upstream-servers-config-upstream-servers"
+ENV_ANCHOR = "environment-env"
+UPSTREAM_SERVERS_ANCHOR = "upstream-servers-upstream-servers"
 
 
 def schema_path(version: str) -> Path:
@@ -203,14 +203,14 @@ def build_env_section(version: str) -> list[str]:
         f'<a id="{ENV_ANCHOR}"></a>',
         "## Environment Variables",
         "",
-        "Quick reference for the optional Fluent Bit YAML `config.env` section.",
+        "Quick reference for the optional Fluent Bit YAML `env` section.",
         f"Fluent Bit page: [Environment variables]({doc_url})",
         "",
         "| Attribute | Mandatory | Default | Description |",
         "| --- | --- | --- | --- |",
-        f"| [`config.env`]({doc_url}) | No | `{{}}` | Object map of local environment variables available to this configuration file. |",
-        f"| [`config.env.<ENV_VAR_NAME>`]({doc_url}) | No |  | Variable key name. Use uppercase letters, digits, and `_`, and avoid spaces or punctuation. |",
-        f"| [`config.env.<ENV_VAR_NAME>` value]({doc_url}) | No |  | Variable value consumed with `${{ENV_VAR_NAME}}` in Fluent Bit configuration fields. |",
+        f"| [`env`]({doc_url}) | No | `{{}}` | Object map of local environment variables available to this configuration file. |",
+        f"| [`<ENV_VAR_NAME>`]({doc_url}) | No |  | Variable key name. Use uppercase letters, digits, and `_`, and avoid spaces or punctuation. |",
+        f"| [`<ENV_VAR_NAME>` value]({doc_url}) | No |  | Variable value consumed with `${{ENV_VAR_NAME}}` in Fluent Bit configuration fields. |",
         "",
     ]
 
@@ -221,20 +221,20 @@ def build_upstream_servers_section(version: str) -> list[str]:
         f'<a id="{UPSTREAM_SERVERS_ANCHOR}"></a>',
         "## Upstream Servers",
         "",
-        "Quick reference for optional Fluent Bit YAML `config.upstream_servers` groups.",
+        "Quick reference for optional Fluent Bit YAML `upstream_servers` groups.",
         f"Fluent Bit page: [Upstream servers]({doc_url})",
         "",
         "| Attribute | Mandatory | Default | Description |",
         "| --- | --- | --- | --- |",
-        f"| [`config.upstream_servers`]({doc_url}) | No | `[]` | List of upstream groups used by supporting output plugins for round-robin endpoint selection. |",
-        f"| [`config.upstream_servers[].name`]({doc_url}) | Yes |  | Upstream group name. |",
-        f"| [`config.upstream_servers[].nodes`]({doc_url}) | Yes |  | List of node endpoints in the group. |",
-        f"| [`config.upstream_servers[].nodes[].name`]({doc_url}) | Yes |  | Node name. |",
-        f"| [`config.upstream_servers[].nodes[].host`]({doc_url}) | Yes |  | Node host/IP endpoint. |",
-        f"| [`config.upstream_servers[].nodes[].port`]({doc_url}) | Yes |  | Node TCP port. |",
-        f"| [`config.upstream_servers[].nodes[].tls`]({doc_url}) | No |  | Enable TLS for this node connection. |",
-        f"| [`config.upstream_servers[].nodes[].tls_verify`]({doc_url}) | No |  | Verify TLS certificate for this node. |",
-        f"| [`config.upstream_servers[].nodes[].shared_key`]({doc_url}) | No |  | Shared key for secure node communication. |",
+        f"| [`upstream_servers`]({doc_url}) | No | `[]` | List of upstream groups used by supporting output plugins for round-robin endpoint selection. |",
+        f"| [`upstream_servers[].name`]({doc_url}) | Yes |  | Upstream group name. |",
+        f"| [`upstream_servers[].nodes`]({doc_url}) | Yes |  | List of node endpoints in the group. |",
+        f"| [`upstream_servers[].nodes[].name`]({doc_url}) | Yes |  | Node name. |",
+        f"| [`upstream_servers[].nodes[].host`]({doc_url}) | Yes |  | Node host/IP endpoint. |",
+        f"| [`upstream_servers[].nodes[].port`]({doc_url}) | Yes |  | Node TCP port. |",
+        f"| [`upstream_servers[].nodes[].tls`]({doc_url}) | No |  | Enable TLS for this node connection. |",
+        f"| [`upstream_servers[].nodes[].tls_verify`]({doc_url}) | No |  | Verify TLS certificate for this node. |",
+        f"| [`upstream_servers[].nodes[].shared_key`]({doc_url}) | No |  | Shared key for secure node communication. |",
         "",
     ]
 
@@ -248,16 +248,16 @@ def generate_markdown(schema: dict[str, Any], version: str) -> str:
         f"- `{version_schema_path.relative_to(REPO_ROOT)}`",
         "",
         "Scope:",
-        "1. Environment variable map definition for `config.env`",
-        "2. Upstream server groups for `config.upstream_servers`",
+        "1. Environment variable map definition for `env`",
+        "2. Upstream server groups for `upstream_servers`",
         "3. Pipeline plugin definitions",
         "4. Grouped by `inputs`, `filters`, and `outputs`",
         "5. Includes mandatory flags, defaults, descriptions, and Fluent Bit documentation links",
         "",
         "## Jump Lists",
         "",
-        f"- **Environment**: [`config.env`](#{ENV_ANCHOR})",
-        f"- **Upstream Servers**: [`config.upstream_servers`](#{UPSTREAM_SERVERS_ANCHOR})",
+        f"- **Environment**: [`env`](#{ENV_ANCHOR})",
+        f"- **Upstream Servers**: [`upstream_servers`](#{UPSTREAM_SERVERS_ANCHOR})",
     ]
     for section in ("inputs", "filters", "outputs"):
         variants = plugin_variants(schema, section)
