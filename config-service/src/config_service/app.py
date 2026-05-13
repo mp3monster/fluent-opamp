@@ -22,14 +22,15 @@ from pathlib import Path
 
 from quart import Quart, Response, jsonify, request, send_from_directory
 
+from config_service.agent_validation.service import ExternalAgentValidationService
 from config_service.auth_integration import evaluate_ui_http_auth
 from config_service.routes.api import create_api_blueprint
 from config_service.runtime_config import (
     ENV_CONFIG_TOOL_CONFIG_PATH,
-    resolve_ui_collapsed_sections,
     resolve_log_level_name,
     resolve_read_only,
     resolve_ui_base_css_path,
+    resolve_ui_collapsed_sections,
     resolve_ui_css_overrides,
     resolve_web_port,
 )
@@ -158,6 +159,7 @@ def create_app(*, mode: str = "standalone") -> Quart:
         fluentbit_yaml_config_service=fluentbit_yaml_config_service,
         fluentd_config_service=fluentd_config_service,
     )
+    external_agent_validation_service = ExternalAgentValidationService.from_runtime_config()
 
     app.extensions["catalog_service"] = catalog_service
     app.extensions["rules_registry_service"] = rules_registry_service
@@ -172,6 +174,7 @@ def create_app(*, mode: str = "standalone") -> Quart:
     app.extensions["fluentbit_yaml_config_service"] = fluentbit_yaml_config_service
     app.extensions["fluentd_config_service"] = fluentd_config_service
     app.extensions["include_document_service"] = include_document_service
+    app.extensions["external_agent_validation_service"] = external_agent_validation_service
 
     if mode == "standalone":
         @app.before_request

@@ -21,6 +21,7 @@ from typing import Any
 from pydantic import ValidationError
 from quart import Blueprint, current_app, jsonify, request
 
+from config_service.agent_validation.exceptions import AgentNotSupportedError
 from config_service.models.contracts import (
     ParseTextRequest,
     RenderTextRequest,
@@ -248,6 +249,60 @@ def create_api_blueprint() -> Blueprint:
             parser_definition=parser_definition,
         )
         return jsonify(result), HTTPStatus.OK if result.get("ok") else HTTPStatus.BAD_REQUEST
+
+    @bp.get("/agent-validation/availability/<version>")
+    async def agent_validation_availability(version: str) -> Any:
+        external_agent_validation_service = current_app.extensions["external_agent_validation_service"]
+        config_type = str(request.args.get("config_type", "fluentbit") or "fluentbit").strip().lower()
+        result = external_agent_validation_service.dry_run_capability(
+            agent_type=config_type,
+            agent_version=version,
+        )
+        return jsonify({"ok": True, **result})
+
+    @bp.post("/agent-validation/dry-run/<version>")
+    async def dry_run_validate(version: str) -> Any:
+        catalog_service = current_app.extensions["catalog_service"]
+        include_document_service = current_app.extensions["include_document_service"]
+        yaml_render_service = current_app.extensions["yaml_render_service"]
+        fluentd_config_service = current_app.extensions["fluentd_config_service"]
+        external_agent_validation_service = current_app.extensions["external_agent_validation_service"]
+
+        body = await request.get_json(silent=True) or {}
+        config_type = str(request.args.get("config_type", "fluentbit") or "fluentbit").strip().lower()
+        try:
+            req = ValidateRequest.model_validate(body)
+            catalog_service.get_catalog(version, config_type=config_type)
+        except ValidationError as exc:
+            return jsonify({"ok": False, "errors": _normalize_pydantic_issues(exc.errors())}), HTTPStatus.BAD_REQUEST
+        except KeyError as exc:
+            return jsonify({"ok": False, "error": str(exc)}), HTTPStatus.NOT_FOUND
+
+        dry_run_config = req.config
+        if req.merge_includes_for_validation:
+            dry_run_config = include_document_service.merge_for_validation(
+                config=req.config,
+                included_documents=req.included_documents,
+            )
+
+        if config_type == "fluentd":
+            rendered_text = fluentd_config_service.render(dry_run_config)
+        else:
+            rendered_text = yaml_render_service.render(
+                payload={"config": dry_run_config, "annotations": req.annotations},
+                include_comments=True,
+            )
+
+        try:
+            result = external_agent_validation_service.validate(
+                config_text=rendered_text,
+                agent_type=config_type,
+                agent_version=version,
+                require_dry_run_enabled=True,
+            )
+        except AgentNotSupportedError as exc:
+            return jsonify({"ok": False, "error": str(exc)}), HTTPStatus.NOT_FOUND
+        return jsonify(result), HTTPStatus.OK
 
     @bp.post("/render/yaml/<version>")
     async def render_yaml(version: str) -> Any:

@@ -11,6 +11,9 @@
       "rendered_configuration",
       "metadata_environment_variables"
     ],
-    "read_only": false
+    "read_only": false,
+    "agent_validation": {
+      "entries": []
+    }
   }
 }

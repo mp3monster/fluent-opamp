@@ -31,6 +31,8 @@ CFG_CONFIG_TOOL_LOG_LEVEL = "log_level"
 CFG_CONFIG_TOOL_UI_CSS_OVERRIDES = "ui_css_overrides"
 CFG_CONFIG_TOOL_UI_COLLAPSED_SECTIONS = "ui_collapsed_sections"
 CFG_CONFIG_TOOL_READ_ONLY = "read_only"
+CFG_CONFIG_TOOL_AGENT_VALIDATION = "agent_validation"
+CFG_CONFIG_TOOL_AGENT_VALIDATION_ENTRIES = "entries"
 CFG_CONFIG_SERVICE = "config_service"
 CFG_CONFIG_SERVICE_WEB_PORT = "web_port"
 CFG_CONFIG_SERVICE_UI_BASE_CSS_PATH = "ui_base_css_path"
@@ -190,6 +192,26 @@ def resolve_read_only() -> bool:
     if isinstance(config_tool_raw, dict):
         return _coerce_bool(config_tool_raw.get(CFG_CONFIG_TOOL_READ_ONLY), False)
     return False
+
+
+def resolve_validation_agent_entries() -> list[dict[str, Any]]:
+    """
+    Return configured external validation agent entries.
+
+    Expected path:
+    - `config-tool.agent_validation.entries`
+    """
+    raw = _load_json(get_effective_config_path())
+    config_tool_raw = raw.get(CFG_CONFIG_TOOL, {})
+    if not isinstance(config_tool_raw, dict):
+        return []
+    section_raw = config_tool_raw.get(CFG_CONFIG_TOOL_AGENT_VALIDATION, {})
+    if not isinstance(section_raw, dict):
+        return []
+    entries_raw = section_raw.get(CFG_CONFIG_TOOL_AGENT_VALIDATION_ENTRIES, [])
+    if not isinstance(entries_raw, list):
+        return []
+    return [entry for entry in entries_raw if isinstance(entry, dict)]
 
 
 def resolve_log_level_name() -> str:

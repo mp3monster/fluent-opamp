@@ -201,6 +201,63 @@ Standalone config-tool keys:
 4. `ui_css_overrides`: extra stylesheet URL/path entries loaded after the base stylesheet.
 5. `ui_collapsed_sections`: list of section keys that should render collapsed by default. If omitted, sections default to expanded.
 6. `read_only`: when true, disable editing and saving in the UI.
+7. `agent_validation`: external agent-validator command configuration.
+
+`agent_validation` format:
+1. `entries`: ordered list of external validator definitions.
+2. Each entry includes:
+   1. `agent_type` (required): for example `fluentbit` or `fluentd`.
+   2. `agent_version` (optional): exact match version. If omitted, the entry acts as fallback for the agent type.
+   3. `command_path` (required): executable path or command name.
+   4. `command_args` (optional): command arguments.
+      - Supports `{config_path}` placeholder when config is provided via file path.
+      - Supports `{config_text}` placeholder when embedding config text in an argument.
+   5. `send_config_via_stdin` (optional, default `false`): write config text to process stdin.
+   6. `adapter` (optional): adapter key (`fluentbit`, `fluentd`, `generic`).
+   7. `environment` (optional): extra environment variables for the command.
+   8. `working_directory` (optional): command working directory.
+   9. `success_exit_codes` (optional, default `[0]`): acceptable command exit codes.
+   10. `dry_run_validation_enabled` (optional, default `true`): controls whether the UI/API dry-run action is available for this entry.
+
+Example:
+
+```json
+{
+  "config-tool": {
+    "agent_validation": {
+      "entries": [
+        {
+          "agent_type": "fluentbit",
+          "agent_version": "5.0.4",
+          "command_path": "fluent-bit",
+          "command_args": ["--dry-run", "-c", "{config_path}"],
+          "adapter": "fluentbit",
+          "send_config_via_stdin": false,
+          "dry_run_validation_enabled": true
+        },
+        {
+          "agent_type": "fluentbit",
+          "command_path": "fluent-bit",
+          "command_args": ["--dry-run", "-c", "{config_path}"],
+          "adapter": "fluentbit",
+          "send_config_via_stdin": false,
+          "dry_run_validation_enabled": false
+        }
+      ]
+    }
+  }
+}
+```
+
+Public package API:
+1. `config_service.agent_validation.validate(config_text, agent_type, agent_version=None, config_path=None)`
+2. Returns JSON with:
+   1. `ok`
+   2. `messages`
+   3. `requested_agent_version`
+   4. `used_agent_version`
+   5. `version_mismatch`
+   6. `command` / execution metadata
 
 Supported `ui_collapsed_sections` values:
 1. `service`

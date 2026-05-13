@@ -25,6 +25,7 @@
   var SERVICE_OPTIONS = [];
   var PARSER_FORMATS = [];
   var serviceOptionsLoadInFlight = null;
+  var dryRunAvailabilityRequestSerial = 0;
   var lastUiErrorFingerprint = "";
   var lastUiErrorAt = 0;
   var isReportingUiError = false;
@@ -92,6 +93,8 @@
     metadataPanelCollapsed: false,
     headerCommentsPanelCollapsed: true,
     headerComments: "",
+    dryRunAvailable: false,
+    dryRunCapability: null,
   };
   (function applyInitialPanelCollapseConfig() {
     var collapsed = normalizedCollapsedSectionSet();
@@ -243,6 +246,7 @@
     parserFormatMeta: document.getElementById("parser-format-meta"),
     addPluginPanel: document.getElementById("add-plugin-panel"),
     pluginsPanel: document.getElementById("plugins-panel"),
+    dryRunBtn: document.getElementById("dry-run-btn"),
     validateBtn: document.getElementById("validate-btn"),
     renderBtn: document.getElementById("render-btn"),
     statusPanel: document.getElementById("status-panel"),
@@ -558,6 +562,71 @@
     }
   }
 
+  function updateDryRunButtonVisibility() {
+    if (!el.dryRunBtn) {
+      return;
+    }
+    var show = Boolean(state.dryRunAvailable && state.doc && state.selectedVersion);
+    el.dryRunBtn.classList.toggle("hidden", !show);
+    if (!show) {
+      el.dryRunBtn.title = "";
+      return;
+    }
+    var capability = state.dryRunCapability || {};
+    if (capability.version_mismatch && capability.used_agent_version) {
+      el.dryRunBtn.title =
+        "Dry run uses configured validator version " + capability.used_agent_version + ".";
+    } else {
+      el.dryRunBtn.title = "Run external agent dry-run validation.";
+    }
+  }
+
+  function loadDryRunAvailability() {
+    if (!el.dryRunBtn) {
+      return Promise.resolve(null);
+    }
+    var selectedVersion = String((state.doc && state.doc.version) || state.selectedVersion || "").trim();
+    if (!selectedVersion) {
+      state.dryRunAvailable = false;
+      state.dryRunCapability = null;
+      updateDryRunButtonVisibility();
+      return Promise.resolve(null);
+    }
+    var requestSerial = dryRunAvailabilityRequestSerial + 1;
+    dryRunAvailabilityRequestSerial = requestSerial;
+    el.dryRunBtn.disabled = true;
+    return fetchJson(
+      API_BASE +
+        "/agent-validation/availability/" +
+        encodeURIComponent(selectedVersion) +
+        currentApiQuery()
+    )
+      .then(function (payload) {
+        if (requestSerial !== dryRunAvailabilityRequestSerial) {
+          return payload;
+        }
+        state.dryRunCapability = payload || {};
+        state.dryRunAvailable = Boolean(payload && payload.available);
+        updateDryRunButtonVisibility();
+        return payload;
+      })
+      .catch(function (err) {
+        if (requestSerial !== dryRunAvailabilityRequestSerial) {
+          return null;
+        }
+        state.dryRunAvailable = false;
+        state.dryRunCapability = { available: false, reason: String(err) };
+        updateDryRunButtonVisibility();
+        return null;
+      })
+      .finally(function () {
+        if (requestSerial !== dryRunAvailabilityRequestSerial || !el.dryRunBtn) {
+          return;
+        }
+        el.dryRunBtn.disabled = isReadOnlyMode() || !state.dryRunAvailable;
+      });
+  }
+
   function updateReadOnlyState() {
     var readOnly = isReadOnlyMode();
     el.newConfig.disabled = readOnly;
@@ -623,6 +692,7 @@
         }
         var allowAction = node.id === "validation-toggle" ||
           node.id === "yaml-toggle" ||
+          node.id === "dry-run-btn" ||
           node.id === "validate-btn" ||
           node.id === "render-btn" ||
           node.id === "reload-ui";
@@ -636,6 +706,9 @@
         node.disabled = readOnly;
       }
     );
+    if (el.dryRunBtn) {
+      el.dryRunBtn.disabled = readOnly || !state.dryRunAvailable;
+    }
   }
 
   function normalizeIssuePath(path) {
@@ -1211,10 +1284,12 @@
 
       repopulateVersions();
       updateFluentdSectionVisibility();
-      return {
-        versions: versions,
-        defaultVersion: data.default || "",
-      };
+      return loadDryRunAvailability().then(function () {
+        return {
+          versions: versions,
+          defaultVersion: data.default || "",
+        };
+      });
     });
   }
 
@@ -3247,6 +3322,9 @@ function renderPlugins() {
         .then(function () {
           return loadParserOptions(state.selectedVersion);
         })
+        .then(function () {
+          return loadDryRunAvailability();
+        })
         .catch(function (err) {
           setValidationText(String(err));
         });
@@ -3672,6 +3750,66 @@ function renderPlugins() {
           setValidationText(String(err));
         });
     });
+
+    if (el.dryRunBtn) {
+      el.dryRunBtn.addEventListener("click", function () {
+        if (!state.doc) {
+          return;
+        }
+        var dryRunPayload = {
+          config: state.doc.config,
+          annotations: state.doc.annotations || {},
+          included_documents: Array.isArray(state.includedDocuments) ? state.includedDocuments : [],
+          merge_includes_for_validation: Boolean(state.mergeIncludesForValidation),
+          profile: "strict",
+        };
+        fetchJson(
+          API_BASE + "/agent-validation/dry-run/" + encodeURIComponent(state.doc.version) + currentApiQuery(),
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(dryRunPayload),
+          }
+        )
+          .then(function (result) {
+            var messages = Array.isArray(result && result.messages) ? result.messages : [];
+            if (result && result.ok) {
+              renderValidationState({ ok: true, errors: [] });
+              var summary = messages.length > 0 ? " " + messages.join(" | ") : "";
+              setStatusMessage("Dry run completed successfully." + summary);
+              return;
+            }
+            var issues = messages.map(function (message, index) {
+              return {
+                order: index + 1,
+                code: "dry_run_validation_error",
+                path: "$",
+                message: String(message),
+                severity: "error",
+                source: "external_agent",
+              };
+            });
+            if (issues.length === 0) {
+              issues = [
+                {
+                  order: 1,
+                  code: "dry_run_validation_error",
+                  path: "$",
+                  message: String((result && result.error) || "Dry run validation failed."),
+                  severity: "error",
+                  source: "external_agent",
+                },
+              ];
+            }
+            renderValidationState({ ok: false, errors: issues });
+            setStatusMessage("Dry run reported validation issues.");
+          })
+          .catch(function (err) {
+            setValidationText(String(err));
+            setStatusMessage("Dry run validation failed to execute.");
+          });
+      });
+    }
 
     el.renderBtn.addEventListener("click", function () {
       if (!state.doc) {
