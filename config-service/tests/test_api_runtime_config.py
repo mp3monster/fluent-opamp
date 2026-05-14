@@ -29,8 +29,10 @@ from config_service.runtime_config import (
     resolve_read_only,
     resolve_ui_base_css_path,
     resolve_ui_collapsed_sections,
+    resolve_validation_agent_entries,
     resolve_web_port,
 )
+
 
 def test_resolve_web_port_precedence(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     config_path = tmp_path / "opamp.json"
@@ -123,6 +125,47 @@ def test_resolve_ui_collapsed_sections_defaults_to_empty_when_missing(tmp_path: 
     )
     monkeypatch.setenv(ENV_CONFIG_TOOL_CONFIG_PATH, str(config_path))
     assert resolve_ui_collapsed_sections() == []
+
+def test_resolve_validation_agent_entries_from_config_tool(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    config_path = tmp_path / "config-service.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "config-tool": {
+                    "agent_validation": {
+                        "entries": [
+                            {
+                                "agent_type": "fluentbit",
+                                "agent_version": "5.0.4",
+                                "command_path": "fluent-bit",
+                                "command_args": ["--dry-run", "-c", "{config_path}"],
+                            }
+                        ]
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv(ENV_CONFIG_TOOL_CONFIG_PATH, str(config_path))
+    entries = resolve_validation_agent_entries()
+    assert len(entries) == 1
+    assert entries[0]["agent_type"] == "fluentbit"
+    assert entries[0]["agent_version"] == "5.0.4"
+
+
+def test_resolve_validation_agent_entries_defaults_to_empty(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    config_path = tmp_path / "config-service.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "config-tool": {"read_only": False},
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv(ENV_CONFIG_TOOL_CONFIG_PATH, str(config_path))
+    assert resolve_validation_agent_entries() == []
 
 def test_create_app_applies_resolved_log_level(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     config_path = tmp_path / "config-service.json"

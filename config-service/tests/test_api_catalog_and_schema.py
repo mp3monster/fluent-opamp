@@ -102,7 +102,8 @@ async def test_health_and_versions() -> None:
     assert "/config-service/ui/assets/config_ui_env.js" in ui_html
     assert "/config-service/ui/assets/config_ui.js" in ui_html
     assert 'id="validation-include-toggle"' in ui_html
-    assert "Include loaded files" in ui_html
+    assert 'id="dry-run-btn"' in ui_html
+    assert "Use Included files" in ui_html
     assert 'id="env-panel"' in ui_html
     assert "Environment Variables" in ui_html
     assert 'id="metadata-env-panel"' in ui_html
@@ -295,4 +296,3 @@ async def test_schema_endpoint_rejects_invalid_payload() -> None:
     body = await resp.get_json()
     assert body["ok"] is False
     assert isinstance(body["error"], list)
-
