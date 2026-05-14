@@ -13,6 +13,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import subprocess
 import tempfile
@@ -32,6 +33,37 @@ from config_service.agent_validation.exceptions import (
 )
 from config_service.agent_validation.models import ValidationAgentEntry
 from config_service.runtime_config import resolve_validation_agent_entries
+
+CFG_KEY_AGENT_TYPE = "agent_type"
+CFG_KEY_AGENT_VERSION = "agent_version"
+CFG_KEY_COMMAND_PATH = "command_path"
+CFG_KEY_COMMAND_ARGS = "command_args"
+CFG_KEY_SUCCESS_EXIT_CODES = "success_exit_codes"
+CFG_KEY_ENVIRONMENT = "environment"
+CFG_KEY_ADAPTER = "adapter"
+CFG_KEY_SEND_CONFIG_VIA_STDIN = "send_config_via_stdin"
+CFG_KEY_WORKING_DIRECTORY = "working_directory"
+CFG_KEY_DRY_RUN_VALIDATION_ENABLED = "dry_run_validation_enabled"
+
+KEY_MESSAGES = "messages"
+KEY_OK = "ok"
+KEY_AVAILABLE = "available"
+KEY_REASON = "reason"
+KEY_AGENT_TYPE = "agent_type"
+KEY_REQUESTED_AGENT_VERSION = "requested_agent_version"
+KEY_USED_AGENT_VERSION = "used_agent_version"
+KEY_VERSION_MISMATCH = "version_mismatch"
+KEY_COMMAND = "command"
+KEY_EXIT_CODE = "exit_code"
+KEY_STDOUT = "stdout"
+KEY_STDERR = "stderr"
+KEY_INTERPRETER_PAYLOAD = "interpreter_payload"
+
+AGENT_TYPE_FLUENTBIT = "fluentbit"
+AGENT_TYPE_FLUENTD = "fluentd"
+ADAPTER_KEY_GENERIC = "generic"
+
+LOGGER = logging.getLogger(__name__)
 
 
 def _normalize_text(value: Any) -> str:
@@ -68,24 +100,24 @@ class ValidationAgentRegistry:
             if not isinstance(item, dict):
                 raise AgentConfigError(f"validation_agents[{index}] must be an object.")
 
-            agent_type = _normalize_text(item.get("agent_type"))
-            command_path = _normalize_text(item.get("command_path"))
+            agent_type = _normalize_text(item.get(CFG_KEY_AGENT_TYPE))
+            command_path = _normalize_text(item.get(CFG_KEY_COMMAND_PATH))
             if not agent_type:
-                raise AgentConfigError(f"validation_agents[{index}].agent_type is required.")
+                raise AgentConfigError(f"validation_agents[{index}].{CFG_KEY_AGENT_TYPE} is required.")
             if not command_path:
-                raise AgentConfigError(f"validation_agents[{index}].command_path is required.")
+                raise AgentConfigError(f"validation_agents[{index}].{CFG_KEY_COMMAND_PATH} is required.")
 
-            raw_args = item.get("command_args", [])
+            raw_args = item.get(CFG_KEY_COMMAND_ARGS, [])
             if isinstance(raw_args, str):
                 command_args = [_normalize_text(raw_args)] if _normalize_text(raw_args) else []
             elif isinstance(raw_args, list):
                 command_args = [_normalize_text(arg) for arg in raw_args if _normalize_text(arg)]
             else:
                 raise AgentConfigError(
-                    f"validation_agents[{index}].command_args must be a string or array of strings."
+                    f"validation_agents[{index}].{CFG_KEY_COMMAND_ARGS} must be a string or array of strings."
                 )
 
-            raw_codes = item.get("success_exit_codes", [0])
+            raw_codes = item.get(CFG_KEY_SUCCESS_EXIT_CODES, [0])
             if isinstance(raw_codes, list):
                 success_exit_codes: list[int] = []
                 for code in raw_codes:
@@ -93,37 +125,37 @@ class ValidationAgentRegistry:
                         success_exit_codes.append(int(code))
                     except (TypeError, ValueError) as exc:
                         raise AgentConfigError(
-                            f"validation_agents[{index}].success_exit_codes has invalid value: {code!r}"
+                            f"validation_agents[{index}].{CFG_KEY_SUCCESS_EXIT_CODES} has invalid value: {code!r}"
                         ) from exc
                 if not success_exit_codes:
                     success_exit_codes = [0]
             else:
                 raise AgentConfigError(
-                    f"validation_agents[{index}].success_exit_codes must be an array of integers."
+                    f"validation_agents[{index}].{CFG_KEY_SUCCESS_EXIT_CODES} must be an array of integers."
                 )
 
-            raw_env = item.get("environment", {})
+            raw_env = item.get(CFG_KEY_ENVIRONMENT, {})
             if raw_env is None:
                 raw_env = {}
             if not isinstance(raw_env, dict):
                 raise AgentConfigError(
-                    f"validation_agents[{index}].environment must be an object map."
+                    f"validation_agents[{index}].{CFG_KEY_ENVIRONMENT} must be an object map."
                 )
             environment = {_normalize_text(key): _normalize_text(value) for key, value in raw_env.items()}
             environment = {key: value for key, value in environment.items() if key}
 
             entry = ValidationAgentEntry(
                 agent_type=agent_type,
-                agent_version=_normalize_text(item.get("agent_version")) or None,
+                agent_version=_normalize_text(item.get(CFG_KEY_AGENT_VERSION)) or None,
                 command_path=command_path,
                 command_args=command_args,
-                adapter=_normalize_text(item.get("adapter")) or None,
-                send_config_via_stdin=_coerce_bool(item.get("send_config_via_stdin"), False),
+                adapter=_normalize_text(item.get(CFG_KEY_ADAPTER)) or None,
+                send_config_via_stdin=_coerce_bool(item.get(CFG_KEY_SEND_CONFIG_VIA_STDIN), False),
                 environment=environment,
-                working_directory=_normalize_text(item.get("working_directory")) or None,
+                working_directory=_normalize_text(item.get(CFG_KEY_WORKING_DIRECTORY)) or None,
                 success_exit_codes=success_exit_codes,
                 dry_run_validation_enabled=_coerce_bool(
-                    item.get("dry_run_validation_enabled"),
+                    item.get(CFG_KEY_DRY_RUN_VALIDATION_ENABLED),
                     True,
                 ),
             )
@@ -189,9 +221,9 @@ class ExternalAgentValidationService:
     ) -> None:
         self._registry = registry
         self._adapters = adapters or {
-            "fluentbit": FluentBitValidationAdapter(),
-            "fluentd": FluentdValidationAdapter(),
-            "generic": TemplateCommandAdapter(),
+            AGENT_TYPE_FLUENTBIT: FluentBitValidationAdapter(),
+            AGENT_TYPE_FLUENTD: FluentdValidationAdapter(),
+            ADAPTER_KEY_GENERIC: TemplateCommandAdapter(),
         }
 
     @classmethod
@@ -204,17 +236,17 @@ class ExternalAgentValidationService:
             return self._adapters[adapter_key]
         if entry.normalized_agent_type in self._adapters:
             return self._adapters[entry.normalized_agent_type]
-        if "generic" in self._adapters:
-            return self._adapters["generic"]
+        if ADAPTER_KEY_GENERIC in self._adapters:
+            return self._adapters[ADAPTER_KEY_GENERIC]
         raise AgentAdapterNotSupportedError(
             f"No adapter registered for '{entry.adapter_key}' / '{entry.normalized_agent_type}'."
         )
 
     def _default_suffix_for_type(self, agent_type: str) -> str:
         normalized = _normalize_text(agent_type).lower()
-        if normalized == "fluentbit":
+        if normalized == AGENT_TYPE_FLUENTBIT:
             return ".yaml"
-        if normalized == "fluentd":
+        if normalized == AGENT_TYPE_FLUENTD:
             return ".conf"
         return ".txt"
 
@@ -255,6 +287,14 @@ class ExternalAgentValidationService:
                 config_path=selected_path,
                 entry=entry,
             )
+            if require_dry_run_enabled:
+                LOGGER.info(
+                    "Dry-run validation command prepared: agent_type=%s requested_version=%s used_version=%s command=%s",
+                    entry.agent_type,
+                    agent_version,
+                    entry.agent_version,
+                    command,
+                )
             process = subprocess.run(
                 command,
                 shell=True,
@@ -269,27 +309,37 @@ class ExternalAgentValidationService:
                 value for value in [process.stdout.strip(), process.stderr.strip()] if value
             )
             interpreted = adapter.interpret_result(result_text)
-            messages = interpreted.get("messages", [])
+            messages = interpreted.get(KEY_MESSAGES, [])
             if not isinstance(messages, list):
                 messages = [str(messages)]
-            interpreted_ok = interpreted.get("ok")
+            interpreted_ok = interpreted.get(KEY_OK)
             success = process.returncode in entry.success_exit_codes
             if isinstance(interpreted_ok, bool):
                 success = success and interpreted_ok
+            if require_dry_run_enabled:
+                LOGGER.info(
+                    "Dry-run validation result: ok=%s exit_code=%s agent_type=%s requested_version=%s used_version=%s messages=%s",
+                    success,
+                    process.returncode,
+                    entry.agent_type,
+                    agent_version,
+                    entry.agent_version,
+                    messages,
+                )
 
             return {
-                "ok": success,
-                "messages": [str(message) for message in messages],
-                "agent_type": entry.agent_type,
-                "requested_agent_version": agent_version,
-                "used_agent_version": entry.agent_version,
-                "version_mismatch": bool(agent_version) and not version_match,
-                "command": command,
-                "exit_code": process.returncode,
-                "stdout": process.stdout,
-                "stderr": process.stderr,
-                "interpreter_payload": {
-                    key: value for key, value in interpreted.items() if key not in {"messages", "ok"}
+                KEY_OK: success,
+                KEY_MESSAGES: [str(message) for message in messages],
+                KEY_AGENT_TYPE: entry.agent_type,
+                KEY_REQUESTED_AGENT_VERSION: agent_version,
+                KEY_USED_AGENT_VERSION: entry.agent_version,
+                KEY_VERSION_MISMATCH: bool(agent_version) and not version_match,
+                KEY_COMMAND: command,
+                KEY_EXIT_CODE: process.returncode,
+                KEY_STDOUT: process.stdout,
+                KEY_STDERR: process.stderr,
+                KEY_INTERPRETER_PAYLOAD: {
+                    key: value for key, value in interpreted.items() if key not in {KEY_MESSAGES, KEY_OK}
                 },
             }
         finally:
@@ -305,13 +355,13 @@ class ExternalAgentValidationService:
             )
         except AgentNotSupportedError as exc:
             return {
-                "available": False,
-                "reason": str(exc),
+                KEY_AVAILABLE: False,
+                KEY_REASON: str(exc),
             }
         return {
-            "available": True,
-            "agent_type": entry.agent_type,
-            "requested_agent_version": agent_version,
-            "used_agent_version": entry.agent_version,
-            "version_mismatch": bool(agent_version) and not version_match,
+            KEY_AVAILABLE: True,
+            KEY_AGENT_TYPE: entry.agent_type,
+            KEY_REQUESTED_AGENT_VERSION: agent_version,
+            KEY_USED_AGENT_VERSION: entry.agent_version,
+            KEY_VERSION_MISMATCH: bool(agent_version) and not version_match,
         }

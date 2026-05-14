@@ -48,6 +48,32 @@ from config_service.services.ui_document_service import UiDocumentService
 from config_service.services.validation_service import ValidationService
 from config_service.services.yaml_render_service import YamlRenderService
 
+APP_CONFIG_KEY_MODE = "CONFIG_SERVICE_MODE"
+APP_CONFIG_KEY_READ_ONLY = "CONFIG_SERVICE_READ_ONLY"
+
+EXT_CATALOG_SERVICE = "catalog_service"
+EXT_RULES_REGISTRY_SERVICE = "rules_registry_service"
+EXT_RULE_ENGINE_SERVICE = "rule_engine_service"
+EXT_SERVICE_DEFINITION_SERVICE = "service_definition_service"
+EXT_PARSER_DEFINITION_SERVICE = "parser_definition_service"
+EXT_ISSUE_CODE_SERVICE = "issue_code_service"
+EXT_SCHEMA_SERVICE = "schema_service"
+EXT_VALIDATION_SERVICE = "validation_service"
+EXT_YAML_RENDER_SERVICE = "yaml_render_service"
+EXT_UI_DOCUMENT_SERVICE = "ui_document_service"
+EXT_FLUENTBIT_YAML_CONFIG_SERVICE = "fluentbit_yaml_config_service"
+EXT_FLUENTD_CONFIG_SERVICE = "fluentd_config_service"
+EXT_INCLUDE_DOCUMENT_SERVICE = "include_document_service"
+EXT_EXTERNAL_AGENT_VALIDATION_SERVICE = "external_agent_validation_service"
+
+HEADER_AUTHORIZATION = "Authorization"
+HEADER_WWW_AUTHENTICATE = "WWW-Authenticate"
+HEADER_CACHE_CONTROL = "Cache-Control"
+HEADER_PRAGMA = "Pragma"
+HEADER_EXPIRES = "Expires"
+
+ENV_APP_ENABLE_DEV_FEATURES = "APP_ENABLE_DEV_FEATURES"
+CONFIG_SERVICE_DOCS_URL = "https://github.com/mp3monster/fluent-opamp/tree/main/config-service/docs"
 CONFIG_SERVICE_UI_CSS_OVERRIDE_PATH_ENV = "CONFIG_SERVICE_UI_CSS_OVERRIDE_PATH"
 CONFIG_SERVICE_UI_CSS_OVERRIDES_ENV = "CONFIG_SERVICE_UI_CSS_OVERRIDES"
 CONFIG_SERVICE_UI_CSS_OVERRIDES_KEY = "CONFIG_SERVICE_UI_CSS_OVERRIDES"
@@ -87,15 +113,15 @@ def _resolve_css_overrides(app: Quart) -> list[str]:
 
 
 def _app_enable_dev_features_enabled() -> bool:
-    raw_value = os.environ.get("APP_ENABLE_DEV_FEATURES", "")
+    raw_value = os.environ.get(ENV_APP_ENABLE_DEV_FEATURES, "")
     normalized = str(raw_value or "").strip().lower()
     return normalized in _ENV_TRUE_VALUES
 
 
 def _apply_no_cache_headers(response: Response) -> Response:
-    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
+    response.headers[HEADER_CACHE_CONTROL] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers[HEADER_PRAGMA] = "no-cache"
+    response.headers[HEADER_EXPIRES] = "0"
     return response
 
 
@@ -125,8 +151,8 @@ def _configure_logging() -> None:
 def create_app(*, mode: str = "standalone") -> Quart:
     _configure_logging()
     app = Quart(__name__)
-    app.config["CONFIG_SERVICE_MODE"] = mode
-    app.config["CONFIG_SERVICE_READ_ONLY"] = resolve_read_only()
+    app.config[APP_CONFIG_KEY_MODE] = mode
+    app.config[APP_CONFIG_KEY_READ_ONLY] = resolve_read_only()
     app.logger.setLevel(getattr(logging, resolve_log_level_name(), logging.INFO))
 
     repo_root = _config_service_root()
@@ -161,20 +187,20 @@ def create_app(*, mode: str = "standalone") -> Quart:
     )
     external_agent_validation_service = ExternalAgentValidationService.from_runtime_config()
 
-    app.extensions["catalog_service"] = catalog_service
-    app.extensions["rules_registry_service"] = rules_registry_service
-    app.extensions["rule_engine_service"] = rule_engine_service
-    app.extensions["service_definition_service"] = service_definition_service
-    app.extensions["parser_definition_service"] = parser_definition_service
-    app.extensions["issue_code_service"] = issue_code_service
-    app.extensions["schema_service"] = SchemaService()
-    app.extensions["validation_service"] = validation_service
-    app.extensions["yaml_render_service"] = YamlRenderService()
-    app.extensions["ui_document_service"] = UiDocumentService()
-    app.extensions["fluentbit_yaml_config_service"] = fluentbit_yaml_config_service
-    app.extensions["fluentd_config_service"] = fluentd_config_service
-    app.extensions["include_document_service"] = include_document_service
-    app.extensions["external_agent_validation_service"] = external_agent_validation_service
+    app.extensions[EXT_CATALOG_SERVICE] = catalog_service
+    app.extensions[EXT_RULES_REGISTRY_SERVICE] = rules_registry_service
+    app.extensions[EXT_RULE_ENGINE_SERVICE] = rule_engine_service
+    app.extensions[EXT_SERVICE_DEFINITION_SERVICE] = service_definition_service
+    app.extensions[EXT_PARSER_DEFINITION_SERVICE] = parser_definition_service
+    app.extensions[EXT_ISSUE_CODE_SERVICE] = issue_code_service
+    app.extensions[EXT_SCHEMA_SERVICE] = SchemaService()
+    app.extensions[EXT_VALIDATION_SERVICE] = validation_service
+    app.extensions[EXT_YAML_RENDER_SERVICE] = YamlRenderService()
+    app.extensions[EXT_UI_DOCUMENT_SERVICE] = UiDocumentService()
+    app.extensions[EXT_FLUENTBIT_YAML_CONFIG_SERVICE] = fluentbit_yaml_config_service
+    app.extensions[EXT_FLUENTD_CONFIG_SERVICE] = fluentd_config_service
+    app.extensions[EXT_INCLUDE_DOCUMENT_SERVICE] = include_document_service
+    app.extensions[EXT_EXTERNAL_AGENT_VALIDATION_SERVICE] = external_agent_validation_service
 
     if mode == "standalone":
         @app.before_request
@@ -182,14 +208,14 @@ def create_app(*, mode: str = "standalone") -> Quart:
             result = evaluate_ui_http_auth(
                 path=request.path,
                 method=request.method,
-                authorization_header=request.headers.get("Authorization"),
+                authorization_header=request.headers.get(HEADER_AUTHORIZATION),
                 remote_addr=request.remote_addr,
             )
             if result.allowed:
                 return None
             response = jsonify({"error": result.error})
             if result.www_authenticate:
-                response.headers["WWW-Authenticate"] = result.www_authenticate
+                response.headers[HEADER_WWW_AUTHENTICATE] = result.www_authenticate
             return response, result.status_code
 
     html_dir = Path(__file__).resolve().with_name("html")
@@ -270,7 +296,10 @@ def create_app(*, mode: str = "standalone") -> Quart:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Config Service standalone server")
+    parser = argparse.ArgumentParser(
+        description="Config Service standalone server",
+        epilog=f"Documentation: {CONFIG_SERVICE_DOCS_URL}",
+    )
     parser.add_argument("--config-path", type=str, help="Path to config-service JSON configuration file")
     parser.add_argument("--host", type=str, default="0.0.0.0", help="Bind address")
     parser.add_argument("--port", type=int, help="Override listen port")

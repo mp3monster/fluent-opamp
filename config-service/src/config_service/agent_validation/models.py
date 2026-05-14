@@ -18,6 +18,12 @@ from dataclasses import dataclass, field
 
 @dataclass(frozen=True)
 class ValidationAgentEntry:
+    """Immutable runtime model for one external agent validation configuration.
+
+    Each instance maps one configured validator command (plus optional version
+    targeting) that `ExternalAgentValidationService` can resolve and execute.
+    """
+
     agent_type: str
     command_path: str
     command_args: list[str] = field(default_factory=list)
