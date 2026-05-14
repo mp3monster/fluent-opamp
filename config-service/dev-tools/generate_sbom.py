@@ -11,16 +11,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Generate a CycloneDX-style SBOM for the standalone config-service package."""
+"""Generate a CycloneDX SBOM for the standalone config-service package."""
 
 from __future__ import annotations
 
 import argparse
-import datetime as dt
-import importlib.metadata as metadata
 import json
-import re
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -31,81 +30,118 @@ if str(ROOT) not in sys.path:
 DEFAULT_OUTPUT = ROOT / "sbom" / "config-service-sbom.cdx.json"
 
 
-def _requirement_name(requirement: str) -> str:
-    return re.split(r"[<>=!~;\\[]", requirement, maxsplit=1)[0].strip()
+def _run(cmd: list[str]) -> None:
+    print(f"+ {' '.join(cmd)}")
+    subprocess.run(cmd, cwd=str(ROOT), check=True)
 
 
-def _distribution_metadata(name: str) -> tuple[str, dict[str, Any]]:
-    try:
-        dist = metadata.distribution(name)
-    except metadata.PackageNotFoundError:
-        return ("unknown", {"license": "unknown"})
-
-    meta = dist.metadata
-    license_value = meta.get("License") or "unknown"
-    return (
-        dist.version,
-        {
-            "license": license_value,
-            "summary": meta.get("Summary") or "",
-            "homepage": meta.get("Home-page") or meta.get("Project-URL") or "",
-        },
+def _ensure_python_package(package_name: str) -> None:
+    probe = subprocess.run(
+        [sys.executable, "-m", "pip", "show", package_name],
+        cwd=str(ROOT),
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        check=False,
     )
+    if probe.returncode == 0:
+        return
+    print(f"Python package `{package_name}` not found; installing it now...")
+    _run([sys.executable, "-m", "pip", "install", package_name])
 
 
-def _component(name: str, version: str, *, component_type: str = "library", extra: dict[str, Any] | None = None) -> dict[str, Any]:
-    component = {
-        "type": component_type,
-        "name": name,
-        "version": version,
-        "bom-ref": f"pkg:pypi/{name}@{version}",
-        "purl": f"pkg:pypi/{name}@{version}",
-    }
-    if extra:
-        license_name = extra.get("license")
-        if license_name:
-            component["licenses"] = [{"license": {"name": str(license_name)}}]
-        description = extra.get("summary")
-        if description:
-            component["description"] = str(description)
-        homepage = extra.get("homepage")
-        if homepage:
-            component["externalReferences"] = [{"type": "website", "url": str(homepage)}]
-    return component
+def _normalize_component_refs(sbom: dict[str, Any]) -> list[str]:
+    components = sbom.get("components")
+    if not isinstance(components, list):
+        sbom["components"] = []
+        return []
+
+    dep_refs: list[str] = []
+    for component in components:
+        if not isinstance(component, dict):
+            continue
+        purl = str(component.get("purl") or "").strip()
+        if purl.startswith("pkg:pypi/"):
+            component["bom-ref"] = purl
+            dep_refs.append(purl)
+    return sorted(set(dep_refs))
+
+
+def _build_with_cyclonedx() -> dict[str, Any]:
+    from build_config import INSTALL_REQUIRES
+
+    with tempfile.TemporaryDirectory(prefix="config-service-sbom-") as temp_dir:
+        temp_root = Path(temp_dir)
+        requirements_path = temp_root / "requirements.txt"
+        requirements_path.write_text(
+            "".join(f"{requirement}\n" for requirement in INSTALL_REQUIRES),
+            encoding="utf-8",
+        )
+        intermediate_output = temp_root / "sbom.json"
+        _run(
+            [
+                sys.executable,
+                "-m",
+                "cyclonedx_py",
+                "requirements",
+                str(requirements_path),
+                "--output-format",
+                "JSON",
+                "--spec-version",
+                "1.6",
+                "--output-file",
+                str(intermediate_output),
+            ]
+        )
+        return json.loads(intermediate_output.read_text(encoding="utf-8"))
 
 
 def build_sbom() -> dict[str, Any]:
-    from build_config import INSTALL_REQUIRES, PACKAGE_NAME, PACKAGE_VERSION
+    from build_config import PACKAGE_NAME, PACKAGE_VERSION
 
-    components = [
-        _component(PACKAGE_NAME, PACKAGE_VERSION, component_type="application", extra={"license": "Apache-2.0"})
-    ]
+    sbom = _build_with_cyclonedx()
+    dependency_refs = _normalize_component_refs(sbom)
 
-    dependency_refs = []
-    for requirement in INSTALL_REQUIRES:
-        name = _requirement_name(requirement)
-        version, extra = _distribution_metadata(name)
-        components.append(_component(name, version, extra=extra))
-        dependency_refs.append(f"pkg:pypi/{name}@{version}")
-
-    return {
-        "bomFormat": "CycloneDX",
-        "specVersion": "1.5",
-        "serialNumber": f"urn:uuid:{PACKAGE_NAME}-{PACKAGE_VERSION}",
-        "version": 1,
-        "metadata": {
-            "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
-            "component": _component(PACKAGE_NAME, PACKAGE_VERSION, component_type="application", extra={"license": "Apache-2.0"}),
-            "tools": [{"vendor": "OpenAI Codex", "name": "generate_sbom.py"}],
-        },
-        "components": components,
-        "dependencies": [
-            {
-                "ref": f"pkg:pypi/{PACKAGE_NAME}@{PACKAGE_VERSION}",
-                "dependsOn": dependency_refs,
-            }
-        ],
+    root_ref = f"pkg:pypi/{PACKAGE_NAME}@{PACKAGE_VERSION}"
+    root_component = {
+        "type": "application",
+        "name": PACKAGE_NAME,
+        "version": PACKAGE_VERSION,
+        "bom-ref": root_ref,
+        "purl": root_ref,
+        "licenses": [{"license": {"id": "Apache-2.0"}}],
     }
+
+    metadata = sbom.get("metadata")
+    if not isinstance(metadata, dict):
+        metadata = {}
+    metadata["component"] = root_component
+    sbom["metadata"] = metadata
+
+    components = sbom.get("components")
+    if not isinstance(components, list):
+        components = []
+    components = [component for component in components if isinstance(component, dict)]
+    components = [root_component] + [
+        component
+        for component in components
+        if str(component.get("bom-ref") or "").strip() != root_ref
+    ]
+    sbom["components"] = components
+
+    dependencies = sbom.get("dependencies")
+    if not isinstance(dependencies, list):
+        dependencies = []
+    dependencies = [entry for entry in dependencies if isinstance(entry, dict)]
+    dependencies = [entry for entry in dependencies if str(entry.get("ref") or "").strip() != root_ref]
+    dependencies.insert(
+        0,
+        {
+            "ref": root_ref,
+            "dependsOn": dependency_refs,
+        },
+    )
+    sbom["dependencies"] = dependencies
+    return sbom
 
 
 def main() -> None:
@@ -113,6 +149,7 @@ def main() -> None:
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT, help="Output SBOM path")
     args = parser.parse_args()
 
+    _ensure_python_package("cyclonedx-bom")
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(build_sbom(), indent=2) + "\n", encoding="utf-8")
 

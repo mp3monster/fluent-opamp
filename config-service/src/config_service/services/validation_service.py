@@ -45,6 +45,12 @@ KEY_WORKERS = "workers"
 KEY_SIGNALS = "signals"
 KEY_CONDITION = "condition"
 KEY_DIRECTIVE_ARGUMENT = "directive_argument"
+ISSUE_KEY_ORDER = "order"
+ISSUE_KEY_CODE = "code"
+ISSUE_KEY_PATH = "path"
+ISSUE_KEY_MESSAGE = "message"
+ISSUE_KEY_SEVERITY = "severity"
+ISSUE_KEY_SOURCE = "source"
 
 
 class ValidationService:
@@ -82,11 +88,11 @@ class ValidationService:
                 "errors": self._normalize_errors(
                     [
                         {
-                            "code": "invalid_payload",
-                            "path": "$.config",
-                            "message": "Payload must include object 'config'.",
-                            "severity": "error",
-                            "source": "schema",
+                            ISSUE_KEY_CODE: "invalid_payload",
+                            ISSUE_KEY_PATH: "$.config",
+                            ISSUE_KEY_MESSAGE: "Payload must include object 'config'.",
+                            ISSUE_KEY_SEVERITY: "error",
+                            ISSUE_KEY_SOURCE: "schema",
                         }
                     ]
                 ),
@@ -108,7 +114,7 @@ class ValidationService:
             profile=profile,
         )
         errors = self._normalize_errors(semantic_issues + rule_issues)
-        has_error = any(str(item.get("severity") or "error").lower() == "error" for item in errors)
+        has_error = any(str(item.get(ISSUE_KEY_SEVERITY) or "error").lower() == "error" for item in errors)
         return {"ok": not has_error, "errors": errors}
 
     def _normalize_errors(self, issues: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -116,12 +122,12 @@ class ValidationService:
         normalized: list[dict[str, Any]] = []
         for index, issue in enumerate(issues, start=1):
             item = dict(issue)
-            item["order"] = index
-            item["code"] = str(item.get("code") or "unknown_issue")
-            item["message"] = str(item.get("message") or "Validation issue")
-            item["path"] = str(item.get("path") or "$")
-            item["severity"] = str(item.get("severity") or "error")
-            item["source"] = str(item.get("source") or "validation")
+            item[ISSUE_KEY_ORDER] = index
+            item[ISSUE_KEY_CODE] = str(item.get(ISSUE_KEY_CODE) or "unknown_issue")
+            item[ISSUE_KEY_MESSAGE] = str(item.get(ISSUE_KEY_MESSAGE) or "Validation issue")
+            item[ISSUE_KEY_PATH] = str(item.get(ISSUE_KEY_PATH) or "$")
+            item[ISSUE_KEY_SEVERITY] = str(item.get(ISSUE_KEY_SEVERITY) or "error")
+            item[ISSUE_KEY_SOURCE] = str(item.get(ISSUE_KEY_SOURCE) or "validation")
             normalized.append(item)
         return normalized
 
@@ -148,11 +154,11 @@ class ValidationService:
         if not isinstance(pipeline, dict):
             issues.append(
                 {
-                    "code": "missing_pipeline",
-                    "path": "$.config.pipeline",
-                    "message": "config.pipeline must be an object.",
-                    "severity": "error",
-                    "source": "schema",
+                    ISSUE_KEY_CODE: "missing_pipeline",
+                    ISSUE_KEY_PATH: "$.config.pipeline",
+                    ISSUE_KEY_MESSAGE: "config.pipeline must be an object.",
+                    ISSUE_KEY_SEVERITY: "error",
+                    ISSUE_KEY_SOURCE: "schema",
                 }
             )
             return issues
@@ -196,11 +202,11 @@ class ValidationService:
         if not isinstance(upstream_payload, list):
             return [
                 {
-                    "code": "invalid_section_type",
-                    "path": "$.config.upstream_servers",
-                    "message": "upstream_servers must be an array.",
-                    "severity": "error",
-                    "source": "schema",
+                    ISSUE_KEY_CODE: "invalid_section_type",
+                    ISSUE_KEY_PATH: "$.config.upstream_servers",
+                    ISSUE_KEY_MESSAGE: "upstream_servers must be an array.",
+                    ISSUE_KEY_SEVERITY: "error",
+                    ISSUE_KEY_SOURCE: "schema",
                 }
             ]
 
@@ -210,11 +216,11 @@ class ValidationService:
             if not isinstance(group_item, dict):
                 issues.append(
                     {
-                        "code": "invalid_plugin_item",
-                        "path": group_path,
-                        "message": "Upstream server group must be an object.",
-                        "severity": "error",
-                        "source": "schema",
+                        ISSUE_KEY_CODE: "invalid_plugin_item",
+                        ISSUE_KEY_PATH: group_path,
+                        ISSUE_KEY_MESSAGE: "Upstream server group must be an object.",
+                        ISSUE_KEY_SEVERITY: "error",
+                        ISSUE_KEY_SOURCE: "schema",
                     }
                 )
                 continue
@@ -223,11 +229,11 @@ class ValidationService:
             if not isinstance(group_name, str) or not group_name.strip():
                 issues.append(
                     {
-                        "code": "missing_required_field",
-                        "path": f"{group_path}.name",
-                        "message": "Upstream server group requires a non-empty name.",
-                        "severity": "error",
-                        "source": "semantic",
+                        ISSUE_KEY_CODE: "missing_required_field",
+                        ISSUE_KEY_PATH: f"{group_path}.name",
+                        ISSUE_KEY_MESSAGE: "Upstream server group requires a non-empty name.",
+                        ISSUE_KEY_SEVERITY: "error",
+                        ISSUE_KEY_SOURCE: "semantic",
                     }
                 )
             else:
@@ -235,11 +241,11 @@ class ValidationService:
                 if normalized_group_name in seen_group_names:
                     issues.append(
                         {
-                            "code": "duplicate_upstream_group_name",
-                            "path": f"{group_path}.name",
-                            "message": f"Upstream server group '{normalized_group_name}' is defined more than once.",
-                            "severity": "warning",
-                            "source": "semantic",
+                            ISSUE_KEY_CODE: "duplicate_upstream_group_name",
+                            ISSUE_KEY_PATH: f"{group_path}.name",
+                            ISSUE_KEY_MESSAGE: f"Upstream server group '{normalized_group_name}' is defined more than once.",
+                            ISSUE_KEY_SEVERITY: "warning",
+                            ISSUE_KEY_SOURCE: "semantic",
                         }
                     )
                 else:
@@ -249,11 +255,11 @@ class ValidationService:
             if not isinstance(nodes, list):
                 issues.append(
                     {
-                        "code": "invalid_section_type",
-                        "path": f"{group_path}.nodes",
-                        "message": "Upstream server group nodes must be an array.",
-                        "severity": "error",
-                        "source": "schema",
+                        ISSUE_KEY_CODE: "invalid_section_type",
+                        ISSUE_KEY_PATH: f"{group_path}.nodes",
+                        ISSUE_KEY_MESSAGE: "Upstream server group nodes must be an array.",
+                        ISSUE_KEY_SEVERITY: "error",
+                        ISSUE_KEY_SOURCE: "schema",
                     }
                 )
                 nodes = []
@@ -263,11 +269,11 @@ class ValidationService:
                     continue
                 issues.append(
                     {
-                        "code": "unknown_field",
-                        "path": f"{group_path}.{key}",
-                        "message": f"Unknown field '{key}' for upstream server group.",
-                        "severity": "warning",
-                        "source": "semantic",
+                        ISSUE_KEY_CODE: "unknown_field",
+                        ISSUE_KEY_PATH: f"{group_path}.{key}",
+                        ISSUE_KEY_MESSAGE: f"Unknown field '{key}' for upstream server group.",
+                        ISSUE_KEY_SEVERITY: "warning",
+                        ISSUE_KEY_SOURCE: "semantic",
                     }
                 )
 
@@ -277,11 +283,11 @@ class ValidationService:
                 if not isinstance(node_item, dict):
                     issues.append(
                         {
-                            "code": "invalid_plugin_item",
-                            "path": node_path,
-                            "message": "Upstream server node must be an object.",
-                            "severity": "error",
-                            "source": "schema",
+                            ISSUE_KEY_CODE: "invalid_plugin_item",
+                            ISSUE_KEY_PATH: node_path,
+                            ISSUE_KEY_MESSAGE: "Upstream server node must be an object.",
+                            ISSUE_KEY_SEVERITY: "error",
+                            ISSUE_KEY_SOURCE: "schema",
                         }
                     )
                     continue
@@ -290,11 +296,11 @@ class ValidationService:
                 if not isinstance(node_name, str) or not node_name.strip():
                     issues.append(
                         {
-                            "code": "missing_required_field",
-                            "path": f"{node_path}.name",
-                            "message": "Upstream server node requires a non-empty name.",
-                            "severity": "error",
-                            "source": "semantic",
+                            ISSUE_KEY_CODE: "missing_required_field",
+                            ISSUE_KEY_PATH: f"{node_path}.name",
+                            ISSUE_KEY_MESSAGE: "Upstream server node requires a non-empty name.",
+                            ISSUE_KEY_SEVERITY: "error",
+                            ISSUE_KEY_SOURCE: "semantic",
                         }
                     )
                 else:
@@ -302,11 +308,11 @@ class ValidationService:
                     if normalized_node_name in seen_node_names:
                         issues.append(
                             {
-                                "code": "duplicate_upstream_node_name",
-                                "path": f"{node_path}.name",
-                                "message": f"Upstream server node '{normalized_node_name}' is defined more than once in this group.",
-                                "severity": "warning",
-                                "source": "semantic",
+                                ISSUE_KEY_CODE: "duplicate_upstream_node_name",
+                                ISSUE_KEY_PATH: f"{node_path}.name",
+                                ISSUE_KEY_MESSAGE: f"Upstream server node '{normalized_node_name}' is defined more than once in this group.",
+                                ISSUE_KEY_SEVERITY: "warning",
+                                ISSUE_KEY_SOURCE: "semantic",
                             }
                         )
                     else:
@@ -316,11 +322,11 @@ class ValidationService:
                 if not isinstance(host_value, str) or not host_value.strip():
                     issues.append(
                         {
-                            "code": "missing_required_field",
-                            "path": f"{node_path}.host",
-                            "message": "Upstream server node requires a non-empty host.",
-                            "severity": "error",
-                            "source": "semantic",
+                            ISSUE_KEY_CODE: "missing_required_field",
+                            ISSUE_KEY_PATH: f"{node_path}.host",
+                            ISSUE_KEY_MESSAGE: "Upstream server node requires a non-empty host.",
+                            ISSUE_KEY_SEVERITY: "error",
+                            ISSUE_KEY_SOURCE: "semantic",
                         }
                     )
 
@@ -328,11 +334,11 @@ class ValidationService:
                 if KEY_PORT not in node_item:
                     issues.append(
                         {
-                            "code": "missing_required_field",
-                            "path": f"{node_path}.port",
-                            "message": "Upstream server node requires a port.",
-                            "severity": "error",
-                            "source": "semantic",
+                            ISSUE_KEY_CODE: "missing_required_field",
+                            ISSUE_KEY_PATH: f"{node_path}.port",
+                            ISSUE_KEY_MESSAGE: "Upstream server node requires a port.",
+                            ISSUE_KEY_SEVERITY: "error",
+                            ISSUE_KEY_SOURCE: "semantic",
                         }
                     )
                 elif isinstance(port_value, bool) or (
@@ -340,11 +346,11 @@ class ValidationService:
                 ):
                     issues.append(
                         {
-                            "code": "invalid_type",
-                            "path": f"{node_path}.port",
-                            "message": "Upstream server node port must be an integer or an environment variable placeholder.",
-                            "severity": "error",
-                            "source": "schema",
+                            ISSUE_KEY_CODE: "invalid_type",
+                            ISSUE_KEY_PATH: f"{node_path}.port",
+                            ISSUE_KEY_MESSAGE: "Upstream server node port must be an integer or an environment variable placeholder.",
+                            ISSUE_KEY_SEVERITY: "error",
+                            ISSUE_KEY_SOURCE: "schema",
                         }
                     )
 
@@ -352,11 +358,11 @@ class ValidationService:
                 if tls_value is not None and not isinstance(tls_value, bool):
                     issues.append(
                         {
-                            "code": "invalid_type",
-                            "path": f"{node_path}.tls",
-                            "message": "Upstream server node tls must be true or false.",
-                            "severity": "error",
-                            "source": "schema",
+                            ISSUE_KEY_CODE: "invalid_type",
+                            ISSUE_KEY_PATH: f"{node_path}.tls",
+                            ISSUE_KEY_MESSAGE: "Upstream server node tls must be true or false.",
+                            ISSUE_KEY_SEVERITY: "error",
+                            ISSUE_KEY_SOURCE: "schema",
                         }
                     )
 
@@ -364,11 +370,11 @@ class ValidationService:
                 if tls_verify_value is not None and not isinstance(tls_verify_value, bool):
                     issues.append(
                         {
-                            "code": "invalid_type",
-                            "path": f"{node_path}.tls_verify",
-                            "message": "Upstream server node tls_verify must be true or false.",
-                            "severity": "error",
-                            "source": "schema",
+                            ISSUE_KEY_CODE: "invalid_type",
+                            ISSUE_KEY_PATH: f"{node_path}.tls_verify",
+                            ISSUE_KEY_MESSAGE: "Upstream server node tls_verify must be true or false.",
+                            ISSUE_KEY_SEVERITY: "error",
+                            ISSUE_KEY_SOURCE: "schema",
                         }
                     )
 
@@ -376,11 +382,11 @@ class ValidationService:
                 if shared_key_value is not None and not isinstance(shared_key_value, str):
                     issues.append(
                         {
-                            "code": "invalid_type",
-                            "path": f"{node_path}.shared_key",
-                            "message": "Upstream server node shared_key must be a string.",
-                            "severity": "error",
-                            "source": "schema",
+                            ISSUE_KEY_CODE: "invalid_type",
+                            ISSUE_KEY_PATH: f"{node_path}.shared_key",
+                            ISSUE_KEY_MESSAGE: "Upstream server node shared_key must be a string.",
+                            ISSUE_KEY_SEVERITY: "error",
+                            ISSUE_KEY_SOURCE: "schema",
                         }
                     )
 
@@ -389,11 +395,11 @@ class ValidationService:
                         continue
                     issues.append(
                         {
-                            "code": "unknown_field",
-                            "path": f"{node_path}.{key}",
-                            "message": f"Unknown field '{key}' for upstream server node.",
-                            "severity": "warning",
-                            "source": "semantic",
+                            ISSUE_KEY_CODE: "unknown_field",
+                            ISSUE_KEY_PATH: f"{node_path}.{key}",
+                            ISSUE_KEY_MESSAGE: f"Unknown field '{key}' for upstream server node.",
+                            ISSUE_KEY_SEVERITY: "warning",
+                            ISSUE_KEY_SOURCE: "semantic",
                         }
                     )
         return issues
@@ -422,11 +428,11 @@ class ValidationService:
         if not isinstance(parsers_payload, list):
             return [
                 {
-                    "code": "invalid_section_type",
-                    "path": "$.config.parsers",
-                    "message": "parsers must be an array.",
-                    "severity": "warning",
-                    "source": "schema",
+                    ISSUE_KEY_CODE: "invalid_section_type",
+                    ISSUE_KEY_PATH: "$.config.parsers",
+                    ISSUE_KEY_MESSAGE: "parsers must be an array.",
+                    ISSUE_KEY_SEVERITY: "warning",
+                    ISSUE_KEY_SOURCE: "schema",
                 }
             ], custom_parser_names, builtin_parser_names
 
@@ -441,11 +447,11 @@ class ValidationService:
             if not isinstance(parser_instance, dict):
                 issues.append(
                     {
-                        "code": "invalid_plugin_item",
-                        "path": path,
-                        "message": "Parser definition must be an object.",
-                        "severity": "warning",
-                        "source": "schema",
+                        ISSUE_KEY_CODE: "invalid_plugin_item",
+                        ISSUE_KEY_PATH: path,
+                        ISSUE_KEY_MESSAGE: "Parser definition must be an object.",
+                        ISSUE_KEY_SEVERITY: "warning",
+                        ISSUE_KEY_SOURCE: "schema",
                     }
                 )
                 continue
@@ -455,21 +461,21 @@ class ValidationService:
             if not isinstance(parser_name, str) or not parser_name:
                 issues.append(
                     {
-                        "code": "missing_required_field",
-                        "path": f"{path}.name",
-                        "message": "Parser definition requires a non-empty name.",
-                        "severity": "warning",
-                        "source": "semantic",
+                        ISSUE_KEY_CODE: "missing_required_field",
+                        ISSUE_KEY_PATH: f"{path}.name",
+                        ISSUE_KEY_MESSAGE: "Parser definition requires a non-empty name.",
+                        ISSUE_KEY_SEVERITY: "warning",
+                        ISSUE_KEY_SOURCE: "semantic",
                     }
                 )
             elif parser_name in custom_parser_names:
                 issues.append(
                     {
-                        "code": "duplicate_parser_name",
-                        "path": f"{path}.name",
-                        "message": f"Parser name '{parser_name}' is defined more than once.",
-                        "severity": "warning",
-                        "source": "semantic",
+                        ISSUE_KEY_CODE: "duplicate_parser_name",
+                        ISSUE_KEY_PATH: f"{path}.name",
+                        ISSUE_KEY_MESSAGE: f"Parser name '{parser_name}' is defined more than once.",
+                        ISSUE_KEY_SEVERITY: "warning",
+                        ISSUE_KEY_SOURCE: "semantic",
                     }
                 )
             else:
@@ -479,11 +485,11 @@ class ValidationService:
             if not isinstance(parser_format, str) or not parser_format:
                 issues.append(
                     {
-                        "code": "missing_required_field",
-                        "path": f"{path}.format",
-                        "message": "Parser definition requires a non-empty format.",
-                        "severity": "warning",
-                        "source": "semantic",
+                        ISSUE_KEY_CODE: "missing_required_field",
+                        ISSUE_KEY_PATH: f"{path}.format",
+                        ISSUE_KEY_MESSAGE: "Parser definition requires a non-empty format.",
+                        ISSUE_KEY_SEVERITY: "warning",
+                        ISSUE_KEY_SOURCE: "semantic",
                     }
                 )
                 continue
@@ -491,11 +497,11 @@ class ValidationService:
             if not isinstance(format_def, dict):
                 issues.append(
                     {
-                        "code": "unknown_parser_format",
-                        "path": f"{path}.format",
-                        "message": f"Unknown parser format '{parser_format}'.",
-                        "severity": "warning",
-                        "source": "semantic",
+                        ISSUE_KEY_CODE: "unknown_parser_format",
+                        ISSUE_KEY_PATH: f"{path}.format",
+                        ISSUE_KEY_MESSAGE: f"Unknown parser format '{parser_format}'.",
+                        ISSUE_KEY_SEVERITY: "warning",
+                        ISSUE_KEY_SOURCE: "semantic",
                     }
                 )
                 continue
@@ -510,11 +516,11 @@ class ValidationService:
                 if value is None or (isinstance(value, str) and not value):
                     issues.append(
                         {
-                            "code": "missing_required_field",
-                            "path": f"{path}.{required}",
-                            "message": f"Required field '{required}' is missing.",
-                            "severity": "warning",
-                            "source": "semantic",
+                            ISSUE_KEY_CODE: "missing_required_field",
+                            ISSUE_KEY_PATH: f"{path}.{required}",
+                            ISSUE_KEY_MESSAGE: f"Required field '{required}' is missing.",
+                            ISSUE_KEY_SEVERITY: "warning",
+                            ISSUE_KEY_SOURCE: "semantic",
                         }
                     )
             # Warn on unknown keys to surface typos without blocking hard.
@@ -524,11 +530,11 @@ class ValidationService:
                 if key not in fields:
                     issues.append(
                         {
-                            "code": "unknown_field",
-                            "path": f"{path}.{key}",
-                            "message": f"Unknown field '{key}' for parser format '{parser_format}'.",
-                            "severity": "warning",
-                            "source": "semantic",
+                            ISSUE_KEY_CODE: "unknown_field",
+                            ISSUE_KEY_PATH: f"{path}.{key}",
+                            ISSUE_KEY_MESSAGE: f"Unknown field '{key}' for parser format '{parser_format}'.",
+                            ISSUE_KEY_SEVERITY: "warning",
+                            ISSUE_KEY_SOURCE: "semantic",
                         }
                     )
         return issues, custom_parser_names, builtin_parser_names
@@ -546,11 +552,11 @@ class ValidationService:
         if not isinstance(pipeline, dict):
             return [
                 {
-                    "code": "missing_pipeline",
-                    "path": "$.config.pipeline",
-                    "message": "config.pipeline must be an object.",
-                    "severity": "error",
-                    "source": "schema",
+                    ISSUE_KEY_CODE: "missing_pipeline",
+                    ISSUE_KEY_PATH: "$.config.pipeline",
+                    ISSUE_KEY_MESSAGE: "config.pipeline must be an object.",
+                    ISSUE_KEY_SEVERITY: "error",
+                    ISSUE_KEY_SOURCE: "schema",
                 }
             ]
 
@@ -577,11 +583,11 @@ class ValidationService:
         if labels is not None and not isinstance(labels, list):
             issues.append(
                 {
-                    "code": "invalid_section_type",
-                    "path": "$.config.labels",
-                    "message": "labels must be an array.",
-                    "severity": "error",
-                    "source": "schema",
+                    ISSUE_KEY_CODE: "invalid_section_type",
+                    ISSUE_KEY_PATH: "$.config.labels",
+                    ISSUE_KEY_MESSAGE: "labels must be an array.",
+                    ISSUE_KEY_SEVERITY: "error",
+                    ISSUE_KEY_SOURCE: "schema",
                 }
             )
         elif isinstance(labels, list):
@@ -599,11 +605,11 @@ class ValidationService:
         if workers is not None and not isinstance(workers, list):
             issues.append(
                 {
-                    "code": "invalid_section_type",
-                    "path": "$.config.workers",
-                    "message": "workers must be an array.",
-                    "severity": "error",
-                    "source": "schema",
+                    ISSUE_KEY_CODE: "invalid_section_type",
+                    ISSUE_KEY_PATH: "$.config.workers",
+                    ISSUE_KEY_MESSAGE: "workers must be an array.",
+                    ISSUE_KEY_SEVERITY: "error",
+                    ISSUE_KEY_SOURCE: "schema",
                 }
             )
         elif isinstance(workers, list):
@@ -631,32 +637,32 @@ class ValidationService:
         if not isinstance(payload, dict):
             return [
                 {
-                    "code": "invalid_plugin_item",
-                    "path": path_prefix,
-                    "message": "Label definition must be an object.",
-                    "severity": "error",
-                    "source": "schema",
+                    ISSUE_KEY_CODE: "invalid_plugin_item",
+                    ISSUE_KEY_PATH: path_prefix,
+                    ISSUE_KEY_MESSAGE: "Label definition must be an object.",
+                    ISSUE_KEY_SEVERITY: "error",
+                    ISSUE_KEY_SOURCE: "schema",
                 }
             ]
         if not isinstance(payload.get(KEY_NAME), str) or not payload.get(KEY_NAME):
             issues.append(
                 {
-                    "code": "missing_required_field",
-                    "path": f"{path_prefix}.name",
-                    "message": "Label definition requires a non-empty name.",
-                    "severity": "error",
-                    "source": "semantic",
+                    ISSUE_KEY_CODE: "missing_required_field",
+                    ISSUE_KEY_PATH: f"{path_prefix}.name",
+                    ISSUE_KEY_MESSAGE: "Label definition requires a non-empty name.",
+                    ISSUE_KEY_SEVERITY: "error",
+                    ISSUE_KEY_SOURCE: "semantic",
                 }
             )
         pipeline = payload.get(KEY_PIPELINE, {})
         if not isinstance(pipeline, dict):
             issues.append(
                 {
-                    "code": "missing_pipeline",
-                    "path": f"{path_prefix}.pipeline",
-                    "message": "Label definition requires a pipeline object.",
-                    "severity": "error",
-                    "source": "schema",
+                    ISSUE_KEY_CODE: "missing_pipeline",
+                    ISSUE_KEY_PATH: f"{path_prefix}.pipeline",
+                    ISSUE_KEY_MESSAGE: "Label definition requires a pipeline object.",
+                    ISSUE_KEY_SEVERITY: "error",
+                    ISSUE_KEY_SOURCE: "schema",
                 }
             )
             return issues
@@ -698,11 +704,11 @@ class ValidationService:
             if labels is not None and not isinstance(labels, list):
                 issues.append(
                     {
-                        "code": "invalid_section_type",
-                        "path": f"{path_prefix}.labels",
-                        "message": "Worker labels must be an array.",
-                        "severity": "error",
-                        "source": "schema",
+                        ISSUE_KEY_CODE: "invalid_section_type",
+                        ISSUE_KEY_PATH: f"{path_prefix}.labels",
+                        ISSUE_KEY_MESSAGE: "Worker labels must be an array.",
+                        ISSUE_KEY_SEVERITY: "error",
+                        ISSUE_KEY_SOURCE: "schema",
                     }
                 )
             elif isinstance(labels, list):
@@ -739,11 +745,11 @@ class ValidationService:
         if not isinstance(section_items, list):
             return [
                 {
-                    "code": "invalid_section_type",
-                    "path": path_prefix,
-                    "message": f"{section} must be an array.",
-                    "severity": "error",
-                    "source": "schema",
+                    ISSUE_KEY_CODE: "invalid_section_type",
+                    ISSUE_KEY_PATH: path_prefix,
+                    ISSUE_KEY_MESSAGE: f"{section} must be an array.",
+                    ISSUE_KEY_SEVERITY: "error",
+                    ISSUE_KEY_SOURCE: "schema",
                 }
             ]
         # Loop each plugin instance so we can report path-specific issues.
@@ -752,11 +758,11 @@ class ValidationService:
             if not isinstance(plugin_instance, dict):
                 issues.append(
                     {
-                        "code": "invalid_plugin_item",
-                        "path": path,
-                        "message": "Plugin instance must be an object.",
-                        "severity": "error",
-                        "source": "schema",
+                        ISSUE_KEY_CODE: "invalid_plugin_item",
+                        ISSUE_KEY_PATH: path,
+                        ISSUE_KEY_MESSAGE: "Plugin instance must be an object.",
+                        ISSUE_KEY_SEVERITY: "error",
+                        ISSUE_KEY_SOURCE: "schema",
                     }
                 )
                 continue
@@ -764,11 +770,11 @@ class ValidationService:
             if not isinstance(plugin_name, str) or not plugin_name:
                 issues.append(
                     {
-                        "code": "missing_plugin_name",
-                        "path": f"{path}.name",
-                        "message": "Plugin instance requires a non-empty 'name'.",
-                        "severity": "error",
-                        "source": "schema",
+                        ISSUE_KEY_CODE: "missing_plugin_name",
+                        ISSUE_KEY_PATH: f"{path}.name",
+                        ISSUE_KEY_MESSAGE: "Plugin instance requires a non-empty 'name'.",
+                        ISSUE_KEY_SEVERITY: "error",
+                        ISSUE_KEY_SOURCE: "schema",
                     }
                 )
                 continue
@@ -776,11 +782,11 @@ class ValidationService:
             if plugin_def is None:
                 issues.append(
                     {
-                        "code": "unknown_plugin",
-                        "path": f"{path}.name",
-                        "message": f"Unknown plugin '{plugin_name}' in section '{section}'.",
-                        "severity": "error",
-                        "source": "semantic",
+                        ISSUE_KEY_CODE: "unknown_plugin",
+                        ISSUE_KEY_PATH: f"{path}.name",
+                        ISSUE_KEY_MESSAGE: f"Unknown plugin '{plugin_name}' in section '{section}'.",
+                        ISSUE_KEY_SEVERITY: "error",
+                        ISSUE_KEY_SOURCE: "semantic",
                     }
                 )
                 continue
@@ -833,22 +839,22 @@ class ValidationService:
             if not any(key in plugin_instance for key in directive_arg_keys):
                 issues.append(
                     {
-                        "code": "missing_required_field",
-                        "path": f"{path}.{directive_arg_keys[0]}",
-                        "message": "Required directive argument is missing.",
-                        "severity": "error",
-                        "source": "semantic",
+                        ISSUE_KEY_CODE: "missing_required_field",
+                        ISSUE_KEY_PATH: f"{path}.{directive_arg_keys[0]}",
+                        ISSUE_KEY_MESSAGE: "Required directive argument is missing.",
+                        ISSUE_KEY_SEVERITY: "error",
+                        ISSUE_KEY_SOURCE: "semantic",
                     }
                 )
         for required in [name for name, field in fields.items() if field.get("required") is True]:
             if required not in plugin_instance:
                 issues.append(
                     {
-                        "code": "missing_required_field",
-                        "path": f"{path}.{required}",
-                        "message": f"Required field '{required}' is missing.",
-                        "severity": "error",
-                        "source": "semantic",
+                        ISSUE_KEY_CODE: "missing_required_field",
+                        ISSUE_KEY_PATH: f"{path}.{required}",
+                        ISSUE_KEY_MESSAGE: f"Required field '{required}' is missing.",
+                        ISSUE_KEY_SEVERITY: "error",
+                        ISSUE_KEY_SOURCE: "semantic",
                     }
                 )
         for key in plugin_instance:
@@ -859,11 +865,11 @@ class ValidationService:
             if key not in fields:
                 issues.append(
                     {
-                        "code": "unknown_field",
-                        "path": f"{path}.{key}",
-                        "message": f"Unknown field '{key}' for plugin '{plugin_instance.get(KEY_NAME)}'.",
-                        "severity": "warning",
-                        "source": "semantic",
+                        ISSUE_KEY_CODE: "unknown_field",
+                        ISSUE_KEY_PATH: f"{path}.{key}",
+                        ISSUE_KEY_MESSAGE: f"Unknown field '{key}' for plugin '{plugin_instance.get(KEY_NAME)}'.",
+                        ISSUE_KEY_SEVERITY: "warning",
+                        ISSUE_KEY_SOURCE: "semantic",
                     }
                 )
         issues.extend(
@@ -936,11 +942,11 @@ class ValidationService:
 
         return [
             {
-                "code": "missing_match_selector",
-                "path": path,
-                "message": "At least one of 'match' or 'match_regex' must be provided.",
-                "severity": "error",
-                "source": "semantic",
+                ISSUE_KEY_CODE: "missing_match_selector",
+                ISSUE_KEY_PATH: path,
+                ISSUE_KEY_MESSAGE: "At least one of 'match' or 'match_regex' must be provided.",
+                ISSUE_KEY_SEVERITY: "error",
+                ISSUE_KEY_SOURCE: "semantic",
             }
         ]
 
@@ -965,11 +971,11 @@ class ValidationService:
             if value not in known_parser_names:
                 issues.append(
                     {
-                        "code": "unknown_parser_reference",
-                        "path": f"{path}.{field_name}",
-                        "message": f"Parser '{value}' was not found in the defined parsers or known built-in parser names.",
-                        "severity": "warning",
-                        "source": "semantic",
+                        ISSUE_KEY_CODE: "unknown_parser_reference",
+                        ISSUE_KEY_PATH: f"{path}.{field_name}",
+                        ISSUE_KEY_MESSAGE: f"Parser '{value}' was not found in the defined parsers or known built-in parser names.",
+                        ISSUE_KEY_SEVERITY: "warning",
+                        ISSUE_KEY_SOURCE: "semantic",
                     }
                 )
         return issues
@@ -997,11 +1003,11 @@ class ValidationService:
         if not isinstance(processors, dict):
             return [
                 {
-                    "code": "invalid_section_type",
-                    "path": f"{path}.processors",
-                    "message": "processors must be an object.",
-                    "severity": "error",
-                    "source": "schema",
+                    ISSUE_KEY_CODE: "invalid_section_type",
+                    ISSUE_KEY_PATH: f"{path}.processors",
+                    ISSUE_KEY_MESSAGE: "processors must be an object.",
+                    ISSUE_KEY_SEVERITY: "error",
+                    ISSUE_KEY_SOURCE: "schema",
                 }
             ]
         signals = processors_def.get(KEY_SIGNALS, {})
@@ -1012,22 +1018,22 @@ class ValidationService:
             if signal_def is None:
                 issues.append(
                     {
-                        "code": "unknown_nested_section",
-                        "path": signal_path,
-                        "message": f"Unknown processors signal '{signal_name}'.",
-                        "severity": "error",
-                        "source": "semantic",
+                        ISSUE_KEY_CODE: "unknown_nested_section",
+                        ISSUE_KEY_PATH: signal_path,
+                        ISSUE_KEY_MESSAGE: f"Unknown processors signal '{signal_name}'.",
+                        ISSUE_KEY_SEVERITY: "error",
+                        ISSUE_KEY_SOURCE: "semantic",
                     }
                 )
                 continue
             if not isinstance(items, list):
                 issues.append(
                     {
-                        "code": "invalid_section_type",
-                        "path": signal_path,
-                        "message": "Signal processors must be an array.",
-                        "severity": "error",
-                        "source": "schema",
+                        ISSUE_KEY_CODE: "invalid_section_type",
+                        ISSUE_KEY_PATH: signal_path,
+                        ISSUE_KEY_MESSAGE: "Signal processors must be an array.",
+                        ISSUE_KEY_SEVERITY: "error",
+                        ISSUE_KEY_SOURCE: "schema",
                     }
                 )
                 continue
@@ -1040,11 +1046,11 @@ class ValidationService:
                 if not isinstance(processor, dict):
                     issues.append(
                         {
-                            "code": "invalid_plugin_item",
-                            "path": proc_path,
-                            "message": "Processor entry must be an object.",
-                            "severity": "error",
-                            "source": "schema",
+                            ISSUE_KEY_CODE: "invalid_plugin_item",
+                            ISSUE_KEY_PATH: proc_path,
+                            ISSUE_KEY_MESSAGE: "Processor entry must be an object.",
+                            ISSUE_KEY_SEVERITY: "error",
+                            ISSUE_KEY_SOURCE: "schema",
                         }
                     )
                     continue
@@ -1052,11 +1058,11 @@ class ValidationService:
                 if not isinstance(proc_name, str) or not proc_name:
                     issues.append(
                         {
-                            "code": "missing_plugin_name",
-                            "path": f"{proc_path}.name",
-                            "message": "Processor requires a non-empty 'name'.",
-                            "severity": "error",
-                            "source": "schema",
+                            ISSUE_KEY_CODE: "missing_plugin_name",
+                            ISSUE_KEY_PATH: f"{proc_path}.name",
+                            ISSUE_KEY_MESSAGE: "Processor requires a non-empty 'name'.",
+                            ISSUE_KEY_SEVERITY: "error",
+                            ISSUE_KEY_SOURCE: "schema",
                         }
                     )
                     continue
@@ -1064,11 +1070,11 @@ class ValidationService:
                 if proc_def is None:
                     issues.append(
                         {
-                            "code": "unknown_plugin",
-                            "path": f"{proc_path}.name",
-                            "message": f"Unknown processor '{proc_name}' for signal '{signal_name}'.",
-                            "severity": "error",
-                            "source": "semantic",
+                            ISSUE_KEY_CODE: "unknown_plugin",
+                            ISSUE_KEY_PATH: f"{proc_path}.name",
+                            ISSUE_KEY_MESSAGE: f"Unknown processor '{proc_name}' for signal '{signal_name}'.",
+                            ISSUE_KEY_SEVERITY: "error",
+                            ISSUE_KEY_SOURCE: "semantic",
                         }
                     )
                     continue
@@ -1077,11 +1083,11 @@ class ValidationService:
                     if required not in processor:
                         issues.append(
                             {
-                                "code": "missing_required_field",
-                                "path": f"{proc_path}.{required}",
-                                "message": f"Required field '{required}' is missing.",
-                                "severity": "error",
-                                "source": "semantic",
+                                ISSUE_KEY_CODE: "missing_required_field",
+                                ISSUE_KEY_PATH: f"{proc_path}.{required}",
+                                ISSUE_KEY_MESSAGE: f"Required field '{required}' is missing.",
+                                ISSUE_KEY_SEVERITY: "error",
+                                ISSUE_KEY_SOURCE: "semantic",
                             }
                         )
                 for key in processor:
@@ -1090,32 +1096,32 @@ class ValidationService:
                     if key not in fields:
                         issues.append(
                             {
-                                "code": "unknown_field",
-                                "path": f"{proc_path}.{key}",
-                                "message": f"Unknown field '{key}' for processor '{proc_name}'.",
-                                "severity": "warning",
-                                "source": "semantic",
+                                ISSUE_KEY_CODE: "unknown_field",
+                                ISSUE_KEY_PATH: f"{proc_path}.{key}",
+                                ISSUE_KEY_MESSAGE: f"Unknown field '{key}' for processor '{proc_name}'.",
+                                ISSUE_KEY_SEVERITY: "warning",
+                                ISSUE_KEY_SOURCE: "semantic",
                             }
                         )
                 if KEY_CONDITION in processor:
                     if not proc_def.get("supports_condition"):
                         issues.append(
                             {
-                                "code": "unknown_field",
-                                "path": f"{proc_path}.{KEY_CONDITION}",
-                                "message": f"Processor '{proc_name}' does not support conditional processing.",
-                                "severity": "warning",
-                                "source": "semantic",
+                                ISSUE_KEY_CODE: "unknown_field",
+                                ISSUE_KEY_PATH: f"{proc_path}.{KEY_CONDITION}",
+                                ISSUE_KEY_MESSAGE: f"Processor '{proc_name}' does not support conditional processing.",
+                                ISSUE_KEY_SEVERITY: "warning",
+                                ISSUE_KEY_SOURCE: "semantic",
                             }
                         )
                     elif not isinstance(processor[KEY_CONDITION], dict):
                         issues.append(
                             {
-                                "code": "invalid_section_type",
-                                "path": f"{proc_path}.{KEY_CONDITION}",
-                                "message": "condition must be an object.",
-                                "severity": "error",
-                                "source": "schema",
+                                ISSUE_KEY_CODE: "invalid_section_type",
+                                ISSUE_KEY_PATH: f"{proc_path}.{KEY_CONDITION}",
+                                ISSUE_KEY_MESSAGE: "condition must be an object.",
+                                ISSUE_KEY_SEVERITY: "error",
+                                ISSUE_KEY_SOURCE: "schema",
                             }
                         )
         return issues
@@ -1142,11 +1148,11 @@ class ValidationService:
         if not isinstance(route_payload, dict):
             return [
                 {
-                    "code": "invalid_section_type",
-                    "path": f"{path}.route",
-                    "message": "route must be an object.",
-                    "severity": "error",
-                    "source": "schema",
+                    ISSUE_KEY_CODE: "invalid_section_type",
+                    ISSUE_KEY_PATH: f"{path}.route",
+                    ISSUE_KEY_MESSAGE: "route must be an object.",
+                    ISSUE_KEY_SEVERITY: "error",
+                    ISSUE_KEY_SOURCE: "schema",
                 }
             ]
 
@@ -1173,11 +1179,11 @@ class ValidationService:
                 if key == "per_record_routing" and not isinstance(value, bool):
                     issues.append(
                         {
-                            "code": "invalid_route_field_type",
-                            "path": f"{path}.route.per_record_routing",
-                            "message": "per_record_routing must be true or false.",
-                            "severity": "error",
-                            "source": "schema",
+                            ISSUE_KEY_CODE: "invalid_route_field_type",
+                            ISSUE_KEY_PATH: f"{path}.route.per_record_routing",
+                            ISSUE_KEY_MESSAGE: "per_record_routing must be true or false.",
+                            ISSUE_KEY_SEVERITY: "error",
+                            ISSUE_KEY_SOURCE: "schema",
                         }
                     )
                 continue
@@ -1186,11 +1192,11 @@ class ValidationService:
             if signal_meta is None:
                 issues.append(
                     {
-                        "code": "unknown_route_signal",
-                        "path": f"{path}.route.{key}",
-                        "message": f"Unknown route signal '{key}'.",
-                        "severity": "warning",
-                        "source": "semantic",
+                        ISSUE_KEY_CODE: "unknown_route_signal",
+                        ISSUE_KEY_PATH: f"{path}.route.{key}",
+                        ISSUE_KEY_MESSAGE: f"Unknown route signal '{key}'.",
+                        ISSUE_KEY_SEVERITY: "warning",
+                        ISSUE_KEY_SOURCE: "semantic",
                     }
                 )
                 continue
@@ -1198,11 +1204,11 @@ class ValidationService:
             if not isinstance(value, list):
                 issues.append(
                     {
-                        "code": "invalid_section_type",
-                        "path": f"{path}.route.{key}",
-                        "message": f"Route signal '{key}' must be an array.",
-                        "severity": "error",
-                        "source": "schema",
+                        ISSUE_KEY_CODE: "invalid_section_type",
+                        ISSUE_KEY_PATH: f"{path}.route.{key}",
+                        ISSUE_KEY_MESSAGE: f"Route signal '{key}' must be an array.",
+                        ISSUE_KEY_SEVERITY: "error",
+                        ISSUE_KEY_SOURCE: "schema",
                     }
                 )
                 continue
@@ -1212,11 +1218,11 @@ class ValidationService:
             if signal_meta.get("implemented") is False:
                 issues.append(
                     {
-                        "code": "route_signal_not_fully_supported",
-                        "path": f"{path}.route.{key}",
-                        "message": f"Signal '{key}' is parsed by Fluent Bit but is not fully evaluated yet.",
-                        "severity": "warning",
-                        "source": "semantic",
+                        ISSUE_KEY_CODE: "route_signal_not_fully_supported",
+                        ISSUE_KEY_PATH: f"{path}.route.{key}",
+                        ISSUE_KEY_MESSAGE: f"Signal '{key}' is parsed by Fluent Bit but is not fully evaluated yet.",
+                        ISSUE_KEY_SEVERITY: "warning",
+                        ISSUE_KEY_SOURCE: "semantic",
                     }
                 )
 
@@ -1234,11 +1240,11 @@ class ValidationService:
         if has_any_routes and route_payload.get("per_record_routing") is not True:
             issues.append(
                 {
-                    "code": "route_not_enabled",
-                    "path": f"{path}.route.per_record_routing",
-                    "message": "Conditional routing rules are defined but per_record_routing is not enabled.",
-                    "severity": "warning",
-                    "source": "semantic",
+                    ISSUE_KEY_CODE: "route_not_enabled",
+                    ISSUE_KEY_PATH: f"{path}.route.per_record_routing",
+                    ISSUE_KEY_MESSAGE: "Conditional routing rules are defined but per_record_routing is not enabled.",
+                    ISSUE_KEY_SEVERITY: "warning",
+                    ISSUE_KEY_SOURCE: "semantic",
                 }
             )
         return issues
@@ -1262,11 +1268,11 @@ class ValidationService:
         if not isinstance(route_item, dict):
             return [
                 {
-                    "code": "invalid_plugin_item",
-                    "path": path_prefix,
-                    "message": "Route entry must be an object.",
-                    "severity": "error",
-                    "source": "schema",
+                    ISSUE_KEY_CODE: "invalid_plugin_item",
+                    ISSUE_KEY_PATH: path_prefix,
+                    ISSUE_KEY_MESSAGE: "Route entry must be an object.",
+                    ISSUE_KEY_SEVERITY: "error",
+                    ISSUE_KEY_SOURCE: "schema",
                 }
             ]
 
@@ -1274,21 +1280,21 @@ class ValidationService:
         if not isinstance(route_name, str) or not route_name:
             issues.append(
                 {
-                    "code": "missing_required_field",
-                    "path": f"{path_prefix}.name",
-                    "message": "Route entry requires a non-empty name.",
-                    "severity": "error",
-                    "source": "semantic",
+                    ISSUE_KEY_CODE: "missing_required_field",
+                    ISSUE_KEY_PATH: f"{path_prefix}.name",
+                    ISSUE_KEY_MESSAGE: "Route entry requires a non-empty name.",
+                    ISSUE_KEY_SEVERITY: "error",
+                    ISSUE_KEY_SOURCE: "semantic",
                 }
             )
         elif route_name in seen_route_names:
             issues.append(
                 {
-                    "code": "duplicate_route_name",
-                    "path": f"{path_prefix}.name",
-                    "message": f"Route name '{route_name}' is defined more than once.",
-                    "severity": "error",
-                    "source": "semantic",
+                    ISSUE_KEY_CODE: "duplicate_route_name",
+                    ISSUE_KEY_PATH: f"{path_prefix}.name",
+                    ISSUE_KEY_MESSAGE: f"Route name '{route_name}' is defined more than once.",
+                    ISSUE_KEY_SEVERITY: "error",
+                    ISSUE_KEY_SOURCE: "semantic",
                 }
             )
         else:
@@ -1298,11 +1304,11 @@ class ValidationService:
         if not isinstance(condition, dict):
             issues.append(
                 {
-                    "code": "missing_required_field",
-                    "path": f"{path_prefix}.{KEY_CONDITION}",
-                    "message": "Route entry requires a condition object.",
-                    "severity": "error",
-                    "source": "semantic",
+                    ISSUE_KEY_CODE: "missing_required_field",
+                    ISSUE_KEY_PATH: f"{path_prefix}.{KEY_CONDITION}",
+                    ISSUE_KEY_MESSAGE: "Route entry requires a condition object.",
+                    ISSUE_KEY_SEVERITY: "error",
+                    ISSUE_KEY_SOURCE: "semantic",
                 }
             )
         else:
@@ -1317,11 +1323,11 @@ class ValidationService:
         if not isinstance(destination, dict):
             issues.append(
                 {
-                    "code": "missing_required_field",
-                    "path": f"{path_prefix}.to",
-                    "message": "Route entry requires a to object.",
-                    "severity": "error",
-                    "source": "semantic",
+                    ISSUE_KEY_CODE: "missing_required_field",
+                    ISSUE_KEY_PATH: f"{path_prefix}.to",
+                    ISSUE_KEY_MESSAGE: "Route entry requires a to object.",
+                    ISSUE_KEY_SEVERITY: "error",
+                    ISSUE_KEY_SOURCE: "semantic",
                 }
             )
         else:
@@ -1329,11 +1335,11 @@ class ValidationService:
             if not isinstance(route_outputs, list) or not route_outputs:
                 issues.append(
                     {
-                        "code": "missing_required_field",
-                        "path": f"{path_prefix}.to.{KEY_OUTPUTS}",
-                        "message": "Route entry requires at least one output destination.",
-                        "severity": "error",
-                        "source": "semantic",
+                        ISSUE_KEY_CODE: "missing_required_field",
+                        ISSUE_KEY_PATH: f"{path_prefix}.to.{KEY_OUTPUTS}",
+                        ISSUE_KEY_MESSAGE: "Route entry requires at least one output destination.",
+                        ISSUE_KEY_SEVERITY: "error",
+                        ISSUE_KEY_SOURCE: "semantic",
                     }
                 )
             else:
@@ -1342,22 +1348,22 @@ class ValidationService:
                     if not isinstance(output_name, str) or not output_name:
                         issues.append(
                             {
-                                "code": "invalid_route_output_reference",
-                                "path": output_path,
-                                "message": "Route output reference must be a non-empty string.",
-                                "severity": "error",
-                                "source": "schema",
+                                ISSUE_KEY_CODE: "invalid_route_output_reference",
+                                ISSUE_KEY_PATH: output_path,
+                                ISSUE_KEY_MESSAGE: "Route output reference must be a non-empty string.",
+                                ISSUE_KEY_SEVERITY: "error",
+                                ISSUE_KEY_SOURCE: "schema",
                             }
                         )
                         continue
                     if available_output_refs and output_name not in available_output_refs:
                         issues.append(
                             {
-                                "code": "unknown_route_output_reference",
-                                "path": output_path,
-                                "message": f"Route output '{output_name}' was not found in the configured outputs by name or alias.",
-                                "severity": "warning",
-                                "source": "semantic",
+                                ISSUE_KEY_CODE: "unknown_route_output_reference",
+                                ISSUE_KEY_PATH: output_path,
+                                ISSUE_KEY_MESSAGE: f"Route output '{output_name}' was not found in the configured outputs by name or alias.",
+                                ISSUE_KEY_SEVERITY: "warning",
+                                ISSUE_KEY_SOURCE: "semantic",
                             }
                         )
         return issues
@@ -1383,11 +1389,11 @@ class ValidationService:
         if op not in {"and", "or"}:
             issues.append(
                 {
-                    "code": "invalid_route_condition_operator",
-                    "path": f"{path_prefix}.op",
-                    "message": "Route condition operator must be 'and' or 'or'.",
-                    "severity": "error",
-                    "source": "semantic",
+                    ISSUE_KEY_CODE: "invalid_route_condition_operator",
+                    ISSUE_KEY_PATH: f"{path_prefix}.op",
+                    ISSUE_KEY_MESSAGE: "Route condition operator must be 'and' or 'or'.",
+                    ISSUE_KEY_SEVERITY: "error",
+                    ISSUE_KEY_SOURCE: "semantic",
                 }
             )
 
@@ -1395,11 +1401,11 @@ class ValidationService:
         if not isinstance(rules, list) or not rules:
             issues.append(
                 {
-                    "code": "missing_required_field",
-                    "path": f"{path_prefix}.rules",
-                    "message": "Route condition requires at least one rule unless it is marked as default.",
-                    "severity": "error",
-                    "source": "semantic",
+                    ISSUE_KEY_CODE: "missing_required_field",
+                    ISSUE_KEY_PATH: f"{path_prefix}.rules",
+                    ISSUE_KEY_MESSAGE: "Route condition requires at least one rule unless it is marked as default.",
+                    ISSUE_KEY_SEVERITY: "error",
+                    ISSUE_KEY_SOURCE: "semantic",
                 }
             )
             return issues
@@ -1431,52 +1437,52 @@ class ValidationService:
             if not isinstance(rule, dict):
                 issues.append(
                     {
-                        "code": "invalid_plugin_item",
-                        "path": rule_path,
-                        "message": "Route condition rule must be an object.",
-                        "severity": "error",
-                        "source": "schema",
+                        ISSUE_KEY_CODE: "invalid_plugin_item",
+                        ISSUE_KEY_PATH: rule_path,
+                        ISSUE_KEY_MESSAGE: "Route condition rule must be an object.",
+                        ISSUE_KEY_SEVERITY: "error",
+                        ISSUE_KEY_SOURCE: "schema",
                     }
                 )
                 continue
             if "context" in rule and rule.get("context") not in valid_contexts:
                 issues.append(
                     {
-                        "code": "invalid_route_context",
-                        "path": f"{rule_path}.context",
-                        "message": f"Unknown route rule context '{rule.get('context')}'.",
-                        "severity": "error",
-                        "source": "semantic",
+                        ISSUE_KEY_CODE: "invalid_route_context",
+                        ISSUE_KEY_PATH: f"{rule_path}.context",
+                        ISSUE_KEY_MESSAGE: f"Unknown route rule context '{rule.get('context')}'.",
+                        ISSUE_KEY_SEVERITY: "error",
+                        ISSUE_KEY_SOURCE: "semantic",
                     }
                 )
             if not isinstance(rule.get("field"), str) or not rule.get("field"):
                 issues.append(
                     {
-                        "code": "missing_required_field",
-                        "path": f"{rule_path}.field",
-                        "message": "Route rule requires a non-empty field.",
-                        "severity": "error",
-                        "source": "semantic",
+                        ISSUE_KEY_CODE: "missing_required_field",
+                        ISSUE_KEY_PATH: f"{rule_path}.field",
+                        ISSUE_KEY_MESSAGE: "Route rule requires a non-empty field.",
+                        ISSUE_KEY_SEVERITY: "error",
+                        ISSUE_KEY_SOURCE: "semantic",
                     }
                 )
             if rule.get("op") not in valid_ops:
                 issues.append(
                     {
-                        "code": "invalid_route_rule_operator",
-                        "path": f"{rule_path}.op",
-                        "message": f"Unknown route rule operator '{rule.get('op')}'.",
-                        "severity": "error",
-                        "source": "semantic",
+                        ISSUE_KEY_CODE: "invalid_route_rule_operator",
+                        ISSUE_KEY_PATH: f"{rule_path}.op",
+                        ISSUE_KEY_MESSAGE: f"Unknown route rule operator '{rule.get('op')}'.",
+                        ISSUE_KEY_SEVERITY: "error",
+                        ISSUE_KEY_SOURCE: "semantic",
                     }
                 )
             if "value" not in rule:
                 issues.append(
                     {
-                        "code": "missing_required_field",
-                        "path": f"{rule_path}.value",
-                        "message": "Route rule requires a comparison value.",
-                        "severity": "error",
-                        "source": "semantic",
+                        ISSUE_KEY_CODE: "missing_required_field",
+                        ISSUE_KEY_PATH: f"{rule_path}.value",
+                        ISSUE_KEY_MESSAGE: "Route rule requires a comparison value.",
+                        ISSUE_KEY_SEVERITY: "error",
+                        ISSUE_KEY_SOURCE: "semantic",
                     }
                 )
         return issues
@@ -1529,11 +1535,11 @@ class ValidationService:
         if not isinstance(children, dict):
             return [
                 {
-                    "code": "invalid_section_type",
-                    "path": f"{path}.children",
-                    "message": "children must be an object.",
-                    "severity": "error",
-                    "source": "schema",
+                    ISSUE_KEY_CODE: "invalid_section_type",
+                    ISSUE_KEY_PATH: f"{path}.children",
+                    ISSUE_KEY_MESSAGE: "children must be an object.",
+                    ISSUE_KEY_SEVERITY: "error",
+                    ISSUE_KEY_SOURCE: "schema",
                 }
             ]
         allowed = {
@@ -1548,22 +1554,22 @@ class ValidationService:
             if child_name not in allowed:
                 issues.append(
                     {
-                        "code": "unknown_nested_section",
-                        "path": f"{path}.children.{child_name}",
-                        "message": f"Nested section '{child_name}' is not allowed for plugin '{plugin_instance.get(KEY_NAME)}'.",
-                        "severity": "error",
-                        "source": "semantic",
+                        ISSUE_KEY_CODE: "unknown_nested_section",
+                        ISSUE_KEY_PATH: f"{path}.children.{child_name}",
+                        ISSUE_KEY_MESSAGE: f"Nested section '{child_name}' is not allowed for plugin '{plugin_instance.get(KEY_NAME)}'.",
+                        ISSUE_KEY_SEVERITY: "error",
+                        ISSUE_KEY_SOURCE: "semantic",
                     }
                 )
                 continue
             if not isinstance(child_items, list):
                 issues.append(
                     {
-                        "code": "invalid_section_type",
-                        "path": f"{path}.children.{child_name}",
-                        "message": f"Nested section '{child_name}' must be an array.",
-                        "severity": "error",
-                        "source": "schema",
+                        ISSUE_KEY_CODE: "invalid_section_type",
+                        ISSUE_KEY_PATH: f"{path}.children.{child_name}",
+                        ISSUE_KEY_MESSAGE: f"Nested section '{child_name}' must be an array.",
+                        ISSUE_KEY_SEVERITY: "error",
+                        ISSUE_KEY_SOURCE: "schema",
                     }
                 )
                 continue
@@ -1573,11 +1579,11 @@ class ValidationService:
             if isinstance(maximum, int) and len(child_items) > maximum:
                 issues.append(
                     {
-                        "code": "nested_cardinality_exceeded",
-                        "path": f"{path}.children.{child_name}",
-                        "message": f"Nested section '{child_name}' allows at most {maximum} item(s).",
-                        "severity": "error",
-                        "source": "semantic",
+                        ISSUE_KEY_CODE: "nested_cardinality_exceeded",
+                        ISSUE_KEY_PATH: f"{path}.children.{child_name}",
+                        ISSUE_KEY_MESSAGE: f"Nested section '{child_name}' allows at most {maximum} item(s).",
+                        ISSUE_KEY_SEVERITY: "error",
+                        ISSUE_KEY_SOURCE: "semantic",
                     }
                 )
             if nested_def.get("reuses_output_plugins") is True:
@@ -1593,22 +1599,22 @@ class ValidationService:
                 if not isinstance(child_item, dict):
                     issues.append(
                         {
-                            "code": "invalid_plugin_item",
-                            "path": f"{path}.children.{child_name}[{idx}]",
-                            "message": "Nested section item must be an object.",
-                            "severity": "error",
-                            "source": "schema",
+                            ISSUE_KEY_CODE: "invalid_plugin_item",
+                            ISSUE_KEY_PATH: f"{path}.children.{child_name}[{idx}]",
+                            ISSUE_KEY_MESSAGE: "Nested section item must be an object.",
+                            ISSUE_KEY_SEVERITY: "error",
+                            ISSUE_KEY_SOURCE: "schema",
                         }
                     )
                     continue
                 if nested_def.get("plugin_backed") is True and variants and KEY_NAME not in child_item:
                     issues.append(
                         {
-                            "code": "missing_plugin_name",
-                            "path": f"{path}.children.{child_name}[{idx}].name",
-                            "message": "Nested plugin section requires a non-empty 'name'.",
-                            "severity": "error",
-                            "source": "semantic",
+                            ISSUE_KEY_CODE: "missing_plugin_name",
+                            ISSUE_KEY_PATH: f"{path}.children.{child_name}[{idx}].name",
+                            ISSUE_KEY_MESSAGE: "Nested plugin section requires a non-empty 'name'.",
+                            ISSUE_KEY_SEVERITY: "error",
+                            ISSUE_KEY_SOURCE: "semantic",
                         }
                     )
                     continue
@@ -1617,11 +1623,11 @@ class ValidationService:
                     if variant is None:
                         issues.append(
                             {
-                                "code": "unknown_plugin",
-                                "path": f"{path}.children.{child_name}[{idx}].name",
-                                "message": f"Unknown nested plugin '{child_item.get(KEY_NAME)}' in section '{child_name}'.",
-                                "severity": "error",
-                                "source": "semantic",
+                                ISSUE_KEY_CODE: "unknown_plugin",
+                                ISSUE_KEY_PATH: f"{path}.children.{child_name}[{idx}].name",
+                                ISSUE_KEY_MESSAGE: f"Unknown nested plugin '{child_item.get(KEY_NAME)}' in section '{child_name}'.",
+                                ISSUE_KEY_SEVERITY: "error",
+                                ISSUE_KEY_SOURCE: "semantic",
                             }
                         )
                         continue
@@ -1632,11 +1638,11 @@ class ValidationService:
                     if required not in child_item:
                         issues.append(
                             {
-                                "code": "missing_required_field",
-                                "path": f"{path}.children.{child_name}[{idx}].{required}",
-                                "message": f"Required field '{required}' is missing.",
-                                "severity": "error",
-                                "source": "semantic",
+                                ISSUE_KEY_CODE: "missing_required_field",
+                                ISSUE_KEY_PATH: f"{path}.children.{child_name}[{idx}].{required}",
+                                ISSUE_KEY_MESSAGE: f"Required field '{required}' is missing.",
+                                ISSUE_KEY_SEVERITY: "error",
+                                ISSUE_KEY_SOURCE: "semantic",
                             }
                         )
         return issues

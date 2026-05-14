@@ -10,10 +10,10 @@ import mimetypes
 import os
 import subprocess
 import sys
+import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
-import uuid
 import zipfile
 from datetime import datetime, timedelta, timezone
 from email import message_from_bytes
@@ -42,6 +42,15 @@ def _ensure_python_build(repo_root: Path, python_exe: str) -> None:
         repo_root=repo_root,
         python_exe=python_exe,
         package_name="build",
+    )
+
+
+def _ensure_cyclonedx_python_tool(repo_root: Path, python_exe: str) -> None:
+    """Ensure cyclonedx-py CLI is available via the `cyclonedx-bom` package."""
+    _ensure_python_package(
+        repo_root=repo_root,
+        python_exe=python_exe,
+        package_name="cyclonedx-bom",
     )
 
 
@@ -230,20 +239,73 @@ def _requirement_name(requirement: str) -> str:
 
 def _build_cyclonedx_sbom(
     *,
+    repo_root: Path,
+    python_exe: str,
+    component_dir: str,
     repo: str,
     artifact: Path,
     sbom_path: Path,
     root_component_name: str,
 ) -> Path:
     """Generate CycloneDX JSON SBOM for one deployable wheel artifact."""
-    components: list[dict[str, Any]] = []
-    dependencies: list[dict[str, Any]] = []
-    dependency_components: dict[str, dict[str, Any]] = {}
-
     wheel_meta = _read_wheel_metadata(artifact)
     name = str(wheel_meta["name"])
     version = str(wheel_meta["version"])
     bom_ref = f"pkg:pypi/{_normalize_dist_name(name)}@{version}"
+    _ensure_cyclonedx_python_tool(repo_root, python_exe)
+    runtime_requirements = [
+        requirement
+        for requirement in wheel_meta["requires_dist"]
+        if "extra ==" not in requirement.lower()
+    ]
+
+    with tempfile.TemporaryDirectory(prefix="opamp-wheel-sbom-") as temp_dir:
+        temp_root = Path(temp_dir)
+        requirements_path = temp_root / "requirements.txt"
+        requirements_path.write_text(
+            "".join(f"{requirement}\n" for requirement in runtime_requirements),
+            encoding="utf-8",
+        )
+        tool_sbom_path = temp_root / "sbom-tool.json"
+        _run(
+            [
+                python_exe,
+                "-m",
+                "cyclonedx_py",
+                "requirements",
+                str(requirements_path),
+                "--output-format",
+                "JSON",
+                "--spec-version",
+                "1.6",
+                "--output-file",
+                str(tool_sbom_path),
+            ],
+            cwd=repo_root,
+        )
+        sbom = json.loads(tool_sbom_path.read_text(encoding="utf-8"))
+
+    if not isinstance(sbom, dict):
+        raise RuntimeError("CycloneDX generation returned invalid SBOM payload.")
+
+    components_raw = sbom.get("components")
+    if not isinstance(components_raw, list):
+        components_raw = []
+    normalized_components: list[dict[str, Any]] = []
+    seen_refs: set[str] = set()
+    for component in components_raw:
+        if not isinstance(component, dict):
+            continue
+        normalized_component = dict(component)
+        purl = str(normalized_component.get("purl") or "").strip()
+        if purl.startswith("pkg:pypi/"):
+            normalized_component["bom-ref"] = purl
+        component_ref = str(normalized_component.get("bom-ref") or "").strip()
+        if not component_ref or component_ref in seen_refs:
+            continue
+        seen_refs.add(component_ref)
+        normalized_components.append(normalized_component)
+
     wheel_component = {
         "type": "library",
         "name": name,
@@ -260,61 +322,44 @@ def _build_cyclonedx_sbom(
             {"name": "opamp.artifact.path", "value": str(artifact)},
         ],
     }
-    components.append(wheel_component)
+    sbom["components"] = [wheel_component] + [
+        component
+        for component in normalized_components
+        if str(component.get("bom-ref") or "").strip() != bom_ref
+    ]
 
-    depends_on: list[str] = []
-    for requirement in wheel_meta["requires_dist"]:
-        # SBOM targets deployable artifacts; omit optional extras such as dev deps.
-        if "extra ==" in requirement.lower():
-            continue
-        dep_name = _requirement_name(requirement)
-        if not dep_name:
-            continue
-        dep_ref = f"pkg:pypi/{_normalize_dist_name(dep_name)}"
-        depends_on.append(dep_ref)
-        if dep_ref not in dependency_components:
-            dependency_components[dep_ref] = {
-                "type": "library",
-                "name": dep_name,
-                "bom-ref": dep_ref,
-                "purl": dep_ref,
-                "properties": [
-                    {"name": "opamp.requirement.raw", "value": requirement},
-                ],
-            }
-    dependencies.append(
+    metadata = sbom.get("metadata")
+    if not isinstance(metadata, dict):
+        metadata = {}
+    metadata["component"] = {
+        "type": "application",
+        "name": root_component_name,
+        "version": version,
+        "properties": [
+            {"name": "github.repository", "value": repo},
+            {"name": "wheel.name", "value": name},
+            {"name": "component.directory", "value": component_dir},
+        ],
+    }
+    sbom["metadata"] = metadata
+
+    dependencies = sbom.get("dependencies")
+    if not isinstance(dependencies, list):
+        dependencies = []
+    dependencies = [
+        entry
+        for entry in dependencies
+        if isinstance(entry, dict) and str(entry.get("ref") or "").strip() != bom_ref
+    ]
+    dependencies.insert(
+        0,
         {
             "ref": bom_ref,
-            "dependsOn": sorted(set(depends_on)),
-        }
-    )
-
-    if dependency_components:
-        components.extend(
-            dependency_components[key] for key in sorted(dependency_components.keys())
-        )
-
-    sbom = {
-        "bomFormat": "CycloneDX",
-        "specVersion": "1.5",
-        "serialNumber": f"urn:uuid:{uuid.uuid4()}",
-        "version": 1,
-        "metadata": {
-            "timestamp": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
-            "tools": [{"vendor": "mp3monster", "name": "build_and_publish_wheels.py"}],
-            "component": {
-                "type": "application",
-                "name": root_component_name,
-                "version": version,
-                "properties": [
-                    {"name": "github.repository", "value": repo},
-                    {"name": "wheel.name", "value": name},
-                ],
-            },
+            "dependsOn": _expected_dependency_refs(list(wheel_meta["requires_dist"])),
         },
-        "components": components,
-        "dependencies": dependencies,
-    }
+    )
+    sbom["dependencies"] = dependencies
+
     sbom_path.parent.mkdir(parents=True, exist_ok=True)
     sbom_path.write_text(f"{json.dumps(sbom, indent=2)}\n", encoding="utf-8")
     return sbom_path
@@ -830,12 +875,18 @@ def main() -> int:
         out_dir=consumer_dist,
     )
     provider_sbom_path = _build_cyclonedx_sbom(
+        repo_root=repo_root,
+        python_exe=args.python,
+        component_dir="provider",
         repo=args.repo,
         artifact=provider_wheel,
         sbom_path=(repo_root / args.provider_sbom_path).resolve(),
         root_component_name="fluent-opamp-provider-deployable-artifact",
     )
     consumer_sbom_path = _build_cyclonedx_sbom(
+        repo_root=repo_root,
+        python_exe=args.python,
+        component_dir="consumer",
         repo=args.repo,
         artifact=consumer_wheel,
         sbom_path=(repo_root / args.consumer_sbom_path).resolve(),
