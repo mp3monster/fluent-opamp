@@ -50,6 +50,7 @@ From repository root:
 ```bash
 python3 config-service/dev-tools/generate_sbom.py
 ```
+The script ensures `cyclonedx-bom` is available and uses `cyclonedx-py` for SBOM generation.
 
 Output:
 1. `config-service/sbom/config-service-sbom.cdx.json`

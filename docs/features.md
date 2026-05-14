@@ -1,7 +1,7 @@
 # OpAMP Feature Completion, ToDos and Future Features
 The following represents a brain dump of things that we want to/need to do. The ToDos are the primary focus, but may not be delivered immediately as we work toward a minimal implementation.
 
-## OpAMP Features
+## OpAMP Specification
 
 The following is a summary of the features  based on the message exchange and the progress made, gaps and things that aren't in our plans.
 
@@ -51,29 +51,62 @@ Connection settings policy note:
 
 - We intentionally do not support `ReportsOwnTraces`, `ReportsOwnMetrics`, or `ReportsOwnLogs` as direct connection-settings management features in this project.
 - See the configuration policy in [consumer/README.md](../consumer/README.md#connection-settings).
-	
-## Immediate ToDos
 
+## Additional Tooling
+In addition to the core server we have several supporting tools. These aren't specifically identified as part of the OpAMP specification, but are a natural extension of the server features we have built out. But can be used independently.
 
-### Server Side
-* Implement the socket connection control (Duplicate WebSockets Connections) where a disconnect is sent if a client appears to connect more than once on a socket.
-
+### Configuration Service
+In addition to the OpAMP Server we have a configuration service which can already be run as a standalone solution. 
 
 ## Future Features
+* Across the board extend testing so provide more than just unit tests, such as:
+* * Playwright UI tests
+* * E2E test scenarios
+* * Increased focus on unhappy path
+* * Establish CI/CD using cloud hyperscalers 
+* * Quick reference documentation as static pages
 
 ### Server & Client
 * GitHub driven test rig including validating against 3rd party server or client implementation for functional behavior tests.
 * Docs on [readthedocs](https://about.readthedocs.com/pricing/#/community)
 * Handshake for bearer token allocation and [mTLS](https://goteleport.com/learn/what-is-mtls/)
+* Support Elastic stack and just individual beats
 
 ### Client Side
-* Allow consumer attributes to come from commenting block in Fluent Bit configuration
+* Allow consumer attributes to come from commenting block in Fluent Bit and Fluentd configuration (erxploit Configuration Service 'annotations')
 * extend so configuration can be classic Fluent Bit
 * share namespace when running in a K8s deployment
+* Enhance so can be used as observer (locates process to monitor based on process naming) in addition to the current supervisor. This will be suited to sidecar deployment scenarios
+* Configuration to manage beats / elastic stack OSS
+* Enhance agent observability, so that it can incorporate into the observed agent monitoring for the supervisor/observer
 
-  
 
 ### Server Side
 * Extend persistence mechanism beyond initial file mechanism.
 * Load configurations and distribute to relevant nodes
-* Certificate management - this is messy to setup and test properly
+* Certificate management - this is messy to setup and test properly - so provide scripts to self cert and a basic Identity solution
+* Enhance the build and deploy to create several versions of the service can be installed, including:
+* * Debug mode 
+* * * Intended to help build customizations, and troubleshoot deployment scenarios
+* * * Will deploy all the components (Client, Server, Configuration, Utility scripts, documentation)
+* * * enables all the debug features, 
+* * * Will trigger to installation of development tool dependencies
+* Client only:
+* * Light weight installation with just client functionality - will make it easier to deploy just the client
+* Full server:
+* * Will include the Config service integrated into the server
+* * Will include the client
+* * Will include the agent_broker allowing the Slack integration to be used.
+* * WONT include all development dependencies
+* Lite Server
+* * OpAMP server on its own without the Config Service integrated
+* 
+### Configuration Service
+* Test the Fluentd capabilities incorporated already.
+* Extend the validation techniques (so we can provide a proper URL validation)
+* Evaluate extensibility so we could provide structure to support (in priority order):
+* * OTel standard collector
+* * Elastic stack / beats
+* Validation of nested Include dependencies
+* Take into account custom plugins
+* Extend the number of versions that we have configuration definitions
