@@ -22,7 +22,16 @@
           "adapter": "fluentbit",
           "send_config_via_stdin": false,
           "dry_run_validation_enabled": true
-        }
+        },
+      "entries": [
+        {
+          "agent_type": "fluentd",
+          "command_path": "fluentd",
+          "command_args": ["--dry-run", "-c", "{config_path}"],
+          "adapter": "fluentbit",
+          "send_config_via_stdin": false,
+          "dry_run_validation_enabled": false
+        }        
       ]
     }
   }
