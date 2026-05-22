@@ -19,6 +19,9 @@ Welcome to the Fluent Bit & Fluentd OpAMP implementation docs. This page links t
 - [Client (consumer)_update_controllers](consumer_update_controllers.md) — how full update controllers drive reporting flags and outbound message field cadence.
 - [Authentication](authentication.md) — bearer token auth modes, static-token setup, Keycloak/JWT setup, and MCP token usage.
 - [Web Endpoints](endpoints.md) — provider endpoint inventory, including UI/API/tool/MCP routes and `/doc-set`.
+- [OpAMP Config Catalog UI](opamp_config_catalog_ui.md) — configuration-driven catalog index page and help route details.
+- [OpAMP Config Catalog Service Prompt](opamp_config_catalog_service_prompt.md) — implementation prompt and scope for the catalog service.
+- [UI Consistency Checklist](ui_consistency_checklist.md) — PR checklist for consistent UI architecture, libraries, routing, and verification.
 - [Self_signed_TLS_setup](self_signed_tls_setup.md) — generate local self-signed cert/key and apply config values for HTTPS testing.
 - [API_gateway_suggested use and requirements](api_gateway_requirements.md) — recommended API gateway controls, internal vs external client profiles, and required auth/route hardening updates.
 - [Service_daemon_setup](service_daemon_setup.md) — running provider/consumer as `systemd` or Windows services, including Fluent Bit/Fluentd launch permissions.
