@@ -1,0 +1,15 @@
+# OpAMP CLI Docs
+
+This directory contains component-specific documentation for the OpAMP CLI.
+
+## Documents
+
+- `CLI_EXTENSION_GUIDE.md`: architecture, dependencies, extension rules, and worked examples for extending the CLI
+- `CLI_REBUILD_PROMPT.md`: prompt document for recreating the CLI component from scratch, including docs and deployment expectations
+- `TEST_CASES.md`: maintained index of CLI unit and end-to-end test scenarios
+
+## Related Files
+
+- `../README.md`: component overview, usage, and startup instructions
+- `../src/opamp_cli/`: implementation package
+- `../runtime/`: generated runtime metadata, including managed process state
