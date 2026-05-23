@@ -239,6 +239,12 @@ Shutdown behavior:
 1. Linux/macOS stop script sends `SIGTERM` to allow graceful broker cleanup.
 2. PowerShell stop script performs a best-effort graceful close first, then falls back to process stop if needed.
 
+### Deployment packaging note
+
+Broker deployment packaging also checks whether the separate `opamp-cli` component is available.
+If the CLI is not detected in the workspace or installed Python environment, the package scripts print
+a warning so the deployment operator can decide whether the CLI should be installed alongside the broker.
+
 Windows note:
 
 - If `.venv` was previously created from WSL/Linux (for example contains `bin/python` instead of `Scripts/python.exe`), `start_broker.ps1` will fall back to `python` on PATH instead of failing.

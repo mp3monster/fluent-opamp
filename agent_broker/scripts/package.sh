@@ -17,4 +17,9 @@ fi
 echo "Refreshing component version metadata from git HEAD..."
 "${PYTHON_BIN}" "${ROOT_DIR}/../scripts/update_component_versions.py" --repo-root "${ROOT_DIR}/.."
 
+echo "Checking whether the CLI is available..."
+"${PYTHON_BIN}" "${ROOT_DIR}/../scripts/warn_if_cli_missing.py" \
+  --repo-root "${ROOT_DIR}/.." \
+  --component-label "broker deployment package"
+
 zip -r "${OUT}/opamp-conversation-broker.zip" opamp_broker
