@@ -247,6 +247,28 @@ async def test_websocket_endpoint() -> None:
 
 
 @pytest.mark.asyncio
+async def test_ui_features_endpoint_returns_configuration_driven_items_shape() -> None:
+    """Verify `/api/ui/features` responds with a stable menu payload shape."""
+    async with app.test_client() as client:
+        resp = await client.get("/api/ui/features")
+        assert resp.status_code == 200
+        payload = await resp.get_json()
+
+    assert isinstance(payload, dict)
+    assert "items" in payload
+    assert "component_entry_points_registered" in payload
+    assert isinstance(payload["items"], list)
+    if payload["items"]:
+        assert "entry_point" in payload["items"][0]
+    assert isinstance(payload["component_entry_points_registered"], list)
+    for item in payload["items"]:
+        assert isinstance(item, dict)
+        assert "label" in item
+        assert "url" in item
+        assert "target" in item
+
+
+@pytest.mark.asyncio
 async def test_human_in_loop_unknown_agent_moves_to_pending_and_rejects_http() -> None:
     """Verify unknown agents are staged for approval and rejected when human-in-loop is enabled."""
     provider_config.set_config(_test_provider_config(human_in_loop_approval=True))
@@ -1813,6 +1835,7 @@ async def test_web_ui_references_external_javascript_bundle(monkeypatch) -> None
         assert '<link rel="stylesheet" href="/web_ui.css" />' in ui_html
         assert '<script src="/web_ui_state.js"></script>' in ui_html
         assert '<script src="/web_ui_functions.js"></script>' in ui_html
+        assert '<script src="/web_ui_framework.js"></script>' in ui_html
         assert '<script src="/web_ui_bindings.js"></script>' in ui_html
 
         css_resp = await client.get("/web_ui.css")
@@ -1838,6 +1861,15 @@ async def test_web_ui_references_external_javascript_bundle(monkeypatch) -> None
         )
         functions_js_text = (await functions_js_resp.get_data()).decode("utf-8")
 
+        framework_js_resp = await client.get("/web_ui_framework.js")
+        assert framework_js_resp.status_code == 200
+        assert (
+            framework_js_resp.headers.get("Content-Type", "").startswith(
+                "application/javascript"
+            )
+        )
+        framework_js_text = (await framework_js_resp.get_data()).decode("utf-8")
+
         bindings_js_resp = await client.get("/web_ui_bindings.js")
         assert bindings_js_resp.status_code == 200
         assert (
@@ -1850,6 +1882,7 @@ async def test_web_ui_references_external_javascript_bundle(monkeypatch) -> None
     assert ":root {" in css_text
     assert "const state = {" in state_js_text
     assert "async function fetchClients()" in functions_js_text
+    assert "ProviderUiFramework" in framework_js_text
     assert "init();" in bindings_js_text
 
 

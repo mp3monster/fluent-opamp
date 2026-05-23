@@ -326,6 +326,58 @@
       }
     }
 
+    function renderFeatureMenuItems(items) {
+      if (!featureMenuGroup || !featureMenuSelect) return;
+      const list = Array.isArray(items) ? items : [];
+      featureMenuSelect.innerHTML = "";
+      const placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.textContent = "Open...";
+      featureMenuSelect.appendChild(placeholder);
+
+      list.forEach(item => {
+        const label = String(item && item.label ? item.label : "").trim();
+        const url = String(item && item.url ? item.url : "").trim();
+        const target = String(item && item.target ? item.target : "_self").trim() || "_self";
+        if (!label || !url) return;
+        const opt = document.createElement("option");
+        opt.value = url;
+        opt.textContent = label;
+        opt.dataset.target = target;
+        featureMenuSelect.appendChild(opt);
+      });
+      const hasItems = featureMenuSelect.options.length > 1;
+      featureMenuGroup.classList.toggle("hidden", !hasItems);
+      featureMenuSelect.selectedIndex = 0;
+    }
+
+    async function fetchUiFeatureMenu() {
+      if (!featureMenuGroup || !featureMenuSelect) return;
+      const resp = await apiFetch("/api/ui/features");
+      if (!resp.ok) {
+        featureMenuGroup.classList.add("hidden");
+        return;
+      }
+      const payload = await resp.json();
+      const items = Array.isArray(payload.items) ? payload.items : [];
+      renderFeatureMenuItems(items);
+    }
+
+    function handleFeatureMenuSelection() {
+      if (!featureMenuSelect) return;
+      const selected = featureMenuSelect.options[featureMenuSelect.selectedIndex];
+      if (!selected) return;
+      const url = String(selected.value || "").trim();
+      if (!url) return;
+      const target = String(selected.dataset.target || "_self").trim() || "_self";
+      if (target === "_blank") {
+        window.open(url, "_blank", "noopener,noreferrer");
+      } else {
+        window.location.assign(url);
+      }
+      featureMenuSelect.selectedIndex = 0;
+    }
+
     function defaultColumnOrder() {
       return [...TABLE_COLUMN_KEYS];
     }
@@ -2278,6 +2330,7 @@
       writeColumnControlsToInputs();
       renderClientTableHeader();
       updateActiveFiltersIndicator();
+      await fetchUiFeatureMenu();
       await fetchGlobalSettingsHelp();
       await fetchSettings();
       await fetchClientSettings();
@@ -2286,3 +2339,47 @@
       await fetchClients();
       scheduleRefresh();
     }
+
+    // Export function handles via a factory so provider UI can bootstrap through
+    // the same module/factory framework style used by config-service.
+    window.ProviderUiFunctions = {
+      create: function createProviderUiFunctions(_deps) {
+        return {
+          init,
+          renderTable,
+          totalPages,
+          scheduleRefresh,
+          applyClientFilters,
+          toggleFilterMode,
+          toggleFiltersPanel,
+          toggleColumnsPanel,
+          applyOptionalColumnSelection,
+          clearClientFilters,
+          updateStatePersistenceUsageDisplay,
+          setAuthToken,
+          setActiveTab,
+          setActiveSettingsTab,
+          saveConfig,
+          renderCustomCommandConfiguration,
+          updateCustomCommandSelectStyle,
+          queueCustomCommand,
+          saveClientHeartbeat,
+          renderEventsHistory,
+          openGlobalSettingsModal,
+          openPendingApprovalModal,
+          closeGlobalSettingsModal,
+          saveGlobalSettings,
+          saveServerSettings,
+          saveStateNowFromSettings,
+          closePendingApprovalModal,
+          savePendingApprovalDecisions,
+          setAllPendingApprovals,
+          hideHelpPopover,
+          closeModal,
+          toggleClientData,
+          removeClient,
+          issueNewId,
+          requestShutdown,
+        };
+      },
+    };

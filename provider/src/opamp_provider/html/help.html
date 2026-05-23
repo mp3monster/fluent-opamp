@@ -225,6 +225,17 @@
     </section>
     <p>Use the main page to open an agent, paste config/commands, and save. Changes are queued until the next agent check-in.</p>
     <section class="custom-commands">
+      <h2>Feature Menu</h2>
+      <p>
+        The main UI header can show a <strong>Feature</strong> dropdown when optional component endpoints are configured.
+      </p>
+      <ul class="command-list">
+        <li><strong>Config Service UI:</strong> Opens embedded config-service editor when configured via <code>component-entry-points.quart</code>.</li>
+        <li><strong>Config Catalog:</strong> Opens provider catalog view when <code>opamp.config_catalog.enabled=true</code>.</li>
+        <li><strong>Catalog help:</strong> <code>/catalog/help</code> (available when catalog feature is enabled).</li>
+      </ul>
+    </section>
+    <section class="custom-commands">
       <h2>Known Custom Commands</h2>
       <ul id="customCommandList" class="command-list">
         <li>Loading custom command metadata...</li>

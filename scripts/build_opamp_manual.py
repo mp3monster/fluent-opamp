@@ -259,7 +259,34 @@ MANUAL_CHAPTERS: tuple[ChapterSpec, ...] = (
         ),
     ),
     ChapterSpec(
-        title="Chapter 5 - Security and Authentication",
+        title="Chapter 5 - OpAMP CLI",
+        markdown_files=(
+            "cli/README.md",
+            "cli/docs/README.md",
+            "cli/docs/CLI_EXTENSION_GUIDE.md",
+        ),
+    ),
+    ChapterSpec(
+        title="Chapter 6 - Config Service",
+        markdown_files=(
+            "config-service/README.md",
+            "config-service/docs/README.md",
+            "config-service/docs/quickstart.md",
+            "config-service/docs/configuration.md",
+            "config-service/docs/ui-user-guide.md",
+            "config-service/docs/standalone-packaging.md",
+        ),
+    ),
+    ChapterSpec(
+        title="Chapter 7 - Catalog Service",
+        markdown_files=(
+            "catalog-service/README.md",
+            "catalog-service/docs/README.md",
+            "catalog-service/ui-tests/README.md",
+        ),
+    ),
+    ChapterSpec(
+        title="Chapter 8 - Security and Authentication",
         markdown_files=(
             "docs/authentication.md",
             "docs/self_signed_tls_setup.md",
@@ -267,7 +294,7 @@ MANUAL_CHAPTERS: tuple[ChapterSpec, ...] = (
         ),
     ),
     ChapterSpec(
-        title="Chapter 6 - Development and Build Processes",
+        title="Chapter 9 - Development and Build Processes",
         markdown_files=(
             "docs/scripts.md",
             "docs/component_versioning.md",
@@ -278,11 +305,15 @@ MANUAL_CHAPTERS: tuple[ChapterSpec, ...] = (
 
 DEPENDENCY_SOURCES: tuple[str, ...] = (
     "requirements.txt",
+    "cli/requirements.txt",
     "provider/requirements.txt",
     "consumer/requirements.txt",
     "agent_broker/requirements.txt",
 )
 PYPROJECT_DEPENDENCY_SOURCES: tuple[str, ...] = (
+    "cli/pyproject.toml",
+    "config-service/pyproject.toml",
+    "catalog-service/pyproject.toml",
     "provider/pyproject.toml",
     "consumer/pyproject.toml",
     "agent_broker/pyproject.toml",
@@ -293,10 +324,13 @@ INDEX_TERMS: tuple[str, ...] = (
     "api endpoints",
     "authentication",
     "build artifacts",
+    "catalog service",
+    "config service",
     "component versioning",
     "consumer custom handlers",
     "consumer update controllers",
     "mcp",
+    "opamp cli",
     "provider web ui",
     "scripts",
     "security",

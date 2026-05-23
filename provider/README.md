@@ -44,6 +44,12 @@ Installed CLI command:
 opamp-provider --config-path ./config/opamp.json --port 4320
 ```
 
+Packaging note:
+
+- the provider runtime command `opamp-provider` is separate from the workspace launcher `opamp-cli`
+- provider wheel builds warn when `opamp-cli` is not detected in the workspace or active Python environment
+- install/deploy `opamp-cli` separately if you want the guided start/stop and status tooling
+
 Version/help:
 
 ```bash
@@ -67,6 +73,18 @@ command-line parameters, see `../mcp/README.md`.
 
 The provider reads `opamp.json` from the repo `config/` folder by default. You can override the
 config file location with the `OPAMP_CONFIG_PATH` environment variable.
+
+Provider configuration variants are also available in `config/`:
+
+- `config/opamp.json`: default development config
+- `config/opamp.provider-with-editor-service.json`: provider plus embedded config editor UI
+- `config/opamp.provider-with-editor-and-catalog-services.json`: provider plus embedded config editor and catalog UI
+
+Example alternate launch:
+
+```bash
+opamp-provider --config-path ./config/opamp.provider-with-editor-and-catalog-services.json
+```
 
 Example `opamp.json`:
 
@@ -256,12 +274,17 @@ For the shared provider+consumer guide on implementing and deploying custom acti
 
 - Console: `http://localhost:8080/ui`
 - Help: `http://localhost:8080/help`
+- Optional catalog UI (when enabled): `http://localhost:8080/catalog`
+- Optional catalog help page (when enabled): `http://localhost:8080/catalog/help`
 - The help page includes the server component version generated from git commit/date metadata.
 - Latest docs redirect: `http://localhost:8080/doc-set`
 - JavaScript asset mode is controlled by `APP_ENABLE_DEV_FEATURES`:
   - truthy (`1`, `true`, `yes`, `on`): prefer readable source files (`web_ui_*.js`)
   - otherwise: prefer compacted files (`web_ui_*.mini.js`)
 - If preferred assets are unavailable, provider falls back to available assets and logs a warning that the flag preference could not be honored.
+- Provider feature dropdown entries are configuration-driven from top-level `component-entry-points.quart` entries that provide `label` and `url` values.
+- Provider can embed additional Quart components at startup via `component-entry-points.quart` entrypoints (for example config-service integration).
+- Provider catalog feature is configured under top-level `opamp.config_catalog` and scans configured folders/extensions for metadata columns derived from top comment lines (`config-service: key=value`).
 
 The UI includes a shutdown button that prompts for confirmation and calls the shutdown API.
 

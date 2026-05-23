@@ -53,6 +53,35 @@
       gap: 10px;
     }
 
+    .feature-menu-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 6px 10px;
+      box-shadow: 0 10px 20px rgba(44, 31, 21, 0.06);
+    }
+
+    .feature-menu-label {
+      font-size: 0.8rem;
+      color: var(--muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .feature-menu-select {
+      border: 1px solid #d0d8f2;
+      border-radius: 8px;
+      padding: 6px 8px;
+      font-size: 0.85rem;
+      color: #2f3f8f;
+      background: #fff;
+      min-width: 150px;
+    }
+
     h1 {
       margin: 0;
       font-size: 2.2rem;

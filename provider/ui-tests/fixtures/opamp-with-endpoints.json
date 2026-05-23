@@ -1,0 +1,41 @@
+{
+  "provider": {
+    "delayed_comms_seconds": 60,
+    "significant_comms_seconds": 120,
+    "webui_port": 8181,
+    "minutes_keep_disconnected": 5,
+    "retryAfterSeconds": 30,
+    "client_event_history_size": 50,
+    "log_level": "INFO",
+    "default_heartbeat_frequency": 30,
+    "latest_docs_url": "https://github.com/mp3monster/fluent-opamp/blob/main/README.md",
+    "human_in_loop_approval": false,
+    "opamp-use-authorization": "none",
+    "ui-use-authorization": "none"
+  },
+  "component-entry-points": {
+    "quart": [
+      {
+        "entry_point": "config_service.opamp_integration:register_config_service_feature",
+        "label": "Config Service UI",
+        "url": "/config-service/ui",
+        "enabled": true
+      }
+    ]
+  },
+  "opamp": {
+    "config_catalog": {
+      "enabled": true,
+      "menu_label": "Config Catalog",
+      "route_path": "/catalog",
+      "help_path": "/catalog/help",
+      "ui_base_css_path": "/config-service/ui/assets/config_ui.css",
+      "sources": [
+        {
+          "folder": "provider/ui-tests/fixtures/catalog",
+          "extensions": [".yaml", ".conf"]
+        }
+      ]
+    }
+  }
+}

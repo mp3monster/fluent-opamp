@@ -53,3 +53,5 @@ include = [
 "../docs" = "docs"
 "../scripts" = "scripts"
 "../mcp" = "mcp"
+
+[tool.hatch.build.hooks.custom]

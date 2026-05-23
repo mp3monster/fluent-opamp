@@ -44,6 +44,11 @@ from opamp_provider.commands import (
     get_command_metadata,
     get_custom_capabilities_list,
 )
+from opamp_provider.component_features import (
+    UiFeatureMenuItem,
+    register_provider_component_entries,
+    ui_menu_items_from_component_entries,
+)
 from opamp_provider.component_version import component_version_text
 from opamp_provider.exceptions import ServerToAgentException
 from opamp_provider.mcptool import register_mcp_transport, register_tool_routes
@@ -98,6 +103,16 @@ register_tool_routes(app)
 register_mcp_transport(app, transport="both")
 logger = logging.getLogger(__name__)
 tracemalloc.start()
+
+_ACTIVE_CONFIG_PATH = provider_config.get_effective_config_path()
+_REGISTERED_COMPONENT_ENTRY_POINTS, _CONFIGURED_COMPONENT_ENTRY_POINTS = register_provider_component_entries(
+    app=app,
+    config_path=_ACTIVE_CONFIG_PATH,
+    logger=logger,
+)
+_UI_FEATURE_MENU_ITEMS: list[UiFeatureMenuItem] = ui_menu_items_from_component_entries(
+    _CONFIGURED_COMPONENT_ENTRY_POINTS
+)
 
 CONTENT_TYPE_PROTO = "application/x-protobuf"  # Content-Type for protobuf payloads.
 LOG_HTTP_MSG = "opamp http AgentToServer:\n%s"  # Log format for HTTP messages.
@@ -2228,6 +2243,15 @@ async def web_ui_functions_js() -> Response:
     )
 
 
+@app.get("/web_ui_framework.js")
+async def web_ui_framework_js() -> Response:
+    """Serve the provider web UI framework/bootstrap JavaScript."""
+    return Response(
+        _WEB_UI_FRAMEWORK_JS,
+        content_type="application/javascript; charset=utf-8",
+    )
+
+
 @app.get("/web_ui_bindings.js")
 async def web_ui_bindings_js() -> Response:
     """Serve the provider web UI event-binding JavaScript."""
@@ -2309,6 +2333,27 @@ async def global_settings_help() -> Response:
         key: value.get("tooltip", "") for key, value in GLOBAL_SETTINGS_HELP.items()
     }
     return jsonify({"fields": GLOBAL_SETTINGS_HELP, "tooltips": tooltips})
+
+
+@app.get("/api/ui/features")
+async def ui_features() -> Response:
+    """Return provider UI feature menu entries derived from runtime configuration."""
+    items = [
+        {
+            "entry_point": item.entry_point,
+            "label": item.label,
+            "url": item.url,
+            "target": item.target,
+        }
+        for item in _UI_FEATURE_MENU_ITEMS
+        if str(item.label).strip() and str(item.url).strip()
+    ]
+    return jsonify(
+        {
+            "items": items,
+            "component_entry_points_registered": _REGISTERED_COMPONENT_ENTRY_POINTS,
+        }
+    )
 
 
 @app.get("/create.ico")
@@ -2401,6 +2446,7 @@ def _read_ui_js_asset(
 
 _WEB_UI_STATE_JS = _read_ui_js_asset(source_filename="web_ui_state.js")
 _WEB_UI_FUNCTIONS_JS = _read_ui_js_asset(source_filename="web_ui_functions.js")
+_WEB_UI_FRAMEWORK_JS = _read_ui_js_asset(source_filename="web_ui_framework.js")
 _WEB_UI_BINDINGS_JS = _read_ui_js_asset(source_filename="web_ui_bindings.js")
 
 _HELP_PATH = _HTML_DIR / "help.html"
