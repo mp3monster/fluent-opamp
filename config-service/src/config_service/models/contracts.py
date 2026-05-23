@@ -46,3 +46,8 @@ class UiPrepareFileRequest(BaseModel):
     text: str
     file_name: str = ""
     config_type: str = ""
+
+
+class UiLoadSourceFileRequest(BaseModel):
+    source_path: str
+    config_type: str = ""

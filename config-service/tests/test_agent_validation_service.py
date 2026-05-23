@@ -11,6 +11,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Config-service agent validation test coverage.
+
+Test-case reference: config-service/docs/TEST_CASES.md
+"""
+
 from __future__ import annotations
 
 import json
@@ -22,7 +27,10 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from config_service.agent_validation import validate
+from config_service.agent_validation.adapters.base import TemplateCommandAdapter
 from config_service.agent_validation.adapters.fluentbit import FluentBitValidationAdapter
+from config_service.agent_validation.adapters.fluentd import FluentdValidationAdapter
+from config_service.agent_validation.exceptions import AgentCommandBuildError
 from config_service.agent_validation.exceptions import AgentNotSupportedError
 from config_service.agent_validation.service import (
     ExternalAgentValidationService,
@@ -214,3 +222,99 @@ def test_fluentbit_adapter_filters_banner_lines_from_messages() -> None:
 
     assert result["messages"] == ["[ info] dry run started", "[error] parse failed"]
     assert result["ok"] is False
+
+
+def test_template_command_adapter_logs_placeholder_rejection(caplog: pytest.LogCaptureFixture) -> None:
+    adapter = TemplateCommandAdapter()
+    caplog.set_level("ERROR")
+
+    with pytest.raises(AgentCommandBuildError):
+        adapter.create_command(
+            config_text="service:\n  flush: 1\n",
+            config_path=None,
+            entry=ValidationAgentRegistry.from_config_payload(
+                [_python_entry_payload(version=None, send_via_stdin=False)]
+            ).entries[0],
+        )
+
+    assert "config_path placeholder was present without a file path" in caplog.text
+
+
+def test_template_command_adapter_logs_lifecycle_without_config_text_leakage(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    adapter = TemplateCommandAdapter()
+    caplog.set_level("INFO")
+    config_text = "service:\n  token: super-secret-value\n"
+    entry = ValidationAgentRegistry.from_config_payload(
+        [
+            {
+                "agent_type": "fluentbit",
+                "command_path": sys.executable,
+                "command_args": ["-c", "{config_text}"],
+                "adapter": "generic",
+                "success_exit_codes": [0],
+            }
+        ]
+    ).entries[0]
+
+    command = adapter.create_command(
+        config_text=config_text,
+        config_path=None,
+        entry=entry,
+    )
+
+    assert "super-secret-value" in command
+    assert "building validation command" in caplog.text
+    assert "validation command built" in caplog.text
+    assert "super-secret-value" not in caplog.text
+
+
+def test_fluentbit_adapter_logs_unhappy_path(caplog: pytest.LogCaptureFixture) -> None:
+    adapter = FluentBitValidationAdapter()
+    caplog.set_level("INFO")
+
+    result = adapter.interpret_result(
+        "[ info] dry run started\n"
+        "[error] parse failed\n"
+    )
+
+    assert result["ok"] is False
+    assert "starting Fluent Bit result interpretation" in caplog.text
+    assert "Fluent Bit validation output contains error lines" in caplog.text
+    assert "completed Fluent Bit result interpretation" in caplog.text
+
+
+def test_fluentbit_adapter_logs_empty_actionable_output(caplog: pytest.LogCaptureFixture) -> None:
+    adapter = FluentBitValidationAdapter()
+    caplog.set_level("WARNING")
+
+    result = adapter.interpret_result("___\n| banner only\n")
+
+    assert result["ok"] is True
+    assert result["messages"] == []
+    assert "Fluent Bit validation output contained no actionable lines" in caplog.text
+
+
+def test_fluentd_adapter_logs_unhappy_path(caplog: pytest.LogCaptureFixture) -> None:
+    adapter = FluentdValidationAdapter()
+    caplog.set_level("INFO")
+
+    result = adapter.interpret_result("config error near match block\n")
+
+    assert result["ok"] is False
+    assert "starting Fluentd result interpretation" in caplog.text
+    assert "Fluentd validation output contains error lines" in caplog.text
+    assert "completed Fluentd result interpretation" in caplog.text
+
+
+def test_fluentd_adapter_logs_empty_output(caplog: pytest.LogCaptureFixture) -> None:
+    adapter = FluentdValidationAdapter()
+    caplog.set_level("WARNING")
+
+    result = adapter.interpret_result("")
+
+    assert result["ok"] is True
+    assert result["messages"] == []
+    assert "validation result was empty" in caplog.text
+    assert "Fluentd validation output contained no actionable lines" in caplog.text

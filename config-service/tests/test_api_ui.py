@@ -11,10 +11,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Config-service UI and editor API test coverage.
+
+Test-case reference: config-service/docs/TEST_CASES.md
+"""
+
 from __future__ import annotations
 
 import json
-import logging
 import sys
 from pathlib import Path
 
@@ -25,11 +29,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from config_service.app import create_app
 from config_service.runtime_config import (
     ENV_CONFIG_TOOL_CONFIG_PATH,
-    resolve_log_level_name,
-    resolve_read_only,
-    resolve_ui_base_css_path,
-    resolve_web_port,
 )
+
 
 @pytest.mark.asyncio
 async def test_client_error_endpoint_logs_ui_errors(capsys: pytest.CaptureFixture[str]) -> None:
@@ -67,6 +68,33 @@ async def test_ui_css_override_injected(monkeypatch: pytest.MonkeyPatch) -> None
     html = (await ui.get_data()).decode("utf-8")
     assert 'href="/ui/assets/base.css"' in html
     assert "/ui/assets/web_ui.css" in html
+
+@pytest.mark.asyncio
+async def test_component_entry_points_can_disable_ui_routes(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    config_path = tmp_path / "config-service.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "component-entry-points": {
+                    "quart": [
+                        "opamp_tools.config_app:register_api_component",
+                    ]
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv(ENV_CONFIG_TOOL_CONFIG_PATH, str(config_path))
+    app = create_app(mode="standalone")
+    client = app.test_client()
+
+    ui = await client.get("/config-service/ui")
+    assert ui.status_code == 404
+
+    health = await client.get("/config-service/api/v1/health")
+    assert health.status_code == 200
 
 @pytest.mark.asyncio
 async def test_ui_collapsed_sections_injected_from_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -144,6 +172,7 @@ async def test_top_level_help_link_is_rendered() -> None:
     assert 'href="/config-service/ui/docs/help"' in html
     assert 'aria-label="Open UI help in a new tab"' in html
     assert ">Help</a>" in html
+    assert 'id="featureMenuGroup"' in html
 
 @pytest.mark.asyncio
 async def test_ui_routes_disable_cache_in_dev_mode(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -196,3 +225,26 @@ async def test_ui_prepare_file_extracts_header_metadata_and_line_map() -> None:
     assert body["header_comments"] == "Owned by Team A"
     assert body["body"].startswith("pipeline:")
     assert body["source_line_map"]["$.pipeline"] >= 1
+
+
+@pytest.mark.asyncio
+async def test_ui_load_source_file_reads_text_from_server_path(tmp_path: Path) -> None:
+    app = create_app(mode="standalone")
+    client = app.test_client()
+
+    source_file = tmp_path / "sample.yaml"
+    source_file.write_text(
+        "# config-service: config_type=fluentbit\npipeline:\n  inputs: []\n",
+        encoding="utf-8",
+    )
+
+    response = await client.post(
+        "/config-service/api/v1/ui/load-source-file",
+        json={"source_path": str(source_file)},
+    )
+    assert response.status_code == 200
+    body = await response.get_json()
+    assert body["ok"] is True
+    assert body["file_name"] == "sample.yaml"
+    assert body["source_path"] == str(source_file.resolve())
+    assert "pipeline:" in body["text"]

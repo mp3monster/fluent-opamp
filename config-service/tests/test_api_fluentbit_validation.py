@@ -11,6 +11,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Config-service Fluent Bit validation API test coverage.
+
+Test-case reference: config-service/docs/TEST_CASES.md
+"""
+
 from __future__ import annotations
 
 import json
@@ -736,3 +741,116 @@ def test_sql_code_adapter_uses_context_for_code_type_without_language_rule() -> 
     assert issues
     assert issues[0]["path"] == "$.config.pipeline.outputs[0].processors.logs[0].query"
     assert issues[0]["code"] in {"sql_syntax_error", "sql_parser_unavailable"}
+
+
+def test_builtin_data_type_adapter_logs_unhappy_path(caplog: pytest.LogCaptureFixture) -> None:
+    from config_service.rule_engine.adapters.builtin import DataTypeEnforcementAdapter
+    from config_service.rule_engine.base import RuleContext
+
+    adapter = DataTypeEnforcementAdapter()
+    caplog.set_level("INFO")
+
+    issues = adapter.evaluate(
+        RuleContext(
+            version="5.0.4",
+            config={"pipeline": []},
+            catalog={"plugins": {}, "common": {"processors": {"signals": {}}}},
+            params={},
+        )
+    )
+
+    assert issues == []
+    assert "starting data type enforcement evaluation" in caplog.text
+    assert "pipeline payload is not a dict" in caplog.text
+
+
+def test_lua_code_adapter_logs_unhappy_path(caplog: pytest.LogCaptureFixture) -> None:
+    from config_service.rule_engine.adapters.lua_code import LuaCodeSyntaxAdapter
+    from config_service.rule_engine.base import RuleContext
+
+    adapter = LuaCodeSyntaxAdapter()
+    caplog.set_level("INFO")
+
+    issues = adapter.evaluate(
+        RuleContext(
+            version="5.0.4",
+            config={
+                "pipeline": {
+                    "inputs": [],
+                    "filters": [{"name": "lua", "code": "function cb_filter("}],
+                    "outputs": [],
+                }
+            },
+            catalog={
+                "plugins": {
+                    "inputs": {},
+                    "filters": {
+                        "lua": {
+                            "fields": [{"name": "code", "data_type": "code"}],
+                        }
+                    },
+                    "outputs": {},
+                }
+            },
+            params={},
+        )
+    )
+
+    assert issues
+    assert "starting Lua code syntax evaluation" in caplog.text
+    assert (
+        "Lua syntax validation failed" in caplog.text
+        or "Lua validation parser unavailable" in caplog.text
+    )
+
+
+def test_sql_code_adapter_logs_unhappy_path(caplog: pytest.LogCaptureFixture) -> None:
+    from config_service.rule_engine.adapters.sql_code import SqlCodeSyntaxAdapter
+    from config_service.rule_engine.base import RuleContext
+
+    adapter = SqlCodeSyntaxAdapter()
+    caplog.set_level("INFO")
+
+    issues = adapter.evaluate(
+        RuleContext(
+            version="5.0.4",
+            config={
+                "pipeline": {
+                    "inputs": [],
+                    "filters": [],
+                    "outputs": [
+                        {
+                            "name": "null",
+                            "processors": {
+                                "logs": [{"name": "sql", "query": "SELECT FROM STREAM;"}]
+                            },
+                        }
+                    ],
+                }
+            },
+            catalog={
+                "plugins": {"inputs": {}, "filters": {}, "outputs": {"null": {"fields": []}}},
+                "common": {
+                    "processors": {
+                        "signals": {
+                            "logs": {
+                                "processors": {
+                                    "sql": {
+                                        "fields": [{"name": "query", "data_type": "code"}]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+            },
+            params={},
+        )
+    )
+
+    assert issues
+    assert "starting SQL code syntax evaluation" in caplog.text
+    assert (
+        "SQL syntax validation failed" in caplog.text
+        or "SQL validation parser unavailable" in caplog.text
+    )

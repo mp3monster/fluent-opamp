@@ -172,6 +172,8 @@
   // We intentionally keep this flat so render/event code can reference
   // stable element handles without repeated selector queries.
   var el = {
+    featureMenuGroup: document.getElementById("featureMenuGroup"),
+    featureMenuSelect: document.getElementById("featureMenuSelect"),
     openFile: document.getElementById("open-file"),
     openFileDisplay: document.getElementById("open-file-display"),
     browseFile: document.getElementById("browse-file"),
@@ -1612,6 +1614,248 @@
         file_name: String(fileName || ""),
         config_type: String(configTypeHint || ""),
       }),
+    });
+  }
+
+  function renderFeatureMenuItems(items) {
+    if (!el.featureMenuGroup || !el.featureMenuSelect) {
+      return;
+    }
+    var list = Array.isArray(items) ? items : [];
+    el.featureMenuSelect.innerHTML = "";
+    var placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = "Open...";
+    el.featureMenuSelect.appendChild(placeholder);
+
+    list.forEach(function (item) {
+      var label = String(item && item.label ? item.label : "").trim();
+      var url = String(item && item.url ? item.url : "").trim();
+      var target = String(item && item.target ? item.target : "_self").trim() || "_self";
+      if (!label || !url) {
+        return;
+      }
+      var option = document.createElement("option");
+      option.value = url;
+      option.textContent = label;
+      option.dataset.target = target;
+      el.featureMenuSelect.appendChild(option);
+    });
+
+    var hasItems = el.featureMenuSelect.options.length > 1;
+    el.featureMenuGroup.classList.toggle("hidden", !hasItems);
+    el.featureMenuSelect.selectedIndex = 0;
+  }
+
+  function fetchUiFeatureMenu() {
+    if (!el.featureMenuGroup || !el.featureMenuSelect) {
+      return Promise.resolve();
+    }
+    return fetch("/api/ui/features")
+      .then(function (resp) {
+        if (!resp.ok) {
+          el.featureMenuGroup.classList.add("hidden");
+          return null;
+        }
+        return resp.json();
+      })
+      .then(function (payload) {
+        if (!payload) {
+          return;
+        }
+        var items = Array.isArray(payload.items) ? payload.items : [];
+        renderFeatureMenuItems(items);
+      })
+      .catch(function () {
+        el.featureMenuGroup.classList.add("hidden");
+      });
+  }
+
+  function handleFeatureMenuSelection() {
+    if (!el.featureMenuSelect) {
+      return;
+    }
+    var selected = el.featureMenuSelect.options[el.featureMenuSelect.selectedIndex];
+    if (!selected) {
+      return;
+    }
+    var url = String(selected.value || "").trim();
+    if (!url) {
+      return;
+    }
+    var target = String(selected.dataset.target || "_self").trim() || "_self";
+    if (target === "_blank") {
+      window.open(url, "_blank", "noopener,noreferrer");
+    } else {
+      window.location.assign(url);
+    }
+    el.featureMenuSelect.selectedIndex = 0;
+  }
+
+  function configServiceOpenSourcePath() {
+    var current = new URL(window.location.href);
+    var sourcePath = String(current.searchParams.get("source_path") || "").trim();
+    if (!sourcePath) {
+      return Promise.resolve(false);
+    }
+    return fetchJson(API_BASE + "/ui/load-source-file", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        source_path: sourcePath,
+        config_type: state.configType,
+      }),
+    })
+      .then(function (payload) {
+        var fileName = String(payload.file_name || "").trim();
+        var text = String(payload.text || "");
+        return loadConfigurationTextFromSource(text, fileName, fileName);
+      })
+      .then(function () {
+        current.searchParams.delete("source_path");
+        window.history.replaceState({}, "", current.pathname + current.search + current.hash);
+        return true;
+      })
+      .catch(function (err) {
+        setValidationText(String(err));
+        setStatusMessage("Failed to load source configuration from path.");
+        return false;
+      });
+  }
+
+  function loadConfigurationTextFromSource(text, fileName, selectedDisplay) {
+    var normalizedName = String(fileName || "").trim() || "config";
+    var normalizedDisplay = String(selectedDisplay || "").trim() || normalizedName;
+    return prepareFileForLoad(text, normalizedName, state.configType).then(function (preparedFile) {
+      state.headerComments = normalizedHeaderComments(preparedFile.header_comments || "");
+      if (/\.json$/i.test(normalizedName)) {
+        var parsed = JSON.parse(preparedFile.body || "");
+        state.doc = parsed;
+        ensureDoc();
+        state.includedDocuments = Array.isArray(parsed.included_documents) ? parsed.included_documents : [];
+        state.configType = normalizeConfigType(
+          preparedFile.config_type || parsed.configType || "fluentbit",
+          "fluentbit"
+        );
+        state.doc.configType = state.configType;
+        state.sourceLineMap = {};
+        state.currentFileName = normalizedName;
+        state.saveFileHandle = null;
+        setOpenFileDisplay(normalizedDisplay);
+        el.configTypeSelect.value = state.configType;
+        setCookie(LAST_FILE_COOKIE, normalizedName);
+        return loadVersionsForType(
+          state.configType,
+          preparedFile.version || parsed.version || state.selectedVersion
+        )
+          .then(function () {
+            state.doc.version = state.selectedVersion;
+            state.preserveSourceLineMapOnce = true;
+            saveDoc();
+            setStatusMessage("Loaded configuration file " + normalizedName);
+            if (!state.selectedVersion) {
+              renderAll();
+              return null;
+            }
+            el.versionSelect.value = state.selectedVersion;
+            return loadCatalog(state.selectedVersion);
+          })
+          .then(function () {
+            if (!state.selectedVersion) {
+              return null;
+            }
+            return loadServiceOptions(state.selectedVersion);
+          })
+          .then(function () {
+            if (!state.selectedVersion) {
+              return null;
+            }
+            return loadParserOptions(state.selectedVersion);
+          })
+          .then(renderAll);
+      }
+
+      if (/\.ya?ml$/i.test(normalizedName)) {
+        state.configType = "fluentbit";
+        el.configTypeSelect.value = state.configType;
+        state.sourceLineMap = preparedFile.source_line_map || {};
+        return loadVersionsForType(state.configType, preparedFile.version || state.selectedVersion)
+          .then(function () {
+            return fetchJson(API_BASE + "/parse/fluentbit/" + encodeURIComponent(state.selectedVersion), {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ text: preparedFile.body || "" }),
+            });
+          })
+          .then(function (result) {
+            state.doc = {
+              version: state.selectedVersion,
+              configType: "fluentbit",
+              config: result.config || emptyDoc(state.selectedVersion, "fluentbit").config,
+              annotations: {},
+            };
+            state.includedDocuments = Array.isArray(result.included_documents) ? result.included_documents : [];
+            ensureDoc();
+            state.currentFileName = normalizedName;
+            state.saveFileHandle = null;
+            setOpenFileDisplay(normalizedDisplay);
+            setCookie(LAST_FILE_COOKIE, normalizedName);
+            state.preserveSourceLineMapOnce = true;
+            saveDoc();
+            if (Array.isArray(result.errors) && result.errors.length > 0) {
+              setStatusMessage("There were problems loading configuration file " + normalizedName + ". Recognized sections were loaded.");
+              renderValidationState({ ok: false, errors: result.errors });
+            } else {
+              setStatusMessage("Loaded configuration file " + normalizedName);
+              renderValidationState(null);
+            }
+            return loadCatalog(state.selectedVersion);
+          })
+          .then(function () {
+            return loadServiceOptions(state.selectedVersion);
+          })
+          .then(function () {
+            return loadParserOptions(state.selectedVersion);
+          })
+          .then(renderAll);
+      }
+
+      state.configType = normalizeConfigType(preparedFile.config_type || "fluentd", "fluentd");
+      el.configTypeSelect.value = state.configType;
+      state.sourceLineMap = preparedFile.source_line_map || {};
+      state.currentFileName = normalizedName;
+      state.saveFileHandle = null;
+      setOpenFileDisplay(normalizedDisplay);
+      setCookie(LAST_FILE_COOKIE, normalizedName);
+      return loadVersionsForType(state.configType, preparedFile.version || state.selectedVersion)
+        .then(function () {
+          return fetchJson(API_BASE + "/parse/fluentd/" + encodeURIComponent(state.selectedVersion), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: preparedFile.body || "" }),
+          });
+        })
+        .then(function (result) {
+          state.doc = {
+            version: state.selectedVersion,
+            configType: "fluentd",
+            config: result.config || emptyDoc(state.selectedVersion, "fluentd").config,
+            annotations: {},
+          };
+          state.includedDocuments = Array.isArray(result.included_documents) ? result.included_documents : [];
+          ensureDoc();
+          state.preserveSourceLineMapOnce = true;
+          saveDoc();
+          setStatusMessage("Loaded configuration file " + normalizedName);
+          return loadCatalog(state.selectedVersion);
+        })
+        .then(function () {
+          return loadServiceOptions(state.selectedVersion);
+        })
+        .then(function () {
+          return loadParserOptions(state.selectedVersion);
+        })
+        .then(renderAll);
     });
   }
 
@@ -3569,137 +3813,7 @@ function renderPlugins() {
       file
         .text()
         .then(function (text) {
-          return prepareFileForLoad(text, file.name, state.configType).then(function (preparedFile) {
-            state.headerComments = normalizedHeaderComments(preparedFile.header_comments || "");
-          if (/\.json$/i.test(file.name)) {
-            var parsed = JSON.parse(preparedFile.body || "");
-            state.doc = parsed;
-            ensureDoc();
-            state.includedDocuments = Array.isArray(parsed.included_documents) ? parsed.included_documents : [];
-            state.configType = normalizeConfigType(
-              preparedFile.config_type || parsed.configType || "fluentbit",
-              "fluentbit"
-            );
-            state.doc.configType = state.configType;
-            state.sourceLineMap = {};
-            state.currentFileName = file.name;
-            state.saveFileHandle = null;
-            setOpenFileDisplay(selectedDisplay);
-            el.configTypeSelect.value = state.configType;
-            setCookie(LAST_FILE_COOKIE, file.name);
-            return loadVersionsForType(
-              state.configType,
-              preparedFile.version || parsed.version || state.selectedVersion
-            )
-              .then(function () {
-                state.doc.version = state.selectedVersion;
-                state.preserveSourceLineMapOnce = true;
-                saveDoc();
-                setStatusMessage("Loaded configuration file " + file.name);
-                if (!state.selectedVersion) {
-                  renderAll();
-                  return null;
-                }
-                el.versionSelect.value = state.selectedVersion;
-                return loadCatalog(state.selectedVersion);
-              })
-              .then(function () {
-                if (!state.selectedVersion) {
-                  return null;
-                }
-                return loadServiceOptions(state.selectedVersion);
-              })
-              .then(function () {
-                if (!state.selectedVersion) {
-                  return null;
-                }
-                return loadParserOptions(state.selectedVersion);
-              })
-              .then(renderAll);
-          }
-
-          if (/\.ya?ml$/i.test(file.name)) {
-            state.configType = "fluentbit";
-            el.configTypeSelect.value = state.configType;
-            state.sourceLineMap = preparedFile.source_line_map || {};
-            return loadVersionsForType(state.configType, preparedFile.version || state.selectedVersion)
-              .then(function () {
-                return fetchJson(API_BASE + "/parse/fluentbit/" + encodeURIComponent(state.selectedVersion), {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ text: preparedFile.body || "" }),
-                });
-              })
-              .then(function (result) {
-                state.doc = {
-                  version: state.selectedVersion,
-                  configType: "fluentbit",
-                  config: result.config || emptyDoc(state.selectedVersion, "fluentbit").config,
-                  annotations: {},
-                };
-                state.includedDocuments = Array.isArray(result.included_documents) ? result.included_documents : [];
-                ensureDoc();
-                state.currentFileName = file.name;
-                state.saveFileHandle = null;
-                setOpenFileDisplay(selectedDisplay);
-                setCookie(LAST_FILE_COOKIE, file.name);
-                state.preserveSourceLineMapOnce = true;
-                saveDoc();
-                if (Array.isArray(result.errors) && result.errors.length > 0) {
-                  setStatusMessage("There were problems loading configuration file " + file.name + ". Recognized sections were loaded.");
-                  renderValidationState({ ok: false, errors: result.errors });
-                } else {
-                  setStatusMessage("Loaded configuration file " + file.name);
-                  renderValidationState(null);
-                }
-                return loadCatalog(state.selectedVersion);
-              })
-              .then(function () {
-                return loadServiceOptions(state.selectedVersion);
-              })
-              .then(function () {
-                return loadParserOptions(state.selectedVersion);
-              })
-              .then(renderAll);
-          }
-
-          state.configType = normalizeConfigType(preparedFile.config_type || "fluentd", "fluentd");
-          el.configTypeSelect.value = state.configType;
-          state.sourceLineMap = preparedFile.source_line_map || {};
-          state.currentFileName = file.name;
-          state.saveFileHandle = null;
-          setOpenFileDisplay(selectedDisplay);
-          setCookie(LAST_FILE_COOKIE, file.name);
-          return loadVersionsForType(state.configType, preparedFile.version || state.selectedVersion)
-            .then(function () {
-              return fetchJson(API_BASE + "/parse/fluentd/" + encodeURIComponent(state.selectedVersion), {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ text: preparedFile.body || "" }),
-              });
-            })
-            .then(function (result) {
-            state.doc = {
-              version: state.selectedVersion,
-              configType: "fluentd",
-              config: result.config || emptyDoc(state.selectedVersion, "fluentd").config,
-              annotations: {},
-            };
-            state.includedDocuments = Array.isArray(result.included_documents) ? result.included_documents : [];
-            ensureDoc();
-            state.preserveSourceLineMapOnce = true;
-            saveDoc();
-              setStatusMessage("Loaded configuration file " + file.name);
-              return loadCatalog(state.selectedVersion);
-            })
-            .then(function () {
-              return loadServiceOptions(state.selectedVersion);
-            })
-            .then(function () {
-              return loadParserOptions(state.selectedVersion);
-            })
-            .then(renderAll);
-        });
+          return loadConfigurationTextFromSource(text, file.name, selectedDisplay);
         })
         .catch(function (err) {
           if (err && err.payload && Array.isArray(err.payload.errors)) {
@@ -3711,6 +3825,10 @@ function renderPlugins() {
           setStatusMessage("There were problems loading configuration file " + file.name + ".");
         });
     });
+
+    if (el.featureMenuSelect) {
+      el.featureMenuSelect.addEventListener("change", handleFeatureMenuSelection);
+    }
 
     if (el.validationIncludeToggle) {
       el.validationIncludeToggle.addEventListener("change", function () {
@@ -3869,6 +3987,7 @@ function renderPlugins() {
     updateResultPanels();
     updateSectionPanels();
     initEvents();
+    fetchUiFeatureMenu();
 
     fetchJson(API_BASE + "/health")
       .then(function (health) {
@@ -3937,6 +4056,7 @@ function renderPlugins() {
         renderAll();
         updateReadOnlyState();
         updateRenderedDirtyState();
+        return configServiceOpenSourcePath();
       })
       .catch(function (err) {
         setValidationText(String(err));

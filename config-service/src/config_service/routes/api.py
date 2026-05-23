@@ -13,9 +13,11 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import sys
 from http import HTTPStatus
+from pathlib import Path
 from typing import Any
 
 from pydantic import ValidationError
@@ -27,57 +29,181 @@ from config_service.models.contracts import (
     RenderTextRequest,
     RenderYamlRequest,
     SchemaOptions,
+    UiLoadSourceFileRequest,
     UiPrepareFileRequest,
     ValidateRequest,
 )
 
 APP_ENABLE_DEV_FEATURES_ENV = "APP_ENABLE_DEV_FEATURES"
-_ENV_TRUE_VALUES = {"1", "true", "yes", "on"}
+LOGGER = logging.getLogger(__name__)
+
+ENV_TRUE_VALUES = {"1", "true", "yes", "on"}
+ROOT_PATH = "$"
+ROOT_PATH_WITH_SEPARATOR = "$."
+BODY_LOC_TOKEN = "body"
+
+DEFAULT_CONFIG_TYPE_FLUENTBIT = "fluentbit"
+CONFIG_TYPE_FLUENTD = "fluentd"
+CONFIG_TYPE_FLUENT_BIT_ALIAS = "fluent-bit"
+
+BLUEPRINT_NAME = "config_service_api"
+
+EXT_CATALOG_SERVICE = "catalog_service"
+EXT_SERVICE_DEFINITION_SERVICE = "service_definition_service"
+EXT_PARSER_DEFINITION_SERVICE = "parser_definition_service"
+EXT_ISSUE_CODE_SERVICE = "issue_code_service"
+EXT_UI_DOCUMENT_SERVICE = "ui_document_service"
+EXT_SCHEMA_SERVICE = "schema_service"
+EXT_INCLUDE_DOCUMENT_SERVICE = "include_document_service"
+EXT_VALIDATION_SERVICE = "validation_service"
+EXT_EXTERNAL_AGENT_VALIDATION_SERVICE = "external_agent_validation_service"
+EXT_YAML_RENDER_SERVICE = "yaml_render_service"
+EXT_FLUENTD_CONFIG_SERVICE = "fluentd_config_service"
+EXT_FLUENTBIT_YAML_CONFIG_SERVICE = "fluentbit_yaml_config_service"
+
+CONFIG_KEY_MODE = "CONFIG_SERVICE_MODE"
+CONFIG_KEY_READ_ONLY = "CONFIG_SERVICE_READ_ONLY"
+CONFIG_MODE_STANDALONE = "standalone"
+
+KEY_OK = "ok"
+KEY_MODE = "mode"
+KEY_ERROR = "error"
+KEY_ERRORS = "errors"
+KEY_MESSAGE = "message"
+KEY_KIND = "kind"
+KEY_SOURCE = "source"
+KEY_PATH = "path"
+KEY_STACK = "stack"
+KEY_LINE = "line"
+KEY_COLUMN = "column"
+KEY_CONFIG_TYPE = "config_type"
+KEY_VERSION = "version"
+KEY_VERSIONS = "versions"
+KEY_DEFAULT = "default"
+KEY_SUPPORTED_CONFIG_TYPES = "supported_config_types"
+KEY_HEADER_COMMENTS = "header_comments"
+KEY_BODY = "body"
+KEY_SOURCE_LINE_MAP = "source_line_map"
+KEY_SOURCE_PATH = "source_path"
+KEY_FILE_NAME = "file_name"
+KEY_TEXT = "text"
+KEY_SCHEMA = "schema"
+KEY_CONFIG = "config"
+KEY_ANNOTATIONS = "annotations"
+KEY_INCLUDED_DOCUMENTS = "included_documents"
+KEY_INCLUDED_FILES = "included_files"
+KEY_RENDERED_OUTPUT = "rendered_output"
+KEY_YAML = "yaml"
+KEY_READ_ONLY = "read_only"
+KEY_APP_ENABLE_DEV_FEATURES = "app_enable_dev_features"
+KEY_ORDER = "order"
+KEY_CODE = "code"
+KEY_SEVERITY = "severity"
+KEY_DETAIL_TYPE = "detail_type"
+KEY_PYDANTIC_LOC = "loc"
+KEY_PYDANTIC_MSG = "msg"
+KEY_PYDANTIC_TYPE = "type"
+
+VALUE_ERROR = "error"
+VALUE_SCHEMA = "schema"
+VALUE_PARSER = "parser"
+VALUE_BROWSER = "browser"
+VALUE_RUNTIME_ERROR = "runtime_error"
+VALUE_UNKNOWN_UI_ERROR = "Unknown UI error"
+VALUE_PYDANTIC_VALIDATION_ERROR = "pydantic_validation_error"
+VALUE_REQUEST_VALIDATION_ERROR = "Request validation error"
+VALUE_VALIDATION_ERROR = "validation_error"
+VALUE_EMPTY_INPUT_FILE = "empty_input_file"
+VALUE_FLUENTD_PARSE_ERROR = "fluentd_parse_error"
+VALUE_FLUENTBIT_YAML_PARSE_ERROR = "fluentbit_yaml_parse_error"
+
+HEADER_REFERER = "Referer"
+HEADER_USER_AGENT = "User-Agent"
+ENCODING_UTF8 = "utf-8"
+COMMENT_PREFIX_HASH = "#"
 
 
 def _app_enable_dev_features_enabled() -> bool:
+    """Return whether development-only features are enabled for this process."""
     raw_value = os.environ.get(APP_ENABLE_DEV_FEATURES_ENV, "")
     normalized = str(raw_value or "").strip().lower()
-    return normalized in _ENV_TRUE_VALUES
+    return normalized in ENV_TRUE_VALUES
 
 
 def _normalize_pydantic_issues(errors: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Convert Pydantic validation details into the API's stable error structure."""
     normalized: list[dict[str, Any]] = []
     for index, error in enumerate(errors, start=1):
-        loc = error.get("loc", ())
+        loc = error.get(KEY_PYDANTIC_LOC, ())
         if isinstance(loc, (list, tuple)):
-            path = "$." + ".".join(str(part) for part in loc if part != "body")
+            path = ROOT_PATH_WITH_SEPARATOR + ".".join(
+                str(part) for part in loc if part != BODY_LOC_TOKEN
+            )
         else:
-            path = "$"
-        path = path if path != "$." else "$"
+            path = ROOT_PATH
+        path = path if path != ROOT_PATH_WITH_SEPARATOR else ROOT_PATH
         normalized.append(
             {
-                "order": index,
-                "code": "pydantic_validation_error",
-                "path": path,
-                "message": str(error.get("msg") or "Request validation error"),
-                "severity": "error",
-                "source": "schema",
-                "detail_type": str(error.get("type") or "validation_error"),
+                KEY_ORDER: index,
+                KEY_CODE: VALUE_PYDANTIC_VALIDATION_ERROR,
+                KEY_PATH: path,
+                KEY_MESSAGE: str(error.get(KEY_PYDANTIC_MSG) or VALUE_REQUEST_VALIDATION_ERROR),
+                KEY_SEVERITY: VALUE_ERROR,
+                KEY_SOURCE: VALUE_SCHEMA,
+                KEY_DETAIL_TYPE: str(error.get(KEY_PYDANTIC_TYPE) or VALUE_VALIDATION_ERROR),
             }
         )
     return normalized
 
 
+async def _get_request_body() -> dict[str, Any]:
+    """Read the current JSON request body, defaulting to an empty object."""
+    return await request.get_json(silent=True) or {}
+
+
+def _json_error_response(message: str, status: HTTPStatus) -> tuple[Any, HTTPStatus]:
+    """Build a standard single-error JSON response."""
+    return jsonify({KEY_OK: False, KEY_ERROR: message}), status
+
+
+def _json_validation_errors_response(exc: ValidationError) -> tuple[Any, HTTPStatus]:
+    """Build the standard validation error response from a Pydantic exception."""
+    return (
+        jsonify({KEY_OK: False, KEY_ERRORS: _normalize_pydantic_issues(exc.errors())}),
+        HTTPStatus.BAD_REQUEST,
+    )
+
+
+def _request_config_type(default: str | None = None) -> str | None:
+    """Return the normalized config type query parameter, or the supplied default."""
+    raw_value = request.args.get(KEY_CONFIG_TYPE, default)
+    if raw_value is None:
+        return None
+    return str(raw_value or default or "").strip().lower()
+
+
+def _is_fluentbit_config_type(config_type: str | None) -> bool:
+    """Return whether the supplied config type should use Fluent Bit handling."""
+    normalized = str(config_type or DEFAULT_CONFIG_TYPE_FLUENTBIT).strip().lower()
+    return normalized in {DEFAULT_CONFIG_TYPE_FLUENTBIT, CONFIG_TYPE_FLUENT_BIT_ALIAS}
+
+
 def create_api_blueprint() -> Blueprint:
-    bp = Blueprint("config_service_api", __name__)
+    """Create the Quart blueprint that serves the config-service HTTP API."""
+    bp = Blueprint(BLUEPRINT_NAME, __name__)
 
     @bp.post("/client-errors")
     async def client_errors() -> Any:
-        body = await request.get_json(silent=True) or {}
-        message = str(body.get("message") or "Unknown UI error").strip()
-        kind = str(body.get("kind") or "runtime_error").strip()
-        source = str(body.get("source") or "browser").strip()
-        path = str(body.get("path") or request.headers.get("Referer") or "").strip()
-        stack = str(body.get("stack") or "").strip()
-        line = body.get("line")
-        column = body.get("column")
-        user_agent = request.headers.get("User-Agent", "")
+        """Record a client-side UI error reported by browser JavaScript."""
+        body = await _get_request_body()
+        message = str(body.get(KEY_MESSAGE) or VALUE_UNKNOWN_UI_ERROR).strip()
+        kind = str(body.get(KEY_KIND) or VALUE_RUNTIME_ERROR).strip()
+        source = str(body.get(KEY_SOURCE) or VALUE_BROWSER).strip()
+        path = str(body.get(KEY_PATH) or request.headers.get(HEADER_REFERER) or "").strip()
+        stack = str(body.get(KEY_STACK) or "").strip()
+        line = body.get(KEY_LINE)
+        column = body.get(KEY_COLUMN)
+        user_agent = request.headers.get(HEADER_USER_AGENT, "")
 
         log_message = (
             f"UI ERROR | kind={kind} | source={source} | path={path or '-'} | "
@@ -91,153 +217,309 @@ def create_api_blueprint() -> Blueprint:
 
         current_app.logger.error(log_message)
         print(log_message, file=sys.stderr, flush=True)
-        return jsonify({"ok": True})
+        return jsonify({KEY_OK: True})
 
     @bp.get("/health")
     async def health() -> Any:
+        """Return a small process-health payload for operational checks."""
+        current_app.logger.debug("health endpoint requested")
         return jsonify(
             {
-                "ok": True,
-                "mode": current_app.config.get("CONFIG_SERVICE_MODE", "standalone"),
-                "app_enable_dev_features": _app_enable_dev_features_enabled(),
-                "read_only": bool(current_app.config.get("CONFIG_SERVICE_READ_ONLY", False)),
+                KEY_OK: True,
+                KEY_MODE: current_app.config.get(CONFIG_KEY_MODE, CONFIG_MODE_STANDALONE),
+                KEY_APP_ENABLE_DEV_FEATURES: _app_enable_dev_features_enabled(),
+                KEY_READ_ONLY: bool(current_app.config.get(CONFIG_KEY_READ_ONLY, False)),
             }
         )
 
     @bp.get("/versions")
     async def versions() -> Any:
-        catalog_service = current_app.extensions["catalog_service"]
-        config_type = request.args.get("config_type", "fluentbit")
+        """Return supported versions and defaults for a configuration type."""
+        catalog_service = current_app.extensions[EXT_CATALOG_SERVICE]
+        config_type = _request_config_type(DEFAULT_CONFIG_TYPE_FLUENTBIT) or DEFAULT_CONFIG_TYPE_FLUENTBIT
+        current_app.logger.info("versions requested config_type=%s", config_type)
         try:
             default_version = catalog_service.get_default_version(config_type=config_type)
         except ValueError:
+            current_app.logger.warning(
+                "no default version available for config_type=%s; returning empty default",
+                config_type,
+            )
             default_version = ""
         return jsonify(
             {
-                "config_type": config_type,
-                "versions": catalog_service.get_versions(config_type=config_type),
-                "default": default_version,
-                "supported_config_types": catalog_service.get_supported_config_types(),
+                KEY_CONFIG_TYPE: config_type,
+                KEY_VERSIONS: catalog_service.get_versions(config_type=config_type),
+                KEY_DEFAULT: default_version,
+                KEY_SUPPORTED_CONFIG_TYPES: catalog_service.get_supported_config_types(),
             }
         )
 
     @bp.get("/catalog/<version>")
     async def catalog(version: str) -> Any:
-        catalog_service = current_app.extensions["catalog_service"]
-        config_type = request.args.get("config_type")
+        """Return the catalog payload for a version and optional config type."""
+        catalog_service = current_app.extensions[EXT_CATALOG_SERVICE]
+        config_type = _request_config_type()
+        current_app.logger.info("catalog requested version=%s config_type=%s", version, config_type)
         try:
             payload = catalog_service.get_catalog(version, config_type=config_type)
         except KeyError as exc:
-            return jsonify({"ok": False, "error": str(exc)}), HTTPStatus.NOT_FOUND
+            current_app.logger.warning(
+                "catalog lookup failed version=%s config_type=%s error=%s",
+                version,
+                config_type,
+                exc,
+            )
+            return _json_error_response(str(exc), HTTPStatus.NOT_FOUND)
         return jsonify(payload)
 
     @bp.get("/service-options/<version>")
     async def service_options(version: str) -> Any:
-        service_definition_service = current_app.extensions["service_definition_service"]
-        config_type = request.args.get("config_type")
+        """Return the service-definition options for a version and config type."""
+        service_definition_service = current_app.extensions[EXT_SERVICE_DEFINITION_SERVICE]
+        config_type = _request_config_type()
+        current_app.logger.info(
+            "service options requested version=%s config_type=%s",
+            version,
+            config_type,
+        )
         try:
             payload = service_definition_service.get_definition(version, config_type=config_type)
         except KeyError as exc:
-            return jsonify({"ok": False, "error": str(exc)}), HTTPStatus.NOT_FOUND
+            current_app.logger.warning(
+                "service options lookup failed version=%s config_type=%s error=%s",
+                version,
+                config_type,
+                exc,
+            )
+            return _json_error_response(str(exc), HTTPStatus.NOT_FOUND)
         return jsonify(payload)
 
     @bp.get("/parser-options/<version>")
     async def parser_options(version: str) -> Any:
-        parser_definition_service = current_app.extensions["parser_definition_service"]
-        config_type = request.args.get("config_type", "fluentbit")
+        """Return the parser-definition options for a version and config type."""
+        parser_definition_service = current_app.extensions[EXT_PARSER_DEFINITION_SERVICE]
+        config_type = _request_config_type(DEFAULT_CONFIG_TYPE_FLUENTBIT) or DEFAULT_CONFIG_TYPE_FLUENTBIT
+        current_app.logger.info(
+            "parser options requested version=%s config_type=%s",
+            version,
+            config_type,
+        )
         try:
             payload = parser_definition_service.get_definition(version, config_type=config_type)
         except KeyError as exc:
-            return jsonify({"ok": False, "error": str(exc)}), HTTPStatus.NOT_FOUND
+            current_app.logger.warning(
+                "parser options lookup failed version=%s config_type=%s error=%s",
+                version,
+                config_type,
+                exc,
+            )
+            return _json_error_response(str(exc), HTTPStatus.NOT_FOUND)
         return jsonify(payload)
 
     @bp.get("/issue-codes")
     async def issue_codes() -> Any:
-        issue_code_service = current_app.extensions["issue_code_service"]
+        """Return all configured validation and issue codes."""
+        issue_code_service = current_app.extensions[EXT_ISSUE_CODE_SERVICE]
+        current_app.logger.debug("issue codes requested")
         return jsonify(issue_code_service.get_all())
 
     @bp.post("/ui/prepare-file")
     async def ui_prepare_file() -> Any:
-        ui_document_service = current_app.extensions["ui_document_service"]
-        body = await request.get_json(silent=True) or {}
+        """Parse UI header metadata and build editor support data for a source file."""
+        ui_document_service = current_app.extensions[EXT_UI_DOCUMENT_SERVICE]
+        body = await _get_request_body()
         try:
             req = UiPrepareFileRequest.model_validate(body)
         except ValidationError as exc:
-            return jsonify({"ok": False, "errors": _normalize_pydantic_issues(exc.errors())}), HTTPStatus.BAD_REQUEST
+            current_app.logger.warning("ui prepare file validation failed errors=%s", exc.errors())
+            return _json_validation_errors_response(exc)
 
         parsed = ui_document_service.parse_config_header(req.text)
-        effective_config_type = str(req.config_type or parsed.get("config_type") or "").strip().lower()
+        effective_config_type = str(req.config_type or parsed.get(KEY_CONFIG_TYPE) or "").strip().lower()
         source_line_map = ui_document_service.build_source_line_map(
-            parsed.get("body", ""),
+            parsed.get(KEY_BODY, ""),
             effective_config_type,
             req.file_name,
         )
+        current_app.logger.info(
+            "ui prepare file completed file_name=%s effective_config_type=%s",
+            req.file_name,
+            effective_config_type,
+        )
         return jsonify(
             {
-                "ok": True,
-                "config_type": parsed.get("config_type", ""),
-                "version": parsed.get("version", ""),
-                "header_comments": parsed.get("header_comments", ""),
-                "body": parsed.get("body", ""),
-                "source_line_map": source_line_map,
+                KEY_OK: True,
+                KEY_CONFIG_TYPE: parsed.get(KEY_CONFIG_TYPE, ""),
+                KEY_VERSION: parsed.get(KEY_VERSION, ""),
+                KEY_HEADER_COMMENTS: parsed.get(KEY_HEADER_COMMENTS, ""),
+                KEY_BODY: parsed.get(KEY_BODY, ""),
+                KEY_SOURCE_LINE_MAP: source_line_map,
+            }
+        )
+
+    @bp.post("/ui/load-source-file")
+    async def ui_load_source_file() -> Any:
+        """Load a source file from disk so the editor UI can inspect its contents."""
+        body = await _get_request_body()
+        try:
+            req = UiLoadSourceFileRequest.model_validate(body)
+        except ValidationError as exc:
+            current_app.logger.warning("ui load source file validation failed errors=%s", exc.errors())
+            return _json_validation_errors_response(exc)
+
+        source_path = str(req.source_path or "").strip()
+        if not source_path:
+            current_app.logger.warning("ui load source file rejected because source_path was empty")
+            return _json_error_response("source_path is required", HTTPStatus.BAD_REQUEST)
+
+        try:
+            resolved = Path(source_path).expanduser().resolve(strict=True)
+        except OSError:
+            current_app.logger.warning("ui load source file path not found source_path=%s", source_path)
+            return _json_error_response(
+                f"source_path not found: {source_path}",
+                HTTPStatus.NOT_FOUND,
+            )
+
+        if resolved.is_file() is not True:
+            current_app.logger.warning(
+                "ui load source file rejected because path is not a file source_path=%s resolved=%s",
+                source_path,
+                resolved,
+            )
+            return _json_error_response(
+                f"source_path is not a file: {source_path}",
+                HTTPStatus.BAD_REQUEST,
+            )
+
+        try:
+            text = resolved.read_text(encoding=ENCODING_UTF8)
+        except OSError as exc:
+            current_app.logger.exception(
+                "ui load source file failed to read source_path=%s resolved=%s",
+                source_path,
+                resolved,
+            )
+            return _json_error_response(
+                f"failed to read source file: {exc}",
+                HTTPStatus.BAD_REQUEST,
+            )
+
+        current_app.logger.info("ui load source file completed source_path=%s", resolved)
+        return jsonify(
+            {
+                KEY_OK: True,
+                KEY_SOURCE_PATH: str(resolved),
+                KEY_FILE_NAME: resolved.name,
+                KEY_TEXT: text,
+                KEY_CONFIG_TYPE: str(req.config_type or ""),
             }
         )
 
     @bp.post("/catalog/<version>/validate")
     async def validate_catalog(version: str) -> Any:
-        catalog_service = current_app.extensions["catalog_service"]
+        """Validate the catalog registry and rules for a specific version."""
+        catalog_service = current_app.extensions[EXT_CATALOG_SERVICE]
+        current_app.logger.info("catalog validation requested version=%s", version)
         try:
             result = catalog_service.validate_catalog_for_version(version)
         except (KeyError, ValueError) as exc:
-            return jsonify({"ok": False, "error": str(exc)}), HTTPStatus.BAD_REQUEST
+            current_app.logger.warning(
+                "catalog validation failed version=%s error=%s",
+                version,
+                exc,
+            )
+            return _json_error_response(str(exc), HTTPStatus.BAD_REQUEST)
         return jsonify(result)
 
     @bp.post("/schema/<version>")
     async def schema(version: str) -> Any:
-        catalog_service = current_app.extensions["catalog_service"]
-        schema_service = current_app.extensions["schema_service"]
-        parser_definition_service = current_app.extensions["parser_definition_service"]
-        body = await request.get_json(silent=True) or {}
-        config_type = request.args.get("config_type")
+        """Compile and return a schema for the requested catalog version."""
+        catalog_service = current_app.extensions[EXT_CATALOG_SERVICE]
+        schema_service = current_app.extensions[EXT_SCHEMA_SERVICE]
+        parser_definition_service = current_app.extensions[EXT_PARSER_DEFINITION_SERVICE]
+        body = await _get_request_body()
+        config_type = _request_config_type()
+        current_app.logger.info("schema requested version=%s config_type=%s", version, config_type)
         try:
             options = SchemaOptions.model_validate(body)
             catalog_payload = catalog_service.get_catalog(version, config_type=config_type)
         except ValidationError as exc:
-            return jsonify({"ok": False, "error": exc.errors()}), HTTPStatus.BAD_REQUEST
+            current_app.logger.warning(
+                "schema request validation failed version=%s config_type=%s errors=%s",
+                version,
+                config_type,
+                exc.errors(),
+            )
+            return jsonify({KEY_OK: False, KEY_ERROR: exc.errors()}), HTTPStatus.BAD_REQUEST
         except KeyError as exc:
-            return jsonify({"ok": False, "error": str(exc)}), HTTPStatus.NOT_FOUND
+            current_app.logger.warning(
+                "schema catalog lookup failed version=%s config_type=%s error=%s",
+                version,
+                config_type,
+                exc,
+            )
+            return _json_error_response(str(exc), HTTPStatus.NOT_FOUND)
         parser_definition = None
-        if str(config_type or "fluentbit").lower() == "fluentbit":
-            parser_definition = parser_definition_service.get_definition(version, config_type="fluentbit")
+        if _is_fluentbit_config_type(config_type):
+            parser_definition = parser_definition_service.get_definition(
+                version,
+                config_type=DEFAULT_CONFIG_TYPE_FLUENTBIT,
+            )
         schema_payload = schema_service.compile_schema(
             catalog_payload,
             strict_mode=options.strict,
             parser_definition=parser_definition,
         )
-        return jsonify({"ok": True, "schema": schema_payload})
+        current_app.logger.info("schema compiled version=%s config_type=%s", version, config_type)
+        return jsonify({KEY_OK: True, KEY_SCHEMA: schema_payload})
 
     @bp.post("/validate/<version>")
     async def validate(version: str) -> Any:
-        catalog_service = current_app.extensions["catalog_service"]
-        include_document_service = current_app.extensions["include_document_service"]
-        parser_definition_service = current_app.extensions["parser_definition_service"]
-        validation_service = current_app.extensions["validation_service"]
-        body = await request.get_json(silent=True) or {}
-        config_type = request.args.get("config_type")
+        """Validate a config payload against the selected catalog and rules."""
+        catalog_service = current_app.extensions[EXT_CATALOG_SERVICE]
+        include_document_service = current_app.extensions[EXT_INCLUDE_DOCUMENT_SERVICE]
+        parser_definition_service = current_app.extensions[EXT_PARSER_DEFINITION_SERVICE]
+        validation_service = current_app.extensions[EXT_VALIDATION_SERVICE]
+        body = await _get_request_body()
+        config_type = _request_config_type()
+        current_app.logger.info("config validation requested version=%s config_type=%s", version, config_type)
         try:
             req = ValidateRequest.model_validate(body)
             catalog_payload = catalog_service.get_catalog(version, config_type=config_type)
         except ValidationError as exc:
-            return jsonify({"ok": False, "errors": _normalize_pydantic_issues(exc.errors())}), HTTPStatus.BAD_REQUEST
+            current_app.logger.warning(
+                "config validation request invalid version=%s config_type=%s errors=%s",
+                version,
+                config_type,
+                exc.errors(),
+            )
+            return _json_validation_errors_response(exc)
         except KeyError as exc:
-            return jsonify({"ok": False, "error": str(exc)}), HTTPStatus.NOT_FOUND
+            current_app.logger.warning(
+                "config validation catalog lookup failed version=%s config_type=%s error=%s",
+                version,
+                config_type,
+                exc,
+            )
+            return _json_error_response(str(exc), HTTPStatus.NOT_FOUND)
 
         parser_definition = None
-        if str(config_type or "fluentbit").lower() == "fluentbit":
-            parser_definition = parser_definition_service.get_definition(version, config_type="fluentbit")
+        if _is_fluentbit_config_type(config_type):
+            parser_definition = parser_definition_service.get_definition(
+                version,
+                config_type=DEFAULT_CONFIG_TYPE_FLUENTBIT,
+            )
         payload = req.model_dump()
         if req.merge_includes_for_validation:
-            payload["config"] = include_document_service.merge_for_validation(
+            current_app.logger.info(
+                "config validation merging include documents version=%s config_type=%s include_count=%s",
+                version,
+                config_type,
+                len(req.included_documents),
+            )
+            payload[KEY_CONFIG] = include_document_service.merge_for_validation(
                 config=req.config,
                 included_documents=req.included_documents,
             )
@@ -248,48 +530,88 @@ def create_api_blueprint() -> Blueprint:
             profile=req.profile,
             parser_definition=parser_definition,
         )
-        return jsonify(result), HTTPStatus.OK if result.get("ok") else HTTPStatus.BAD_REQUEST
+        current_app.logger.info(
+            "config validation completed version=%s config_type=%s ok=%s",
+            version,
+            config_type,
+            result.get(KEY_OK),
+        )
+        return jsonify(result), HTTPStatus.OK if result.get(KEY_OK) else HTTPStatus.BAD_REQUEST
 
     @bp.get("/agent-validation/availability/<version>")
     async def agent_validation_availability(version: str) -> Any:
-        external_agent_validation_service = current_app.extensions["external_agent_validation_service"]
-        config_type = str(request.args.get("config_type", "fluentbit") or "fluentbit").strip().lower()
+        """Report whether dry-run external validation is available for a config type."""
+        external_agent_validation_service = current_app.extensions[
+            EXT_EXTERNAL_AGENT_VALIDATION_SERVICE
+        ]
+        config_type = _request_config_type(DEFAULT_CONFIG_TYPE_FLUENTBIT) or DEFAULT_CONFIG_TYPE_FLUENTBIT
+        current_app.logger.info(
+            "agent validation availability requested version=%s config_type=%s",
+            version,
+            config_type,
+        )
         result = external_agent_validation_service.dry_run_capability(
             agent_type=config_type,
             agent_version=version,
         )
-        return jsonify({"ok": True, **result})
+        return jsonify({KEY_OK: True, **result})
 
     @bp.post("/agent-validation/dry-run/<version>")
     async def dry_run_validate(version: str) -> Any:
-        catalog_service = current_app.extensions["catalog_service"]
-        include_document_service = current_app.extensions["include_document_service"]
-        yaml_render_service = current_app.extensions["yaml_render_service"]
-        fluentd_config_service = current_app.extensions["fluentd_config_service"]
-        external_agent_validation_service = current_app.extensions["external_agent_validation_service"]
+        """Render config text and execute external agent dry-run validation."""
+        catalog_service = current_app.extensions[EXT_CATALOG_SERVICE]
+        include_document_service = current_app.extensions[EXT_INCLUDE_DOCUMENT_SERVICE]
+        yaml_render_service = current_app.extensions[EXT_YAML_RENDER_SERVICE]
+        fluentd_config_service = current_app.extensions[EXT_FLUENTD_CONFIG_SERVICE]
+        external_agent_validation_service = current_app.extensions[
+            EXT_EXTERNAL_AGENT_VALIDATION_SERVICE
+        ]
 
-        body = await request.get_json(silent=True) or {}
-        config_type = str(request.args.get("config_type", "fluentbit") or "fluentbit").strip().lower()
+        body = await _get_request_body()
+        config_type = _request_config_type(DEFAULT_CONFIG_TYPE_FLUENTBIT) or DEFAULT_CONFIG_TYPE_FLUENTBIT
+        current_app.logger.info(
+            "agent dry-run validation requested version=%s config_type=%s",
+            version,
+            config_type,
+        )
         try:
             req = ValidateRequest.model_validate(body)
             catalog_service.get_catalog(version, config_type=config_type)
         except ValidationError as exc:
-            return jsonify({"ok": False, "errors": _normalize_pydantic_issues(exc.errors())}), HTTPStatus.BAD_REQUEST
+            current_app.logger.warning(
+                "agent dry-run request invalid version=%s config_type=%s errors=%s",
+                version,
+                config_type,
+                exc.errors(),
+            )
+            return _json_validation_errors_response(exc)
         except KeyError as exc:
-            return jsonify({"ok": False, "error": str(exc)}), HTTPStatus.NOT_FOUND
+            current_app.logger.warning(
+                "agent dry-run catalog lookup failed version=%s config_type=%s error=%s",
+                version,
+                config_type,
+                exc,
+            )
+            return _json_error_response(str(exc), HTTPStatus.NOT_FOUND)
 
         dry_run_config = req.config
         if req.merge_includes_for_validation:
+            current_app.logger.info(
+                "agent dry-run merging include documents version=%s config_type=%s include_count=%s",
+                version,
+                config_type,
+                len(req.included_documents),
+            )
             dry_run_config = include_document_service.merge_for_validation(
                 config=req.config,
                 included_documents=req.included_documents,
             )
 
-        if config_type == "fluentd":
+        if config_type == CONFIG_TYPE_FLUENTD:
             rendered_text = fluentd_config_service.render(dry_run_config)
         else:
             rendered_text = yaml_render_service.render(
-                payload={"config": dry_run_config, "annotations": req.annotations},
+                payload={KEY_CONFIG: dry_run_config, KEY_ANNOTATIONS: req.annotations},
                 include_comments=True,
             )
 
@@ -301,32 +623,65 @@ def create_api_blueprint() -> Blueprint:
                 require_dry_run_enabled=True,
             )
         except AgentNotSupportedError as exc:
-            return jsonify({"ok": False, "error": str(exc)}), HTTPStatus.NOT_FOUND
+            current_app.logger.warning(
+                "agent dry-run validation unavailable version=%s config_type=%s error=%s",
+                version,
+                config_type,
+                exc,
+            )
+            return _json_error_response(str(exc), HTTPStatus.NOT_FOUND)
+        current_app.logger.info(
+            "agent dry-run validation completed version=%s config_type=%s ok=%s",
+            version,
+            config_type,
+            result.get(KEY_OK),
+        )
         return jsonify(result), HTTPStatus.OK
 
     @bp.post("/render/yaml/<version>")
     async def render_yaml(version: str) -> Any:
-        catalog_service = current_app.extensions["catalog_service"]
-        include_document_service = current_app.extensions["include_document_service"]
-        ui_document_service = current_app.extensions["ui_document_service"]
-        yaml_render_service = current_app.extensions["yaml_render_service"]
-        fluentd_config_service = current_app.extensions["fluentd_config_service"]
-        body = await request.get_json(silent=True) or {}
-        config_type = request.args.get("config_type", "fluentbit")
+        """Render a config payload into YAML plus optional include outputs."""
+        catalog_service = current_app.extensions[EXT_CATALOG_SERVICE]
+        include_document_service = current_app.extensions[EXT_INCLUDE_DOCUMENT_SERVICE]
+        ui_document_service = current_app.extensions[EXT_UI_DOCUMENT_SERVICE]
+        yaml_render_service = current_app.extensions[EXT_YAML_RENDER_SERVICE]
+        fluentd_config_service = current_app.extensions[EXT_FLUENTD_CONFIG_SERVICE]
+        body = await _get_request_body()
+        config_type = _request_config_type(DEFAULT_CONFIG_TYPE_FLUENTBIT) or DEFAULT_CONFIG_TYPE_FLUENTBIT
+        current_app.logger.info("yaml render requested version=%s config_type=%s", version, config_type)
         try:
             req = RenderYamlRequest.model_validate(body)
             catalog_service.get_catalog(version, config_type=config_type)
         except ValidationError as exc:
-            return jsonify({"ok": False, "error": exc.errors()}), HTTPStatus.BAD_REQUEST
+            current_app.logger.warning(
+                "yaml render request invalid version=%s config_type=%s errors=%s",
+                version,
+                config_type,
+                exc.errors(),
+            )
+            return jsonify({KEY_OK: False, KEY_ERROR: exc.errors()}), HTTPStatus.BAD_REQUEST
         except KeyError as exc:
-            return jsonify({"ok": False, "error": str(exc)}), HTTPStatus.NOT_FOUND
+            current_app.logger.warning(
+                "yaml render catalog lookup failed version=%s config_type=%s error=%s",
+                version,
+                config_type,
+                exc,
+            )
+            return _json_error_response(str(exc), HTTPStatus.NOT_FOUND)
 
         yaml_text = yaml_render_service.render(
-            payload=req.model_dump(), include_comments=req.include_comments
+            payload=req.model_dump(),
+            include_comments=req.include_comments,
         )
         included_files: list[dict[str, Any]] = []
-        response: dict[str, Any] = {"ok": True, "yaml": yaml_text}
+        response: dict[str, Any] = {KEY_OK: True, KEY_YAML: yaml_text}
         if req.render_included_files:
+            current_app.logger.info(
+                "yaml render includes requested version=%s config_type=%s include_count=%s",
+                version,
+                config_type,
+                len(req.included_documents),
+            )
             included_files = include_document_service.render_included_documents(
                 config_type=config_type,
                 included_documents=req.included_documents,
@@ -334,8 +689,8 @@ def create_api_blueprint() -> Blueprint:
                 yaml_render_service=yaml_render_service,
                 fluentd_config_service=fluentd_config_service,
             )
-            response["included_files"] = included_files
-        response["rendered_output"] = ui_document_service.compose_render_output(
+            response[KEY_INCLUDED_FILES] = included_files
+        response[KEY_RENDERED_OUTPUT] = ui_document_service.compose_render_output(
             main_rendered=yaml_text,
             include_loaded_files=req.render_included_files,
             included_files=included_files,
@@ -343,83 +698,138 @@ def create_api_blueprint() -> Blueprint:
             include_config_header=req.include_config_header,
             config_type=config_type,
             version=version,
-            comment_prefix="#",
+            comment_prefix=COMMENT_PREFIX_HASH,
         )
+        current_app.logger.info("yaml render completed version=%s config_type=%s", version, config_type)
         return jsonify(response)
 
     @bp.post("/parse/fluentd/<version>")
     async def parse_fluentd(version: str) -> Any:
-        catalog_service = current_app.extensions["catalog_service"]
-        fluentd_config_service = current_app.extensions["fluentd_config_service"]
-        include_document_service = current_app.extensions["include_document_service"]
-        body = await request.get_json(silent=True) or {}
+        """Parse Fluentd text into the structured config payload shape."""
+        catalog_service = current_app.extensions[EXT_CATALOG_SERVICE]
+        fluentd_config_service = current_app.extensions[EXT_FLUENTD_CONFIG_SERVICE]
+        include_document_service = current_app.extensions[EXT_INCLUDE_DOCUMENT_SERVICE]
+        body = await _get_request_body()
+        current_app.logger.info("fluentd parse requested version=%s", version)
         try:
             req = ParseTextRequest.model_validate(body)
-            catalog_service.get_catalog(version, config_type="fluentd")
+            catalog_service.get_catalog(version, config_type=CONFIG_TYPE_FLUENTD)
         except ValidationError as exc:
-            return jsonify({"ok": False, "errors": _normalize_pydantic_issues(exc.errors())}), HTTPStatus.BAD_REQUEST
+            current_app.logger.warning(
+                "fluentd parse request invalid version=%s errors=%s",
+                version,
+                exc.errors(),
+            )
+            return _json_validation_errors_response(exc)
         except KeyError as exc:
-            return jsonify({"ok": False, "error": str(exc)}), HTTPStatus.NOT_FOUND
+            current_app.logger.warning("fluentd parse catalog lookup failed version=%s error=%s", version, exc)
+            return _json_error_response(str(exc), HTTPStatus.NOT_FOUND)
         if not req.text.strip():
-            return jsonify(
-                {
-                    "ok": False,
-                    "errors": [
-                        {
-                            "order": 1,
-                            "code": "empty_input_file",
-                            "path": "$",
-                            "message": "The configuration file is empty.",
-                            "severity": "error",
-                            "source": "parser",
-                        }
-                    ],
-                }
-            ), HTTPStatus.BAD_REQUEST
+            current_app.logger.warning("fluentd parse rejected empty input version=%s", version)
+            return (
+                jsonify(
+                    {
+                        KEY_OK: False,
+                        KEY_ERRORS: [
+                            {
+                                KEY_ORDER: 1,
+                                KEY_CODE: VALUE_EMPTY_INPUT_FILE,
+                                KEY_PATH: ROOT_PATH,
+                                KEY_MESSAGE: "The configuration file is empty.",
+                                KEY_SEVERITY: VALUE_ERROR,
+                                KEY_SOURCE: VALUE_PARSER,
+                            }
+                        ],
+                    }
+                ),
+                HTTPStatus.BAD_REQUEST,
+            )
         try:
             config_payload = fluentd_config_service.parse(req.text)
         except ValueError as exc:
-            return jsonify({"ok": False, "errors": [{"order": 1, "code": "fluentd_parse_error", "path": "$", "message": str(exc), "severity": "error", "source": "parser"}]}), HTTPStatus.BAD_REQUEST
-        response: dict[str, Any] = {"ok": True, "config": config_payload}
+            current_app.logger.warning("fluentd parse failed version=%s error=%s", version, exc)
+            return (
+                jsonify(
+                    {
+                        KEY_OK: False,
+                        KEY_ERRORS: [
+                            {
+                                KEY_ORDER: 1,
+                                KEY_CODE: VALUE_FLUENTD_PARSE_ERROR,
+                                KEY_PATH: ROOT_PATH,
+                                KEY_MESSAGE: str(exc),
+                                KEY_SEVERITY: VALUE_ERROR,
+                                KEY_SOURCE: VALUE_PARSER,
+                            }
+                        ],
+                    }
+                ),
+                HTTPStatus.BAD_REQUEST,
+            )
+        response: dict[str, Any] = {KEY_OK: True, KEY_CONFIG: config_payload}
         if req.resolve_includes and req.source_path:
-            response["included_documents"] = include_document_service.resolve_include_documents(
-                config_type="fluentd",
+            current_app.logger.info(
+                "fluentd parse resolving includes version=%s source_path=%s",
+                version,
+                req.source_path,
+            )
+            response[KEY_INCLUDED_DOCUMENTS] = include_document_service.resolve_include_documents(
+                config_type=CONFIG_TYPE_FLUENTD,
                 source_path=req.source_path,
                 config=config_payload,
             )
+        current_app.logger.info("fluentd parse completed version=%s", version)
         return jsonify(response)
 
     @bp.post("/parse/fluentbit/<version>")
     async def parse_fluentbit(version: str) -> Any:
-        catalog_service = current_app.extensions["catalog_service"]
-        fluentbit_yaml_config_service = current_app.extensions["fluentbit_yaml_config_service"]
-        include_document_service = current_app.extensions["include_document_service"]
-        body = await request.get_json(silent=True) or {}
+        """Parse Fluent Bit YAML text into the structured config payload shape."""
+        catalog_service = current_app.extensions[EXT_CATALOG_SERVICE]
+        fluentbit_yaml_config_service = current_app.extensions[EXT_FLUENTBIT_YAML_CONFIG_SERVICE]
+        include_document_service = current_app.extensions[EXT_INCLUDE_DOCUMENT_SERVICE]
+        body = await _get_request_body()
+        current_app.logger.info("fluentbit parse requested version=%s", version)
         try:
             req = ParseTextRequest.model_validate(body)
-            catalog_service.get_catalog(version, config_type="fluentbit")
+            catalog_service.get_catalog(version, config_type=DEFAULT_CONFIG_TYPE_FLUENTBIT)
         except ValidationError as exc:
-            return jsonify({"ok": False, "errors": _normalize_pydantic_issues(exc.errors())}), HTTPStatus.BAD_REQUEST
+            current_app.logger.warning(
+                "fluentbit parse request invalid version=%s errors=%s",
+                version,
+                exc.errors(),
+            )
+            return _json_validation_errors_response(exc)
         except KeyError as exc:
-            return jsonify({"ok": False, "error": str(exc)}), HTTPStatus.NOT_FOUND
+            current_app.logger.warning("fluentbit parse catalog lookup failed version=%s error=%s", version, exc)
+            return _json_error_response(str(exc), HTTPStatus.NOT_FOUND)
 
         try:
             result = fluentbit_yaml_config_service.parse(req.text)
         except ValueError as exc:
             message = str(exc)
-            code = "empty_input_file" if "empty" in message.lower() else "fluentbit_yaml_parse_error"
+            code = (
+                VALUE_EMPTY_INPUT_FILE
+                if "empty" in message.lower()
+                else VALUE_FLUENTBIT_YAML_PARSE_ERROR
+            )
+            current_app.logger.warning(
+                "fluentbit parse failed version=%s code=%s error=%s",
+                version,
+                code,
+                exc,
+            )
             return (
                 jsonify(
                     {
-                        "ok": False,
-                        "errors": [
+                        KEY_OK: False,
+                        KEY_ERRORS: [
                             {
-                                "order": 1,
-                                "code": code,
-                                "path": "$",
-                                "message": message,
-                                "severity": "error",
-                                "source": "parser",
+                                KEY_ORDER: 1,
+                                KEY_CODE: code,
+                                KEY_PATH: ROOT_PATH,
+                                KEY_MESSAGE: message,
+                                KEY_SEVERITY: VALUE_ERROR,
+                                KEY_SOURCE: VALUE_PARSER,
                             }
                         ],
                     }
@@ -427,50 +837,70 @@ def create_api_blueprint() -> Blueprint:
                 HTTPStatus.BAD_REQUEST,
             )
         if req.resolve_includes and req.source_path:
-            result["included_documents"] = include_document_service.resolve_include_documents(
-                config_type="fluentbit",
-                source_path=req.source_path,
-                config=result.get("config", {}),
+            current_app.logger.info(
+                "fluentbit parse resolving includes version=%s source_path=%s",
+                version,
+                req.source_path,
             )
+            result[KEY_INCLUDED_DOCUMENTS] = include_document_service.resolve_include_documents(
+                config_type=DEFAULT_CONFIG_TYPE_FLUENTBIT,
+                source_path=req.source_path,
+                config=result.get(KEY_CONFIG, {}),
+            )
+        current_app.logger.info("fluentbit parse completed version=%s", version)
         return jsonify(result)
 
     @bp.post("/render/fluentd/<version>")
     async def render_fluentd(version: str) -> Any:
-        catalog_service = current_app.extensions["catalog_service"]
-        fluentd_config_service = current_app.extensions["fluentd_config_service"]
-        include_document_service = current_app.extensions["include_document_service"]
-        ui_document_service = current_app.extensions["ui_document_service"]
-        yaml_render_service = current_app.extensions["yaml_render_service"]
-        body = await request.get_json(silent=True) or {}
+        """Render structured Fluentd config data back into Fluentd text."""
+        catalog_service = current_app.extensions[EXT_CATALOG_SERVICE]
+        fluentd_config_service = current_app.extensions[EXT_FLUENTD_CONFIG_SERVICE]
+        include_document_service = current_app.extensions[EXT_INCLUDE_DOCUMENT_SERVICE]
+        ui_document_service = current_app.extensions[EXT_UI_DOCUMENT_SERVICE]
+        yaml_render_service = current_app.extensions[EXT_YAML_RENDER_SERVICE]
+        body = await _get_request_body()
+        current_app.logger.info("fluentd render requested version=%s", version)
         try:
             req = RenderTextRequest.model_validate(body)
-            catalog_service.get_catalog(version, config_type="fluentd")
+            catalog_service.get_catalog(version, config_type=CONFIG_TYPE_FLUENTD)
         except ValidationError as exc:
-            return jsonify({"ok": False, "errors": _normalize_pydantic_issues(exc.errors())}), HTTPStatus.BAD_REQUEST
+            current_app.logger.warning(
+                "fluentd render request invalid version=%s errors=%s",
+                version,
+                exc.errors(),
+            )
+            return _json_validation_errors_response(exc)
         except KeyError as exc:
-            return jsonify({"ok": False, "error": str(exc)}), HTTPStatus.NOT_FOUND
+            current_app.logger.warning("fluentd render catalog lookup failed version=%s error=%s", version, exc)
+            return _json_error_response(str(exc), HTTPStatus.NOT_FOUND)
         rendered = fluentd_config_service.render(req.config)
         included_files: list[dict[str, Any]] = []
-        response: dict[str, Any] = {"ok": True, "text": rendered}
+        response: dict[str, Any] = {KEY_OK: True, KEY_TEXT: rendered}
         if req.render_included_files:
+            current_app.logger.info(
+                "fluentd render includes requested version=%s include_count=%s",
+                version,
+                len(req.included_documents),
+            )
             included_files = include_document_service.render_included_documents(
-                config_type="fluentd",
+                config_type=CONFIG_TYPE_FLUENTD,
                 included_documents=req.included_documents,
                 include_comments=False,
                 yaml_render_service=yaml_render_service,
                 fluentd_config_service=fluentd_config_service,
             )
-            response["included_files"] = included_files
-        response["rendered_output"] = ui_document_service.compose_render_output(
+            response[KEY_INCLUDED_FILES] = included_files
+        response[KEY_RENDERED_OUTPUT] = ui_document_service.compose_render_output(
             main_rendered=rendered,
             include_loaded_files=req.render_included_files,
             included_files=included_files,
             header_comments=req.header_comments,
             include_config_header=req.include_config_header,
-            config_type="fluentd",
+            config_type=CONFIG_TYPE_FLUENTD,
             version=version,
-            comment_prefix="#",
+            comment_prefix=COMMENT_PREFIX_HASH,
         )
+        current_app.logger.info("fluentd render completed version=%s", version)
         return jsonify(response)
 
     return bp

@@ -12,48 +12,70 @@
 # limitations under the License.
 
 from __future__ import annotations
+
 import logging
 
-from config_service.agent_validation.adapters.base import TemplateCommandAdapter
+from config_service.agent_validation.adapters.base import RESULT_KEY_MESSAGES, TemplateCommandAdapter
 
 FLB_VER_LABEL = "Fluent Bit v"
 
 FILTER_LINE_PREFIXES = ("*", "|", "___", "\\_", "Celebrating",
                         "* Copyright ", "* Fluent Bit is")
 
-FILTER_LINE_CONTAINS = ("Direct Routes Ahead")
+FILTER_LINE_CONTAINS = ("Direct Routes Ahead",)
+RESULT_KEY_OK = "ok"
+RESULT_KEY_USED_VERSION = "used_version"
+ERROR_TOKEN = "[error]"
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 class FluentBitValidationAdapter(TemplateCommandAdapter):
     """Fluent Bit command and output behavior wrapper."""
 
     def interpret_result(self, result_text: str) -> dict[str, object]:
+        LOGGER.info("starting Fluent Bit result interpretation")
         parsed = super().interpret_result(result_text)
-        messages = parsed.get("messages", [])
+        messages = parsed.get(RESULT_KEY_MESSAGES, [])
         filtered_messages = []
         try:
             for message in messages:
                 text = str(message).lstrip()
-                logger.debug ("Inspecting output Line>>%s", text)
+                LOGGER.debug("inspecting Fluent Bit output line=%s", text)
                 if any(text.startswith(prefix) for prefix in FILTER_LINE_PREFIXES):
+                    LOGGER.debug("skipping Fluent Bit banner/prefix line=%s", text)
                     continue
-                if any(contained not in text for contained in FILTER_LINE_CONTAINS):
+                if any(contained in text for contained in FILTER_LINE_CONTAINS):
+                    LOGGER.debug("skipping Fluent Bit banner/contains line=%s", text)
                     continue
-                if text.startswith("Fluent Bit v") and ("used_version" not in parsed):
-                    parsed["used_version"] = text[len(FLB_VER_LABEL): ] 
-                    logger.debug("VERSION >%s< taken from >%s<", parsed["used_version"], text)
+                if text.startswith(FLB_VER_LABEL) and (RESULT_KEY_USED_VERSION not in parsed):
+                    parsed[RESULT_KEY_USED_VERSION] = text[len(FLB_VER_LABEL):]
+                    LOGGER.info(
+                        "captured Fluent Bit used version used_version=%s source_line=%s",
+                        parsed[RESULT_KEY_USED_VERSION],
+                        text,
+                    )
                     continue
-                    
+
                 filtered_messages.append(str(message))
-        except Exception as err:
-            logger.error("Caught while trying to process FluentBit output:\n%s", err)
+        except Exception:
+            LOGGER.exception("failed while processing Fluent Bit validation output")
             filtered_messages = messages
 
-        parsed["messages"] = filtered_messages
-        has_error = any("[error]" in str(message).lower() for message in filtered_messages)
-        parsed["ok"] = not has_error
-        
-        logger.debug (parsed)
+        parsed[RESULT_KEY_MESSAGES] = filtered_messages
+        has_error = any(ERROR_TOKEN in str(message).lower() for message in filtered_messages)
+        parsed[RESULT_KEY_OK] = not has_error
+        if has_error:
+            LOGGER.warning(
+                "Fluent Bit validation output contains error lines message_count=%s",
+                len(filtered_messages),
+            )
+        elif not filtered_messages:
+            LOGGER.warning("Fluent Bit validation output contained no actionable lines")
+        LOGGER.info(
+            "completed Fluent Bit result interpretation message_count=%s ok=%s",
+            len(filtered_messages),
+            parsed[RESULT_KEY_OK],
+        )
+        LOGGER.debug("Fluent Bit parsed payload=%s", parsed)
         return parsed

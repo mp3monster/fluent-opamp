@@ -70,6 +70,29 @@ h1 {
   flex-wrap: wrap;
 }
 
+.feature-menu-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #f7f9ff;
+}
+
+.feature-menu-label {
+  font-size: 0.82rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.feature-menu-select {
+  min-width: 10.5rem;
+  padding: 0.34rem 0.55rem;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
 .button-link {
   display: inline-flex;
   align-items: center;

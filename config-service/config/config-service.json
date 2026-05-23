@@ -1,4 +1,10 @@
 {
+  "component-entry-points": {
+    "quart": [
+      "opamp_tools.config_app:register_api_component",
+      "opamp_tools.config_app:register_ui_component"
+    ]
+  },
   "config-tool": {
     "web_port": 8080,
     "log_level": "INFO",
@@ -23,15 +29,14 @@
           "send_config_via_stdin": false,
           "dry_run_validation_enabled": true
         },
-      "entries": [
         {
           "agent_type": "fluentd",
           "command_path": "fluentd",
           "command_args": ["--dry-run", "-c", "{config_path}"],
-          "adapter": "fluentbit",
+          "adapter": "fluentd",
           "send_config_via_stdin": false,
           "dry_run_validation_enabled": false
-        }        
+        }
       ]
     }
   }

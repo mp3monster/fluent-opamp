@@ -11,6 +11,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Config-service YAML rendering API test coverage.
+
+Test-case reference: config-service/docs/TEST_CASES.md
+"""
+
 from __future__ import annotations
 
 import json

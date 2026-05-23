@@ -11,6 +11,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Config-service runtime-config test coverage.
+
+Test-case reference: config-service/docs/TEST_CASES.md
+"""
+
 from __future__ import annotations
 
 import json
@@ -25,6 +30,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from config_service.app import create_app
 from config_service.runtime_config import (
     ENV_CONFIG_TOOL_CONFIG_PATH,
+    resolve_component_entry_points,
     resolve_log_level_name,
     resolve_read_only,
     resolve_ui_base_css_path,
@@ -51,6 +57,42 @@ def test_resolve_web_port_precedence(tmp_path: Path, monkeypatch: pytest.MonkeyP
 
     monkeypatch.setenv("CONFIG_SERVICE_WEB_PORT", "8125")
     assert resolve_web_port() == 8125
+
+def test_resolve_component_entry_points_from_root_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    config_path = tmp_path / "config-service.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "component-entry-points": {
+                    "quart": [
+                        "pkg.alpha:register",
+                        {"entry_point": "pkg.beta:register", "enabled": True},
+                        {"entry_point": "pkg.disabled:register", "enabled": False},
+                    ]
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv(ENV_CONFIG_TOOL_CONFIG_PATH, str(config_path))
+    assert resolve_component_entry_points() == [
+        "pkg.alpha:register",
+        "pkg.beta:register",
+    ]
+
+def test_resolve_component_entry_points_defaults_when_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config_path = tmp_path / "config-service.json"
+    config_path.write_text(
+        json.dumps({"config-tool": {"read_only": False}}),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv(ENV_CONFIG_TOOL_CONFIG_PATH, str(config_path))
+    assert resolve_component_entry_points() == [
+        "opamp_tools.config_app:register_api_component",
+        "opamp_tools.config_app:register_ui_component",
+    ]
 
 def test_resolve_ui_base_css_path_precedence(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     config_path = tmp_path / "opamp.json"

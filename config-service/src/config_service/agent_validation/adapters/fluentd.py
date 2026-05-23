@@ -13,15 +13,38 @@
 
 from __future__ import annotations
 
-from config_service.agent_validation.adapters.base import TemplateCommandAdapter
+import logging
+
+from config_service.agent_validation.adapters.base import RESULT_KEY_MESSAGES, TemplateCommandAdapter
+
+RESULT_KEY_OK = "ok"
+LOGGER = logging.getLogger(__name__)
 
 
 class FluentdValidationAdapter(TemplateCommandAdapter):
     """Fluentd command and output behavior wrapper."""
 
     def interpret_result(self, result_text: str) -> dict[str, object]:
+        LOGGER.info("starting Fluentd result interpretation")
         parsed = super().interpret_result(result_text)
-        messages = parsed.get("messages", [])
+        messages = parsed.get(RESULT_KEY_MESSAGES, [])
         has_error = any("error" in str(message).lower() for message in messages)
-        parsed["ok"] = not has_error
+        parsed[RESULT_KEY_OK] = not has_error
+        if has_error:
+            LOGGER.warning(
+                "Fluentd validation output contains error lines message_count=%s",
+                len(messages),
+            )
+        elif not messages:
+            LOGGER.warning("Fluentd validation output contained no actionable lines")
+        else:
+            LOGGER.debug(
+                "Fluentd validation output completed without detected errors message_count=%s",
+                len(messages),
+            )
+        LOGGER.info(
+            "completed Fluentd result interpretation message_count=%s ok=%s",
+            len(messages),
+            parsed[RESULT_KEY_OK],
+        )
         return parsed
