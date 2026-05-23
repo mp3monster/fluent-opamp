@@ -15,6 +15,49 @@ from __future__ import annotations
 import re
 from typing import Any
 
+KEY_CONFIG_TYPE = "config_type"
+KEY_VERSION = "version"
+KEY_HEADER_COMMENTS = "header_comments"
+KEY_BODY = "body"
+KEY_INCLUDE_PATH = "include_path"
+KEY_YAML = "yaml"
+KEY_TEXT = "text"
+KEY_PATH = "path"
+KEY_TYPE = "type"
+KEY_SERVICE = "service"
+KEY_ENV = "env"
+KEY_PIPELINE = "pipeline"
+KEY_PARSERS = "parsers"
+KEY_INPUTS = "inputs"
+KEY_FILTERS = "filters"
+KEY_OUTPUTS = "outputs"
+KEY_NAME = "name"
+KEY_CONTAINER = "container"
+KEY_NESTED = "nested"
+KEY_SOURCE = "source"
+KEY_FILTER = "filter"
+KEY_MATCH = "match"
+KEY_UNKNOWN = "unknown"
+KEY_AT_TYPE = "@type"
+
+PATH_ROOT = "$"
+PATH_SERVICE = "$.service"
+PATH_ENV = "$.env"
+PATH_PIPELINE_PREFIX = "$.pipeline"
+PATH_PARSERS_PREFIX = "$.parsers"
+PATH_SERVICE_PREFIX = "$.service"
+PATH_ENV_PREFIX = "$.env"
+FILE_EXTENSION_YAML_RE = r"\.ya?ml$"
+FILE_EXTENSION_CONF_RE = r"\.conf$"
+
+SECTION_MAP = {
+    KEY_SOURCE: KEY_INPUTS,
+    KEY_FILTER: KEY_FILTERS,
+    KEY_MATCH: KEY_OUTPUTS,
+}
+CONTAINER_SECTION_NAMES = ("label", "worker")
+PIPELINE_SECTION_NAMES = (KEY_INPUTS, KEY_FILTERS, KEY_OUTPUTS)
+
 
 class UiDocumentService:
     """Backend-owned document preparation/render composition helpers for the UI."""
@@ -24,6 +67,7 @@ class UiDocumentService:
 
     @staticmethod
     def prepend_config_header(text: str, config_type: str, version: str, comment_prefix: str = "#") -> str:
+        """Prepend the standard config-service metadata header to rendered text."""
         prefix = comment_prefix or "#"
         header_block = "\n".join(
             [
@@ -34,13 +78,14 @@ class UiDocumentService:
         return f"{header_block}\n{str(text or '')}"
 
     def parse_config_header(self, text: str) -> dict[str, str]:
+        """Parse config-service metadata header comments from a text document."""
         meta = {
-            "config_type": "",
-            "version": "",
-            "header_comments": "",
-            "body": str(text or ""),
+            KEY_CONFIG_TYPE: "",
+            KEY_VERSION: "",
+            KEY_HEADER_COMMENTS: "",
+            KEY_BODY: str(text or ""),
         }
-        lines = meta["body"].replace("\r\n", "\n").split("\n")
+        lines = meta[KEY_BODY].replace("\r\n", "\n").split("\n")
         body_start = 0
         header_comment_lines: list[str] = []
         saw_config_service_header = False
@@ -63,10 +108,10 @@ class UiDocumentService:
                 saw_config_service_header = True
                 key_name = config_header_match.group(1)
                 value = config_header_match.group(2).strip()
-                if key_name == "config_type":
-                    meta["config_type"] = value
+                if key_name == KEY_CONFIG_TYPE:
+                    meta[KEY_CONFIG_TYPE] = value
                 else:
-                    meta["version"] = value
+                    meta[KEY_VERSION] = value
                 body_start = index + 1
                 continue
 
@@ -78,12 +123,13 @@ class UiDocumentService:
         while header_comment_lines and header_comment_lines[-1].strip() == "":
             header_comment_lines.pop()
 
-        meta["header_comments"] = "\n".join(header_comment_lines)
-        meta["body"] = "\n".join(lines[body_start:])
+        meta[KEY_HEADER_COMMENTS] = "\n".join(header_comment_lines)
+        meta[KEY_BODY] = "\n".join(lines[body_start:])
         return meta
 
     @staticmethod
     def normalize_header_comment_lines(text: str) -> list[str]:
+        """Normalize line endings for UI header comment editing."""
         normalized_text = (
             str(text or "")
             .replace("\r\n", "\n")
@@ -98,6 +144,7 @@ class UiDocumentService:
         return lines
 
     def prepend_header_comments(self, text: str, header_comments: str, comment_prefix: str = "#") -> str:
+        """Prepend free-form header comments to a rendered configuration."""
         lines = self.normalize_header_comment_lines(header_comments or "")
         if not lines:
             return str(text or "")
@@ -117,14 +164,15 @@ class UiDocumentService:
         version: str = "",
         comment_prefix: str = "#",
     ) -> str:
+        """Compose final UI output including headers and included-file blocks."""
         rendered_output = str(main_rendered or "")
         if include_loaded_files:
             include_items = included_files if isinstance(included_files, list) else []
             if include_items:
                 sections = [rendered_output]
                 for item in include_items:
-                    include_path = str((item or {}).get("include_path") or "unknown")
-                    include_text = str((item or {}).get("yaml") or (item or {}).get("text") or "")
+                    include_path = str((item or {}).get(KEY_INCLUDE_PATH) or KEY_UNKNOWN)
+                    include_text = str((item or {}).get(KEY_YAML) or (item or {}).get(KEY_TEXT) or "")
                     sections.append("\n# Included file: " + include_path + "\n" + include_text)
                 rendered_output = "\n".join(sections)
         if include_config_header:
@@ -137,22 +185,24 @@ class UiDocumentService:
         return self.prepend_header_comments(rendered_output, header_comments, comment_prefix=comment_prefix)
 
     def build_source_line_map(self, text: str, config_type: str, file_name: str) -> dict[str, int]:
+        """Build a best-effort source-path to line-number lookup for editor UX."""
         if not text:
             return {}
         config_type_text = str(config_type or "").strip().lower()
         file_name_text = str(file_name or "")
-        if config_type_text == "fluentbit" or re.search(r"\.ya?ml$", file_name_text, re.IGNORECASE):
+        if config_type_text == "fluentbit" or re.search(FILE_EXTENSION_YAML_RE, file_name_text, re.IGNORECASE):
             return self._build_fluentbit_yaml_line_map(text)
-        if config_type_text == "fluentd" or re.search(r"\.conf$", file_name_text, re.IGNORECASE):
+        if config_type_text == "fluentd" or re.search(FILE_EXTENSION_CONF_RE, file_name_text, re.IGNORECASE):
             return self._build_fluentd_line_map(text)
         return {}
 
     def _build_fluentbit_yaml_line_map(self, text: str) -> dict[str, int]:
+        """Map Fluent Bit YAML object paths to source line numbers."""
         source_line_map: dict[str, int] = {}
         lines = str(text or "").replace("\r\n", "\n").split("\n")
         root_section = ""
         pipeline_section = ""
-        indices = {"inputs": -1, "filters": -1, "outputs": -1}
+        indices = {KEY_INPUTS: -1, KEY_FILTERS: -1, KEY_OUTPUTS: -1}
         current_plugin_index = -1
 
         for index, raw_line in enumerate(lines):
@@ -172,22 +222,22 @@ class UiDocumentService:
                     source_line_map[f"$.{root_section}"] = line_number
                 continue
 
-            if root_section == "service":
+            if root_section == KEY_SERVICE:
                 service_match = re.match(r"^([A-Za-z0-9_.-]+):(?:\s|$)", trimmed)
                 if service_match:
-                    source_line_map[f"$.service.{service_match.group(1)}"] = line_number
+                    source_line_map[f"{PATH_SERVICE_PREFIX}.{service_match.group(1)}"] = line_number
                 continue
 
-            if root_section == "env":
+            if root_section == KEY_ENV:
                 env_match = re.match(r"^([A-Za-z0-9_.-]+):(?:\s|$)", trimmed)
                 if env_match:
-                    source_line_map[f"$.env.{env_match.group(1)}"] = line_number
+                    source_line_map[f"{PATH_ENV_PREFIX}.{env_match.group(1)}"] = line_number
                 continue
 
-            if root_section == "parsers":
+            if root_section == KEY_PARSERS:
                 if indent >= 2 and re.match(r"^-\s*", trimmed):
                     current_plugin_index += 1
-                    parser_base_path = f"$.parsers[{current_plugin_index}]"
+                    parser_base_path = f"{PATH_PARSERS_PREFIX}[{current_plugin_index}]"
                     source_line_map[parser_base_path] = line_number
                     inline_parser = re.sub(r"^-\s*", "", trimmed)
                     inline_parser_match = re.match(r"^([A-Za-z0-9_.-]+):(?:\s|$)", inline_parser)
@@ -198,10 +248,10 @@ class UiDocumentService:
                 if current_plugin_index >= 0:
                     parser_field_match = re.match(r"^([A-Za-z0-9_.-]+):(?:\s|$)", trimmed)
                     if parser_field_match:
-                        source_line_map[f"$.parsers[{current_plugin_index}].{parser_field_match.group(1)}"] = line_number
+                        source_line_map[f"{PATH_PARSERS_PREFIX}[{current_plugin_index}].{parser_field_match.group(1)}"] = line_number
                 continue
 
-            if root_section != "pipeline":
+            if root_section != KEY_PIPELINE:
                 continue
 
             if indent == 2:
@@ -210,7 +260,7 @@ class UiDocumentService:
                     pipeline_section = section_match.group(1)
                     current_plugin_index = -1
                     indices[pipeline_section] = -1
-                    source_line_map[f"$.pipeline.{pipeline_section}"] = line_number
+                    source_line_map[f"{PATH_PIPELINE_PREFIX}.{pipeline_section}"] = line_number
                 else:
                     pipeline_section = ""
                 continue
@@ -221,7 +271,7 @@ class UiDocumentService:
             if indent >= 4 and re.match(r"^-\s*", trimmed):
                 indices[pipeline_section] += 1
                 current_plugin_index = indices[pipeline_section]
-                base_path = f"$.pipeline.{pipeline_section}[{current_plugin_index}]"
+                base_path = f"{PATH_PIPELINE_PREFIX}.{pipeline_section}[{current_plugin_index}]"
                 source_line_map[base_path] = line_number
                 inline = re.sub(r"^-\s*", "", trimmed)
                 inline_match = re.match(r"^([A-Za-z0-9_.-]+):(?:\s|$)", inline)
@@ -232,15 +282,16 @@ class UiDocumentService:
             if current_plugin_index >= 0:
                 field_match = re.match(r"^([A-Za-z0-9_.-]+):(?:\s|$)", trimmed)
                 if field_match:
-                    source_line_map[f"$.pipeline.{pipeline_section}[{current_plugin_index}].{field_match.group(1)}"] = line_number
+                    source_line_map[f"{PATH_PIPELINE_PREFIX}.{pipeline_section}[{current_plugin_index}].{field_match.group(1)}"] = line_number
 
         return source_line_map
 
     def _build_fluentd_line_map(self, text: str) -> dict[str, int]:
+        """Map Fluentd directive paths to source line numbers."""
         source_line_map: dict[str, int] = {}
         lines = str(text or "").replace("\r\n", "\n").split("\n")
         stack: list[dict[str, str]] = []
-        indices = {"inputs": -1, "filters": -1, "outputs": -1}
+        indices = {KEY_INPUTS: -1, KEY_FILTERS: -1, KEY_OUTPUTS: -1}
 
         for index, raw_line in enumerate(lines):
             line_number = index + 1
@@ -255,33 +306,32 @@ class UiDocumentService:
                 continue
 
             if re.match(r"^<system>$", trimmed):
-                stack = [{"type": "service", "path": "$.service"}]
-                source_line_map["$.service"] = line_number
+                stack = [{KEY_TYPE: KEY_SERVICE, KEY_PATH: PATH_SERVICE}]
+                source_line_map[PATH_SERVICE] = line_number
                 continue
 
             source_match = re.match(r"^<(source|filter|match)(?:\s+.*)?>$", trimmed)
             if source_match:
-                section_map = {"source": "inputs", "filter": "filters", "match": "outputs"}
-                section_name = section_map[source_match.group(1)]
+                section_name = SECTION_MAP[source_match.group(1)]
                 indices[section_name] += 1
-                path = f"$.pipeline.{section_name}[{indices[section_name]}]"
-                stack = [{"type": source_match.group(1), "path": path}]
+                path = f"{PATH_PIPELINE_PREFIX}.{section_name}[{indices[section_name]}]"
+                stack = [{KEY_TYPE: source_match.group(1), KEY_PATH: path}]
                 source_line_map[path] = line_number
                 continue
 
             if re.match(r"^<(label|worker)(?:\s+.*)?>$", trimmed):
-                stack = [{"type": "container", "path": ""}]
+                stack = [{KEY_TYPE: KEY_CONTAINER, KEY_PATH: ""}]
                 continue
 
             if trimmed.startswith("<"):
-                stack.append({"type": "nested", "path": ""})
+                stack.append({KEY_TYPE: KEY_NESTED, KEY_PATH: ""})
                 continue
 
             if not stack:
                 continue
 
             current = stack[-1]
-            current_path = current.get("path", "")
+            current_path = current.get(KEY_PATH, "")
             if not current_path:
                 continue
 
@@ -289,8 +339,8 @@ class UiDocumentService:
             key_name = parts[0] if parts else ""
             if not key_name:
                 continue
-            if key_name == "@type":
-                source_line_map[f"{current_path}.name"] = line_number
+            if key_name == KEY_AT_TYPE:
+                source_line_map[f"{current_path}.{KEY_NAME}"] = line_number
                 continue
             source_line_map[f"{current_path}.{key_name}"] = line_number
 

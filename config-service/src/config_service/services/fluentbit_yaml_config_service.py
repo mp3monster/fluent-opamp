@@ -32,6 +32,9 @@ KEY_OUTPUTS = "outputs"
 KEY_NAME = "name"
 KEY_ROUTE = "route"
 KEY_ROUTES = "routes"
+KEY_NODES = "nodes"
+KEY_HOST = "host"
+KEY_PORT = "port"
 
 CODE_INVALID_SECTION = "fluentbit_yaml_invalid_section"
 CODE_IGNORED_SECTION = "fluentbit_yaml_ignored_section"
@@ -365,7 +368,7 @@ class FluentBitYamlConfigService:
                 continue
 
             group_name = str(group_item.get(KEY_NAME) or "").strip()
-            nodes = group_item.get("nodes")
+            nodes = group_item.get(KEY_NODES)
             if not group_name:
                 errors.append(
                     _issue(
@@ -404,8 +407,8 @@ class FluentBitYamlConfigService:
                     order += 1
                     continue
                 node_name = str(node_item.get(KEY_NAME) or "").strip()
-                node_host = str(node_item.get("host") or "").strip()
-                node_port = node_item.get("port")
+                node_host = str(node_item.get(KEY_HOST) or "").strip()
+                node_port = node_item.get(KEY_PORT)
                 if not node_name or not node_host or node_port is None:
                     errors.append(
                         _issue(

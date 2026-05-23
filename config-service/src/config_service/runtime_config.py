@@ -13,11 +13,20 @@
 
 from __future__ import annotations
 
-import json
 import os
 import sys
 from pathlib import Path
 from typing import Any
+
+ROOT_PATH = Path(__file__).resolve().parents[3]
+if str(ROOT_PATH) not in sys.path:
+    sys.path.insert(0, str(ROOT_PATH))
+
+from shared.opamp_config import (
+    CFG_COMPONENT_ENTRY_POINTS_QUART,
+    load_json_config,
+    resolve_component_entry_points_from_payload,
+)
 
 ENV_CONFIG_TOOL_CONFIG_PATH = "CONFIG_TOOL_CONFIG_PATH"
 ENV_OPAMP_CONFIG_PATH = "OPAMP_CONFIG_PATH"
@@ -41,6 +50,10 @@ CFG_PROVIDER_LOG_LEVEL = "log_level"
 CFG_PROVIDER_WEBUI_PORT = "webui_port"
 DEFAULT_CONFIG_SERVICE_WEB_PORT = 8080
 DEFAULT_CONFIG_SERVICE_UI_BASE_CSS_PATH = "/config-service/ui/assets/config_ui.css"
+DEFAULT_COMPONENT_ENTRY_POINTS = [
+    "opamp_tools.config_app:register_api_component",
+    "opamp_tools.config_app:register_ui_component",
+]
 DEFAULT_CONFIG_TOOL_CONFIG_PATH = "config-service.json"
 DEFAULT_CONFIG_TOOL_LOG_LEVEL = "INFO"
 
@@ -80,15 +93,6 @@ def get_effective_config_path(config_path: str | None = None) -> Path:
     return _repo_root() / "config" / "opamp.json"
 
 
-def _load_json(path: Path) -> dict[str, Any]:
-    if not path.exists():
-        return {}
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {}
-
-
 def _coerce_port(value: Any, default: int) -> int:
     try:
         port = int(value)
@@ -110,12 +114,22 @@ def _coerce_bool(value: Any, default: bool = False) -> bool:
     return default
 
 
+def resolve_component_entry_points() -> list[str]:
+    raw = load_json_config(get_effective_config_path())
+    entries = resolve_component_entry_points_from_payload(
+        raw,
+        runtime_key=CFG_COMPONENT_ENTRY_POINTS_QUART,
+        default_entry_points=DEFAULT_COMPONENT_ENTRY_POINTS,
+    )
+    return [entry.entry_point for entry in entries]
+
+
 def resolve_web_port() -> int:
     env_value = os.environ.get(ENV_CONFIG_SERVICE_WEB_PORT, "").strip()
     if env_value:
         return _coerce_port(env_value, DEFAULT_CONFIG_SERVICE_WEB_PORT)
 
-    raw = _load_json(get_effective_config_path())
+    raw = load_json_config(get_effective_config_path())
     config_tool_raw = raw.get(CFG_CONFIG_TOOL, {})
     if isinstance(config_tool_raw, dict) and CFG_CONFIG_TOOL_WEB_PORT in config_tool_raw:
         return _coerce_port(
@@ -145,7 +159,7 @@ def resolve_ui_base_css_path() -> str:
     if env_value:
         return env_value
 
-    raw = _load_json(get_effective_config_path())
+    raw = load_json_config(get_effective_config_path())
     config_tool_raw = raw.get(CFG_CONFIG_TOOL, {})
     if isinstance(config_tool_raw, dict):
         configured = str(config_tool_raw.get(CFG_CONFIG_TOOL_UI_BASE_CSS_PATH, "")).strip()
@@ -162,7 +176,7 @@ def resolve_ui_base_css_path() -> str:
 
 
 def resolve_ui_css_overrides() -> list[str]:
-    raw = _load_json(get_effective_config_path())
+    raw = load_json_config(get_effective_config_path())
     config_tool_raw = raw.get(CFG_CONFIG_TOOL, {})
     if isinstance(config_tool_raw, dict):
         configured = config_tool_raw.get(CFG_CONFIG_TOOL_UI_CSS_OVERRIDES, [])
@@ -175,7 +189,7 @@ def resolve_ui_css_overrides() -> list[str]:
 
 def resolve_ui_collapsed_sections() -> list[str]:
     """Return configured UI section keys that should render collapsed by default."""
-    raw = _load_json(get_effective_config_path())
+    raw = load_json_config(get_effective_config_path())
     config_tool_raw = raw.get(CFG_CONFIG_TOOL, {})
     if isinstance(config_tool_raw, dict):
         configured = config_tool_raw.get(CFG_CONFIG_TOOL_UI_COLLAPSED_SECTIONS, [])
@@ -187,7 +201,7 @@ def resolve_ui_collapsed_sections() -> list[str]:
 
 
 def resolve_read_only() -> bool:
-    raw = _load_json(get_effective_config_path())
+    raw = load_json_config(get_effective_config_path())
     config_tool_raw = raw.get(CFG_CONFIG_TOOL, {})
     if isinstance(config_tool_raw, dict):
         return _coerce_bool(config_tool_raw.get(CFG_CONFIG_TOOL_READ_ONLY), False)
@@ -201,7 +215,7 @@ def resolve_validation_agent_entries() -> list[dict[str, Any]]:
     Expected path:
     - `config-tool.agent_validation.entries`
     """
-    raw = _load_json(get_effective_config_path())
+    raw = load_json_config(get_effective_config_path())
     config_tool_raw = raw.get(CFG_CONFIG_TOOL, {})
     if not isinstance(config_tool_raw, dict):
         return []
@@ -219,7 +233,7 @@ def resolve_log_level_name() -> str:
     if env_value:
         return str(env_value).strip().upper()
 
-    raw = _load_json(get_effective_config_path())
+    raw = load_json_config(get_effective_config_path())
     config_tool_raw = raw.get(CFG_CONFIG_TOOL, {})
     if isinstance(config_tool_raw, dict):
         configured = str(config_tool_raw.get(CFG_CONFIG_TOOL_LOG_LEVEL, "")).strip()

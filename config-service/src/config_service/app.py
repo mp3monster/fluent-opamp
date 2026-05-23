@@ -22,11 +22,21 @@ from pathlib import Path
 
 from quart import Quart, Response, jsonify, request, send_from_directory
 
+ROOT_PATH = Path(__file__).resolve().parents[3]
+if str(ROOT_PATH) not in sys.path:
+    sys.path.insert(0, str(ROOT_PATH))
+
+from shared.opamp_config import (
+    ComponentEntryPoint,
+    register_component_entry_points as shared_register_component_entry_points,
+)
+
 from config_service.agent_validation.service import ExternalAgentValidationService
 from config_service.auth_integration import evaluate_ui_http_auth
 from config_service.routes.api import create_api_blueprint
 from config_service.runtime_config import (
     ENV_CONFIG_TOOL_CONFIG_PATH,
+    resolve_component_entry_points,
     resolve_log_level_name,
     resolve_read_only,
     resolve_ui_base_css_path,
@@ -148,76 +158,18 @@ def _configure_logging() -> None:
     )
 
 
-def create_app(*, mode: str = "standalone") -> Quart:
-    _configure_logging()
-    app = Quart(__name__)
-    app.config[APP_CONFIG_KEY_MODE] = mode
-    app.config[APP_CONFIG_KEY_READ_ONLY] = resolve_read_only()
-    app.logger.setLevel(getattr(logging, resolve_log_level_name(), logging.INFO))
+def register_component_entry_points(app: Quart) -> None:
+    """Register config-service Quart components declared in runtime config."""
+    configured = resolve_component_entry_points()
+    entries = [ComponentEntryPoint(entry_point=item) for item in configured]
+    shared_register_component_entry_points(app, entries=entries)
 
-    repo_root = _config_service_root()
-    provider_src = repo_root.parent / "provider" / "src"
-    if provider_src.exists() and str(provider_src) not in sys.path:
-        sys.path.insert(0, str(provider_src))
 
-    catalog_registry_path = repo_root / "config" / "catalog-registry.json"
-    service_registry_path = repo_root / "config" / "service-registry.json"
-    parser_registry_path = repo_root / "config" / "parser-registry.json"
-    issue_codes_path = repo_root / "config" / "issue-code-messages.json"
-    rules_registry_path = repo_root / "config" / "validation-rules-registry.json"
+def register_api_component(app: Quart) -> None:
+    app.register_blueprint(create_api_blueprint(), url_prefix="/config-service/api/v1")
 
-    catalog_service = CatalogService(catalog_registry_path)
-    catalog_service.load_all_catalogs()
-    service_definition_service = ServiceDefinitionService(service_registry_path)
-    service_definition_service.load_all()
-    parser_definition_service = ParserDefinitionService(parser_registry_path)
-    parser_definition_service.load_all()
-    issue_code_service = IssueCodeService(issue_codes_path)
-    issue_code_service.load()
 
-    rules_registry_service = RulesRegistryService(rules_registry_path)
-    rule_engine_service = RuleEngineService(rules_registry_service)
-    validation_service = ValidationService(rule_engine_service)
-
-    fluentbit_yaml_config_service = FluentBitYamlConfigService()
-    fluentd_config_service = FluentdConfigService()
-    include_document_service = IncludeDocumentService(
-        fluentbit_yaml_config_service=fluentbit_yaml_config_service,
-        fluentd_config_service=fluentd_config_service,
-    )
-    external_agent_validation_service = ExternalAgentValidationService.from_runtime_config()
-
-    app.extensions[EXT_CATALOG_SERVICE] = catalog_service
-    app.extensions[EXT_RULES_REGISTRY_SERVICE] = rules_registry_service
-    app.extensions[EXT_RULE_ENGINE_SERVICE] = rule_engine_service
-    app.extensions[EXT_SERVICE_DEFINITION_SERVICE] = service_definition_service
-    app.extensions[EXT_PARSER_DEFINITION_SERVICE] = parser_definition_service
-    app.extensions[EXT_ISSUE_CODE_SERVICE] = issue_code_service
-    app.extensions[EXT_SCHEMA_SERVICE] = SchemaService()
-    app.extensions[EXT_VALIDATION_SERVICE] = validation_service
-    app.extensions[EXT_YAML_RENDER_SERVICE] = YamlRenderService()
-    app.extensions[EXT_UI_DOCUMENT_SERVICE] = UiDocumentService()
-    app.extensions[EXT_FLUENTBIT_YAML_CONFIG_SERVICE] = fluentbit_yaml_config_service
-    app.extensions[EXT_FLUENTD_CONFIG_SERVICE] = fluentd_config_service
-    app.extensions[EXT_INCLUDE_DOCUMENT_SERVICE] = include_document_service
-    app.extensions[EXT_EXTERNAL_AGENT_VALIDATION_SERVICE] = external_agent_validation_service
-
-    if mode == "standalone":
-        @app.before_request
-        async def enforce_ui_bearer_auth() -> tuple[object, int] | None:
-            result = evaluate_ui_http_auth(
-                path=request.path,
-                method=request.method,
-                authorization_header=request.headers.get(HEADER_AUTHORIZATION),
-                remote_addr=request.remote_addr,
-            )
-            if result.allowed:
-                return None
-            response = jsonify({"error": result.error})
-            if result.www_authenticate:
-                response.headers[HEADER_WWW_AUTHENTICATE] = result.www_authenticate
-            return response, result.status_code
-
+def register_ui_component(app: Quart) -> None:
     html_dir = Path(__file__).resolve().with_name("html")
 
     @app.get("/config-service/ui")
@@ -290,7 +242,78 @@ def create_app(*, mode: str = "standalone") -> Quart:
             return _apply_no_cache_headers(response)
         return response
 
-    app.register_blueprint(create_api_blueprint(), url_prefix="/config-service/api/v1")
+
+def create_app(*, mode: str = "standalone") -> Quart:
+    _configure_logging()
+    app = Quart(__name__)
+    app.config[APP_CONFIG_KEY_MODE] = mode
+    app.config[APP_CONFIG_KEY_READ_ONLY] = resolve_read_only()
+    app.logger.setLevel(getattr(logging, resolve_log_level_name(), logging.INFO))
+
+    repo_root = _config_service_root()
+    provider_src = repo_root.parent / "provider" / "src"
+    if provider_src.exists() and str(provider_src) not in sys.path:
+        sys.path.insert(0, str(provider_src))
+
+    catalog_registry_path = repo_root / "config" / "catalog-registry.json"
+    service_registry_path = repo_root / "config" / "service-registry.json"
+    parser_registry_path = repo_root / "config" / "parser-registry.json"
+    issue_codes_path = repo_root / "config" / "issue-code-messages.json"
+    rules_registry_path = repo_root / "config" / "validation-rules-registry.json"
+
+    catalog_service = CatalogService(catalog_registry_path)
+    catalog_service.load_all_catalogs()
+    service_definition_service = ServiceDefinitionService(service_registry_path)
+    service_definition_service.load_all()
+    parser_definition_service = ParserDefinitionService(parser_registry_path)
+    parser_definition_service.load_all()
+    issue_code_service = IssueCodeService(issue_codes_path)
+    issue_code_service.load()
+
+    rules_registry_service = RulesRegistryService(rules_registry_path)
+    rule_engine_service = RuleEngineService(rules_registry_service)
+    validation_service = ValidationService(rule_engine_service)
+
+    fluentbit_yaml_config_service = FluentBitYamlConfigService()
+    fluentd_config_service = FluentdConfigService()
+    include_document_service = IncludeDocumentService(
+        fluentbit_yaml_config_service=fluentbit_yaml_config_service,
+        fluentd_config_service=fluentd_config_service,
+    )
+    external_agent_validation_service = ExternalAgentValidationService.from_runtime_config()
+
+    app.extensions[EXT_CATALOG_SERVICE] = catalog_service
+    app.extensions[EXT_RULES_REGISTRY_SERVICE] = rules_registry_service
+    app.extensions[EXT_RULE_ENGINE_SERVICE] = rule_engine_service
+    app.extensions[EXT_SERVICE_DEFINITION_SERVICE] = service_definition_service
+    app.extensions[EXT_PARSER_DEFINITION_SERVICE] = parser_definition_service
+    app.extensions[EXT_ISSUE_CODE_SERVICE] = issue_code_service
+    app.extensions[EXT_SCHEMA_SERVICE] = SchemaService()
+    app.extensions[EXT_VALIDATION_SERVICE] = validation_service
+    app.extensions[EXT_YAML_RENDER_SERVICE] = YamlRenderService()
+    app.extensions[EXT_UI_DOCUMENT_SERVICE] = UiDocumentService()
+    app.extensions[EXT_FLUENTBIT_YAML_CONFIG_SERVICE] = fluentbit_yaml_config_service
+    app.extensions[EXT_FLUENTD_CONFIG_SERVICE] = fluentd_config_service
+    app.extensions[EXT_INCLUDE_DOCUMENT_SERVICE] = include_document_service
+    app.extensions[EXT_EXTERNAL_AGENT_VALIDATION_SERVICE] = external_agent_validation_service
+
+    if mode == "standalone":
+        @app.before_request
+        async def enforce_ui_bearer_auth() -> tuple[object, int] | None:
+            result = evaluate_ui_http_auth(
+                path=request.path,
+                method=request.method,
+                authorization_header=request.headers.get(HEADER_AUTHORIZATION),
+                remote_addr=request.remote_addr,
+            )
+            if result.allowed:
+                return None
+            response = jsonify({"error": result.error})
+            if result.www_authenticate:
+                response.headers[HEADER_WWW_AUTHENTICATE] = result.www_authenticate
+            return response, result.status_code
+
+    register_component_entry_points(app)
 
     return app
 

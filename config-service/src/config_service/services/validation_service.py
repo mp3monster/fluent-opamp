@@ -45,6 +45,36 @@ KEY_WORKERS = "workers"
 KEY_SIGNALS = "signals"
 KEY_CONDITION = "condition"
 KEY_DIRECTIVE_ARGUMENT = "directive_argument"
+KEY_ENGINE = "engine"
+KEY_BUILTIN_PARSER_NAMES = "builtin_parser_names"
+KEY_PARSER_FORMATS = "parser_formats"
+KEY_FORMAT = "format"
+KEY_NESTED_SECTIONS = "nested_sections"
+KEY_MATCH = "match"
+KEY_MATCH_REGEX = "match_regex"
+KEY_REFERENCES_PARSER = "references_parser"
+KEY_ALLOW_FILTERS_AS_PROCESSORS = "allow_filters_as_processors"
+KEY_SUPPORTS_CONDITION = "supports_condition"
+KEY_TOP_LEVEL_FIELDS = "top_level_fields"
+KEY_IMPLEMENTED = "implemented"
+KEY_PER_RECORD_ROUTING = "per_record_routing"
+KEY_TO = "to"
+KEY_DEFAULT = "default"
+KEY_OP = "op"
+KEY_RULES = "rules"
+KEY_CONTEXT = "context"
+KEY_FIELD = "field"
+KEY_ALIAS = "alias"
+KEY_SECTION = "section"
+KEY_ALLOWED_CHILDREN = "allowed_children"
+KEY_CARDINALITY = "cardinality"
+KEY_MAXIMUM = "maximum"
+KEY_REUSES_OUTPUT_PLUGINS = "reuses_output_plugins"
+KEY_VARIANTS = "variants"
+KEY_PLUGIN_BACKED = "plugin_backed"
+DIRECTIVE_ARGUMENT_ALIAS = "directive_arg"
+ENGINE_FLUENTBIT = "fluentbit"
+ENGINE_FLUENTD = "fluentd"
 ISSUE_KEY_ORDER = "order"
 ISSUE_KEY_CODE = "code"
 ISSUE_KEY_PATH = "path"
@@ -98,8 +128,8 @@ class ValidationService:
                 ),
             }
 
-        engine = str(catalog.get("engine") or "fluentbit").lower()
-        if engine == "fluentd":
+        engine = str(catalog.get(KEY_ENGINE) or ENGINE_FLUENTBIT).lower()
+        if engine == ENGINE_FLUENTD:
             semantic_issues = self._validate_fluentd_config(config, catalog)
         else:
             semantic_issues = self._validate_fluentbit_pipeline(
@@ -419,7 +449,7 @@ class ValidationService:
         issues: list[dict[str, Any]] = []
         custom_parser_names: set[str] = set()
         builtin_parser_names = (
-            set(parser_definition.get("builtin_parser_names", []))
+            set(parser_definition.get(KEY_BUILTIN_PARSER_NAMES, []))
             if parser_definition
             else set()
         )
@@ -437,7 +467,7 @@ class ValidationService:
             ], custom_parser_names, builtin_parser_names
 
         parser_formats = (
-            parser_definition.get("parser_formats", {})
+            parser_definition.get(KEY_PARSER_FORMATS, {})
             if isinstance(parser_definition, dict)
             else {}
         )
@@ -481,7 +511,7 @@ class ValidationService:
             else:
                 custom_parser_names.add(parser_name)
 
-            parser_format = parser_instance.get("format")
+            parser_format = parser_instance.get(KEY_FORMAT)
             if not isinstance(parser_format, str) or not parser_format:
                 issues.append(
                     {
@@ -561,7 +591,7 @@ class ValidationService:
             ]
 
         plugin_groups = catalog.get(KEY_PLUGINS, {})
-        nested_sections = catalog.get("nested_sections", {})
+        nested_sections = catalog.get(KEY_NESTED_SECTIONS, {})
         for section in (KEY_INPUTS, KEY_FILTERS, KEY_OUTPUTS):
             issues.extend(
                 self._validate_plugin_list(
@@ -835,7 +865,7 @@ class ValidationService:
         directive_arg_keys = self._directive_argument_keys(directive_arg)
         # Directive arguments are pseudo-fields (e.g. Fluentd <match ARG>), so they
         # are validated separately from regular plugin fields.
-        if isinstance(directive_arg, dict) and directive_arg.get("required") is True:
+        if isinstance(directive_arg, dict) and directive_arg.get(KEY_REQUIRED) is True:
             if not any(key in plugin_instance for key in directive_arg_keys):
                 issues.append(
                     {
@@ -846,7 +876,7 @@ class ValidationService:
                         ISSUE_KEY_SOURCE: "semantic",
                     }
                 )
-        for required in [name for name, field in fields.items() if field.get("required") is True]:
+        for required in [name for name, field in fields.items() if field.get(KEY_REQUIRED) is True]:
             if required not in plugin_instance:
                 issues.append(
                     {
@@ -915,10 +945,10 @@ class ValidationService:
     def _directive_argument_keys(directive_arg: dict[str, Any] | Any) -> list[str]:
         """Return accepted directive-argument keys, including legacy alias support."""
         if not isinstance(directive_arg, dict):
-            return ["directive_arg"]
-        configured_name = str(directive_arg.get("name") or "").strip()
+            return [DIRECTIVE_ARGUMENT_ALIAS]
+        configured_name = str(directive_arg.get(KEY_NAME) or "").strip()
         if not configured_name or configured_name == "directive_arg":
-            return ["directive_arg"]
+            return [DIRECTIVE_ARGUMENT_ALIAS]
         return [configured_name, "directive_arg"]
 
     def _validate_match_selector_presence(
@@ -932,8 +962,8 @@ class ValidationService:
         if "match" not in fields or "match_regex" not in fields:
             return []
 
-        match_value = plugin_instance.get("match")
-        regex_value = plugin_instance.get("match_regex")
+        match_value = plugin_instance.get(KEY_MATCH)
+        regex_value = plugin_instance.get(KEY_MATCH_REGEX)
 
         has_match = isinstance(match_value, str) and bool(match_value.strip())
         has_match_regex = isinstance(regex_value, str) and bool(regex_value.strip())
@@ -963,7 +993,7 @@ class ValidationService:
         if not known_parser_names:
             return issues
         for field_name, field_def in fields.items():
-            if field_def.get("references_parser") is not True:
+            if field_def.get(KEY_REFERENCES_PARSER) is not True:
                 continue
             value = plugin_instance.get(field_name)
             if not isinstance(value, str) or not value:
@@ -1038,7 +1068,7 @@ class ValidationService:
                 )
                 continue
             available = dict(signal_def.get(KEY_PROCESSORS, {}))
-            if signal_name == "logs" and signal_def.get("allow_filters_as_processors"):
+            if signal_name == "logs" and signal_def.get(KEY_ALLOW_FILTERS_AS_PROCESSORS):
                 available.update(filter_plugins)
             # Validate each processor instance within this signal stream.
             for idx, processor in enumerate(items):
@@ -1079,7 +1109,7 @@ class ValidationService:
                     )
                     continue
                 fields = {field[KEY_NAME]: field for field in proc_def.get(KEY_FIELDS, [])}
-                for required in [name for name, field in fields.items() if field.get("required") is True]:
+                for required in [name for name, field in fields.items() if field.get(KEY_REQUIRED) is True]:
                     if required not in processor:
                         issues.append(
                             {
@@ -1104,7 +1134,7 @@ class ValidationService:
                             }
                         )
                 if KEY_CONDITION in processor:
-                    if not proc_def.get("supports_condition"):
+                    if not proc_def.get(KEY_SUPPORTS_CONDITION):
                         issues.append(
                             {
                                 ISSUE_KEY_CODE: "unknown_field",
@@ -1159,12 +1189,12 @@ class ValidationService:
         # Build allow-lists from catalog metadata to validate unknown keys/signals.
         top_level_fields = {
             field[KEY_NAME]: field
-            for field in route_def.get("top_level_fields", [])
+            for field in route_def.get(KEY_TOP_LEVEL_FIELDS, [])
             if isinstance(field, dict) and isinstance(field.get(KEY_NAME), str)
         }
         allowed_signals = {
             str(signal.get(KEY_NAME)): signal
-            for signal in route_def.get("signals", [])
+            for signal in route_def.get(KEY_SIGNALS, [])
             if isinstance(signal, dict) and isinstance(signal.get(KEY_NAME), str)
         }
         seen_route_names: set[str] = set()
@@ -1215,7 +1245,7 @@ class ValidationService:
 
             if value:
                 has_any_routes = True
-            if signal_meta.get("implemented") is False:
+            if signal_meta.get(KEY_IMPLEMENTED) is False:
                 issues.append(
                     {
                         ISSUE_KEY_CODE: "route_signal_not_fully_supported",
@@ -1237,7 +1267,7 @@ class ValidationService:
                     )
                 )
 
-        if has_any_routes and route_payload.get("per_record_routing") is not True:
+        if has_any_routes and route_payload.get(KEY_PER_RECORD_ROUTING) is not True:
             issues.append(
                 {
                     ISSUE_KEY_CODE: "route_not_enabled",
@@ -1319,7 +1349,7 @@ class ValidationService:
                     )
                 )
 
-        destination = route_item.get("to")
+        destination = route_item.get(KEY_TO)
         if not isinstance(destination, dict):
             issues.append(
                 {
@@ -1382,10 +1412,10 @@ class ValidationService:
         - Iterates each rule validating context, operator, and required operands.
         """
         issues: list[dict[str, Any]] = []
-        if condition.get("default") is True:
+        if condition.get(KEY_DEFAULT) is True:
             return issues
 
-        op = condition.get("op")
+        op = condition.get(KEY_OP)
         if op not in {"and", "or"}:
             issues.append(
                 {
@@ -1397,7 +1427,7 @@ class ValidationService:
                 }
             )
 
-        rules = condition.get("rules")
+        rules = condition.get(KEY_RULES)
         if not isinstance(rules, list) or not rules:
             issues.append(
                 {
@@ -1445,7 +1475,7 @@ class ValidationService:
                     }
                 )
                 continue
-            if "context" in rule and rule.get("context") not in valid_contexts:
+            if KEY_CONTEXT in rule and rule.get(KEY_CONTEXT) not in valid_contexts:
                 issues.append(
                     {
                         ISSUE_KEY_CODE: "invalid_route_context",
@@ -1455,7 +1485,7 @@ class ValidationService:
                         ISSUE_KEY_SOURCE: "semantic",
                     }
                 )
-            if not isinstance(rule.get("field"), str) or not rule.get("field"):
+            if not isinstance(rule.get(KEY_FIELD), str) or not rule.get(KEY_FIELD):
                 issues.append(
                     {
                         ISSUE_KEY_CODE: "missing_required_field",
@@ -1465,7 +1495,7 @@ class ValidationService:
                         ISSUE_KEY_SOURCE: "semantic",
                     }
                 )
-            if rule.get("op") not in valid_ops:
+            if rule.get(KEY_OP) not in valid_ops:
                 issues.append(
                     {
                         ISSUE_KEY_CODE: "invalid_route_rule_operator",
@@ -1508,7 +1538,7 @@ class ValidationService:
                 sequence = counters.get(plugin_name, 0)
                 names.add(f"{plugin_name}.{sequence}")
                 counters[plugin_name] = sequence + 1
-            alias = output.get("alias")
+            alias = output.get(KEY_ALIAS)
             if isinstance(alias, str) and alias:
                 names.add(alias)
         return names
@@ -1543,9 +1573,9 @@ class ValidationService:
                 }
             ]
         allowed = {
-            item["section"]: item
-            for item in plugin_def.get("allowed_children", [])
-            if isinstance(item, dict) and isinstance(item.get("section"), str)
+            item[KEY_SECTION]: item
+            for item in plugin_def.get(KEY_ALLOWED_CHILDREN, [])
+            if isinstance(item, dict) and isinstance(item.get(KEY_SECTION), str)
         }
         # Validate each nested child section against the plugin's allow-list.
         for child_name, child_items in children.items():
@@ -1574,8 +1604,8 @@ class ValidationService:
                 )
                 continue
             nested_def = nested_sections.get(child_name, {})
-            card = allowed[child_name].get("cardinality", {})
-            maximum = card.get("maximum")
+            card = allowed[child_name].get(KEY_CARDINALITY, {})
+            maximum = card.get(KEY_MAXIMUM)
             if isinstance(maximum, int) and len(child_items) > maximum:
                 issues.append(
                     {
@@ -1586,14 +1616,14 @@ class ValidationService:
                         ISSUE_KEY_SOURCE: "semantic",
                     }
                 )
-            if nested_def.get("reuses_output_plugins") is True:
+            if nested_def.get(KEY_REUSES_OUTPUT_PLUGINS) is True:
                 continue
             fields = {
                 field[KEY_NAME]: field
                 for field in nested_def.get(KEY_FIELDS, [])
                 if isinstance(field, dict)
             }
-            variants = nested_def.get("variants", {})
+            variants = nested_def.get(KEY_VARIANTS, {})
             # Deep-validate each child item according to plugin-backed vs flat mode.
             for idx, child_item in enumerate(child_items):
                 if not isinstance(child_item, dict):
@@ -1607,7 +1637,7 @@ class ValidationService:
                         }
                     )
                     continue
-                if nested_def.get("plugin_backed") is True and variants and KEY_NAME not in child_item:
+                if nested_def.get(KEY_PLUGIN_BACKED) is True and variants and KEY_NAME not in child_item:
                     issues.append(
                         {
                             ISSUE_KEY_CODE: "missing_plugin_name",
@@ -1618,7 +1648,7 @@ class ValidationService:
                         }
                     )
                     continue
-                if nested_def.get("plugin_backed") is True and variants:
+                if nested_def.get(KEY_PLUGIN_BACKED) is True and variants:
                     variant = variants.get(child_item.get(KEY_NAME))
                     if variant is None:
                         issues.append(

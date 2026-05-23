@@ -17,98 +17,125 @@ import json
 from pathlib import Path
 from typing import Any
 
+UTF8_ENCODING = "utf-8"
+KEY_SERVICE_DEFINITIONS_BY_TYPE = "service_definitions_by_type"
+KEY_ENGINE = "engine"
+KEY_FLUENT_BIT_VERSION = "fluent_bit_version"
+KEY_FLUENTD_VERSION = "fluentd_version"
+KEY_SECTION = "section"
+KEY_CARDINALITY = "cardinality"
+KEY_OPTIONS = "options"
+KEY_MAXIMUM = "maximum"
+KEY_NAME = "name"
+KEY_REQUIRED = "required"
+KEY_DESCRIPTION = "description"
+KEY_REFERENCE = "reference"
+KEY_DATA_TYPE = "data_type"
+ENGINE_FLUENTBIT = "fluentbit"
+ENGINE_FLUENTD = "fluentd"
+SECTION_SERVICE = "service"
+
 
 class ServiceDefinitionService:
-    """Loads versioned service-section option definitions for UI/runtime usage."""
+    """Load versioned service-section definitions for UI and runtime use."""
 
     def __init__(self, registry_path: Path) -> None:
+        """Initialize the service definition service from its registry path."""
         self.registry_path = registry_path
         self._registry: dict[str, Any] = {}
         self._definitions_by_type: dict[str, dict[str, dict[str, Any]]] = {}
         self._load_registry()
 
     def _resolve_path(self, ref: str) -> Path:
+        """Resolve a definition reference path relative to the registry root when needed."""
         candidate = Path(ref)
         if candidate.is_absolute():
             return candidate
         return self.registry_path.parent.parent / ref
 
     def _load_registry(self) -> None:
-        self._registry = json.loads(self.registry_path.read_text(encoding="utf-8"))
+        """Load the service registry and validate that it contains grouped definitions."""
+        self._registry = json.loads(self.registry_path.read_text(encoding=UTF8_ENCODING))
         grouped = self._registry_definitions_by_type()
         if not grouped:
             raise ValueError("service-registry.json must include non-empty service definitions")
 
     def _registry_definitions_by_type(self) -> dict[str, dict[str, str]]:
-        grouped = self._registry.get("service_definitions_by_type")
+        """Return normalized service-definition paths grouped by config type and version."""
+        grouped = self._registry.get(KEY_SERVICE_DEFINITIONS_BY_TYPE)
         if isinstance(grouped, dict) and grouped:
             normalized: dict[str, dict[str, str]] = {}
             for config_type, versions in grouped.items():
                 if isinstance(versions, dict) and versions:
-                    normalized[str(config_type)] = {str(version): str(path) for version, path in versions.items()}
+                    normalized[str(config_type)] = {
+                        str(version): str(path) for version, path in versions.items()
+                    }
             return normalized
         return {}
 
     @staticmethod
     def _normalize_config_type(config_type: str) -> str:
+        """Normalize user-provided config type aliases into canonical service keys."""
         normalized = str(config_type or "").strip().lower().replace("-", "").replace("_", "").replace(" ", "")
-        if normalized == "fluentbit":
-            return "fluentbit"
-        if normalized == "fluentd":
-            return "fluentd"
+        if normalized == ENGINE_FLUENTBIT:
+            return ENGINE_FLUENTBIT
+        if normalized == ENGINE_FLUENTD:
+            return ENGINE_FLUENTD
         return str(config_type or "").strip()
 
     def load_all(self) -> None:
+        """Load and validate all service definitions referenced by the registry."""
         loaded: dict[str, dict[str, dict[str, Any]]] = {}
         for config_type, version_map in self._registry_definitions_by_type().items():
             loaded[config_type] = {}
             for version, ref in version_map.items():
                 path = self._resolve_path(str(ref))
-                payload = json.loads(path.read_text(encoding="utf-8"))
+                payload = json.loads(path.read_text(encoding=UTF8_ENCODING))
                 self.validate_definition(version, payload, source=str(path))
                 loaded[config_type][version] = payload
         self._definitions_by_type = loaded
 
     def validate_definition(self, version: str, payload: dict[str, Any], source: str = "<in-memory>") -> None:
-        engine = str(payload.get("engine") or "fluentbit").lower()
-        required_top = {"engine", "section", "cardinality", "options"}
-        if engine == "fluentbit":
-            required_top.add("fluent_bit_version")
-        elif engine == "fluentd":
-            required_top.add("fluentd_version")
-        missing = [k for k in required_top if k not in payload]
+        """Validate one service definition payload before it is exposed to callers."""
+        engine = str(payload.get(KEY_ENGINE) or ENGINE_FLUENTBIT).lower()
+        required_top = {KEY_ENGINE, KEY_SECTION, KEY_CARDINALITY, KEY_OPTIONS}
+        if engine == ENGINE_FLUENTBIT:
+            required_top.add(KEY_FLUENT_BIT_VERSION)
+        elif engine == ENGINE_FLUENTD:
+            required_top.add(KEY_FLUENTD_VERSION)
+        missing = [key for key in required_top if key not in payload]
         if missing:
             raise ValueError(f"Service definition {version} missing keys {missing} ({source})")
 
-        if payload.get("section") != "service":
-            raise ValueError(f"Service definition {version} section must be 'service' ({source})")
+        if payload.get(KEY_SECTION) != SECTION_SERVICE:
+            raise ValueError(f"Service definition {version} section must be '{SECTION_SERVICE}' ({source})")
 
-        cardinality = payload.get("cardinality", {})
+        cardinality = payload.get(KEY_CARDINALITY, {})
         if not isinstance(cardinality, dict):
             raise ValueError(f"Service definition {version} cardinality must be object ({source})")
-        if cardinality.get("maximum") != 1:
+        if cardinality.get(KEY_MAXIMUM) != 1:
             raise ValueError(f"Service definition {version} cardinality.maximum must be 1 ({source})")
 
-        options = payload.get("options")
+        options = payload.get(KEY_OPTIONS)
         if not isinstance(options, list):
             raise ValueError(f"Service definition {version} options must be array ({source})")
 
         for idx, item in enumerate(options):
             if not isinstance(item, dict):
                 raise ValueError(f"Service definition {version} option[{idx}] must be object ({source})")
-            for req in ("name", "required", "description", "reference", "data_type"):
+            for req in (KEY_NAME, KEY_REQUIRED, KEY_DESCRIPTION, KEY_REFERENCE, KEY_DATA_TYPE):
                 if req not in item:
                     raise ValueError(
                         f"Service definition {version} option[{idx}] missing {req} ({source})"
                     )
 
     def get_definition(self, version: str, config_type: str | None = None) -> dict[str, Any]:
+        """Return one service definition by version, optionally constrained by config type."""
         if config_type:
             normalized_type = self._normalize_config_type(str(config_type))
             mapping = self._definitions_by_type.get(normalized_type, {})
             if version in mapping:
                 return mapping[version]
-            # Fall back to a unique match across config types when alias/typing mismatches happen.
             matches = [
                 payload
                 for version_map in self._definitions_by_type.values()

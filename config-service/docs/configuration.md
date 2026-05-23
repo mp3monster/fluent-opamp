@@ -5,6 +5,7 @@
 1. Versioned catalog selection
 2. Validation profile/ruleset selection
 3. Standalone config-tool runtime settings
+4. Quart component entrypoint registration
 
 ## Files
 - Standalone config-tool settings: `config-service/config/config-service.json`
@@ -176,6 +177,12 @@ Fallback config path:
 Example:
 ```json
 {
+  "component-entry-points": {
+    "quart": [
+      "opamp_tools.config_app:register_api_component",
+      "opamp_tools.config_app:register_ui_component"
+    ]
+  },
   "config-tool": {
     "web_port": 8090,
     "log_level": "INFO",
@@ -194,6 +201,13 @@ Example:
 }
 ```
 
+Root runtime keys:
+1. `component-entry-points`: dynamic component registration for host frameworks.
+2. `component-entry-points.quart`: ordered list of Python entrypoints loaded into Quart.
+3. Each entry can be:
+   1. a string (`module:function`)
+   2. or an object with `entry_point` (and optional `enabled` boolean)
+
 Standalone config-tool keys:
 1. `web_port`: HTTP listen port for standalone mode.
 2. `log_level`: Python backend log level (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`).
@@ -202,6 +216,12 @@ Standalone config-tool keys:
 5. `ui_collapsed_sections`: list of section keys that should render collapsed by default. If omitted, sections default to expanded.
 6. `read_only`: when true, disable editing and saving in the UI.
 7. `agent_validation`: external agent-validator command configuration.
+
+Quart component entrypoint resolution:
+1. `component-entry-points.quart` from the active config file.
+2. If missing or empty, defaults to:
+   1. `opamp_tools.config_app:register_api_component`
+   2. `opamp_tools.config_app:register_ui_component`
 
 `agent_validation` format:
 1. `entries`: ordered list of external validator definitions.

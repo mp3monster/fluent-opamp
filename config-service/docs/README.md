@@ -13,6 +13,7 @@ This folder contains user-facing documentation for running, configuring, and ext
 8. [Standalone Packaging](./standalone-packaging.md)
 9. [UI Testing](./ui-testing.md)
 10. [Developer Tools](./dev-tools.md)
+11. [Test Cases](./TEST_CASES.md)
 
 ## What this service provides
 - Versioned Fluent Bit catalog loading from config.

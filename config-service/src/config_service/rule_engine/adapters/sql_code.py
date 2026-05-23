@@ -12,6 +12,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from config_service.rule_engine.base import RuleAdapter, RuleContext
@@ -30,6 +31,23 @@ KEY_DATA_TYPE = "data_type"
 KEY_VALIDATION_RULE = "validation_rule"
 KEY_KIND = "kind"
 KEY_LANGUAGE = "language"
+KEY_CODE = "code"
+KEY_PATH = "path"
+KEY_MESSAGE = "message"
+KEY_SEVERITY = "severity"
+KEY_SOURCE = "source"
+
+ISSUE_SEVERITY_ERROR = "error"
+ISSUE_SOURCE_RULES = "rules"
+DATA_TYPE_CODE = "code"
+VALIDATION_KIND_CODE_SYNTAX = "code_syntax"
+LANGUAGE_SQL = "sql"
+PARSER_TYPE_LALR = "lalr"
+LEXER_TYPE_CONTEXTUAL = "contextual"
+PATH_PREFIX_PIPELINE_CONFIG = "$.config.pipeline"
+SIGNAL_LOGS = "logs"
+
+LOGGER = logging.getLogger(__name__)
 
 try:
     from lark import Lark, Token, Tree, UnexpectedInput
@@ -109,14 +127,20 @@ NUMBER: /-?(?:[1-9][0-9]*|0)(?:\.[0-9]+)?/
 """
 
 
-def _issue(code: str, path: str, message: str, severity: str = "error", source: str = "rules") -> dict[str, Any]:
+def _issue(
+    code: str,
+    path: str,
+    message: str,
+    severity: str = ISSUE_SEVERITY_ERROR,
+    source: str = ISSUE_SOURCE_RULES,
+) -> dict[str, Any]:
     """Create a consistently-shaped rule-engine issue payload."""
     return {
-        "code": code,
-        "path": path,
-        "message": message,
-        "severity": severity,
-        "source": source,
+        KEY_CODE: code,
+        KEY_PATH: path,
+        KEY_MESSAGE: message,
+        KEY_SEVERITY: severity,
+        KEY_SOURCE: source,
     }
 
 
@@ -129,21 +153,25 @@ class SqlCodeSyntaxAdapter(RuleAdapter):
     def parser(cls):
         """Build and cache the Lark parser so each validation pass can reuse it."""
         if Lark is None:
+            LOGGER.warning("SQL syntax parser unavailable because lark is not installed")
             return None
         if cls._parser is None:
+            LOGGER.info("creating cached SQL syntax parser")
             cls._parser = Lark(
                 FLUENT_BIT_SQL_GRAMMAR,
-                parser="lalr",
-                lexer="contextual",
+                parser=PARSER_TYPE_LALR,
+                lexer=LEXER_TYPE_CONTEXTUAL,
                 maybe_placeholders=False,
             )
         return cls._parser
 
     def evaluate(self, context: RuleContext) -> list[dict[str, Any]]:
         """Scan plugin fields and processor fields that declare SQL syntax rules."""
+        LOGGER.info("starting SQL code syntax evaluation version=%s", context.version)
         issues: list[dict[str, Any]] = []
         pipeline = context.config.get(KEY_PIPELINE, {})
         if not isinstance(pipeline, dict):
+            LOGGER.warning("SQL code syntax evaluation skipped because pipeline is not a dict")
             return issues
 
         plugin_groups = context.catalog.get(KEY_PLUGINS, {})
@@ -152,13 +180,29 @@ class SqlCodeSyntaxAdapter(RuleAdapter):
         for section in (KEY_INPUTS, KEY_FILTERS, KEY_OUTPUTS):
             items = pipeline.get(section, [])
             if not isinstance(items, list):
+                LOGGER.warning(
+                    "SQL code syntax evaluation skipped non-list section section=%s type=%s",
+                    section,
+                    type(items).__name__,
+                )
                 continue
             section_defs = plugin_groups.get(section, {})
             for idx, plugin_instance in enumerate(items):
                 if not isinstance(plugin_instance, dict):
+                    LOGGER.warning(
+                        "SQL code syntax evaluation skipped non-dict plugin instance section=%s index=%s type=%s",
+                        section,
+                        idx,
+                        type(plugin_instance).__name__,
+                    )
                     continue
                 plugin_name = plugin_instance.get(KEY_NAME)
                 if not isinstance(plugin_name, str) or not plugin_name:
+                    LOGGER.warning(
+                        "SQL code syntax evaluation skipped unnamed plugin section=%s index=%s",
+                        section,
+                        idx,
+                    )
                     continue
                 plugin_def = section_defs.get(plugin_name)
                 if isinstance(plugin_def, dict):
@@ -166,18 +210,29 @@ class SqlCodeSyntaxAdapter(RuleAdapter):
                         self._validate_named_code_fields(
                             payload=plugin_instance,
                             field_defs=plugin_def.get(KEY_FIELDS, []),
-                            path_prefix=f"$.config.pipeline.{section}[{idx}]",
+                            path_prefix=f"{PATH_PREFIX_PIPELINE_CONFIG}.{section}[{idx}]",
                             context_name=plugin_name,
                         )
+                    )
+                else:
+                    LOGGER.debug(
+                        "SQL code syntax evaluation found no catalog definition section=%s plugin=%s",
+                        section,
+                        plugin_name,
                     )
                 if section in {KEY_INPUTS, KEY_OUTPUTS}:
                     issues.extend(
                         self._validate_processor_code_fields(
                             plugin_instance=plugin_instance,
                             processors_def=common_processors,
-                            path_prefix=f"$.config.pipeline.{section}[{idx}]",
+                            path_prefix=f"{PATH_PREFIX_PIPELINE_CONFIG}.{section}[{idx}]",
                         )
                     )
+        LOGGER.info(
+            "completed SQL code syntax evaluation version=%s issue_count=%s",
+            context.version,
+            len(issues),
+        )
         return issues
 
     def _validate_named_code_fields(
@@ -192,15 +247,24 @@ class SqlCodeSyntaxAdapter(RuleAdapter):
         issues: list[dict[str, Any]] = []
         for field in field_defs:
             if not isinstance(field, dict):
+                LOGGER.warning("SQL code syntax skipped non-dict field definition path_prefix=%s", path_prefix)
                 continue
             if not self._targets_sql(field=field, context_name=context_name):
                 continue
             field_name = str(field.get(KEY_NAME, ""))
             if not field_name:
+                LOGGER.warning("SQL code syntax skipped unnamed field definition path_prefix=%s", path_prefix)
                 continue
             code_value = payload.get(field_name)
             if isinstance(code_value, str) and code_value.strip():
                 issues.extend(self._validate_sql_source(code_value, f"{path_prefix}.{field_name}"))
+            elif code_value is not None:
+                LOGGER.warning(
+                    "SQL code syntax skipped non-string or blank field path=%s.%s type=%s",
+                    path_prefix,
+                    field_name,
+                    type(code_value).__name__,
+                )
         return issues
 
     def _validate_processor_code_fields(
@@ -214,21 +278,52 @@ class SqlCodeSyntaxAdapter(RuleAdapter):
         issues: list[dict[str, Any]] = []
         processors = plugin_instance.get(KEY_PROCESSORS)
         if not isinstance(processors, dict):
+            if processors is not None:
+                LOGGER.warning(
+                    "SQL code syntax skipped processors payload because it is not a dict path=%s type=%s",
+                    path_prefix,
+                    type(processors).__name__,
+                )
             return issues
         signals = processors_def.get(KEY_SIGNALS, {})
         for signal_name, entries in processors.items():
             if not isinstance(entries, list):
+                LOGGER.warning(
+                    "SQL code syntax skipped processor signal because it is not a list path=%s signal=%s type=%s",
+                    path_prefix,
+                    signal_name,
+                    type(entries).__name__,
+                )
                 continue
             signal_def = signals.get(signal_name, {})
             signal_processors = signal_def.get(KEY_PROCESSORS, {})
             for idx, processor_instance in enumerate(entries):
                 if not isinstance(processor_instance, dict):
+                    LOGGER.warning(
+                        "SQL code syntax skipped non-dict processor instance path=%s signal=%s index=%s type=%s",
+                        path_prefix,
+                        signal_name,
+                        idx,
+                        type(processor_instance).__name__,
+                    )
                     continue
                 processor_name = processor_instance.get(KEY_NAME)
                 if not isinstance(processor_name, str) or not processor_name:
+                    LOGGER.warning(
+                        "SQL code syntax skipped unnamed processor path=%s signal=%s index=%s",
+                        path_prefix,
+                        signal_name,
+                        idx,
+                    )
                     continue
                 processor_def = signal_processors.get(processor_name)
                 if not isinstance(processor_def, dict):
+                    LOGGER.debug(
+                        "SQL code syntax found no processor definition path=%s signal=%s processor=%s",
+                        path_prefix,
+                        signal_name,
+                        processor_name,
+                    )
                     continue
                 issues.extend(
                     self._validate_named_code_fields(
@@ -244,6 +339,7 @@ class SqlCodeSyntaxAdapter(RuleAdapter):
         """Parse Fluent Bit SQL and translate grammar failures into rule issues."""
         parser = self.parser()
         if parser is None:
+            LOGGER.warning("SQL validation parser unavailable path=%s", path)
             return [
                 _issue(
                     "sql_parser_unavailable",
@@ -257,6 +353,12 @@ class SqlCodeSyntaxAdapter(RuleAdapter):
             wildcard_count = self._count_wildcards(tree)
             select_items = self._count_select_items(tree)
             if wildcard_count > 0 and select_items > 1:
+                LOGGER.warning(
+                    "SQL validation rejected wildcard and explicit field mix path=%s wildcard_count=%s select_items=%s",
+                    path,
+                    wildcard_count,
+                    select_items,
+                )
                 return [
                     _issue(
                         "sql_syntax_error",
@@ -271,10 +373,13 @@ class SqlCodeSyntaxAdapter(RuleAdapter):
                 f"SQL syntax error at line {getattr(exc, 'line', '?')}, "
                 f"column {getattr(exc, 'column', '?')}: unexpected input; expected {expected}."
             )
+            LOGGER.warning("SQL syntax validation failed path=%s message=%s", path, message)
             return [_issue("sql_syntax_error", path, message)]
         except Exception as exc:
             # Mitigates unexpected parser/runtime errors and keeps API output normalized.
+            LOGGER.exception("unexpected SQL syntax validation failure path=%s", path)
             return [_issue("sql_syntax_error", path, f"SQL syntax error: {str(exc).strip() or 'invalid SQL query.'}")]
+        LOGGER.debug("SQL syntax validation succeeded path=%s", path)
         return []
 
     @staticmethod
@@ -282,19 +387,19 @@ class SqlCodeSyntaxAdapter(RuleAdapter):
         """Return true only for validation rules that explicitly target SQL syntax."""
         return (
             isinstance(validation_rule, dict)
-            and str(validation_rule.get(KEY_KIND, "")).lower() == "code_syntax"
-            and str(validation_rule.get(KEY_LANGUAGE, "")).lower() == "sql"
+            and str(validation_rule.get(KEY_KIND, "")).lower() == VALIDATION_KIND_CODE_SYNTAX
+            and str(validation_rule.get(KEY_LANGUAGE, "")).lower() == LANGUAGE_SQL
         )
 
     @classmethod
     def _targets_sql(cls, *, field: dict[str, Any], context_name: str) -> bool:
         """Route fields to SQL validation when explicitly or contextually SQL code."""
-        validation_rule = field.get("validation_rule")
+        validation_rule = field.get(KEY_VALIDATION_RULE)
         if cls._is_sql_rule(validation_rule):
             return True
-        if str(field.get(KEY_DATA_TYPE, "")).lower() != "code":
+        if str(field.get(KEY_DATA_TYPE, "")).lower() != DATA_TYPE_CODE:
             return False
-        return str(context_name or "").strip().lower() == "sql"
+        return str(context_name or "").strip().lower() == LANGUAGE_SQL
 
     @staticmethod
     def _count_wildcards(tree: Any) -> int:

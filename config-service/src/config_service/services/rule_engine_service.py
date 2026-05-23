@@ -17,9 +17,16 @@ from typing import Any
 from config_service.rule_engine.base import RuleContext
 from config_service.services.rules_registry_service import RulesRegistryService
 
+KEY_ENABLED = "enabled"
+KEY_ADAPTER = "adapter"
+KEY_PARAMS = "params"
+
 
 class RuleEngineService:
+    """Evaluate configured rulesets against a normalized config payload and catalog."""
+
     def __init__(self, rules_registry_service: RulesRegistryService) -> None:
+        """Initialize the rule engine with the loaded rules registry service."""
         self.rules_registry_service = rules_registry_service
 
     def evaluate(
@@ -30,22 +37,23 @@ class RuleEngineService:
         catalog: dict[str, Any],
         profile: str | None,
     ) -> list[dict[str, Any]]:
+        """Evaluate all enabled rulesets for the selected profile and version."""
         selected_profile = profile or self.rules_registry_service.get_default_profile()
         ruleset_names = self.rules_registry_service.get_profile_rulesets(selected_profile, version)
 
         issues: list[dict[str, Any]] = []
         for ruleset_name in ruleset_names:
             ruleset = self.rules_registry_service.get_ruleset(ruleset_name)
-            if not ruleset.get("enabled", True):
+            if not ruleset.get(KEY_ENABLED, True):
                 continue
-            adapter_name = str(ruleset["adapter"])
+            adapter_name = str(ruleset[KEY_ADAPTER])
             adapter_cls = self.rules_registry_service.adapter_registry.resolve(adapter_name)
             adapter = adapter_cls()
             context = RuleContext(
                 version=version,
                 config=config,
                 catalog=catalog,
-                params=dict(ruleset.get("params", {})),
+                params=dict(ruleset.get(KEY_PARAMS, {})),
             )
             issues.extend(adapter.evaluate(context))
         return issues

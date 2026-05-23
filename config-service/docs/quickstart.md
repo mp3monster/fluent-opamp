@@ -20,6 +20,8 @@ Notes:
   and now prefers `config-service/config/config-service.json` before falling back to `config/opamp.json` and `8080`.
 - In dev mode (`APP_ENABLE_DEV_FEATURES` truthy), backend logs are mirrored to both
   console and `config-service/.run/logs/backend.log`.
+- Quart component registration is configuration-driven via
+  `component-entry-points.quart` in `config-service/config/config-service.json`.
 
 ## Manual start (without convenience scripts)
 ### Backend + UI (single Python process)

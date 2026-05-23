@@ -17,20 +17,31 @@ import json
 from pathlib import Path
 from typing import Any
 
+UTF8_ENCODING = "utf-8"
+KEY_REGISTRY_VERSION = "registry_version"
+KEY_CODES = "codes"
+DEFAULT_REGISTRY_VERSION = "1.0.0"
+
 
 class IssueCodeService:
+    """Load and expose configured issue-code registry payloads."""
+
     def __init__(self, config_path: Path) -> None:
+        """Initialize the issue-code service with the supplied registry path."""
         self.config_path = config_path
-        self._payload: dict[str, Any] = {"registry_version": "1.0.0", "codes": {}}
+        self._payload: dict[str, Any] = {KEY_REGISTRY_VERSION: DEFAULT_REGISTRY_VERSION, KEY_CODES: {}}
 
     def load(self) -> None:
+        """Load the issue-code registry from disk when the registry file exists."""
         if not self.config_path.exists():
             return
-        self._payload = json.loads(self.config_path.read_text(encoding="utf-8"))
+        self._payload = json.loads(self.config_path.read_text(encoding=UTF8_ENCODING))
 
     def get_all(self) -> dict[str, Any]:
+        """Return the full loaded issue-code registry payload."""
         return self._payload
 
     def get_codes(self) -> dict[str, Any]:
-        codes = self._payload.get("codes", {})
+        """Return the code-definition map from the loaded registry payload."""
+        codes = self._payload.get(KEY_CODES, {})
         return codes if isinstance(codes, dict) else {}

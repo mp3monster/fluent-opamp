@@ -6,10 +6,17 @@ The standalone service now prefers:
 
 That file stores config-service runtime settings under:
 1. `config-tool`
+2. `component-entry-points`
 
 Example:
 ```json
 {
+  "component-entry-points": {
+    "quart": [
+      "opamp_tools.config_app:register_api_component",
+      "opamp_tools.config_app:register_ui_component"
+    ]
+  },
   "config-tool": {
     "web_port": 8080,
     "ui_base_css_path": "/config-service/ui/assets/config_ui.css",
@@ -36,6 +43,11 @@ cd config-service
 python3 -m build --wheel
 ```
 
+During wheel creation, the packaging flow checks whether the OpAMP CLI is available.
+If the CLI cannot be detected in the workspace or as an installed distribution, the build prints
+a warning because the CLI is packaged separately as `opamp-cli` and may need to be installed or
+deployed alongside the standalone service.
+
 Output:
 1. `config-service/dist/*.whl`
 
@@ -43,6 +55,38 @@ Output:
 ```bash
 pip install config-service/dist/config_service-0.1.0-py3-none-any.whl
 config-service --config-path /path/to/config-service.json
+```
+
+If you also want the guided launcher and process-management experience, install the CLI separately:
+
+```bash
+pip install cli/dist/opamp_cli-*.whl
+opamp-cli --help
+```
+
+### Windows PowerShell logging (`Tee-Object`) note
+When running a Python module in PowerShell with `2>&1 | Tee-Object`, output written to stderr can appear as a red `NativeCommandError` wrapper even when the service is healthy.
+
+Use this pattern to capture logs and avoid the wrapper:
+
+```powershell
+$old = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
+$PSNativeCommandUseErrorActionPreference = $false
+
+python -m config_service --config-path D:\dev\opamp\config-service\config\config-service.json 2>&1 |
+  ForEach-Object { "$_" } |
+  Tee-Object -FilePath D:\dev\opamp\logs\config-service.log
+
+$ErrorActionPreference = $old
+```
+
+Optional: write stdout and stderr to separate files:
+
+```powershell
+python -m config_service --config-path D:\dev\opamp\config-service\config\config-service.json `
+  1> D:\dev\opamp\logs\config-service.stdout.log `
+  2> D:\dev\opamp\logs\config-service.stderr.log
 ```
 
 ## Generate the SBOM

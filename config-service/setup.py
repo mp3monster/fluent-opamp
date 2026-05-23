@@ -21,7 +21,8 @@ from pathlib import Path
 from setuptools import find_packages, setup
 
 ROOT = Path(__file__).resolve().parent
-for candidate in (ROOT, ROOT / "src"):
+REPO_ROOT = ROOT.parent
+for candidate in (ROOT, ROOT / "src", REPO_ROOT):
     if str(candidate) not in sys.path:
         sys.path.insert(0, str(candidate))
 
@@ -40,6 +41,17 @@ def _load_build_config() -> tuple[list[str], list[str], str, str, str]:
 
 DEV_REQUIRES, INSTALL_REQUIRES, PACKAGE_DESCRIPTION, PACKAGE_NAME, PACKAGE_VERSION = _load_build_config()
 
+try:
+    from shared.packaging_warnings import warn_if_cli_missing
+except ModuleNotFoundError:  # pragma: no cover - build fallback when shared package is unavailable
+    warn_if_cli_missing = None
+
+if warn_if_cli_missing is not None:
+    warn_if_cli_missing(
+        component_label="config-service wheel build",
+        repo_root=REPO_ROOT,
+    )
+
 
 setup(
     name=PACKAGE_NAME,
@@ -50,7 +62,10 @@ setup(
     author="Phil Wilkins",
     author_email="phil-AT-mp3monster.org",
     license="Apache-2.0",
-    packages=find_packages(where="src", include=["config_service", "config_service.*"]),
+    packages=find_packages(
+        where="src",
+        include=["config_service", "config_service.*", "opamp_tools", "opamp_tools.*"],
+    ),
     package_dir={"": "src"},
     include_package_data=True,
     package_data={

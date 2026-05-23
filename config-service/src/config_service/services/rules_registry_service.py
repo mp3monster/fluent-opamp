@@ -13,28 +13,43 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 from typing import Any
 
 from config_service.rule_engine.registry import RuleAdapterRegistry
 
+LOGGER = logging.getLogger(__name__)
+
+UTF8_ENCODING = "utf-8"
+KEY_RULESETS = "rulesets"
+KEY_PROFILES = "profiles"
+KEY_DEFAULT_PROFILE = "default_profile"
+KEY_VERSION_OVERRIDES = "version_overrides"
+KEY_ADDITIONAL_RULESETS = "additional_rulesets"
+
 
 class RulesRegistryService:
+    """Load, validate, and resolve rule profiles and rulesets from registry files."""
+
     def __init__(self, registry_path: Path) -> None:
+        """Initialize the rules registry service and eagerly load the registry file."""
         self.registry_path = registry_path
         self._registry: dict[str, Any] = {}
         self._adapter_registry = RuleAdapterRegistry()
         self._load()
 
     def _load(self) -> None:
-        self._registry = json.loads(self.registry_path.read_text(encoding="utf-8"))
+        """Load the raw registry payload from disk and validate its structure."""
+        self._registry = json.loads(self.registry_path.read_text(encoding=UTF8_ENCODING))
         self.validate_registry()
 
     def validate_registry(self) -> None:
-        if "profiles" not in self._registry or "rulesets" not in self._registry:
+        """Validate the registry payload and all referenced rulesets and profiles."""
+        if KEY_PROFILES not in self._registry or KEY_RULESETS not in self._registry:
             raise ValueError("validation-rules-registry.json must include 'profiles' and 'rulesets'")
 
-        rulesets = self._registry["rulesets"]
+        rulesets = self._registry[KEY_RULESETS]
         if not isinstance(rulesets, dict) or not rulesets:
             raise ValueError("rulesets must be a non-empty object")
 
@@ -43,40 +58,45 @@ class RulesRegistryService:
                 raise ValueError(f"ruleset '{name}' must be an object")
             self._adapter_registry.validate_ruleset(name, ruleset)
 
-        profiles = self._registry["profiles"]
+        profiles = self._registry[KEY_PROFILES]
         for profile_name, profile in profiles.items():
             if not isinstance(profile, dict):
                 raise ValueError(f"profile '{profile_name}' must be an object")
-            for ruleset_name in profile.get("rulesets", []):
+            for ruleset_name in profile.get(KEY_RULESETS, []):
                 if ruleset_name not in rulesets:
                     raise ValueError(
                         f"profile '{profile_name}' references unknown ruleset '{ruleset_name}'"
                     )
 
     def get_registry(self) -> dict[str, Any]:
+        """Return the validated raw rules registry payload."""
         return self._registry
 
     def get_default_profile(self) -> str:
-        default = self._registry.get("default_profile")
+        """Return the configured default validation profile name."""
+        default = self._registry.get(KEY_DEFAULT_PROFILE)
         if not default:
             raise ValueError("default_profile missing from validation rules registry")
         return str(default)
 
     def get_profile_rulesets(self, profile: str, version: str) -> list[str]:
-        profiles = self._registry.get("profiles", {})
+        """Return the ruleset names that apply to one profile and version."""
+        profiles = self._registry.get(KEY_PROFILES, {})
         if profile not in profiles:
             raise KeyError(f"Unknown validation profile: {profile}")
 
-        selected = list(profiles[profile].get("rulesets", []))
-        version_overrides = self._registry.get("version_overrides", {})
-        for extra in version_overrides.get(version, {}).get("additional_rulesets", []):
+        selected = list(profiles[profile].get(KEY_RULESETS, []))
+        version_overrides = self._registry.get(KEY_VERSION_OVERRIDES, {})
+        for extra in version_overrides.get(version, {}).get(KEY_ADDITIONAL_RULESETS, []):
             if extra not in selected:
                 selected.append(extra)
         return selected
 
     def get_ruleset(self, ruleset_name: str) -> dict[str, Any]:
-        return self._registry["rulesets"][ruleset_name]
+        """Return one named ruleset payload from the loaded registry."""
+        return self._registry[KEY_RULESETS][ruleset_name]
 
     @property
     def adapter_registry(self) -> RuleAdapterRegistry:
+        """Return the rule adapter registry used for ruleset adapter resolution."""
         return self._adapter_registry

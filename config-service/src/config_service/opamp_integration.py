@@ -17,12 +17,12 @@ from pathlib import Path
 
 from quart import Quart
 
-from config_service.routes.api import create_api_blueprint
+from config_service.app import register_api_component, register_ui_component
 from config_service.services.catalog_service import CatalogService
 from config_service.services.fluentbit_yaml_config_service import FluentBitYamlConfigService
 from config_service.services.fluentd_config_service import FluentdConfigService
-from config_service.services.issue_code_service import IssueCodeService
 from config_service.services.include_document_service import IncludeDocumentService
+from config_service.services.issue_code_service import IssueCodeService
 from config_service.services.parser_definition_service import ParserDefinitionService
 from config_service.services.rule_engine_service import RuleEngineService
 from config_service.services.rules_registry_service import RulesRegistryService
@@ -87,4 +87,5 @@ def register_config_service_feature(opamp_app: Quart) -> None:
     opamp_app.extensions["include_document_service"] = include_document_service
     opamp_app.config["CONFIG_SERVICE_MODE"] = "embedded"
 
-    opamp_app.register_blueprint(create_api_blueprint(), url_prefix="/config-service/api/v1")
+    register_api_component(opamp_app)
+    register_ui_component(opamp_app)

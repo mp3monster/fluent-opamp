@@ -12,6 +12,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import Any
 
@@ -31,32 +32,90 @@ KEY_SIGNALS = "signals"
 KEY_CONDITION = "condition"
 KEY_VALIDATION_RULE = "validation_rule"
 KEY_DATA_TYPE = "data_type"
+KEY_KIND = "kind"
+KEY_MIN = "min"
+KEY_MAX = "max"
+KEY_PATTERN = "pattern"
+KEY_ALLOW_FILTERS_AS_PROCESSORS = "allow_filters_as_processors"
+
+ISSUE_KEY_CODE = "code"
+ISSUE_KEY_PATH = "path"
+ISSUE_KEY_MESSAGE = "message"
+ISSUE_KEY_SEVERITY = "severity"
+ISSUE_KEY_SOURCE = "source"
+ISSUE_SEVERITY_ERROR = "error"
+ISSUE_SOURCE_RULES = "rules"
+
+RULE_KIND_RANGE = "range"
+RULE_KIND_REGEX = "regex"
+RULE_KIND_REGEX_STRING = "regex_string"
+RULE_KIND_BOOLEAN = "boolean"
+DATA_TYPE_STRING = "string"
+DATA_TYPE_TIME = "time"
+DATA_TYPE_INTEGER = "integer"
+DATA_TYPE_BOOLEAN = "boolean"
+DATA_TYPE_FLOAT = "float"
+DATA_TYPE_NUMBER = "number"
+DATA_TYPE_DURATION = "duration"
+DATA_TYPE_SIZE = "size"
+DATA_TYPE_ARRAY = "array"
+DATA_TYPE_LIST = "list"
+DATA_TYPE_OBJECT = "object"
+DATA_TYPE_MAP = "map"
+SIGNAL_LOGS = "logs"
+
+LOGGER = logging.getLogger(__name__)
 
 
 def _iter_pipeline_plugins(config: dict[str, Any]):
     """Yield concrete plugin objects from the main pipeline for rule checks."""
     pipeline = config.get(KEY_PIPELINE, {})
+    if not isinstance(pipeline, dict):
+        LOGGER.warning("rule adapter pipeline payload is not a dict; skipping plugin traversal")
+        return
     for section in (KEY_INPUTS, KEY_FILTERS, KEY_OUTPUTS):
         items = pipeline.get(section, [])
-        if isinstance(items, list):
-            for idx, item in enumerate(items):
-                if isinstance(item, dict):
-                    yield section, idx, item
+        if not isinstance(items, list):
+            LOGGER.warning(
+                "rule adapter pipeline section is not a list; skipping section=%s type=%s",
+                section,
+                type(items).__name__,
+            )
+            continue
+        for idx, item in enumerate(items):
+            if isinstance(item, dict):
+                yield section, idx, item
+            else:
+                LOGGER.warning(
+                    "rule adapter plugin entry is not a dict; skipping section=%s index=%s type=%s",
+                    section,
+                    idx,
+                    type(item).__name__,
+                )
 
 
 def _catalog_plugin(catalog: dict[str, Any], section: str, name: str) -> dict[str, Any] | None:
     """Look up a plugin definition in the loaded catalog."""
-    return catalog.get(KEY_PLUGINS, {}).get(section, {}).get(name)
+    plugin = catalog.get(KEY_PLUGINS, {}).get(section, {}).get(name)
+    if plugin is None:
+        LOGGER.debug("catalog plugin definition not found section=%s name=%s", section, name)
+    return plugin
 
 
-def _issue(code: str, path: str, message: str, severity: str = "error", source: str = "rules") -> dict[str, Any]:
+def _issue(
+    code: str,
+    path: str,
+    message: str,
+    severity: str = ISSUE_SEVERITY_ERROR,
+    source: str = ISSUE_SOURCE_RULES,
+) -> dict[str, Any]:
     """Create a consistently-shaped rule-engine issue payload."""
     return {
-        "code": code,
-        "path": path,
-        "message": message,
-        "severity": severity,
-        "source": source,
+        ISSUE_KEY_CODE: code,
+        ISSUE_KEY_PATH: path,
+        ISSUE_KEY_MESSAGE: message,
+        ISSUE_KEY_SEVERITY: severity,
+        ISSUE_KEY_SOURCE: source,
     }
 
 
@@ -65,15 +124,27 @@ class CatalogRequiredFieldsAdapter(RuleAdapter):
 
     def evaluate(self, context: RuleContext) -> list[dict[str, Any]]:
         """Report plugin instances that are missing catalog-mandated fields."""
+        LOGGER.info("starting catalog required fields evaluation version=%s", context.version)
         issues: list[dict[str, Any]] = []
         for section, idx, plugin_instance in _iter_pipeline_plugins(context.config):
-            plugin_name = str(plugin_instance.get("name", ""))
+            plugin_name = str(plugin_instance.get(KEY_NAME, ""))
             plugin_def = _catalog_plugin(context.catalog, section, plugin_name)
             if not plugin_def:
                 continue
-            required_fields = [f["name"] for f in plugin_def.get("fields", []) if f.get("required") is True]
+            required_fields = [
+                field[KEY_NAME]
+                for field in plugin_def.get(KEY_FIELDS, [])
+                if isinstance(field, dict) and field.get(KEY_REQUIRED) is True and KEY_NAME in field
+            ]
             for field_name in required_fields:
                 if field_name not in plugin_instance:
+                    LOGGER.warning(
+                        "required field missing section=%s index=%s plugin=%s field=%s",
+                        section,
+                        idx,
+                        plugin_name,
+                        field_name,
+                    )
                     issues.append(
                         _issue(
                             "missing_required_field",
@@ -81,6 +152,11 @@ class CatalogRequiredFieldsAdapter(RuleAdapter):
                             f"Required field '{field_name}' is missing for plugin '{plugin_name}'.",
                         )
                     )
+        LOGGER.info(
+            "completed catalog required fields evaluation version=%s issue_count=%s",
+            context.version,
+            len(issues),
+        )
         return issues
 
 
@@ -91,18 +167,18 @@ class DataTypeEnforcementAdapter(RuleAdapter):
     _TIME_VALUE_PATTERN = re.compile(r"^\d+[smhdSMHD]?$")
 
     TYPE_MAP = {
-        "string": str,
+        DATA_TYPE_STRING: str,
         "code": str,
-        "integer": int,
-        "boolean": bool,
-        "float": (int, float),
-        "number": (int, float),
-        "duration": str,
-        "size": str,
-        "array": list,
-        "list": list,
-        "object": dict,
-        "map": dict,
+        DATA_TYPE_INTEGER: int,
+        DATA_TYPE_BOOLEAN: bool,
+        DATA_TYPE_FLOAT: (int, float),
+        DATA_TYPE_NUMBER: (int, float),
+        DATA_TYPE_DURATION: str,
+        DATA_TYPE_SIZE: str,
+        DATA_TYPE_ARRAY: list,
+        DATA_TYPE_LIST: list,
+        DATA_TYPE_OBJECT: dict,
+        DATA_TYPE_MAP: dict,
     }
 
     @classmethod
@@ -123,6 +199,7 @@ class DataTypeEnforcementAdapter(RuleAdapter):
 
     def evaluate(self, context: RuleContext) -> list[dict[str, Any]]:
         """Reject values whose in-memory types drift from the catalog contract."""
+        LOGGER.info("starting data type enforcement evaluation version=%s", context.version)
         issues: list[dict[str, Any]] = []
         common_processors = context.catalog.get(KEY_COMMON, {}).get(KEY_PROCESSORS, {})
         processor_signals = common_processors.get(KEY_SIGNALS, {})
@@ -148,6 +225,11 @@ class DataTypeEnforcementAdapter(RuleAdapter):
                         filter_plugins=filter_plugins,
                     )
                 )
+        LOGGER.info(
+            "completed data type enforcement evaluation version=%s issue_count=%s",
+            context.version,
+            len(issues),
+        )
         return issues
 
     def _validate_payload_types(
@@ -170,10 +252,16 @@ class DataTypeEnforcementAdapter(RuleAdapter):
         for key, value in payload.items():
             if key == KEY_NAME or key not in fields_by_name:
                 continue
-            data_type = str(fields_by_name[key].get(KEY_DATA_TYPE, "string")).lower()
+            data_type = str(fields_by_name[key].get(KEY_DATA_TYPE, DATA_TYPE_STRING)).lower()
             # Time fields intentionally support integer values and compact duration strings.
-            if data_type == "time":
+            if data_type == DATA_TYPE_TIME:
                 if not self._is_valid_time_value(value):
+                    LOGGER.warning(
+                        "time field failed validation path=%s key=%s value_type=%s",
+                        path_prefix,
+                        key,
+                        type(value).__name__,
+                    )
                     issues.append(
                         _issue(
                             "invalid_type",
@@ -184,11 +272,17 @@ class DataTypeEnforcementAdapter(RuleAdapter):
                 continue
             expected = self.TYPE_MAP.get(data_type)
             if expected is None:
+                LOGGER.debug("skipping unknown catalog data type key=%s data_type=%s", key, data_type)
                 continue
             # Numeric fields may safely defer value resolution to runtime env expansion.
-            if data_type in {"integer", "float", "number"} and self._is_numeric_env_var(value):
+            if data_type in {DATA_TYPE_INTEGER, DATA_TYPE_FLOAT, DATA_TYPE_NUMBER} and self._is_numeric_env_var(value):
                 continue
-            if data_type in {"integer", "float", "number"} and isinstance(value, bool):
+            if data_type in {DATA_TYPE_INTEGER, DATA_TYPE_FLOAT, DATA_TYPE_NUMBER} and isinstance(value, bool):
+                LOGGER.warning(
+                    "numeric field received boolean path=%s key=%s",
+                    path_prefix,
+                    key,
+                )
                 issues.append(
                     _issue(
                         "invalid_type",
@@ -198,6 +292,13 @@ class DataTypeEnforcementAdapter(RuleAdapter):
                 )
                 continue
             if not isinstance(value, expected):
+                LOGGER.warning(
+                    "field type mismatch path=%s key=%s expected=%s actual_type=%s",
+                    path_prefix,
+                    key,
+                    data_type,
+                    type(value).__name__,
+                )
                 issues.append(
                     _issue(
                         "invalid_type",
@@ -226,23 +327,54 @@ class DataTypeEnforcementAdapter(RuleAdapter):
         issues: list[dict[str, Any]] = []
         processors = plugin_instance.get(KEY_PROCESSORS)
         if not isinstance(processors, dict):
+            if processors is not None:
+                LOGGER.warning(
+                    "processor payload is not a dict path=%s type=%s",
+                    path_prefix,
+                    type(processors).__name__,
+                )
             return issues
         # Traverse signal -> processor-entry hierarchy and validate known processors only.
         for signal_name, processor_items in processors.items():
             if not isinstance(processor_items, list):
+                LOGGER.warning(
+                    "processor signal entry is not a list path=%s signal=%s type=%s",
+                    path_prefix,
+                    signal_name,
+                    type(processor_items).__name__,
+                )
                 continue
             signal_def = processor_signals.get(signal_name, {})
             available_processors = dict(signal_def.get(KEY_PROCESSORS, {}))
-            if signal_name == "logs" and signal_def.get("allow_filters_as_processors"):
+            if signal_name == SIGNAL_LOGS and signal_def.get(KEY_ALLOW_FILTERS_AS_PROCESSORS):
                 available_processors.update(filter_plugins)
             for idx, processor_payload in enumerate(processor_items):
                 if not isinstance(processor_payload, dict):
+                    LOGGER.warning(
+                        "processor entry is not a dict path=%s signal=%s index=%s type=%s",
+                        path_prefix,
+                        signal_name,
+                        idx,
+                        type(processor_payload).__name__,
+                    )
                     continue
                 processor_name = processor_payload.get(KEY_NAME)
                 if not isinstance(processor_name, str) or not processor_name:
+                    LOGGER.warning(
+                        "processor entry missing name path=%s signal=%s index=%s",
+                        path_prefix,
+                        signal_name,
+                        idx,
+                    )
                     continue
                 processor_def = available_processors.get(processor_name)
                 if not isinstance(processor_def, dict):
+                    LOGGER.debug(
+                        "processor definition not found path=%s signal=%s processor=%s",
+                        path_prefix,
+                        signal_name,
+                        processor_name,
+                    )
                     continue
                 issues.extend(
                     self._validate_payload_types(
@@ -259,6 +391,7 @@ class DependencyConstraintsAdapter(RuleAdapter):
 
     def evaluate(self, context: RuleContext) -> list[dict[str, Any]]:
         """Return no issues until cross-field dependency rules are implemented."""
+        LOGGER.info("dependency constraints evaluation not yet implemented version=%s", context.version)
         return []
 
 
@@ -273,6 +406,7 @@ class ValidationRuleConstraintsAdapter(RuleAdapter):
         - Dispatch by `validation_rule.kind` to targeted validation branches.
         - Each branch emits normalized, path-aware rule issues.
         """
+        LOGGER.info("starting validation rule constraints evaluation version=%s", context.version)
         issues: list[dict[str, Any]] = []
         for section, idx, plugin_instance in _iter_pipeline_plugins(context.config):
             plugin_name = str(plugin_instance.get(KEY_NAME, ""))
@@ -280,7 +414,11 @@ class ValidationRuleConstraintsAdapter(RuleAdapter):
             if not plugin_def:
                 continue
 
-            fields_by_name = {f[KEY_NAME]: f for f in plugin_def.get(KEY_FIELDS, [])}
+            fields_by_name = {
+                field[KEY_NAME]: field
+                for field in plugin_def.get(KEY_FIELDS, [])
+                if isinstance(field, dict) and KEY_NAME in field
+            }
             # Evaluate constraints only for declared fields present in payload.
             for key, value in plugin_instance.items():
                 if key == KEY_NAME or key not in fields_by_name:
@@ -288,28 +426,37 @@ class ValidationRuleConstraintsAdapter(RuleAdapter):
                 rule = fields_by_name[key].get(KEY_VALIDATION_RULE)
                 if not isinstance(rule, dict):
                     continue
-                kind = rule.get("kind")
+                kind = rule.get(KEY_KIND)
                 path = f"$.pipeline.{section}[{idx}].{key}"
 
                 # Numeric bounds check branch.
-                if kind == "range" and isinstance(value, (int, float)) and not isinstance(value, bool):
-                    min_val = rule.get("min")
-                    max_val = rule.get("max")
+                if kind == RULE_KIND_RANGE and isinstance(value, (int, float)) and not isinstance(value, bool):
+                    min_val = rule.get(KEY_MIN)
+                    max_val = rule.get(KEY_MAX)
                     if min_val is not None and value < min_val:
+                        LOGGER.warning("range minimum violation path=%s min=%s value=%s", path, min_val, value)
                         issues.append(_issue("range_min", path, f"Value for '{key}' must be >= {min_val}."))
                     if max_val is not None and value > max_val:
+                        LOGGER.warning("range maximum violation path=%s max=%s value=%s", path, max_val, value)
                         issues.append(_issue("range_max", path, f"Value for '{key}' must be <= {max_val}."))
 
                 # Regex pattern compliance branch.
-                elif kind in {"regex", "regex_string"} and isinstance(value, str):
-                    pattern = rule.get("pattern")
+                elif kind in {RULE_KIND_REGEX, RULE_KIND_REGEX_STRING} and isinstance(value, str):
+                    pattern = rule.get(KEY_PATTERN)
                     if pattern and re.fullmatch(pattern, value) is None:
+                        LOGGER.warning("regex mismatch path=%s pattern=%s", path, pattern)
                         issues.append(_issue("regex_mismatch", path, f"Value for '{key}' does not match required pattern."))
 
                 # Explicit boolean-only branch.
-                elif kind == "boolean" and not isinstance(value, bool):
+                elif kind == RULE_KIND_BOOLEAN and not isinstance(value, bool):
+                    LOGGER.warning("boolean constraint violation path=%s actual_type=%s", path, type(value).__name__)
                     issues.append(_issue("invalid_boolean", path, f"Value for '{key}' must be boolean."))
 
+        LOGGER.info(
+            "completed validation rule constraints evaluation version=%s issue_count=%s",
+            context.version,
+            len(issues),
+        )
         return issues
 
 
