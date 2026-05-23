@@ -14,6 +14,8 @@ This table lists the helper scripts and their platform-specific names.
 | Configure local Keycloak for JWT auth testing | `scripts/configure_keycloak.sh` | `scripts/configure_keycloak.cmd` / `scripts/configure_keycloak.ps1` |
 | Start consumer simulator batch launcher | `scripts/run_consumer_sim_start.sh` | `scripts/run_consumer_sim_start.cmd` |
 | Stop consumer simulator batch launcher | `scripts/run_consumer_sim_stop.sh` | `scripts/run_consumer_sim_stop.cmd` |
+| Demo start: launch simulator + Fluent Bit client + Fluentd client together | `scripts/demo-start-consumers.sh` | `scripts/demo-start-consumers.cmd` |
+| Demo stop: stop simulator + request client shutdowns | `scripts/demo-stop-consumers.sh` | `scripts/demo-stop-consumers.cmd` |
 | Generate self-signed TLS cert/key for local HTTPS testing | `scripts/generate_self_signed_tls_cert.py` | `scripts\generate_self_signed_tls_cert.py` |
 | Ensure `provider.tls` settings exist in config JSON | `scripts/ensure_provider_tls_config.py` | `scripts\ensure_provider_tls_config.py` |
 | Render Mermaid `.mmd` to PNG (local wrapper) | `scripts/render_mermaid_png.sh` | n/a |
@@ -88,6 +90,12 @@ The scripts:
 - regenerate the consolidated OpAMP PDF manual
 - clear old files in target artifact folders before building
 
+Provider packaging note:
+
+- provider wheel creation checks whether the separate `opamp-cli` component is available
+- if the CLI is not detected in the workspace or as an installed distribution, the build prints a warning
+- the CLI is not bundled into the provider wheel; install/deploy `opamp-cli` separately when you want the guided launcher experience
+
 Example:
 
 ```bash
@@ -112,6 +120,8 @@ Build only:
 ```bash
 python3 scripts/build_and_publish_wheels.py
 ```
+
+The provider wheel build in this flow also warns when `opamp-cli` is not available.
 
 Build and publish to GitHub release assets in `mp3monster/fluent-opamp`:
 
