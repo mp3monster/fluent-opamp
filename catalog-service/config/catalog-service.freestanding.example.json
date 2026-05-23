@@ -1,0 +1,47 @@
+{
+  "component-entry-points": {
+    "quart": [
+      {
+        "entry_point": "catalog_service.app:register_catalog_component",
+        "label": "Config Catalog",
+        "url": "/catalog",
+        "enabled": true
+      }
+    ]
+  },
+  "opamp": {
+    "config_catalog": {
+      "enabled": true,
+      "menu_label": "Config Catalog",
+      "route_path": "/catalog",
+      "help_path": "/catalog/help",
+      "ui_base_css_path": "/config-service/ui/assets/config_ui.css",
+      "web_port": 8090,
+      "sources": [
+        {
+          "folder": "configs/fluent-bit",
+          "extensions": [
+            ".yaml",
+            ".yml",
+            ".conf"
+          ]
+        },
+        {
+          "folder": "configs/fluentd",
+          "extensions": [
+            ".conf",
+            ".rb"
+          ]
+        },
+        {
+          "folder": "configs/shared",
+          "extensions": [
+            ".json",
+            ".yaml",
+            ".yml"
+          ]
+        }
+      ]
+    }
+  }
+}

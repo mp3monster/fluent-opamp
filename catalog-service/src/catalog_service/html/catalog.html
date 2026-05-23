@@ -1,0 +1,384 @@
+<!--
+Copyright 2026 mp3monster.org
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>__CATALOG_TITLE__</title>
+    <link rel="icon" type="image/png" href="/config-service/ui/assets/config_editor_icon.png" />
+    <link rel="stylesheet" href="__CATALOG_CSS_PATH__" />
+    <style>
+      .catalog-controls { display: flex; gap: 0.75rem; align-items: end; flex-wrap: wrap; margin-bottom: 1rem; }
+      .catalog-table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+      .catalog-table th, .catalog-table td { padding: 0.55rem 0.65rem; border-bottom: 1px solid var(--border); text-align: left; font-size: 0.88rem; }
+      .catalog-table th { background: #eef2ff; cursor: pointer; user-select: none; }
+      .catalog-table tr:hover { background: #f8faff; }
+      .catalog-table tr.is-clickable { cursor: pointer; }
+      .muted { color: var(--muted); }
+      .catalog-pagination { display: flex; gap: 0.7rem; align-items: center; margin-top: 0.8rem; }
+      .title-actions .button-link { white-space: nowrap; }
+      .catalog-viewer-overlay { position: fixed; inset: 0; background: rgba(23, 29, 41, 0.45); display: flex; align-items: center; justify-content: center; padding: 1.25rem; z-index: 1000; }
+      .catalog-viewer-overlay.hidden, .catalog-viewer-overlay[hidden] { display: none !important; pointer-events: none; }
+      .catalog-viewer-dialog { width: min(960px, 100%); max-height: 90vh; background: #fff; border: 1px solid var(--border); border-radius: 18px; box-shadow: 0 18px 42px rgba(15, 23, 42, 0.22); display: flex; flex-direction: column; overflow: hidden; }
+      .catalog-viewer-header { display: flex; justify-content: space-between; align-items: start; gap: 1rem; padding: 1rem 1.1rem; border-bottom: 1px solid var(--border); background: #f8faff; }
+      .catalog-viewer-header h2 { margin: 0 0 0.2rem 0; font-size: 1.05rem; }
+      .catalog-viewer-path { margin: 0; font-size: 0.8rem; color: var(--muted); word-break: break-all; }
+      .catalog-viewer-text { width: 100%; min-height: 420px; border: 0; padding: 1rem 1.1rem; resize: vertical; font: 0.9rem/1.45 "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; color: #18212f; background: #fff; }
+      .catalog-viewer-text:focus { outline: none; }
+      .catalog-viewer-actions { display: flex; gap: 0.6rem; padding: 0 1.1rem 1rem 1.1rem; justify-content: end; }
+      .catalog-viewer-error { padding: 1rem 1.1rem; color: #9f1239; }
+    </style>
+  </head>
+  <body>
+    <main class="page-shell">
+      <header>
+        <div class="title">
+          <div class="title-brand">
+            <img class="title-logo" src="/config-service/ui/assets/opamp_logo.png" alt="OpAMP Server logo" />
+            <div>
+              <h1>__CATALOG_TITLE__</h1>
+              <p>Configuration file index for versioned catalog assets.</p>
+            </div>
+          </div>
+          <div class="title-actions">
+            <div id="featureMenuGroup" class="feature-menu-group hidden">
+              <label for="featureMenuSelect" class="feature-menu-label">Feature</label>
+              <select id="featureMenuSelect" class="feature-menu-select">
+                <option value="">Open...</option>
+              </select>
+            </div>
+            <a class="button-link" href="__CATALOG_HELP_PATH__" target="_blank" rel="noopener noreferrer">Help</a>
+            <a class="button-link" href="/ui">Provider UI</a>
+          </div>
+        </div>
+      </header>
+
+      <section class="panel">
+        <div class="catalog-controls">
+          <label>Filter
+            <input id="catalogFilter" type="text" placeholder="Type to filter rows" />
+          </label>
+          <label>Page size
+            <input id="catalogPageSize" type="number" min="5" value="20" />
+          </label>
+          <span id="catalogSummary" class="muted">Loading…</span>
+        </div>
+        <div style="overflow:auto;">
+          <table class="catalog-table" id="catalogTable">
+            <thead><tr id="catalogHeaderRow"></tr></thead>
+            <tbody id="catalogBody"></tbody>
+          </table>
+        </div>
+        <div class="catalog-pagination">
+          <button id="catalogPrev" type="button">Prev</button>
+          <button id="catalogNext" type="button">Next</button>
+          <span class="muted">Page <strong id="catalogPageNum">1</strong></span>
+        </div>
+      </section>
+    </main>
+
+    <div id="catalogReadonlyOverlay" class="catalog-viewer-overlay hidden" aria-hidden="true" hidden>
+      <section class="catalog-viewer-dialog" aria-labelledby="catalogReadonlyTitle" aria-modal="true" role="dialog">
+        <div class="catalog-viewer-header">
+          <div>
+            <h2 id="catalogReadonlyTitle">Config File Viewer</h2>
+            <p id="catalogReadonlyPath" class="catalog-viewer-path"></p>
+          </div>
+          <button id="catalogReadonlyCloseTop" type="button">Close</button>
+        </div>
+        <div id="catalogReadonlyError" class="catalog-viewer-error hidden"></div>
+        <textarea id="catalogReadonlyText" class="catalog-viewer-text" readonly spellcheck="false"></textarea>
+        <div class="catalog-viewer-actions">
+          <button id="catalogReadonlyCloseBottom" type="button">Close</button>
+        </div>
+      </section>
+    </div>
+
+    <footer class="footer">
+      <div>Licensed under Apache 2.0 • Attribution: <a href="https://mp3monster.org" target="_blank" rel="noopener noreferrer">mp3monster.org</a></div>
+      <div><a href="https://opentelemetry.io/docs/specs/opamp/" target="_blank" rel="noopener noreferrer">OpAMP Specification</a> • <a href="/doc-set">Latest docs</a></div>
+    </footer>
+
+    <script>
+      (function() {
+        const state = {
+          rows: [],
+          columns: [],
+          sortKey: 'folder',
+          sortDir: 'asc',
+          page: 1,
+          pageSize: 20,
+          filter: '',
+          uiFeatureItems: [],
+          configEditorUrl: '',
+          configEditorAvailable: false
+        };
+        const filterInput = document.getElementById('catalogFilter');
+        const pageSizeInput = document.getElementById('catalogPageSize');
+        const summary = document.getElementById('catalogSummary');
+        const headerRow = document.getElementById('catalogHeaderRow');
+        const body = document.getElementById('catalogBody');
+        const pageNum = document.getElementById('catalogPageNum');
+        const featureMenuGroup = document.getElementById('featureMenuGroup');
+        const featureMenuSelect = document.getElementById('featureMenuSelect');
+        const readonlyOverlay = document.getElementById('catalogReadonlyOverlay');
+        const readonlyTitle = document.getElementById('catalogReadonlyTitle');
+        const readonlyPath = document.getElementById('catalogReadonlyPath');
+        const readonlyText = document.getElementById('catalogReadonlyText');
+        const readonlyError = document.getElementById('catalogReadonlyError');
+
+        function sortedFilteredRows() {
+          const needle = String(state.filter || '').toLowerCase();
+          const filtered = state.rows.filter(row => {
+            if (!needle) return true;
+            const values = [row.folder, row.filename, row.last_edited];
+            state.columns.forEach(col => {
+              if (col === 'folder' || col === 'filename' || col === 'last_edited') return;
+              values.push((row.metadata && row.metadata[col]) || '');
+            });
+            return values.join(' ').toLowerCase().includes(needle);
+          });
+          const sorted = [...filtered].sort((a, b) => {
+            const va = valueFor(a, state.sortKey);
+            const vb = valueFor(b, state.sortKey);
+            if (va > vb) return state.sortDir === 'asc' ? 1 : -1;
+            if (va < vb) return state.sortDir === 'asc' ? -1 : 1;
+            return 0;
+          });
+          return sorted;
+        }
+
+        function valueFor(row, key) {
+          if (key === 'folder') return String(row.folder || '').toLowerCase();
+          if (key === 'filename') return String(row.filename || '').toLowerCase();
+          if (key === 'last_edited') return String(row.last_edited || '');
+          return String((row.metadata && row.metadata[key]) || '').toLowerCase();
+        }
+
+        function renderHeader() {
+          headerRow.innerHTML = '';
+          state.columns.forEach(col => {
+            const th = document.createElement('th');
+            th.textContent = col;
+            th.addEventListener('click', () => {
+              if (state.sortKey === col) {
+                state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+              } else {
+                state.sortKey = col;
+                state.sortDir = 'asc';
+              }
+              renderBody();
+            });
+            headerRow.appendChild(th);
+          });
+        }
+
+        function renderFeatureMenuItems(items) {
+          if (!featureMenuGroup || !featureMenuSelect) return;
+          const list = Array.isArray(items) ? items : [];
+          featureMenuSelect.innerHTML = '';
+          const placeholder = document.createElement('option');
+          placeholder.value = '';
+          placeholder.textContent = 'Open...';
+          featureMenuSelect.appendChild(placeholder);
+          list.forEach(item => {
+            const label = String(item && item.label ? item.label : '').trim();
+            const url = String(item && item.url ? item.url : '').trim();
+            const target = String(item && item.target ? item.target : '_self').trim() || '_self';
+            if (!label || !url) return;
+            const option = document.createElement('option');
+            option.value = url;
+            option.textContent = label;
+            option.dataset.target = target;
+            featureMenuSelect.appendChild(option);
+          });
+          const hasItems = featureMenuSelect.options.length > 1;
+          featureMenuGroup.classList.toggle('hidden', !hasItems);
+          featureMenuSelect.selectedIndex = 0;
+        }
+
+        function onFeatureMenuChange() {
+          if (!featureMenuSelect) return;
+          const selected = featureMenuSelect.options[featureMenuSelect.selectedIndex];
+          if (!selected) return;
+          const url = String(selected.value || '').trim();
+          if (!url) return;
+          const target = String(selected.dataset.target || '_self').trim() || '_self';
+          if (target === '_blank') {
+            window.open(url, '_blank', 'noopener,noreferrer');
+          } else {
+            window.location.assign(url);
+          }
+          featureMenuSelect.selectedIndex = 0;
+        }
+
+        async function loadUiFeatures() {
+          if (!featureMenuGroup || !featureMenuSelect) return;
+          try {
+            const resp = await fetch('/api/ui/features');
+            if (!resp.ok) {
+              featureMenuGroup.classList.add('hidden');
+              return;
+            }
+            const payload = await resp.json();
+            state.uiFeatureItems = Array.isArray(payload.items) ? payload.items : [];
+            renderFeatureMenuItems(state.uiFeatureItems);
+            const configEditorItem = state.uiFeatureItems.find(item => {
+              return String(item && item.entry_point ? item.entry_point : '').trim() === '__CATALOG_CONFIG_EDITOR_ENTRY_POINT__';
+            });
+            state.configEditorUrl = configEditorItem ? String(configEditorItem.url || '').trim() : '';
+            state.configEditorAvailable = !!state.configEditorUrl;
+          } catch (_err) {
+            featureMenuGroup.classList.add('hidden');
+          }
+        }
+
+        function configEditorLinkForRow(row) {
+          if (!state.configEditorAvailable || !state.configEditorUrl) return '';
+          const path = String(row && row.path ? row.path : '').trim();
+          if (!path) return '';
+          const targetUrl = new URL(state.configEditorUrl, window.location.origin);
+          targetUrl.searchParams.set('source_path', path);
+          return targetUrl.toString();
+        }
+
+        function closeReadonlyViewer() {
+          if (!readonlyOverlay) return;
+          readonlyOverlay.hidden = true;
+          readonlyOverlay.classList.add('hidden');
+          readonlyOverlay.setAttribute('aria-hidden', 'true');
+        }
+
+        async function openReadonlyViewer(row) {
+          const path = String(row && row.path ? row.path : '').trim();
+          const filename = String(row && row.filename ? row.filename : '').trim() || 'Config File Viewer';
+          if (!path || !readonlyOverlay || !readonlyText || !readonlyPath || !readonlyTitle || !readonlyError) return;
+          readonlyTitle.textContent = `Config File Viewer: ${filename}`;
+          readonlyPath.textContent = path;
+          readonlyText.value = '';
+          readonlyError.textContent = '';
+          readonlyError.classList.add('hidden');
+          readonlyOverlay.hidden = false;
+          readonlyOverlay.classList.remove('hidden');
+          readonlyOverlay.setAttribute('aria-hidden', 'false');
+          try {
+            const target = new URL('__CATALOG_ROUTE_PATH__/api/file-content', window.location.origin);
+            target.searchParams.set('path', path);
+            const resp = await fetch(target.toString());
+            const payload = await resp.json();
+            if (!resp.ok) {
+              throw new Error(String(payload && payload.error ? payload.error : 'Failed to load file'));
+            }
+            readonlyText.value = String(payload && payload.text ? payload.text : '');
+          } catch (err) {
+            readonlyError.textContent = String(err && err.message ? err.message : err);
+            readonlyError.classList.remove('hidden');
+          }
+          readonlyText.focus();
+        }
+
+        function renderBody() {
+          const rows = sortedFilteredRows();
+          const totalPages = Math.max(1, Math.ceil(rows.length / state.pageSize));
+          if (state.page > totalPages) state.page = totalPages;
+          const start = (state.page - 1) * state.pageSize;
+          const pageRows = rows.slice(start, start + state.pageSize);
+          body.innerHTML = '';
+          pageRows.forEach(row => {
+            const tr = document.createElement('tr');
+            const editorUrl = configEditorLinkForRow(row);
+            if (row && row.path) {
+              tr.classList.add('is-clickable');
+              tr.title = editorUrl ? 'Open in Config Service' : 'View configuration file (read only)';
+              tr.addEventListener('click', () => {
+                if (editorUrl) {
+                  window.location.assign(editorUrl);
+                  return;
+                }
+                openReadonlyViewer(row);
+              });
+            }
+            state.columns.forEach(col => {
+              const td = document.createElement('td');
+              if (col === 'folder') td.textContent = row.folder || '';
+              else if (col === 'filename') td.textContent = row.filename || '';
+              else if (col === 'last_edited') td.textContent = row.last_edited || '';
+              else td.textContent = (row.metadata && row.metadata[col]) || '';
+              tr.appendChild(td);
+            });
+            body.appendChild(tr);
+          });
+          summary.textContent = `${rows.length} entries`;
+          pageNum.textContent = String(state.page);
+        }
+
+        async function loadRows() {
+          const resp = await fetch('__CATALOG_ROUTE_PATH__/api/files');
+          if (!resp.ok) {
+            summary.textContent = 'Failed to load catalog data';
+            return;
+          }
+          const payload = await resp.json();
+          state.columns = Array.isArray(payload.columns) ? payload.columns : [];
+          state.rows = Array.isArray(payload.rows) ? payload.rows : [];
+          renderHeader();
+          renderBody();
+        }
+
+        filterInput.addEventListener('input', () => {
+          state.filter = filterInput.value;
+          state.page = 1;
+          renderBody();
+        });
+        pageSizeInput.addEventListener('change', () => {
+          const next = parseInt(pageSizeInput.value, 10);
+          if (!Number.isNaN(next) && next >= 5) state.pageSize = next;
+          state.page = 1;
+          renderBody();
+        });
+        document.getElementById('catalogPrev').addEventListener('click', () => {
+          state.page = Math.max(1, state.page - 1);
+          renderBody();
+        });
+        document.getElementById('catalogNext').addEventListener('click', () => {
+          const rows = sortedFilteredRows();
+          const totalPages = Math.max(1, Math.ceil(rows.length / state.pageSize));
+          state.page = Math.min(totalPages, state.page + 1);
+          renderBody();
+        });
+        if (featureMenuSelect) {
+          featureMenuSelect.addEventListener('change', onFeatureMenuChange);
+        }
+        [document.getElementById('catalogReadonlyCloseTop'), document.getElementById('catalogReadonlyCloseBottom')].forEach(button => {
+          if (!button) return;
+          button.addEventListener('click', closeReadonlyViewer);
+        });
+        if (readonlyOverlay) {
+          readonlyOverlay.addEventListener('click', (event) => {
+            if (event.target === readonlyOverlay) {
+              closeReadonlyViewer();
+            }
+          });
+        }
+        document.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape' && readonlyOverlay && !readonlyOverlay.classList.contains('hidden')) {
+            closeReadonlyViewer();
+          }
+        });
+        loadUiFeatures().then(loadRows);
+      })();
+    </script>
+  </body>
+</html>

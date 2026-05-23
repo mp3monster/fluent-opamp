@@ -1,0 +1,454 @@
+# Copyright 2026 mp3monster.org
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Catalog service route and auth test coverage.
+
+Test-case reference: catalog-service/docs/TEST_CASES.md
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+from http import HTTPStatus
+
+import pytest
+from quart import Quart
+
+from catalog_service.auth_integration import UIAuthResult
+from catalog_service.config import CatalogSource, CatalogServiceConfig
+from catalog_service.routes import register_catalog_routes
+from catalog_service.service import CatalogFileIndexService
+
+
+@pytest.mark.asyncio
+async def test_catalog_routes_render_ui_help_and_api(tmp_path: Path) -> None:
+    source_dir = tmp_path / "catalog"
+    source_dir.mkdir(parents=True, exist_ok=True)
+    (source_dir / "sample.yaml").write_text(
+        "# config-service: config_type=fluentbit\n# config-service: version=5.0.4\n",
+        encoding="utf-8",
+    )
+
+    config = CatalogServiceConfig(
+        enabled=True,
+        menu_label="Config Catalog",
+        route_path="/catalog",
+        help_path="/catalog/help",
+        ui_base_css_path="/config-service/ui/assets/config_ui.css",
+        web_port=8090,
+        sources=(CatalogSource(folder="catalog", extensions=(".yaml",)),),
+        raw_payload={},
+    )
+    service = CatalogFileIndexService(repo_root=tmp_path, config=config)
+
+    app = Quart(__name__)
+    register_catalog_routes(app=app, config=config, service=service)
+
+    async with app.test_client() as client:
+        ui_resp = await client.get("/catalog")
+        assert ui_resp.status_code == 200
+        ui_html = (await ui_resp.get_data()).decode("utf-8")
+        assert "Config Catalog" in ui_html
+        assert "/catalog/api/files" in ui_html
+        assert "/catalog/api/file-content" in ui_html
+        assert 'id="featureMenuGroup"' in ui_html
+        assert "catalogReadonlyOverlay" in ui_html
+        assert "CONFIG_SERVICE_ENTRY_POINT" not in ui_html
+        assert "config_service.opamp_integration:register_config_service_feature" in ui_html
+
+        help_resp = await client.get("/catalog/help")
+        assert help_resp.status_code == 200
+        help_html = (await help_resp.get_data()).decode("utf-8")
+        assert "How Metadata Columns Are Built" in help_html
+
+        data_resp = await client.get("/catalog/api/files")
+        assert data_resp.status_code == 200
+        payload = await data_resp.get_json()
+
+        file_resp = await client.get(
+            "/catalog/api/file-content",
+            query_string={"path": str((source_dir / "sample.yaml").resolve())},
+        )
+        assert file_resp.status_code == 200
+        file_payload = await file_resp.get_json()
+
+    assert payload["total"] == 1
+    assert payload["rows"][0]["filename"] == "sample.yaml"
+    assert file_payload["filename"] == "sample.yaml"
+    assert "config_type=fluentbit" in file_payload["text"]
+
+
+@pytest.mark.asyncio
+async def test_standalone_catalog_app_exposes_feature_payload(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    config_path = tmp_path / "catalog-service.json"
+    config_path.write_text(
+        """
+        {
+          "component-entry-points": {
+            "quart": [
+              {
+                "entry_point": "catalog_service.app:register_catalog_component",
+                "label": "Config Catalog",
+                "url": "/catalog",
+                "enabled": true
+              }
+            ]
+          },
+          "opamp": {
+            "config_catalog": {
+              "enabled": true,
+              "menu_label": "Config Catalog",
+              "route_path": "/catalog",
+              "help_path": "/catalog/help",
+              "ui_base_css_path": "/config-service/ui/assets/config_ui.css",
+              "web_port": 8090,
+              "sources": [
+                {
+                  "folder": "catalog",
+                  "extensions": [".yaml"]
+                }
+              ]
+            }
+          }
+        }
+        """.strip(),
+        encoding="utf-8",
+    )
+    source_dir = tmp_path / "catalog"
+    source_dir.mkdir(parents=True, exist_ok=True)
+    (source_dir / "sample.yaml").write_text("# config-service: version=5.0.4\n", encoding="utf-8")
+
+    monkeypatch.setenv("CATALOG_SERVICE_CONFIG_PATH", str(config_path))
+
+    from catalog_service.app import create_app
+
+    app = create_app(mode="standalone", config_path=str(config_path))
+    async with app.test_client() as client:
+        feature_resp = await client.get("/api/ui/features")
+        assert feature_resp.status_code == 200
+        feature_payload = await feature_resp.get_json()
+        assert feature_payload["items"][0]["label"] == "Config Catalog"
+        assert feature_payload["items"][0]["entry_point"] == "catalog_service.app:register_catalog_component"
+
+        ui_resp = await client.get("/catalog")
+        assert ui_resp.status_code == 200
+        data_resp = await client.get("/catalog/api/files")
+        assert data_resp.status_code == 200
+        data_payload = await data_resp.get_json()
+        assert data_payload["total"] == 1
+
+
+@pytest.mark.asyncio
+async def test_standalone_catalog_app_exposes_config_service_feature_when_configured(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_path = tmp_path / "catalog-service.json"
+    config_path.write_text(
+        """
+        {
+          "component-entry-points": {
+            "quart": [
+              {
+                "entry_point": "catalog_service.app:register_catalog_component",
+                "label": "Config Catalog",
+                "url": "/catalog",
+                "enabled": true
+              },
+              {
+                "entry_point": "config_service.opamp_integration:register_config_service_feature",
+                "label": "Config Service UI",
+                "url": "/config-service/ui",
+                "enabled": true
+              }
+            ]
+          },
+          "opamp": {
+            "config_catalog": {
+              "enabled": true,
+              "menu_label": "Config Catalog",
+              "route_path": "/catalog",
+              "help_path": "/catalog/help",
+              "ui_base_css_path": "/config-service/ui/assets/config_ui.css",
+              "web_port": 8090,
+              "sources": [
+                {
+                  "folder": "catalog",
+                  "extensions": [".yaml"]
+                }
+              ]
+            }
+          }
+        }
+        """.strip(),
+        encoding="utf-8",
+    )
+    source_dir = tmp_path / "catalog"
+    source_dir.mkdir(parents=True, exist_ok=True)
+    (source_dir / "sample.yaml").write_text("service:\n  flush: 1\n", encoding="utf-8")
+
+    monkeypatch.setenv("CATALOG_SERVICE_CONFIG_PATH", str(config_path))
+
+    from catalog_service.app import create_app
+
+    app = create_app(mode="standalone", config_path=str(config_path))
+    async with app.test_client() as client:
+        feature_resp = await client.get("/api/ui/features")
+        assert feature_resp.status_code == 200
+        feature_payload = await feature_resp.get_json()
+
+        ui_resp = await client.get("/catalog")
+        assert ui_resp.status_code == 200
+        ui_html = (await ui_resp.get_data()).decode("utf-8")
+
+    assert [item["label"] for item in feature_payload["items"]] == [
+        "Config Catalog",
+        "Config Service UI",
+    ]
+    assert "config_service.opamp_integration:register_config_service_feature" in ui_html
+
+
+@pytest.mark.asyncio
+async def test_standalone_catalog_app_enforces_ui_auth(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    config_path = tmp_path / "catalog-service.json"
+    config_path.write_text(
+        """
+        {
+          "component-entry-points": {
+            "quart": [
+              {
+                "entry_point": "catalog_service.app:register_catalog_component",
+                "label": "Config Catalog",
+                "url": "/catalog",
+                "enabled": true
+              }
+            ]
+          },
+          "opamp": {
+            "config_catalog": {
+              "enabled": true,
+              "menu_label": "Config Catalog",
+              "route_path": "/catalog",
+              "help_path": "/catalog/help",
+              "ui_base_css_path": "/config-service/ui/assets/config_ui.css",
+              "web_port": 8090,
+              "sources": [
+                {
+                  "folder": "catalog",
+                  "extensions": [".yaml"]
+                }
+              ]
+            }
+          }
+        }
+        """.strip(),
+        encoding="utf-8",
+    )
+    source_dir = tmp_path / "catalog"
+    source_dir.mkdir(parents=True, exist_ok=True)
+    (source_dir / "sample.yaml").write_text("# config-service: version=5.0.4\n", encoding="utf-8")
+    monkeypatch.setenv("CATALOG_SERVICE_CONFIG_PATH", str(config_path))
+
+    from catalog_service import app as catalog_app_module
+
+    def deny_auth(**_kwargs: object) -> UIAuthResult:
+        return UIAuthResult(
+            allowed=False,
+            status_code=HTTPStatus.UNAUTHORIZED,
+            error="authorization failed",
+            www_authenticate='Bearer realm="opamp-provider"',
+        )
+
+    monkeypatch.setattr(catalog_app_module, "evaluate_ui_http_auth", deny_auth)
+    app = catalog_app_module.create_app(mode="standalone", config_path=str(config_path))
+
+    async with app.test_client() as client:
+        response = await client.get("/catalog")
+        assert response.status_code == HTTPStatus.UNAUTHORIZED
+        assert response.headers["WWW-Authenticate"] == 'Bearer realm="opamp-provider"'
+        payload = await response.get_json()
+
+    assert payload["error"] == "authorization failed"
+
+
+@pytest.mark.asyncio
+async def test_standalone_catalog_auth_rejection_is_logged(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_path = tmp_path / "catalog-service.json"
+    config_path.write_text(
+        """
+        {
+          "component-entry-points": {
+            "quart": [
+              {
+                "entry_point": "catalog_service.app:register_catalog_component",
+                "label": "Config Catalog",
+                "url": "/catalog",
+                "enabled": true
+              }
+            ]
+          },
+          "opamp": {
+            "config_catalog": {
+              "enabled": true,
+              "menu_label": "Config Catalog",
+              "route_path": "/catalog",
+              "help_path": "/catalog/help",
+              "ui_base_css_path": "/config-service/ui/assets/config_ui.css",
+              "web_port": 8090,
+              "sources": [
+                {
+                  "folder": "catalog",
+                  "extensions": [".yaml"]
+                }
+              ]
+            }
+          }
+        }
+        """.strip(),
+        encoding="utf-8",
+    )
+    source_dir = tmp_path / "catalog"
+    source_dir.mkdir(parents=True, exist_ok=True)
+    (source_dir / "sample.yaml").write_text("# config-service: version=5.0.4\n", encoding="utf-8")
+    monkeypatch.setenv("CATALOG_SERVICE_CONFIG_PATH", str(config_path))
+
+    from catalog_service import app as catalog_app_module
+
+    def deny_auth(**_kwargs: object) -> UIAuthResult:
+        return UIAuthResult(
+            allowed=False,
+            status_code=HTTPStatus.UNAUTHORIZED,
+            error="authorization failed",
+            www_authenticate='Bearer realm="opamp-provider"',
+        )
+
+    monkeypatch.setattr(catalog_app_module, "evaluate_ui_http_auth", deny_auth)
+    app = catalog_app_module.create_app(mode="standalone", config_path=str(config_path))
+    warning_calls: list[tuple[object, ...]] = []
+
+    def record_warning(message: object, *args: object, **_kwargs: object) -> None:
+        warning_calls.append((message, *args))
+
+    monkeypatch.setattr(app.logger, "warning", record_warning)
+
+    async with app.test_client() as client:
+        response = await client.get("/catalog")
+        assert response.status_code == HTTPStatus.UNAUTHORIZED
+
+    assert warning_calls
+    rendered = str(warning_calls[0][0]) % tuple(warning_calls[0][1:])
+    assert "catalog request rejected by auth" in rendered
+    assert "authorization failed" in rendered
+
+
+@pytest.mark.asyncio
+async def test_embedded_catalog_app_relies_on_outer_auth_layer(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    config_path = tmp_path / "catalog-service.json"
+    config_path.write_text(
+        """
+        {
+          "component-entry-points": {
+            "quart": [
+              {
+                "entry_point": "catalog_service.app:register_catalog_component",
+                "label": "Config Catalog",
+                "url": "/catalog",
+                "enabled": true
+              }
+            ]
+          },
+          "opamp": {
+            "config_catalog": {
+              "enabled": true,
+              "menu_label": "Config Catalog",
+              "route_path": "/catalog",
+              "help_path": "/catalog/help",
+              "ui_base_css_path": "/config-service/ui/assets/config_ui.css",
+              "web_port": 8090,
+              "sources": [
+                {
+                  "folder": "catalog",
+                  "extensions": [".yaml"]
+                }
+              ]
+            }
+          }
+        }
+        """.strip(),
+        encoding="utf-8",
+    )
+    source_dir = tmp_path / "catalog"
+    source_dir.mkdir(parents=True, exist_ok=True)
+    (source_dir / "sample.yaml").write_text("# config-service: version=5.0.4\n", encoding="utf-8")
+    monkeypatch.setenv("CATALOG_SERVICE_CONFIG_PATH", str(config_path))
+
+    from catalog_service import app as catalog_app_module
+
+    def deny_auth(**_kwargs: object) -> UIAuthResult:
+        return UIAuthResult(
+            allowed=False,
+            status_code=HTTPStatus.UNAUTHORIZED,
+            error="authorization failed",
+            www_authenticate='Bearer realm="opamp-provider"',
+        )
+
+    monkeypatch.setattr(catalog_app_module, "evaluate_ui_http_auth", deny_auth)
+    app = catalog_app_module.create_app(mode="embedded", config_path=str(config_path))
+
+    async with app.test_client() as client:
+        response = await client.get("/catalog")
+        assert response.status_code == HTTPStatus.OK
+
+
+@pytest.mark.asyncio
+async def test_catalog_file_content_rejections_are_logged(
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    source_dir = tmp_path / "catalog"
+    source_dir.mkdir(parents=True, exist_ok=True)
+    allowed = source_dir / "sample.yaml"
+    allowed.write_text("# config-service: version=5.0.4\n", encoding="utf-8")
+    outside = tmp_path / "outside.yaml"
+    outside.write_text("service:\n  flush: 1\n", encoding="utf-8")
+
+    config = CatalogServiceConfig(
+        enabled=True,
+        menu_label="Config Catalog",
+        route_path="/catalog",
+        help_path="/catalog/help",
+        ui_base_css_path="/config-service/ui/assets/config_ui.css",
+        web_port=8090,
+        sources=(CatalogSource(folder="catalog", extensions=(".yaml",)),),
+        raw_payload={},
+    )
+    service = CatalogFileIndexService(repo_root=tmp_path, config=config)
+
+    app = Quart(__name__)
+    register_catalog_routes(app=app, config=config, service=service)
+    caplog.set_level("WARNING")
+
+    async with app.test_client() as client:
+        missing_path_response = await client.get("/catalog/api/file-content")
+        assert missing_path_response.status_code == HTTPStatus.BAD_REQUEST
+
+        forbidden_response = await client.get(
+            "/catalog/api/file-content",
+            query_string={"path": str(outside.resolve())},
+        )
+        assert forbidden_response.status_code == HTTPStatus.FORBIDDEN
+
+    assert "path argument is missing" in caplog.text
+    assert "outside configured sources" in caplog.text

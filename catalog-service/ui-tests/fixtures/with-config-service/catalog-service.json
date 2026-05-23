@@ -1,0 +1,34 @@
+{
+  "component-entry-points": {
+    "quart": [
+      {
+        "entry_point": "catalog_service.app:register_catalog_component",
+        "label": "Config Catalog",
+        "url": "/catalog",
+        "enabled": true
+      },
+      {
+        "entry_point": "config_service.opamp_integration:register_config_service_feature",
+        "label": "Config Service UI",
+        "url": "/config-service/ui",
+        "enabled": true
+      }
+    ]
+  },
+  "opamp": {
+    "config_catalog": {
+      "enabled": true,
+      "menu_label": "Config Catalog",
+      "route_path": "/catalog",
+      "help_path": "/catalog/help",
+      "ui_base_css_path": "/config-service/ui/assets/config_ui.css",
+      "web_port": 8291,
+      "sources": [
+        {
+          "folder": "catalog",
+          "extensions": [".yaml"]
+        }
+      ]
+    }
+  }
+}

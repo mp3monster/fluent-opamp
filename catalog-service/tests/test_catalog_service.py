@@ -1,0 +1,111 @@
+# Copyright 2026 mp3monster.org
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Catalog service indexing test coverage.
+
+Test-case reference: catalog-service/docs/TEST_CASES.md
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from catalog_service.config import CatalogSource, CatalogServiceConfig
+from catalog_service.service import CatalogFileIndexService
+
+
+def test_catalog_service_scans_configured_folders_and_header_metadata(tmp_path: Path) -> None:
+    source_dir = tmp_path / "catalog-src"
+    source_dir.mkdir(parents=True, exist_ok=True)
+
+    with_header = source_dir / "agent-a.yaml"
+    with_header.write_text(
+        "\n".join(
+            [
+                "# config-service: config_type=fluentbit",
+                "# config-service: version=5.0.4",
+                "# config-service: config_version=release-27",
+                "service:",
+                "  flush: 1",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    without_header = source_dir / "agent-b.conf"
+    without_header.write_text("<source>\n  @type forward\n</source>\n", encoding="utf-8")
+
+    ignored = source_dir / "ignored.txt"
+    ignored.write_text("# config-service: version=skip\n", encoding="utf-8")
+
+    config = CatalogServiceConfig(
+        enabled=True,
+        menu_label="Catalog",
+        route_path="/catalog",
+        help_path="/catalog/help",
+        ui_base_css_path="/config-service/ui/assets/config_ui.css",
+        web_port=8090,
+        sources=(CatalogSource(folder="catalog-src", extensions=(".yaml", ".conf")),),
+        raw_payload={},
+    )
+    service = CatalogFileIndexService(repo_root=tmp_path, config=config)
+
+    payload = service.scan()
+
+    assert payload["total"] == 2
+    assert "config_type" in payload["columns"]
+    assert "version" in payload["columns"]
+    assert "config_version" in payload["columns"]
+
+    rows = payload["rows"]
+    row_a = next(row for row in rows if row["filename"] == "agent-a.yaml")
+    row_b = next(row for row in rows if row["filename"] == "agent-b.conf")
+
+    assert row_a["folder"] == "catalog-src"
+    assert row_a["metadata"]["config_type"] == "fluentbit"
+    assert row_a["metadata"]["version"] == "5.0.4"
+    assert row_a["metadata"]["config_version"] == "release-27"
+    assert row_a["last_edited"]
+
+    assert row_b["metadata"] == {}
+
+
+def test_catalog_service_readonly_file_view_is_limited_to_configured_sources(tmp_path: Path) -> None:
+    source_dir = tmp_path / "catalog-src"
+    source_dir.mkdir(parents=True, exist_ok=True)
+    allowed = source_dir / "agent-a.yaml"
+    allowed.write_text("service:\n  flush: 1\n", encoding="utf-8")
+    blocked = tmp_path / "outside.yaml"
+    blocked.write_text("service:\n  flush: 5\n", encoding="utf-8")
+
+    config = CatalogServiceConfig(
+        enabled=True,
+        menu_label="Catalog",
+        route_path="/catalog",
+        help_path="/catalog/help",
+        ui_base_css_path="/config-service/ui/assets/config_ui.css",
+        web_port=8090,
+        sources=(CatalogSource(folder="catalog-src", extensions=(".yaml",)),),
+        raw_payload={},
+    )
+    service = CatalogFileIndexService(repo_root=tmp_path, config=config)
+
+    payload = service.read_file_text(str(allowed))
+    assert payload["filename"] == "agent-a.yaml"
+    assert "flush: 1" in payload["text"]
+
+    try:
+        service.read_file_text(str(blocked))
+    except PermissionError:
+        pass
+    else:  # pragma: no cover - assertion guard
+        raise AssertionError("expected readonly access to reject non-catalog files")
