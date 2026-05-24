@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeVar, cast
 
 import httpx
 
@@ -32,22 +32,44 @@ HEADER_AUTHORIZATION = "Authorization"  # HTTP/WebSocket header key for provider
 AUTH_RETRY_STATUS_CODES = {401, 403}  # Status codes that trigger IDP credential renegotiation.
 
 if TYPE_CHECKING:
+    from opamp_consumer.abstract_client import OpAMPClientData
     from opamp_consumer.config import ConsumerConfig
 
 
-def _legacy_transport_symbol(name: str, default: object) -> object:
+_T = TypeVar("_T")
+
+
+def _legacy_transport_symbol(name: str, default: _T) -> _T:
     """Resolve transport symbols from legacy abstract_client module when present."""
     try:
         from opamp_consumer import abstract_client as legacy_abstract_client  # noqa: PLC0415
     except Exception:
         return default
-    return getattr(legacy_abstract_client, name, default)
+    value = getattr(legacy_abstract_client, name, default)
+    return cast(_T, value)
 
 
 class ClientTransportAuthorizationMixin:
     """Shared transport send logic and authorization-header resolution."""
+    data: OpAMPClientData
 
-    config: ConsumerConfig
+    @property
+    def config(self) -> ConsumerConfig:
+        """Return active consumer configuration for this client."""
+        raise NotImplementedError
+
+    def _populate_agent_to_server(
+        self, msg: opamp_pb2.AgentToServer
+    ) -> opamp_pb2.AgentToServer:
+        """Populate outbound AgentToServer payload with local state."""
+        raise NotImplementedError
+
+    def _handle_server_to_agent(self, reply: opamp_pb2.ServerToAgent) -> bool:
+        """Delegate reply handling to the next mixin in the MRO chain."""
+        handler = getattr(super(), "_handle_server_to_agent", None)
+        if handler is None:
+            raise NotImplementedError("_handle_server_to_agent is not implemented")
+        return cast(bool, handler(reply))
 
     async def send_http(self, msg: opamp_pb2.AgentToServer) -> opamp_pb2.ServerToAgent:
         """Send an AgentToServer message via HTTP and return the response.

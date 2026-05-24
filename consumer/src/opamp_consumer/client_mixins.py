@@ -19,13 +19,19 @@ This module remains as the stable import path while delegating implementation to
 
 from __future__ import annotations
 
+import os  # noqa: F401 - legacy monkeypatch seam in tests
 import shutil  # noqa: F401 - legacy monkeypatch seam in tests
+import subprocess  # noqa: F401 - legacy monkeypatch seam in tests
 import sys  # noqa: F401 - legacy monkeypatch seam in tests
 
+from opamp_consumer.client_observer_mixin import ClientObserverMixin
 from opamp_consumer.client_runtime_mixin import ClientRuntimeMixin
 from opamp_consumer.client_server_message_mixin import ServerMessageHandlingMixin
+from opamp_consumer.client_supervisor_mixin import ClientSupervisorMixin
 
 __all__ = [
+    "ClientObserverMixin",
     "ClientRuntimeMixin",
+    "ClientSupervisorMixin",
     "ServerMessageHandlingMixin",
 ]

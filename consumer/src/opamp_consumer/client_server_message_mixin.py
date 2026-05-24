@@ -17,7 +17,7 @@ from __future__ import annotations
 import logging
 import sys
 from codecs import decode as byte_value
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from google.protobuf import text_format
 
@@ -42,15 +42,23 @@ if TYPE_CHECKING:
 
     from opamp_consumer.abstract_client import OpAMPClientData
     from opamp_consumer.config import ConsumerConfig
+    from opamp_consumer.custom_handlers.handler_interface import (
+        CustomMessageHandlerInterface,
+    )
+    from opamp_consumer.opamp_client_interface import OpAMPClientInterface
 
 
 class ServerMessageHandlingMixin:
     """ServerToAgent message dispatch and handler implementations."""
 
     data: OpAMPClientData
-    config: ConsumerConfig
     _custom_handler_folder: Path
-    _custom_handler_lookup: dict[str, object]
+    _custom_handler_lookup: dict[str, type["CustomMessageHandlerInterface"]]
+
+    @property
+    def config(self) -> ConsumerConfig:
+        """Return active consumer configuration for this client."""
+        raise NotImplementedError
 
     def restart_agent_process(self) -> bool:
         """Restart the managed agent process.
@@ -353,6 +361,6 @@ class ServerMessageHandlingMixin:
             capability,
             handler.__class__.__name__,
         )
-        command_error = handler.execute(self)
+        command_error = handler.execute(cast("OpAMPClientInterface", self))
         if command_error is not None:
             raise AgentException(str(command_error))

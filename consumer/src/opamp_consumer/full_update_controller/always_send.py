@@ -45,4 +45,4 @@ class AlwaysSend(FullUpdateControllerInterface):
             "AlwaysSend.update_sent ms_from_epoch=%s",
             ms_from_epoch,
         )
-        self._set_all_reporting_flags()
+        self._set_all_reporting_flags(True)

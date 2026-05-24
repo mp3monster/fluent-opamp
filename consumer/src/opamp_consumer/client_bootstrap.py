@@ -190,7 +190,9 @@ def load_config_from_cli_args(args: argparse.Namespace) -> ConsumerConfig:
 
 def configure_logging_for_config(config: ConsumerConfig) -> logging.Logger:
     """Configure root logging based on config log level and return module logger."""
-    resolved_log_level = consumer_config.resolve_log_level(config.log_level)
+    resolved_log_level = consumer_config.resolve_log_level(
+        config.log_level or consumer_config.DEFAULT_LOG_LEVEL
+    )
     resolved_log_level_name = logging.getLevelName(resolved_log_level)
     if not isinstance(resolved_log_level_name, str):
         resolved_log_level_name = "DEBUG"

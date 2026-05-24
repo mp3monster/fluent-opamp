@@ -90,5 +90,5 @@ class TimeSend(FullUpdateControllerInterface):
             should_trigger,
         )
         if should_trigger:
-            self._set_all_reporting_flags()
+            self._set_all_reporting_flags(True)
             self.last_full_update_ms = ms_from_epoch

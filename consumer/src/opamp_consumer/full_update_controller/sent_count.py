@@ -78,5 +78,5 @@ class SentCount(FullUpdateControllerInterface):
             self.full_resend_after,
         )
         if self.sent_count >= self.full_resend_after:
-            self._set_all_reporting_flags()
+            self._set_all_reporting_flags(True)
             self.sent_count = 0

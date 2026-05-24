@@ -17,16 +17,12 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-import shutil
-import subprocess
 import sys
 import threading
-import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import httpx
 
-from opamp_consumer.exceptions import AgentException
 from opamp_consumer.proto import opamp_pb2
 from opamp_consumer.reporting_flag import ReportingFlag
 
@@ -34,16 +30,101 @@ if TYPE_CHECKING:
     from opamp_consumer.abstract_client import OpAMPClientData
     from opamp_consumer.config import ConsumerConfig
 
+PROCESS_TRACKING_SUPERVISOR = "supervisor"
+PROCESS_TRACKING_OBSERVER = "observer"
+
+
+def _normalize_process_tracking(value: str | None) -> str:
+    """Return normalized process tracking mode with supervisor fallback."""
+    normalized = str(value or PROCESS_TRACKING_SUPERVISOR).strip().lower()
+    if normalized in {PROCESS_TRACKING_SUPERVISOR, PROCESS_TRACKING_OBSERVER}:
+        return normalized
+    return PROCESS_TRACKING_SUPERVISOR
+
+
+class _BaseClientProcessLifecycle:
+    """Shared lifecycle helper behavior used by process-tracking implementations."""
+
+    def __init__(self, owner: "ClientRuntimeMixin") -> None:
+        self._owner = owner
+
+    def launch_agent_process(self) -> bool:
+        """Launch process for current lifecycle strategy."""
+        raise NotImplementedError
+
+    def terminate_agent_process(self) -> None:
+        """Terminate process for current lifecycle strategy."""
+        raise NotImplementedError
+
+    def restart_agent_process(self) -> bool:
+        """Restart process for current lifecycle strategy."""
+        raise NotImplementedError
+
+    async def send_disconnect(self) -> None:
+        """Best-effort disconnect send shared by supervisor/observer modes."""
+        msg = self._owner._populate_disconnect(opamp_pb2.AgentToServer())
+        logging.getLogger(__name__).debug("Built disconnect message")
+        try:
+            await self._owner.send(msg, send_as_is=True)
+            self._owner.data.allow_heartbeat = False
+        except Exception as err:  # pragma: no cover - error path varies by env
+            logging.getLogger(__name__).warning(
+                "Failed to send disconnect message - %s", err
+            )
+
+    def finalize(self) -> None:
+        """Finalize client lifecycle with async disconnect fallback."""
+        if self._owner._finalize_started:
+            return
+        self._owner._finalize_started = True
+        if getattr(self._owner, "data", None) is not None:
+            self._owner.data.allow_heartbeat = False
+        try:
+            loop = asyncio.get_running_loop()
+            logging.getLogger(__name__).debug("finalize - got loop")
+        except RuntimeError:
+
+            def _runner() -> None:
+                """Run best-effort async disconnect send inside a dedicated thread."""
+                try:
+                    logging.getLogger(__name__).debug(
+                        "About to send disconnect message"
+                    )
+                    asyncio.run(self._owner._send_disconnect_with_timeout())
+                except Exception as err:
+                    logging.getLogger(__name__).error(
+                        "Failed to send disconnect message, error is:\n %s", err
+                    )
+                    return
+
+            thread = threading.Thread(target=_runner, daemon=True)
+            thread.start()
+        else:
+            if loop.is_closed():
+                return
+            loop.create_task(self._owner._send_disconnect_with_timeout())
+
 
 class ClientRuntimeMixin:
     """Agent process lifecycle and heartbeat polling behavior."""
 
     data: OpAMPClientData
-    config: ConsumerConfig
 
-    async def send(self) -> opamp_pb2.ServerToAgent | None:
+    @property
+    def config(self) -> ConsumerConfig:
+        """Return active consumer configuration for this client."""
+        raise NotImplementedError
+
+    async def send(self, msg=None, *, send_as_is: bool = False) -> opamp_pb2.ServerToAgent | None:
         """Send AgentToServer payloads and return the provider response."""
         raise NotImplementedError
+
+    def _handle_server_to_agent(self, reply: opamp_pb2.ServerToAgent) -> bool:
+        """Delegate reply handling to the next mixin in the MRO chain."""
+        handler = getattr(super(), "_handle_server_to_agent", None)
+        if handler is None:
+            raise NotImplementedError("_handle_server_to_agent is not implemented")
+        return cast(bool, handler(reply))
 
     _runtime_agent_command = "agent"
     _runtime_config_flag = "-c"
@@ -63,92 +144,39 @@ class ClientRuntimeMixin:
     _json_key_edition = "edition"
     _value_agent_type = "Agent"
 
-    def _resolve_launch_command(self, raw_command: list[str]) -> list[str]:
-        """Resolve the runtime executable from PATH and normalize Windows wrappers."""
-        executable = str(raw_command[0] if raw_command else "").strip()
-        if not executable:
-            raise FileNotFoundError("agent runtime command is empty")
+    _runtime_process_lifecycle: _BaseClientProcessLifecycle | None = None
 
-        resolved_executable = shutil.which(executable)
-        if not resolved_executable:
-            raise FileNotFoundError(executable)
+    def _create_runtime_process_lifecycle(
+        self,
+    ) -> _BaseClientProcessLifecycle:
+        """Create process lifecycle implementation based on config selection."""
+        tracking_mode = _normalize_process_tracking(
+            getattr(self.config, "process_tracking", PROCESS_TRACKING_SUPERVISOR)
+        )
+        from opamp_consumer.client_observer_mixin import ClientObserverMixin
+        from opamp_consumer.client_supervisor_mixin import ClientSupervisorMixin
 
-        command = [resolved_executable, *raw_command[1:]]
-        if os.name == "nt" and resolved_executable.lower().endswith((".bat", ".cmd")):
-            return ["cmd", "/c", resolved_executable, *raw_command[1:]]
-        return command
+        if tracking_mode == PROCESS_TRACKING_OBSERVER:
+            return ClientObserverMixin(self)
+        return ClientSupervisorMixin(self)
+
+    def _runtime_lifecycle(self) -> _BaseClientProcessLifecycle:
+        """Return lazily initialized lifecycle strategy implementation."""
+        if self._runtime_process_lifecycle is None:
+            self._runtime_process_lifecycle = self._create_runtime_process_lifecycle()
+        return self._runtime_process_lifecycle
 
     def launch_agent_process(self) -> bool:
-        """Launch the configured agent process using runtime command metadata."""
-        logger = logging.getLogger(__name__)
-        raw_command = [
-            self._runtime_agent_command,
-            *(self.config.agent_additional_params or []),
-            self._runtime_config_flag,
-            self.config.agent_config_path,
-        ]
-        logger.debug(
-            "About to start agent process with config %s and command %s",
-            self.config.agent_config_path,
-            raw_command,
-        )
-        try:
-            command = self._resolve_launch_command(raw_command)
-            logger.debug("Resolved runtime command: %s", command)
-            with self.data.process_lock:
-                process_response: subprocess.Popen[bytes] = subprocess.Popen(command)
-                self.data.agent_process = process_response
-                self.data.launched_at = time.time_ns()
-        except FileNotFoundError as file_error:
-            logger.error(
-                "Agent launch failed because command was not found (%s): %s",
-                self._runtime_agent_command,
-                file_error,
-            )
-            return False
-        except Exception as launch_error:  # pragma: no cover - env-dependent
-            logger.exception("Agent launch failed for command %s", command)
-            logger.debug("Agent launch exception detail: %s", launch_error)
-            return False
-        logger.info("Launch result = %s", process_response)
-        return True
+        """Launch/attach process using configured supervisor or observer strategy."""
+        return self._runtime_lifecycle().launch_agent_process()
 
     def terminate_agent_process(self) -> None:
-        """Terminate the launched Agent process if available."""
-        logger = logging.getLogger(__name__)
-        with self.data.process_lock:
-            process = self.data.agent_process
-            self.data.allow_heartbeat = False
-            if process is None:
-                return
-            process.terminate()
-            try:
-                process.wait(timeout=10)
-            except subprocess.TimeoutExpired:
-                logger.warning("Agent did not terminate in time; killing process")
-                print("Agent did not terminate in time; killing process")
-                process.kill()
-                process.wait(timeout=5)
-            self.data.agent_process = None
+        """Terminate process using configured supervisor or observer strategy."""
+        self._runtime_lifecycle().terminate_agent_process()
 
     def restart_agent_process(self) -> bool:
-        """Stop the current agent process and start a new instance."""
-        logger = logging.getLogger(__name__)
-        logger.info("Restarting agent process")
-        lock_acquired = self.data.process_lock.acquire(timeout=30)
-        if not lock_acquired:
-            raise AgentException(
-                "Timed out waiting for process lock while restarting agent process"
-            )
-        try:
-            self.terminate_agent_process()
-            relaunched = self.launch_agent_process()
-        finally:
-            self.data.process_lock.release()
-        if not relaunched:
-            raise AgentException("Failed to restart agent process")
-        logger.info("Agent process restarted")
-        return relaunched
+        """Restart process using configured supervisor or observer strategy."""
+        return self._runtime_lifecycle().restart_agent_process()
 
     def _populate_disconnect(
         self, msg: opamp_pb2.AgentToServer
@@ -164,16 +192,7 @@ class ClientRuntimeMixin:
 
     async def send_disconnect(self) -> None:
         """Implements `OpAMPClientInterface.send_disconnect` with best-effort send."""
-        msg = self._populate_disconnect(opamp_pb2.AgentToServer())
-        logging.getLogger(__name__).debug("Built disconnect message")
-
-        try:
-            await self.send(msg, send_as_is=True)
-            self.data.allow_heartbeat = False
-        except Exception as err:  # pragma: no cover - error path varies by env
-            logging.getLogger(__name__).warning(
-                "Failed to send disconnect message - %s", err
-            )
+        await self._runtime_lifecycle().send_disconnect()
 
     async def _send_disconnect_with_timeout(self, timeout_seconds: float = 1.0) -> None:
         """Best-effort disconnect send with a short timeout."""
@@ -187,35 +206,7 @@ class ClientRuntimeMixin:
 
     def finalize(self) -> None:
         """Implements `OpAMPClientInterface.finalize` with async-loop fallback."""
-        if self._finalize_started:
-            return
-        self._finalize_started = True
-        if getattr(self, "data", None) is not None:
-            self.data.allow_heartbeat = False
-        try:
-            loop = asyncio.get_running_loop()
-            logging.getLogger(__name__).debug("finalize - got loop")
-        except RuntimeError:
-
-            def _runner() -> None:
-                """Run best-effort async disconnect send inside a dedicated thread."""
-                try:
-                    logging.getLogger(__name__).debug(
-                        "About to send disconnect message"
-                    )
-                    asyncio.run(self._send_disconnect_with_timeout())
-                except Exception as err:
-                    logging.getLogger(__name__).error(
-                        "Failed to send disconnect message, error is:\n %s", err
-                    )
-                    return
-
-            thread = threading.Thread(target=_runner, daemon=True)
-            thread.start()
-        else:
-            if loop.is_closed():
-                return
-            loop.create_task(self._send_disconnect_with_timeout())
+        self._runtime_lifecycle().finalize()
 
     def __del__(self) -> None:
         """Attempt graceful disconnect/finalize during object destruction."""
@@ -307,7 +298,8 @@ class ClientRuntimeMixin:
                         value = f"{version} ({edition})"
                     else:
                         value = version or edition
-                self.data.agent_version = value
+                if value is not None:
+                    self.data.agent_version = str(value)
             except ValueError as parse_error:
                 logging.getLogger(__name__).warning(
                     "failed to parse Agent version response: %s", parse_error
@@ -331,9 +323,8 @@ class ClientRuntimeMixin:
             port: Local agent HTTP status port used for heartbeat polling.
         """
         logger = logging.getLogger(__name__)
-        interval = max(
-            0, int(self.config.heartbeat_frequency) - self._heartbeat_skew_seconds
-        )
+        heartbeat_frequency = int(self.config.heartbeat_frequency or 0)
+        interval = max(0, heartbeat_frequency - self._heartbeat_skew_seconds)
         logger.debug("Heartbeat cycle start - checking every %s", interval)
         while self.data.allow_heartbeat:
             try:

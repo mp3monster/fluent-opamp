@@ -745,14 +745,19 @@ def main() -> None:
             localhost_base=LOCALHOST_BASE,
             missing_status_port_error="client_status_port not found in Fluentd config",
         )
+        if config.server_url is None:
+            raise ValueError("validated runtime config missing server_url")
+        if config.client_status_port is None:
+            raise ValueError("validated runtime config missing client_status_port")
+        client_status_port = int(config.client_status_port)
 
         logger.debug("setting up OpAMP Fluentd client")
         client = FluentdOpAMPClient(config.server_url, config)
         client.launch_agent_process()
-        client.add_agent_version(config.client_status_port)
+        client.add_agent_version(client_status_port)
         logger.info("introducing fluentd client to server")
         asyncio.run(run_client(client))
-        asyncio.run(client._heartbeat_loop(config.client_status_port))
+        asyncio.run(client._heartbeat_loop(client_status_port))
         client.terminate_agent_process()
     except KeyboardInterrupt as keyboard_interrupt:
         print("... bzzzz keyboard\n %s", keyboard_interrupt)

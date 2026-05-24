@@ -116,7 +116,12 @@ class CustomMessageHandlerInterface(CommandHandlerInterface):
                 outbound = opamp_pb2.AgentToServer()
                 outbound.custom_message.CopyFrom(custom_response)
                 try:
-                    asyncio.run(sender(msg=outbound, send_as_is=True))
+                    send_result = sender(msg=outbound, send_as_is=True)
+                    if not asyncio.iscoroutine(send_result):
+                        return CommandException(
+                            "Custom response could not be sent: send did not return coroutine"
+                        )
+                    asyncio.run(send_result)
                 except TypeError:
                     return CommandException(
                         "Custom response could not be sent: client send signature mismatch"

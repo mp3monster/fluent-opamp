@@ -23,6 +23,7 @@ import threading
 import uuid  # noqa: F401 - retained as stable monkeypatch seam in unit tests
 from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass, field
+from typing import TYPE_CHECKING
 
 import httpx  # noqa: F401 - legacy monkeypatch seam for auth token tests
 
@@ -67,6 +68,11 @@ from shared.opamp_config import (
     parse_capabilities,
 )
 from shared.uuid_utils import generate_uuid7_bytes
+
+if TYPE_CHECKING:
+    from opamp_consumer.custom_handlers.handler_interface import (
+        CustomMessageHandlerInterface,
+    )
 
 LOCALHOST_BASE = "http://localhost"  # Base URL for local agent endpoints.
 ERR_PREFIX = "error: "  # Prefix for error values stored in results.
@@ -118,11 +124,12 @@ class OpAMPClientData:
     uid_instance: bytes | None = field(default_factory=generate_uuid7_bytes)
     allow_heartbeat: bool = True
     msg_sequence_number: int = 0
-    last_heartbeat_http_codes: dict[str, int] | None = None
+    last_heartbeat_http_codes: dict[str, str] | None = None
     last_heartbeat_call: int = 0
-    last_heartbeat_results: dict[str, str] | None = field(default_factory=dict)
+    last_heartbeat_results: dict[str, str] = field(default_factory=dict)
     launched_at: int = 0
     agent_process: subprocess.Popen[bytes] | None = None
+    observed_process_pid: int | None = None
     process_lock: threading.RLock = field(default_factory=threading.RLock, repr=False)
     logFLB = False
     agent_type_name: str = "Fluent Bit"
@@ -153,6 +160,7 @@ class AbstractOpAMPClient(
     This class provides the full `OpAMPClientInterface` behavior and leaves
     environment-specific custom-handler discovery to concrete subclasses.
     """
+    _custom_handler_lookup: dict[str, type["CustomMessageHandlerInterface"]]
 
     def __init__(self, base_url: str, config: ConsumerConfig | None = None) -> None:
         """Create a client bound to a base URL."""
@@ -214,11 +222,15 @@ class AbstractOpAMPClient(
         return controller
 
     @property
+    # Mixin bases define `config` as an abstract protocol-style property.
+    # This concrete implementation intentionally satisfies that contract.
+    # pyright: ignore[reportIncompatibleVariableOverride]
     def config(self) -> ConsumerConfig:
         """Return the active consumer configuration bound to this client instance."""
         return self.data.config
 
     @config.setter
+    # pyright: ignore[reportIncompatibleVariableOverride]
     def config(self, value: ConsumerConfig) -> None:
         """Replace the active consumer configuration used by this client instance.
 

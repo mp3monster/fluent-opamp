@@ -653,16 +653,21 @@ def main() -> None:
                 "client_status_port must be set for simulator runtime normalization"
             ),
         )
+        if config.server_url is None:
+            raise ValueError("validated runtime config missing server_url")
+        if config.client_status_port is None:
+            raise ValueError("validated runtime config missing client_status_port")
+        client_status_port = int(config.client_status_port)
         if not _validate_simulator_dev_features_flag(logger):
             return
 
         logger.debug("setting up OpAMP simulator client")
         client = SimulatorOpAMPClient(config.server_url, config)
         client.launch_agent_process()
-        client.add_agent_version(config.client_status_port)
+        client.add_agent_version(client_status_port)
         logger.info("introducing simulator client to server")
         asyncio.run(run_client(client))
-        asyncio.run(client._heartbeat_loop(config.client_status_port))
+        asyncio.run(client._heartbeat_loop(client_status_port))
         client.terminate_agent_process()
     except KeyboardInterrupt as keyboard_interrupt:
         print("... simulator keyboard\n %s", keyboard_interrupt)

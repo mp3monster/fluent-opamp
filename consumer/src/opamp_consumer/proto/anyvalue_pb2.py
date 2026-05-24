@@ -43,7 +43,7 @@ _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'anyvalue_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
-  DESCRIPTOR._loaded_options = None
+  DESCRIPTOR._loaded_options = None  # pyright: ignore[reportAttributeAccessIssue]
   _globals['_ANYVALUE']._serialized_start=32
   _globals['_ANYVALUE']._serialized_end=264
   _globals['_ARRAYVALUE']._serialized_start=266

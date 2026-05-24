@@ -18,6 +18,7 @@ import json
 import logging
 import os
 import pathlib
+import re
 import sys
 from dataclasses import dataclass
 from typing import Any
@@ -73,6 +74,10 @@ CFG_SERVICE_TYPE = "service_type"
 # Consumer JSON key selecting the concrete consumer implementation.
 CFG_SIMULATOR_RESPONSES_PATH = "simulator_responses_path"
 # Consumer JSON key for scripted simulator response file path.
+CFG_PROCESS_TRACKING = "processTracking"
+# Consumer JSON key selecting process lifecycle implementation strategy.
+CFG_PROCESS_DETECTION_REGEX = "processDetectionRegex"
+# Consumer JSON key used by observer mode to detect process by regex.
 
 HARDWIRED_AGENT_CAPABILITY_NAMES = (  # Built-in capabilities always advertised by this consumer.
     "ReportsStatus",
@@ -98,6 +103,9 @@ SERVICE_TYPE_FLUENTD = "fluentd"
 SERVICE_TYPE_SIMULATOR = "simulator"
 # Service type value selecting scripted simulator client behavior.
 DEFAULT_SERVICE_TYPE = SERVICE_TYPE_FLUENTBIT  # Default service type when none is configured.
+PROCESS_TRACKING_SUPERVISOR = "supervisor"
+PROCESS_TRACKING_OBSERVER = "observer"
+DEFAULT_PROCESS_TRACKING = PROCESS_TRACKING_SUPERVISOR
 
 
 @dataclass
@@ -188,6 +196,12 @@ class ConsumerConfig:
     # Selected concrete consumer service implementation type.
     simulator_responses_path: str | None = (
         None  # Filesystem path to scripted simulator server-request responses.
+    )
+    process_tracking: str = DEFAULT_PROCESS_TRACKING
+    # Process lifecycle strategy: supervisor | observer.
+    process_detection_regex: str | None = (
+        None
+        # Regex used by observer mode to discover a running process by command line.
     )
 
     def __setitem__(self, key, value):
@@ -389,6 +403,55 @@ def _normalize_service_type(value: Any) -> str:
     return DEFAULT_SERVICE_TYPE
 
 
+def _normalize_process_tracking(value: Any) -> str:
+    """Normalize configured process tracking strategy to a supported value."""
+    if value is None:
+        return DEFAULT_PROCESS_TRACKING
+    normalized = str(value).strip().lower()
+    if not normalized:
+        return DEFAULT_PROCESS_TRACKING
+    if normalized in {
+        PROCESS_TRACKING_SUPERVISOR,
+        PROCESS_TRACKING_OBSERVER,
+    }:
+        return normalized
+    logging.getLogger(__name__).warning(
+        "invalid %s.%s value %r; defaulting to %s",
+        CFG_CONSUMER,
+        CFG_PROCESS_TRACKING,
+        value,
+        DEFAULT_PROCESS_TRACKING,
+    )
+    return DEFAULT_PROCESS_TRACKING
+
+
+def _validate_process_detection_regex(value: Any) -> str | None:
+    """Validate optional process-detection regex and return normalized value."""
+    normalized = _coerce_optional_str(value)
+    if not normalized:
+        return None
+    try:
+        re.compile(normalized)
+    except re.error as err:
+        raise ValueError(
+            f"{CFG_CONSUMER}.{CFG_PROCESS_DETECTION_REGEX} must be a valid regex: {err}"
+        ) from err
+    return normalized
+
+
+def _validate_process_tracking_configuration(
+    *,
+    process_tracking: str,
+    process_detection_regex: str | None,
+) -> None:
+    """Validate cross-field process-tracking config constraints."""
+    if process_tracking == PROCESS_TRACKING_OBSERVER and not process_detection_regex:
+        raise ValueError(
+            f"{CFG_CONSUMER}.{CFG_PROCESS_DETECTION_REGEX} is required when "
+            f"{CFG_CONSUMER}.{CFG_PROCESS_TRACKING}=observer"
+        )
+
+
 def _validate_heartbeat_frequency(value: Any) -> int:
     """Validate heartbeat frequency and return normalized integer value."""
     if value is None:
@@ -432,6 +495,16 @@ def load_config() -> ConsumerConfig:
         consumer_raw.get(CFG_ALLOW_CUSTOM_CAPABILITIES, False)
     )
     service_type = _normalize_service_type(consumer_raw.get(CFG_SERVICE_TYPE))
+    process_tracking = _normalize_process_tracking(
+        consumer_raw.get(CFG_PROCESS_TRACKING)
+    )
+    process_detection_regex = _validate_process_detection_regex(
+        consumer_raw.get(CFG_PROCESS_DETECTION_REGEX)
+    )
+    _validate_process_tracking_configuration(
+        process_tracking=process_tracking,
+        process_detection_regex=process_detection_regex,
+    )
     simulator_responses_path = _validate_optional_file_path(
         path_value=consumer_raw.get(CFG_SIMULATOR_RESPONSES_PATH),
         cfg_key=f"{CFG_CONSUMER}.{CFG_SIMULATOR_RESPONSES_PATH}",
@@ -444,7 +517,7 @@ def load_config() -> ConsumerConfig:
             f"{CFG_CONSUMER}.{CFG_SIMULATOR_RESPONSES_PATH} is required when "
             f"{CFG_CONSUMER}.{CFG_SERVICE_TYPE}={SERVICE_TYPE_SIMULATOR}"
         )
-    mask: None
+    mask: int | None = None
 
     log_level = consumer_raw.get(CFG_LOG_LEVEL, DEFAULT_LOG_LEVEL) or DEFAULT_LOG_LEVEL
 
@@ -512,6 +585,11 @@ def load_config() -> ConsumerConfig:
         allow_custom_capabilities,
     )
     logger.info("loaded consumer service_type: %s", service_type)
+    logger.info("loaded consumer process_tracking: %s", process_tracking)
+    logger.info(
+        "loaded consumer process_detection_regex: %s",
+        process_detection_regex,
+    )
     logger.info(
         "loaded consumer simulator_responses_path: %s",
         simulator_responses_path,
@@ -554,6 +632,8 @@ def load_config() -> ConsumerConfig:
         allow_custom_capabilities=allow_custom_capabilities,
         service_type=service_type,
         simulator_responses_path=simulator_responses_path,
+        process_tracking=process_tracking,
+        process_detection_regex=process_detection_regex,
         client_status_port=(
             int(client_status_port) if client_status_port is not None else None
         ),
@@ -665,6 +745,26 @@ def load_config_with_overrides(
             default=DEFAULT_SERVICE_TYPE,
         )
     )
+    resolved_process_tracking = _normalize_process_tracking(
+        _resolve_config_value(
+            mapping=consumer_raw,
+            key=CFG_PROCESS_TRACKING,
+            logger=logger,
+            default=DEFAULT_PROCESS_TRACKING,
+        )
+    )
+    resolved_process_detection_regex = _validate_process_detection_regex(
+        _resolve_config_value(
+            mapping=consumer_raw,
+            key=CFG_PROCESS_DETECTION_REGEX,
+            logger=logger,
+            default=None,
+        )
+    )
+    _validate_process_tracking_configuration(
+        process_tracking=resolved_process_tracking,
+        process_detection_regex=resolved_process_detection_regex,
+    )
     resolved_simulator_responses_path = _validate_optional_file_path(
         path_value=consumer_raw.get(CFG_SIMULATOR_RESPONSES_PATH),
         cfg_key=f"{CFG_CONSUMER}.{CFG_SIMULATOR_RESPONSES_PATH}",
@@ -717,6 +817,8 @@ def load_config_with_overrides(
         ),
         service_type=resolved_service_type,
         simulator_responses_path=resolved_simulator_responses_path,
+        process_tracking=resolved_process_tracking,
+        process_detection_regex=resolved_process_detection_regex,
         client_status_port=_coerce_optional_int(
             consumer_raw.get(CFG_CLIENT_STATUS_PORT)
         ),
