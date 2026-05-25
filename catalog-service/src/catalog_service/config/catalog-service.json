@@ -26,6 +26,9 @@
             ".yml",
             ".conf"
           ]
+        },        {
+          "folder": "config-service/test_agent_configs",
+          "extensions": [".json", ".yaml", ".yml", ".conf"]
         }
       ]
     }
