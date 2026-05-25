@@ -1,6 +1,6 @@
 # Consumer Client Architecture Diagram
 
-This diagram shows the current consumer structure after splitting Fluent Bit concrete behavior into `fluentbit_client.py`, shared base behavior into `abstract_client.py`, and reusable helpers into mixins/bootstrap modules.
+This diagram set shows the current consumer structure after splitting behavior into focused modules and introducing runtime lifecycle strategies (`Supervisor` and `Observer`).
 
 ## Class and Module Relationships
 
@@ -27,14 +27,35 @@ classDiagram
       +finalize()
     }
 
+    class ClientTransportAuthorizationMixin {
+      +send_http()
+      +send_websocket()
+      +send()
+    }
+
     class ClientRuntimeMixin {
+      +_runtime_lifecycle()
       +launch_agent_process()
       +terminate_agent_process()
       +restart_agent_process()
       +poll_local_status_with_codes()
       +add_agent_version()
       +_heartbeat_loop()
+      +send_disconnect()
+      +finalize()
     }
+
+    class _BaseClientProcessLifecycle {
+      <<abstract>>
+      +launch_agent_process()
+      +terminate_agent_process()
+      +restart_agent_process()
+      +send_disconnect()
+      +finalize()
+    }
+
+    class ClientSupervisorMixin
+    class ClientObserverMixin
 
     class ServerMessageHandlingMixin {
       +_handle_server_to_agent()
@@ -55,9 +76,7 @@ classDiagram
       <<abstract>>
       +data: OpAMPClientData
       +config: ConsumerConfig
-      +send()
-      +send_http()
-      +send_websocket()
+      +_create_full_update_controller()
       +_populate_agent_to_server()
       +get_custom_handler_folder()*
     }
@@ -68,10 +87,15 @@ classDiagram
 
     class FluentdOpAMPClient {
       +get_custom_handler_folder()
-      +launch_agent_process()
       +add_agent_version()
       +get_agent_description()
       +_health_from_metrics()
+    }
+
+    class SimulatorOpAMPClient {
+      +launch_agent_process()
+      +terminate_agent_process()
+      +restart_agent_process()
     }
 
     class OpAMPClientData
@@ -97,6 +121,14 @@ classDiagram
       +_normalize_websocket_base_url()
       +_build_websocket_ssl_context()
     }
+    class process_utils {
+      <<module>>
+      +find_pid_by_regex()
+      +send_termination_signal()
+      +terminate_process()
+      +kill_process()
+      +is_process_running()
+    }
     class client_bootstrap {
       <<module>>
       +load_agent_config()
@@ -106,10 +138,18 @@ classDiagram
     }
 
     OpAMPClientInterface <|.. AbstractOpAMPClient
+    ClientTransportAuthorizationMixin <|-- AbstractOpAMPClient
     ClientRuntimeMixin <|-- AbstractOpAMPClient
     ServerMessageHandlingMixin <|-- AbstractOpAMPClient
+
+    _BaseClientProcessLifecycle <|-- ClientSupervisorMixin
+    _BaseClientProcessLifecycle <|-- ClientObserverMixin
+    ClientRuntimeMixin ..> _BaseClientProcessLifecycle
+    ClientObserverMixin ..> process_utils
+
     AbstractOpAMPClient <|-- OpAMPClient
     AbstractOpAMPClient <|-- FluentdOpAMPClient
+    AbstractOpAMPClient <|-- SimulatorOpAMPClient
 
     AbstractOpAMPClient *-- OpAMPClientData
     AbstractOpAMPClient --> ConsumerConfig
@@ -119,7 +159,7 @@ classDiagram
     FullUpdateControllerInterface <|.. TimeSend
 
     AbstractOpAMPClient --> client_message_builder
-    AbstractOpAMPClient --> client_transport
+    ClientTransportAuthorizationMixin --> client_transport
     OpAMPClient --> client_bootstrap
 ```
 
@@ -141,6 +181,23 @@ flowchart TD
 
     I --> L["AbstractOpAMPClient + mixins"]
     K --> L
+```
+
+## Runtime Process Tracking Strategy
+
+```mermaid
+flowchart TD
+    A["consumer.processTracking"] --> B{"Normalized value"}
+
+    B -->|"supervisor or unset/invalid"| C["ClientSupervisorMixin"]
+    B -->|"observer"| D["ClientObserverMixin"]
+
+    D --> E{"processDetectionRegex set?"}
+    E -->|No| F["Config validation error"]
+    E -->|Yes| G["Use ProcessUtils + psutil discovery"]
+
+    C --> H["Launch/terminate managed subprocess"]
+    G --> I["Attach/observe external process"]
 ```
 
 ## Transport URL and TLS Resolution
@@ -170,15 +227,19 @@ flowchart TD
 flowchart TD
     A["OpAMPClient instance"] --> B{"Which method is called?"}
 
-    B -->|launch_agent_process| C["ClientRuntimeMixin.launch_agent_process()"]
+    B -->|send| C["ClientTransportAuthorizationMixin.send()"]
     B -->|_heartbeat_loop| D["ClientRuntimeMixin._heartbeat_loop()"]
-    B -->|_handle_server_to_agent| E["ServerMessageHandlingMixin._handle_server_to_agent()"]
-    B -->|handle_custom_message| F["ServerMessageHandlingMixin.handle_custom_message()"]
-    B -->|send| G["AbstractOpAMPClient.send()"]
+    B -->|launch_agent_process| E["ClientRuntimeMixin.launch_agent_process()"]
+    B -->|_handle_server_to_agent| F["ServerMessageHandlingMixin._handle_server_to_agent()"]
 
-    H["FluentdOpAMPClient override exists?"] --> I{"Yes"}
-    I --> J["Use FluentdOpAMPClient override first"]
-    I --> K["Else use mixin/base implementation"]
+    E --> G["ClientRuntimeMixin._runtime_lifecycle()"]
+    G --> H{"processTracking"}
+    H -->|supervisor| I["ClientSupervisorMixin.launch_agent_process()"]
+    H -->|observer| J["ClientObserverMixin.launch_agent_process()"]
+
+    K["FluentdOpAMPClient override exists?"] --> L{"Yes"}
+    L --> M["Use FluentdOpAMPClient override first"]
+    L --> N["Else use mixin/base implementation"]
 ```
 
 ## Reporting Flags and Update Controllers

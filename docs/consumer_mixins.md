@@ -14,24 +14,54 @@ In this project, mixins are used to keep `fluentbit_client.py` and `abstract_cli
 
 ```python
 class AbstractOpAMPClient(
-    ClientRuntimeMixin, ServerMessageHandlingMixin, OpAMPClientInterface, ABC
+    ClientTransportAuthorizationMixin,
+    ClientRuntimeMixin,
+    ServerMessageHandlingMixin,
+    OpAMPClientInterface,
+    ABC,
 ):
     ...
 ```
 
-The two mixins are:
+The mixins are:
 
-- `ClientRuntimeMixin` in `consumer/src/opamp_consumer/client_mixins.py`
-- `ServerMessageHandlingMixin` in `consumer/src/opamp_consumer/client_mixins.py`
+- `ClientTransportAuthorizationMixin` in `consumer/src/opamp_consumer/client_transport_auth_mixin.py`
+- `ClientRuntimeMixin` in `consumer/src/opamp_consumer/client_runtime_mixin.py`
+- `ServerMessageHandlingMixin` in `consumer/src/opamp_consumer/client_server_message_mixin.py`
+
+Compatibility re-export module:
+
+- `consumer/src/opamp_consumer/client_mixins.py`
+
+## Runtime lifecycle strategies
+
+`ClientRuntimeMixin` now delegates process lifecycle operations to strategy classes selected from configuration:
+
+- `ClientSupervisorMixin` in `consumer/src/opamp_consumer/client_supervisor_mixin.py`
+- `ClientObserverMixin` in `consumer/src/opamp_consumer/client_observer_mixin.py`
+
+Selection behavior:
+
+- `consumer.processTracking` values:
+  - `Supervisor` (default)
+  - `Observer`
+- Observer mode requires `consumer.processDetectionRegex`
 
 ## What each mixin owns
 
+`ClientTransportAuthorizationMixin` owns outbound transport/auth behavior:
+
+- transport send orchestration (`send`, `send_http`, `send_websocket`)
+- auth header resolution (`none`, `env-var`, `config-var`, `idp`)
+- retry-on-auth-failure behavior for `401`/`403`
+
 `ClientRuntimeMixin` owns runtime/process and polling behavior:
 
-- process lifecycle (`launch_agent_process`, `terminate_agent_process`, `restart_agent_process`)
+- lifecycle delegation (`launch_agent_process`, `terminate_agent_process`, `restart_agent_process`)
 - local status polling (`poll_local_status_with_codes`)
 - version discovery (`add_agent_version`)
 - heartbeat loop (`_heartbeat_loop`)
+- disconnect/finalize fallbacks (`send_disconnect`, `finalize`)
 
 `ServerMessageHandlingMixin` owns provider message handling:
 
@@ -42,9 +72,10 @@ The two mixins are:
 
 `AbstractOpAMPClient` keeps cross-cutting client responsibilities:
 
-- send orchestration (`send`, `send_http`, `send_websocket`)
-- message population (`_populate_agent_to_server`, description/capability helpers)
-- full update controller setup and state wiring
+- runtime data model setup (`OpAMPClientData`)
+- full update controller wiring
+- agent description/capability assembly helpers
+- custom-handler registry setup
 
 ## How method resolution works
 
@@ -52,35 +83,47 @@ Python looks for methods in MRO order (Method Resolution Order). For `OpAMPClien
 
 1. `OpAMPClient`
 2. `AbstractOpAMPClient`
-3. `ClientRuntimeMixin`
-4. `ServerMessageHandlingMixin`
-5. `OpAMPClientInterface`
-6. `ABC`
-7. `object`
+3. `ClientTransportAuthorizationMixin`
+4. `ClientRuntimeMixin`
+5. `ServerMessageHandlingMixin`
+6. `OpAMPClientInterface`
+7. `ABC`
+8. `object`
 
 Practical impact:
 
-- `send()` resolves in `AbstractOpAMPClient`.
+- `send()` resolves in `ClientTransportAuthorizationMixin`.
 - `_heartbeat_loop()` resolves in `ClientRuntimeMixin`.
 - `_handle_server_to_agent()` resolves in `ServerMessageHandlingMixin`.
 
-## How overrides interact with mixins
+## How runtime strategy dispatch works
 
-A concrete subclass can override mixin-provided behavior.
+When `ClientRuntimeMixin.launch_agent_process()` is called:
 
-Example: `FluentdOpAMPClient` overrides runtime methods such as `launch_agent_process()` and `add_agent_version()`. Those overrides are used first, before mixin methods, because subclass methods win in MRO lookup.
+1. runtime mixin resolves lifecycle strategy lazily (`_runtime_lifecycle()`).
+2. strategy is selected from `config.process_tracking`:
+   - `supervisor` -> `ClientSupervisorMixin`
+   - `observer` -> `ClientObserverMixin`
+3. runtime mixin delegates the call to that strategy instance.
+
+Lifecycle selection is cached per client instance.
 
 ## Why this refactor helps
 
 - keeps each file focused and easier to review
-- allows runtime behavior and server-dispatch behavior to evolve independently
+- cleanly separates transport/auth, runtime lifecycle, and server-message handling
+- enables two process-management modes without branching every runtime method
 - reduces merge conflict pressure in one large concrete client module
-- provides clearer extension points for alternate client types
+- provides clear extension points for additional lifecycle strategies
 
 ## Related files
 
 - `consumer/src/opamp_consumer/abstract_client.py`
-- `consumer/src/opamp_consumer/fluentbit_client.py`
+- `consumer/src/opamp_consumer/client_transport_auth_mixin.py`
+- `consumer/src/opamp_consumer/client_runtime_mixin.py`
+- `consumer/src/opamp_consumer/client_supervisor_mixin.py`
+- `consumer/src/opamp_consumer/client_observer_mixin.py`
+- `consumer/src/opamp_consumer/client_server_message_mixin.py`
 - `consumer/src/opamp_consumer/client_mixins.py`
-- `consumer/src/opamp_consumer/client_bootstrap.py`
+- `consumer/src/opamp_consumer/fluentbit_client.py`
 - `consumer/src/opamp_consumer/fluentd_client.py`

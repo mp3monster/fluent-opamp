@@ -1,6 +1,7 @@
 # Consumer Client Diagrams Guide
 
 This page explains the rendered consumer client diagrams and links each one back to the Mermaid source.
+For the latest architecture (including process-tracking strategy split), use the Mermaid source as canonical.
 
 ## Source and Related Docs
 
@@ -15,7 +16,8 @@ This page explains the rendered consumer client diagrams and links each one back
 What this shows:
 
 - `AbstractOpAMPClient` composes core send/reporting behavior.
-- `ClientRuntimeMixin` and `ServerMessageHandlingMixin` contribute runtime and server-message handling behavior.
+- `ClientTransportAuthorizationMixin`, `ClientRuntimeMixin`, and `ServerMessageHandlingMixin` contribute transport/auth, runtime, and server-message handling behavior.
+- Runtime lifecycle delegation now routes to `ClientSupervisorMixin` or `ClientObserverMixin` based on config.
 - Concrete clients (`OpAMPClient` for Fluent Bit and `FluentdOpAMPClient` for Fluentd) extend/override where needed.
 - Update controller implementations (`AlwaysSend`, `SentCount`, `TimeSend`) control reporting flag reset cadence.
 
@@ -37,7 +39,8 @@ What this shows:
 What this shows:
 
 - Which methods resolve in mixins vs `AbstractOpAMPClient`.
-- How subclass overrides (for example in `FluentdOpAMPClient`) win over mixin/base implementations via MRO.
+- How `ClientRuntimeMixin` delegates process lifecycle calls to strategy classes selected from `consumer.processTracking`.
+- How subclass overrides (for example `FluentdOpAMPClient.add_agent_version`) win over mixin/base implementations via MRO.
 
 ## Diagram 4: Reporting Flags and Update Controllers
 
@@ -58,3 +61,14 @@ What this shows:
 - How `consumer.server_url` and `consumer.transport` select HTTP vs WebSocket send path.
 - URL normalization for WebSocket mode (`http->ws`, `https->wss`).
 - How `consumer.tls.verify_server` and `consumer.tls.ca_file` control TLS verification behavior.
+
+## Diagram 6: Runtime Process Tracking Strategy
+
+No rendered PNG panel is currently published for this diagram section.
+Use the Mermaid source in [docs/consumer_client_diagram.md](consumer_client_diagram.md) for the current strategy flow.
+
+What this shows:
+
+- `consumer.processTracking` normalization and strategy selection.
+- default/fallback to `Supervisor`.
+- required `consumer.processDetectionRegex` when using `Observer`.

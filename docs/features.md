@@ -76,9 +76,13 @@ In addition to the OpAMP Server we have a configuration service which can alread
 * Allow consumer attributes to come from commenting block in Fluent Bit and Fluentd configuration (erxploit Configuration Service 'annotations')
 * extend so configuration can be classic Fluent Bit
 * share namespace when running in a K8s deployment
-* Enhance so can be used as observer (locates process to monitor based on process naming) in addition to the current supervisor. This will be suited to sidecar deployment scenarios
 * Configuration to manage beats / elastic stack OSS
 * Enhance agent observability, so that it can incorporate into the observed agent monitoring for the supervisor/observer
+
+Implemented recently:
+
+* Process tracking supports both `Supervisor` and `Observer` modes.
+* `Observer` mode uses `consumer.processDetectionRegex` to discover/attach to external processes.
 
 
 ### Server Side
