@@ -82,3 +82,10 @@ def test_unknown_guided_target_returns_error() -> None:
 
     assert completed.returncode == 1
     assert "Unknown start target" in completed.stderr
+
+
+def test_unknown_restart_target_returns_error() -> None:
+    completed = _run_cli("restart", "does-not-exist")
+
+    assert completed.returncode == 1
+    assert "Unknown restart target" in completed.stderr

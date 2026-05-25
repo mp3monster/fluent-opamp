@@ -52,6 +52,14 @@ def test_command_text_from_args_preserves_shell_quoting() -> None:
     assert "cli-e2e-ok" in command_text
 
 
+def test_split_guided_command_supports_restart() -> None:
+    parsed = cli_main._split_guided_command("restart server")  # type: ignore[attr-defined]
+    parsed_no_target = cli_main._split_guided_command("restart")  # type: ignore[attr-defined]
+
+    assert parsed == ("restart", "server")
+    assert parsed_no_target == ("restart", "")
+
+
 def test_materialize_ordered_actions_preserves_order_and_skips_missing() -> None:
     actions = cli_main._materialize_ordered_actions(  # type: ignore[attr-defined]
         order=["two", "missing", "one"],
@@ -101,6 +109,17 @@ def test_process_tail_setting_round_trip(tmp_path: Path, monkeypatch) -> None:
     assert payload["enable_process_tail"] is True
 
 
+def test_disable_enable_process_tail_alias_disables_setting(tmp_path: Path, monkeypatch) -> None:
+    runtime_dir = tmp_path / "runtime"
+    monkeypatch.setattr(cli_main, "_cli_runtime_dir", lambda: runtime_dir)
+
+    cli_main._set_process_tail_enabled(True)  # type: ignore[attr-defined]
+    exit_code = cli_main._handle_command("disable enable-process-tail")  # type: ignore[attr-defined]
+
+    assert exit_code == 0
+    assert cli_main._process_tail_enabled() is False  # type: ignore[attr-defined]
+
+
 def test_main_writes_component_lifecycle_log(tmp_path: Path, monkeypatch) -> None:
     runtime_dir = tmp_path / "runtime"
     monkeypatch.setattr(cli_main, "_cli_runtime_dir", lambda: runtime_dir)
@@ -137,16 +156,21 @@ def test_rejected_guided_action_is_logged(tmp_path: Path, monkeypatch) -> None:
 def test_resolve_guided_action_matches_aliases() -> None:
     start_action = cli_main._resolve_guided_action("start", "catalog")  # type: ignore[attr-defined]
     stop_action = cli_main._resolve_guided_action("stop", "clients")  # type: ignore[attr-defined]
+    restart_action = cli_main._resolve_guided_action("restart", "catalog")  # type: ignore[attr-defined]
 
     assert start_action is not None
     assert start_action["label"] == "Config Catalog UI"
+    assert "-m catalog_service " in str(start_action.get("command_text") or "")
     assert stop_action is not None
     assert stop_action["label"] == "All clients"
+    assert restart_action is not None
+    assert restart_action["label"] == "Config Catalog UI"
 
 
 def test_start_and_stop_action_orders_are_stable() -> None:
     start_labels = [label for label, _action in cli_main._start_actions()]  # type: ignore[attr-defined]
     stop_labels = [label for label, _action in cli_main._stop_actions()]  # type: ignore[attr-defined]
+    restart_labels = [label for label, _action in cli_main._restart_actions()]  # type: ignore[attr-defined]
 
     assert start_labels == [
         "Server",
@@ -159,6 +183,7 @@ def test_start_and_stop_action_orders_are_stable() -> None:
     ]
     assert stop_labels == [
         "Server",
+        "Config Catalog UI",
         "Broker",
         "Simulator",
         "Config Service",
@@ -166,3 +191,46 @@ def test_start_and_stop_action_orders_are_stable() -> None:
         "Fluentd client",
         "All clients",
     ]
+    assert restart_labels == start_labels
+
+
+def test_restart_action_runs_stop_wait_cleanup_then_start(monkeypatch) -> None:
+    events: list[str] = []
+    restart_action = {
+        "id": "server",
+        "kind": "restart",
+        "label": "Server",
+        "start_action": {"id": "server", "kind": "background_start", "label": "Server"},
+        "stop_action": {"id": "server", "kind": "shell", "label": "Server"},
+    }
+
+    def fake_stop(_action):
+        events.append("stop")
+        return 0
+
+    def fake_tracked_pids(**_kwargs):
+        events.append("track")
+        return [4242]
+
+    def fake_wait(**_kwargs):
+        events.append("wait")
+        return True, []
+
+    def fake_prune():
+        events.append("cleanup")
+        return {"processes": []}
+
+    def fake_start(_action):
+        events.append("start")
+        return 0
+
+    monkeypatch.setattr(cli_main, "_execute_stop_action", fake_stop)
+    monkeypatch.setattr(cli_main, "_tracked_restart_pids", fake_tracked_pids)
+    monkeypatch.setattr(cli_main, "_wait_for_pids_to_exit", fake_wait)
+    monkeypatch.setattr(cli_main, "_prune_cli_process_state", fake_prune)
+    monkeypatch.setattr(cli_main, "_execute_start_action", fake_start)
+
+    code = cli_main._execute_restart_action(restart_action)  # type: ignore[attr-defined]
+
+    assert code == 0
+    assert events == ["track", "stop", "wait", "cleanup", "start"]

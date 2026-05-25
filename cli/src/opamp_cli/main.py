@@ -48,9 +48,12 @@ CLI_SETTINGS_FILENAME = "settings.json"
 CLI_COMPONENT_LOG_FILENAME = "opamp_cli.log"
 CLI_SETTING_ENABLE_PROCESS_TAIL = "enable_process_tail"
 DEFAULT_SERVER_PORT = 4320
+DEFAULT_CATALOG_WEB_PORT = 8090
 PROCESS_START_CHECK_DELAY_SECONDS = 1.0
 PROCESS_READY_TIMEOUT_SECONDS = 5.0
 PROCESS_READY_POLL_INTERVAL_SECONDS = 0.25
+PROCESS_STOP_TIMEOUT_SECONDS = 20.0
+PROCESS_STOP_POLL_INTERVAL_SECONDS = 0.25
 PROCESS_TAIL_INITIAL_LINES = 50
 STARTUP_FAILURE_MARKERS = (
     "address already in use",
@@ -75,6 +78,7 @@ GUIDED_START_ACTION_ORDER = [
 ]
 GUIDED_STOP_ACTION_ORDER = [
     "server",
+    "catalog_ui",
     "broker",
     "simulator",
     "config_service",
@@ -102,7 +106,7 @@ HELP_TEXT = """Usage:
   opamp-cli disable-process-tail
 
 Behavior:
-  - Interactive `start` and `stop` commands open guided multi-stage choices.
+  - Interactive `start`, `stop`, and `restart` commands open guided multi-stage choices.
   - `status` shows recorded managed processes, PID liveness, and log paths.
   - `enable-process-tail` opens a new shell tailing each managed process log after start.
   - If first token is `script`, generate an OS-native script file.
@@ -119,6 +123,9 @@ Examples:
   # Stop server
   opamp-cli stop server
 
+  # Restart server
+  opamp-cli restart server
+
   # Show managed process status
   opamp-cli status
 
@@ -129,7 +136,7 @@ Notes:
   - Interactive autocomplete uses prompt_toolkit when installed.
   - Fallback completion uses readline when available.
   - Guided actions can be run directly, for example `start config service`.
-  - Guided start/stop actions run components directly instead of relying on repo wrapper scripts.
+  - Guided start/stop/restart actions run components directly instead of relying on repo wrapper scripts.
   - Guided starts record launched PIDs in cli/runtime/managed_processes.json.
   - Process-tail shells are opened on a best-effort basis and may be unavailable in headless terminals.
 """
@@ -359,11 +366,21 @@ def _handle_command(raw_command: str) -> int:
         return 0
 
     lowered = command_text.lower()
-    if lowered == "enable-process-tail":
+    if lowered in {
+        "enable-process-tail",
+        "enable process-tail",
+        "enable process tail",
+        "enable enable-process-tail",
+    }:
         logger.info("enabling process tail feature")
         _set_process_tail_enabled(True)
         return 0
-    if lowered == "disable-process-tail":
+    if lowered in {
+        "disable-process-tail",
+        "disable process-tail",
+        "disable process tail",
+        "disable enable-process-tail",
+    }:
         logger.info("disabling process tail feature")
         _set_process_tail_enabled(False)
         return 0
@@ -394,6 +411,7 @@ def _top_level_commands() -> list[str]:
         "-h",
         "start",
         "stop",
+        "restart",
         "status",
         "enable-process-tail",
         "disable-process-tail",
@@ -455,6 +473,11 @@ def _stop_action_labels() -> list[str]:
     return [label for label, _action in _stop_actions()]
 
 
+def _restart_action_labels() -> list[str]:
+    """Return restart labels without constructing restart actions."""
+    return [label for label, _action in _restart_actions()]
+
+
 def _guided_action_aliases(action: dict[str, Any]) -> list[str]:
     """Return labels and short aliases accepted for guided selections."""
     label = str(action.get("label") or "").strip()
@@ -485,6 +508,8 @@ def _guided_labels_for_intent(intent: str) -> list[str]:
         return _start_action_labels()
     if intent == "stop":
         return _stop_action_labels()
+    if intent == "restart":
+        return _restart_action_labels()
     return []
 
 
@@ -616,6 +641,18 @@ def _prompt_toolkit_input_reader(words: Iterable[str]) -> Callable[[str], str] |
 
             if lowered == "stop":
                 yield Completion("stop ", start_position=0)
+                return
+
+            if lowered.startswith("restart "):
+                selection = stripped[8:]
+                yield from _yield_word_matches(
+                    options=_matching_guided_labels("restart", selection),
+                    prefix=selection,
+                )
+                return
+
+            if lowered == "restart":
+                yield Completion("restart ", start_position=0)
                 return
 
             line_prefix = _line_prefix(document)
@@ -910,6 +947,10 @@ def _append_log_line(log_file: Path, text: str) -> None:
 def _prepare_launch_log(*, label: str, command_text: str, cwd: Path, log_name: str) -> Path:
     """Create a launch log file and write a small banner before execution."""
     log_file = (_cli_log_dir() / f"{log_name}.log").resolve()
+    # Reset per-process launch logs so stale startup markers from previous runs
+    # do not trigger false negatives in current startup checks.
+    log_file.parent.mkdir(parents=True, exist_ok=True)
+    log_file.write_text("", encoding="utf-8")
     _append_log_line(log_file, f"[{_utc_timestamp()}] launch={label}")
     _append_log_line(log_file, f"[{_utc_timestamp()}] cwd={cwd}")
     _append_log_line(log_file, f"[{_utc_timestamp()}] command={command_text}")
@@ -936,9 +977,6 @@ def _launch_process_tail_shell(*, label: str, log_file: Path) -> bool:
         subprocess.Popen(  # pylint: disable=consider-using-with
             ["powershell.exe", "-NoExit", "-Command", command],
             cwd=str(_repo_root()),
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
             creationflags=getattr(subprocess, "CREATE_NEW_CONSOLE", 0),
         )
         return True
@@ -979,6 +1017,7 @@ def _open_process_tail_if_enabled(*, label: str, log_file: Path) -> None:
     if _process_tail_enabled() is not True:
         logger.info("process tailing skipped because feature is disabled label=%s", label)
         return
+    print(f"Process tailing enabled for {label}; log file: {log_file}")
     try:
         opened = _launch_process_tail_shell(label=label, log_file=log_file)
     except Exception as exc:  # pragma: no cover - defensive shell-launch guard
@@ -1354,10 +1393,15 @@ def _simulator_start_action(
     }
 
 
-def _stop_recorded_action(*, label: str, record_names: list[str]) -> dict[str, Any]:
+def _stop_recorded_action(
+    *,
+    action_id: str | None = None,
+    label: str,
+    record_names: list[str],
+) -> dict[str, Any]:
     """Create one stop action that terminates recorded managed processes."""
     return {
-        "id": _slugify(label).replace("-", "_"),
+        "id": str(action_id or _slugify(label).replace("-", "_")).strip(),
         "kind": "stop_recorded",
         "label": label,
         "record_names": list(record_names),
@@ -1369,19 +1413,6 @@ def _start_actions() -> list[tuple[str, dict[str, Any]]]:
     action_map: dict[str, dict[str, Any]] = {}
     repo_root = _repo_root()
     opamp_config_path = (repo_root / "config" / "opamp.json").resolve()
-    opamp_config = _load_json_file(opamp_config_path)
-    catalog_config = (
-        opamp_config.get("opamp", {}).get("config_catalog", {})
-        if isinstance(opamp_config.get("opamp", {}), dict)
-        else {}
-    )
-    catalog_route_path = str(catalog_config.get("route_path") or "/catalog").strip() or "/catalog"
-    if not catalog_route_path.startswith("/"):
-        catalog_route_path = "/" + catalog_route_path
-    catalog_config_path = _catalog_launch_config_path(
-        base_config_path=opamp_config_path,
-        base_config=opamp_config,
-    )
 
     server_args = ["--port", str(DEFAULT_SERVER_PORT)]
     server_env = {"OPAMP_CONFIG_PATH": str(opamp_config_path)}
@@ -1406,27 +1437,43 @@ def _start_actions() -> list[tuple[str, dict[str, Any]]]:
         readiness_url=f"http://127.0.0.1:{DEFAULT_SERVER_PORT}/ui",
     )
 
-    if catalog_config_path is not None:
-        catalog_server_env = {"OPAMP_CONFIG_PATH": str(catalog_config_path)}
+    catalog_service_config_path = (
+        repo_root / "catalog-service" / "src" / "catalog_service" / "config" / "catalog-service.json"
+    ).resolve()
+    if catalog_service_config_path.is_file():
+        catalog_payload = _load_json_file(catalog_service_config_path)
+        catalog_opamp = catalog_payload.get("opamp", {})
+        if isinstance(catalog_opamp, dict):
+            catalog_config = catalog_opamp.get("config_catalog", {})
+        else:
+            catalog_config = {}
+        if not isinstance(catalog_config, dict):
+            catalog_config = {}
+        catalog_route_path = str(catalog_config.get("route_path") or "/catalog").strip() or "/catalog"
+        if not catalog_route_path.startswith("/"):
+            catalog_route_path = "/" + catalog_route_path
+        try:
+            catalog_port = int(catalog_config.get("web_port") or DEFAULT_CATALOG_WEB_PORT)
+        except (TypeError, ValueError):
+            catalog_port = DEFAULT_CATALOG_WEB_PORT
+        catalog_args = ["--config-path", str(catalog_service_config_path)]
         catalog_server_cmd = _python_module_command(
-            module_name="opamp_provider.server",
-            python_paths=[repo_root / "provider" / "src"],
-            args=server_args,
-            env=catalog_server_env,
+            module_name="catalog_service",
+            python_paths=[repo_root / "catalog-service" / "src"],
+            args=catalog_args,
             cwd=repo_root,
         )
         action_map["catalog_ui"] = _background_start_action(
             action_id="catalog_ui",
             label="Config Catalog UI",
             command_text=catalog_server_cmd,
-            argv=_python_module_argv(module_name="opamp_provider.server", args=server_args),
+            argv=_python_module_argv(module_name="catalog_service", args=catalog_args),
             cwd=repo_root,
             env=_build_exec_env(
-                python_paths=[repo_root / "provider" / "src"],
-                env=catalog_server_env,
+                python_paths=[repo_root / "catalog-service" / "src"],
             ),
-            launch_url=f"http://127.0.0.1:{DEFAULT_SERVER_PORT}{catalog_route_path}",
-            readiness_url=f"http://127.0.0.1:{DEFAULT_SERVER_PORT}{catalog_route_path}",
+            launch_url=f"http://127.0.0.1:{catalog_port}{catalog_route_path}",
+            readiness_url=f"http://127.0.0.1:{catalog_port}{catalog_route_path}",
         )
 
     config_service_args = [
@@ -1609,6 +1656,12 @@ def _stop_actions() -> list[tuple[str, dict[str, Any]]]:
         "command_text": broker_stop_cmd,
     }
 
+    action_map["catalog_ui"] = _stop_recorded_action(
+        action_id="catalog_ui",
+        label="Config Catalog UI",
+        record_names=["Config Catalog UI"],
+    )
+
     simulator_stop_cmd = _python_script_command(
         script_path=repo_root / "consumer-sim" / "src" / "consumer_sim_launcher.py",
         args=["stop"],
@@ -1622,14 +1675,17 @@ def _stop_actions() -> list[tuple[str, dict[str, Any]]]:
     }
 
     action_map["config_service"] = _stop_recorded_action(
+        action_id="config_service",
         label="Config Service",
         record_names=["Config Service"],
     )
     action_map["fluentbit_client"] = _stop_recorded_action(
+        action_id="fluentbit_client",
         label="Fluent Bit client",
         record_names=["Fluent Bit client"],
     )
     action_map["fluentd_client"] = _stop_recorded_action(
+        action_id="fluentd_client",
         label="Fluentd client",
         record_names=["Fluentd client"],
     )
@@ -1665,6 +1721,47 @@ def _stop_actions() -> list[tuple[str, dict[str, Any]]]:
         order=GUIDED_STOP_ACTION_ORDER,
         action_map=action_map,
     )
+
+
+def _restart_actions() -> list[tuple[str, dict[str, Any]]]:
+    """Return guided restart actions available in current workspace."""
+    start_actions = _start_actions()
+    stop_actions_by_id = {
+        str(action.get("id") or "").strip(): action
+        for _label, action in _stop_actions()
+    }
+    actions: list[tuple[str, dict[str, Any]]] = []
+    for label, start_action in start_actions:
+        action_id = str(start_action.get("id") or "").strip()
+        if not action_id:
+            continue
+        stop_action = stop_actions_by_id.get(action_id)
+        if stop_action is None:
+            continue
+        actions.append(
+            (
+                label,
+                {
+                    "id": action_id,
+                    "kind": "restart",
+                    "label": label,
+                    "start_action": start_action,
+                    "stop_action": stop_action,
+                },
+            )
+        )
+    return actions
+
+
+def _guided_actions_for_intent(intent: str) -> list[tuple[str, dict[str, Any]]]:
+    """Return guided action list for one intent."""
+    if intent == "start":
+        return _start_actions()
+    if intent == "stop":
+        return _stop_actions()
+    if intent == "restart":
+        return _restart_actions()
+    return []
 
 
 def _select_guided_action(
@@ -1705,9 +1802,9 @@ def _select_guided_action(
 
 
 def _split_guided_command(command_text: str) -> tuple[str, str] | None:
-    """Return guided intent and selection for `start`/`stop` commands."""
+    """Return guided intent and selection for `start`/`stop`/`restart` commands."""
     stripped = str(command_text or "").strip()
-    for intent in ("start", "stop"):
+    for intent in ("start", "stop", "restart"):
         if stripped.lower() == intent:
             return intent, ""
         if stripped.lower().startswith(f"{intent} "):
@@ -1717,7 +1814,7 @@ def _split_guided_command(command_text: str) -> tuple[str, str] | None:
 
 def _resolve_guided_action(intent: str, selection: str) -> dict[str, Any] | None:
     """Resolve one guided action from a typed selection."""
-    actions = _start_actions() if intent == "start" else _stop_actions()
+    actions = _guided_actions_for_intent(intent)
     for label, action in actions:
         if _matches_guided_label(selection, label):
             return action
@@ -1730,13 +1827,156 @@ def _resolve_guided_action_by_label(
     intent: str | None = None,
 ) -> dict[str, Any] | None:
     """Resolve one action from its current display label."""
-    intents = [intent] if intent in {"start", "stop"} else ["start", "stop"]
+    intents = [intent] if intent in {"start", "stop", "restart"} else ["start", "stop", "restart"]
     for current_intent in intents:
-        actions = _start_actions() if current_intent == "start" else _stop_actions()
+        actions = _guided_actions_for_intent(current_intent)
         for current_label, action in actions:
             if current_label == label:
                 return action
     return None
+
+
+def _execute_start_action(action: dict[str, Any]) -> int:
+    """Execute one start action by kind."""
+    kind = str(action.get("kind", "")).strip().lower()
+    if kind == "background_start":
+        return _launch_background_process(action)
+    if kind == "simulator_start":
+        return _record_simulator_batch(action)
+    raise ValueError(f"unsupported start action kind: {kind}")
+
+
+def _execute_stop_action(action: dict[str, Any]) -> int:
+    """Execute one stop action by kind."""
+    kind = str(action.get("kind", "")).strip().lower()
+    if kind == "shell":
+        command_text = str(action.get("command_text") or "").strip()
+        print(f"Executing: {command_text}")
+        return _handle_command(command_text)
+    if kind == "stop_recorded":
+        return _stop_recorded_processes(
+            [str(item) for item in action.get("record_names", [])]
+        )
+    raise ValueError(f"unsupported stop action kind: {kind}")
+
+
+def _record_name_matches_restart(
+    *,
+    action_id: str,
+    record_name: str,
+    tracked_names: set[str],
+) -> bool:
+    """Return whether one record name should be tracked for restart waiting."""
+    if record_name in tracked_names:
+        return True
+    if action_id == "simulator" and record_name.startswith("Simulator:"):
+        return True
+    return False
+
+
+def _tracked_restart_pids(*, action_id: str, start_action: dict[str, Any], stop_action: dict[str, Any]) -> list[int]:
+    """Return running process IDs to watch while restarting one action."""
+    tracked_names = {
+        str(item).strip()
+        for item in stop_action.get("record_names", [])
+        if str(item).strip()
+    }
+    start_record_name = str(start_action.get("record_name") or "").strip()
+    if start_record_name:
+        tracked_names.add(start_record_name)
+
+    if not tracked_names and action_id != "simulator":
+        return []
+
+    payload = _prune_cli_process_state()
+    pids: list[int] = []
+    for record in payload.get("processes", []):
+        if not isinstance(record, dict):
+            continue
+        record_name = str(record.get("name") or "").strip()
+        if not _record_name_matches_restart(
+            action_id=action_id,
+            record_name=record_name,
+            tracked_names=tracked_names,
+        ):
+            continue
+        pid = int(record.get("pid", 0) or 0)
+        if pid <= 0:
+            continue
+        if _is_process_running(pid):
+            pids.append(pid)
+    return sorted(set(pids))
+
+
+def _wait_for_pids_to_exit(*, pids: list[int], timeout_seconds: float) -> tuple[bool, list[int]]:
+    """Wait until all provided process IDs are no longer running."""
+    if not pids:
+        return True, []
+    deadline = time.monotonic() + max(0.0, float(timeout_seconds))
+    while True:
+        remaining = [pid for pid in pids if _is_process_running(pid)]
+        if not remaining:
+            return True, []
+        if time.monotonic() >= deadline:
+            return False, remaining
+        time.sleep(PROCESS_STOP_POLL_INTERVAL_SECONDS)
+
+
+def _execute_restart_action(action: dict[str, Any]) -> int:
+    """Restart one guided component by stop, wait, cleanup, and start."""
+    logger = _get_logger()
+    label = str(action.get("label") or "component")
+    start_action = dict(action.get("start_action", {}))
+    stop_action = dict(action.get("stop_action", {}))
+    action_id = str(action.get("id") or start_action.get("id") or "").strip()
+    if not action_id:
+        raise ValueError("restart action is missing id")
+    if not start_action or not stop_action:
+        raise ValueError(f"restart action is incomplete for {label}")
+
+    tracked_pids = _tracked_restart_pids(
+        action_id=action_id,
+        start_action=start_action,
+        stop_action=stop_action,
+    )
+    logger.info(
+        "restart requested label=%s action_id=%s tracked_pids=%s",
+        label,
+        action_id,
+        tracked_pids,
+    )
+    print(f"Restarting {label}...")
+
+    stop_code = _execute_stop_action(stop_action)
+    if int(stop_code) != 0:
+        logger.warning(
+            "restart aborted because stop failed label=%s action_id=%s exit_code=%s",
+            label,
+            action_id,
+            int(stop_code),
+        )
+        return int(stop_code)
+
+    exited, remaining = _wait_for_pids_to_exit(
+        pids=tracked_pids,
+        timeout_seconds=PROCESS_STOP_TIMEOUT_SECONDS,
+    )
+    if not exited:
+        logger.warning(
+            "restart timed out waiting for process exit label=%s action_id=%s remaining=%s",
+            label,
+            action_id,
+            remaining,
+        )
+        print(
+            f"Restart wait timed out for {label}; still running pids: {', '.join(str(pid) for pid in remaining)}",
+            file=sys.stderr,
+        )
+        return 1
+
+    _prune_cli_process_state()
+    logger.info("restart cleanup completed label=%s action_id=%s", label, action_id)
+    return _execute_start_action(start_action)
 
 
 def _execute_guided_action(
@@ -1745,9 +1985,9 @@ def _execute_guided_action(
     intent: str,
     selection: str,
 ) -> int:
-    """Execute a guided start/stop action from prompt or direct text."""
+    """Execute a guided start/stop/restart action from prompt or direct text."""
     logger = _get_logger()
-    actions = _start_actions() if intent == "start" else _stop_actions()
+    actions = _guided_actions_for_intent(intent)
     selected_action = None
     if selection:
         selected_action = _resolve_guided_action(intent, selection)
@@ -1783,21 +2023,12 @@ def _execute_guided_action(
     )
     print(f"Selected: {selected_action.get('label', f'{intent} action')}")
     if intent == "start":
-        if kind == "background_start":
-            return _launch_background_process(selected_action)
-        if kind == "simulator_start":
-            return _record_simulator_batch(selected_action)
-        raise ValueError(f"unsupported start action kind: {kind}")
-
-    if kind == "shell":
-        command_text = str(selected_action.get("command_text") or "").strip()
-        print(f"Executing: {command_text}")
-        return _handle_command(command_text)
-    if kind == "stop_recorded":
-        return _stop_recorded_processes(
-            [str(item) for item in selected_action.get("record_names", [])]
-        )
-    raise ValueError(f"unsupported stop action kind: {kind}")
+        return _execute_start_action(selected_action)
+    if intent == "stop":
+        return _execute_stop_action(selected_action)
+    if intent == "restart":
+        return _execute_restart_action(selected_action)
+    raise ValueError(f"unsupported guided intent: {intent}")
 
 
 def _launch_background_process(action: dict[str, Any]) -> int:
@@ -2074,7 +2305,7 @@ def _interactive_loop() -> int:
         "Example: script demo-start-clients "
         "python -m opamp_consumer.fluentbit_client"
     )
-    print("You can type `start server` or `stop config service` directly.")
+    print("You can type `start server`, `stop config service`, or `restart server` directly.")
     print("Use `enable-process-tail` to tail managed process logs in a new shell.")
     print("Type 'exit' or press Ctrl+D to quit.")
     logger.info("interactive CLI loop started")

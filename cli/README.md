@@ -2,7 +2,7 @@
 
 This component provides a prompt-driven command tool for local OpAMP workflows.
 Autocomplete support is provided via `prompt_toolkit` (cross-platform).
-Its guided `start` and `stop` flows run components directly instead of depending on repo wrapper scripts.
+Its guided `start`, `stop`, and `restart` flows run components directly instead of depending on repo wrapper scripts.
 Guided starts record launched PIDs in `cli/runtime/managed_processes.json`.
 CLI-managed process logs are written under `cli/runtime/logs/`.
 Managed process entries are only recorded after the launched utility survives the CLI startup liveness check.
@@ -58,7 +58,8 @@ opamp-cli
   - Type `start` in interactive mode, then choose what to start
     (for example `server`, `config catalog ui`, `config service`, `broker`, `simulator`, `fluentbit client`, `fluentd client`).
   - Type `stop` in interactive mode, then choose what to stop.
-  - You can also run guided actions directly on one line, for example `start server` or `stop config service`.
+  - Type `restart` in interactive mode, then choose what to restart.
+  - You can also run guided actions directly on one line, for example `start server`, `stop config service`, or `restart server`.
   - Type `status` in interactive mode to list managed processes, PID liveness, and log paths.
   - Type `enable-process-tail` to open a separate tail shell for each future managed start log.
   - Type `disable-process-tail` to turn that behavior off again.
@@ -97,6 +98,7 @@ The process-tail preference is stored in `cli/runtime/settings.json`.
 
 - Press `Tab` in interactive mode for suggestions.
 - `start` and `stop` suggestions are context-aware, so the CLI offers guided targets like `Config Service` instead of unrelated global words.
+- `start`, `stop`, and `restart` suggestions are context-aware, so the CLI offers guided targets like `Config Service` instead of unrelated global words.
 - File and script arguments use path completion when `prompt_toolkit` is available.
 - Direct `python cli/main.py` runs on Windows include a built-in Tab completion fallback even when `prompt_toolkit` is not installed.
 - On Windows, install dependencies first so `prompt_toolkit` is available:
