@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from catalog_service.config import CatalogSource, CatalogServiceConfig
+from catalog_service.config import CatalogServiceConfig, CatalogSource
 from catalog_service.service import CatalogFileIndexService
 
 
@@ -44,6 +44,19 @@ def test_catalog_service_scans_configured_folders_and_header_metadata(tmp_path: 
     without_header = source_dir / "agent-b.conf"
     without_header.write_text("<source>\n  @type forward\n</source>\n", encoding="utf-8")
 
+    json_catalog = source_dir / "catalog.json"
+    json_catalog.write_text(
+        "\n".join(
+            [
+                "{",
+                '  "engine": "fluentbit",',
+                '  "version": "5.0.4"',
+                "}",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
     ignored = source_dir / "ignored.txt"
     ignored.write_text("# config-service: version=skip\n", encoding="utf-8")
 
@@ -54,21 +67,23 @@ def test_catalog_service_scans_configured_folders_and_header_metadata(tmp_path: 
         help_path="/catalog/help",
         ui_base_css_path="/config-service/ui/assets/config_ui.css",
         web_port=8090,
-        sources=(CatalogSource(folder="catalog-src", extensions=(".yaml", ".conf")),),
+        sources=(CatalogSource(folder="catalog-src", extensions=(".yaml", ".conf", ".json")),),
         raw_payload={},
     )
     service = CatalogFileIndexService(repo_root=tmp_path, config=config)
 
     payload = service.scan()
 
-    assert payload["total"] == 2
+    assert payload["total"] == 3
     assert "config_type" in payload["columns"]
+    assert "engine" in payload["columns"]
     assert "version" in payload["columns"]
     assert "config_version" in payload["columns"]
 
     rows = payload["rows"]
     row_a = next(row for row in rows if row["filename"] == "agent-a.yaml")
     row_b = next(row for row in rows if row["filename"] == "agent-b.conf")
+    row_c = next(row for row in rows if row["filename"] == "catalog.json")
 
     assert row_a["folder"] == "catalog-src"
     assert row_a["metadata"]["config_type"] == "fluentbit"
@@ -76,7 +91,12 @@ def test_catalog_service_scans_configured_folders_and_header_metadata(tmp_path: 
     assert row_a["metadata"]["config_version"] == "release-27"
     assert row_a["last_edited"]
 
-    assert row_b["metadata"] == {}
+    assert row_b["metadata"] == {"config_type": "fluentd"}
+    assert row_c["metadata"] == {
+        "config_type": "fluentbit",
+        "engine": "fluentbit",
+        "version": "5.0.4",
+    }
 
 
 def test_catalog_service_readonly_file_view_is_limited_to_configured_sources(tmp_path: Path) -> None:

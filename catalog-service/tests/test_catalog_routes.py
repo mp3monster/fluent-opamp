@@ -17,14 +17,14 @@ Test-case reference: catalog-service/docs/TEST_CASES.md
 
 from __future__ import annotations
 
-from pathlib import Path
 from http import HTTPStatus
+from pathlib import Path
 
 import pytest
 from quart import Quart
 
 from catalog_service.auth_integration import UIAuthResult
-from catalog_service.config import CatalogSource, CatalogServiceConfig
+from catalog_service.config import CatalogServiceConfig, CatalogSource
 from catalog_service.routes import register_catalog_routes
 from catalog_service.service import CatalogFileIndexService
 
@@ -141,10 +141,79 @@ async def test_standalone_catalog_app_exposes_feature_payload(tmp_path: Path, mo
 
         ui_resp = await client.get("/catalog")
         assert ui_resp.status_code == 200
+        ui_html = (await ui_resp.get_data()).decode("utf-8")
+        assert '/catalog/assets/catalog_ui.css' in ui_html
+        assert '/catalog/assets/opamp_logo.png' in ui_html
+        assert '/catalog/assets/config_editor_icon.png' in ui_html
+        css_resp = await client.get("/catalog/assets/catalog_ui.css")
+        assert css_resp.status_code == 200
+        assert css_resp.content_type.startswith("text/css")
+        logo_resp = await client.get("/catalog/assets/opamp_logo.png")
+        assert logo_resp.status_code == 200
+        assert logo_resp.content_type.startswith("image/png")
+        icon_resp = await client.get("/catalog/assets/config_editor_icon.png")
+        assert icon_resp.status_code == 200
+        assert icon_resp.content_type.startswith("image/png")
         data_resp = await client.get("/catalog/api/files")
         assert data_resp.status_code == 200
         data_payload = await data_resp.get_json()
         assert data_payload["total"] == 1
+
+
+@pytest.mark.asyncio
+async def test_standalone_catalog_unknown_route_redirects_to_landing_page(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_path = tmp_path / "catalog-service.json"
+    config_path.write_text(
+        """
+        {
+          "component-entry-points": {
+            "quart": [
+              {
+                "entry_point": "catalog_service.app:register_catalog_component",
+                "label": "Config Catalog",
+                "url": "/catalog",
+                "enabled": true
+              }
+            ]
+          },
+          "opamp": {
+            "config_catalog": {
+              "enabled": true,
+              "menu_label": "Config Catalog",
+              "route_path": "/catalog",
+              "help_path": "/catalog/help",
+              "ui_base_css_path": "/config-service/ui/assets/config_ui.css",
+              "web_port": 8090,
+              "sources": [
+                {
+                  "folder": "catalog",
+                  "extensions": [".yaml"]
+                }
+              ]
+            }
+          }
+        }
+        """.strip(),
+        encoding="utf-8",
+    )
+    source_dir = tmp_path / "catalog"
+    source_dir.mkdir(parents=True, exist_ok=True)
+    (source_dir / "sample.yaml").write_text("service:\n  flush: 1\n", encoding="utf-8")
+    monkeypatch.setenv("CATALOG_SERVICE_CONFIG_PATH", str(config_path))
+
+    from catalog_service.app import create_app
+
+    app = create_app(mode="standalone", config_path=str(config_path))
+    async with app.test_client() as client:
+        response = await client.get("/does-not-exist")
+        assert response.status_code in {301, 302, 307, 308}
+        assert response.headers["Location"].startswith(
+            "https://htmlpreview.github.io/?https://raw.githubusercontent.com/"
+            "mp3monster/fluent-opamp/main/github-landingpage/index.html"
+        )
 
 
 @pytest.mark.asyncio
