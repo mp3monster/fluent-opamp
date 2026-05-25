@@ -64,7 +64,7 @@
       </footer>
     </main>
 
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="./marked.min.js"></script>
     <script>
       (async function () {
         const target = document.getElementById("content");
@@ -74,7 +74,10 @@
             throw new Error("Failed to load markdown: " + response.status);
           }
           const markdown = await response.text();
-          target.innerHTML = marked.parse(markdown);
+          if (!window.marked || typeof window.marked.parse !== "function") {
+            throw new Error("Markdown renderer failed to load (marked.js)");
+          }
+          target.innerHTML = window.marked.parse(markdown);
         } catch (error) {
           target.textContent = String(error && error.message ? error.message : error);
         }
