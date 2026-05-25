@@ -1,10 +1,10 @@
 {
   "component": "broker",
-  "effective_label": "0.4.98",
-  "generated_at_utc": "2026-05-25T22:38:24+00:00",
-  "git_commit": "58cfe8651608",
-  "git_commit_date": "2026-05-25T23:32:58+01:00",
-  "git_commit_date_friendly": "25 May 2026 23:32:58 UTC+01:00",
+  "effective_label": "0.4.99",
+  "generated_at_utc": "2026-05-25T22:39:02+00:00",
+  "git_commit": "1da88f0763cc",
+  "git_commit_date": "2026-05-25T23:38:24+01:00",
+  "git_commit_date_friendly": "25 May 2026 23:38:24 UTC+01:00",
   "git_label": "0.4",
-  "version": "0.4.98 58cfe8651608 (25 May 2026 23:32:58 UTC+01:00)"
+  "version": "0.4.99 1da88f0763cc (25 May 2026 23:38:24 UTC+01:00)"
 }

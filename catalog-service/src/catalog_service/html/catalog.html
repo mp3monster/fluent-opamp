@@ -17,13 +17,20 @@ limitations under the License.
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>__CATALOG_TITLE__</title>
-    <link rel="icon" type="image/png" href="/config-service/ui/assets/config_editor_icon.png" />
+    <link rel="icon" type="image/png" href="__CATALOG_ICON_PATH__" />
     <link rel="stylesheet" href="__CATALOG_CSS_PATH__" />
     <style>
       .catalog-controls { display: flex; gap: 0.75rem; align-items: end; flex-wrap: wrap; margin-bottom: 1rem; }
       .catalog-table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
       .catalog-table th, .catalog-table td { padding: 0.55rem 0.65rem; border-bottom: 1px solid var(--border); text-align: left; font-size: 0.88rem; }
       .catalog-table th { background: #eef2ff; cursor: pointer; user-select: none; }
+      .catalog-table th.column-header { cursor: grab; }
+      .catalog-table th.column-header.dragging { opacity: 0.45; cursor: grabbing; }
+      .catalog-table th.column-header.drag-over { box-shadow: inset 0 -3px 0 0 #8bb5ea; background: #e6efff; }
+      .catalog-table tr.column-filter-row:hover { background: transparent; }
+      .catalog-table tr.column-filter-row th { cursor: default; background: #f6f9ff; }
+      .catalog-table tr.column-filter-row input { width: 100%; min-width: 7rem; padding: 0.3rem 0.45rem; font-size: 0.8rem; }
+      .catalog-table tr.column-filter-row select { width: 100%; min-width: 7rem; padding: 0.3rem 0.45rem; font-size: 0.8rem; }
       .catalog-table tr:hover { background: #f8faff; }
       .catalog-table tr.is-clickable { cursor: pointer; }
       .muted { color: var(--muted); }
@@ -39,6 +46,11 @@ limitations under the License.
       .catalog-viewer-text:focus { outline: none; }
       .catalog-viewer-actions { display: flex; gap: 0.6rem; padding: 0 1.1rem 1rem 1.1rem; justify-content: end; }
       .catalog-viewer-error { padding: 1rem 1.1rem; color: #9f1239; }
+      .floating-reload-wrap { position: fixed; right: 1rem; bottom: 1rem; z-index: 1100; }
+      .floating-reload-wrap .button-link {
+        box-shadow: 0 10px 20px rgba(44, 31, 21, 0.16);
+        background: #eef2ff;
+      }
     </style>
   </head>
   <body>
@@ -46,7 +58,7 @@ limitations under the License.
       <header>
         <div class="title">
           <div class="title-brand">
-            <img class="title-logo" src="/config-service/ui/assets/opamp_logo.png" alt="OpAMP Server logo" />
+            <img class="title-logo" src="__CATALOG_LOGO_PATH__" alt="OpAMP Server logo" />
             <div>
               <h1>__CATALOG_TITLE__</h1>
               <p>Configuration file index for versioned catalog assets.</p>
@@ -60,7 +72,7 @@ limitations under the License.
               </select>
             </div>
             <a class="button-link" href="__CATALOG_HELP_PATH__" target="_blank" rel="noopener noreferrer">Help</a>
-            <a class="button-link" href="/ui">Provider UI</a>
+            <a class="button-link" href="/ui" __CATALOG_PROVIDER_UI_LINK_ATTRS__>Provider UI</a>
           </div>
         </div>
       </header>
@@ -77,7 +89,10 @@ limitations under the License.
         </div>
         <div style="overflow:auto;">
           <table class="catalog-table" id="catalogTable">
-            <thead><tr id="catalogHeaderRow"></tr></thead>
+            <thead>
+              <tr id="catalogHeaderRow"></tr>
+              <tr id="catalogColumnFilterRow" class="column-filter-row"></tr>
+            </thead>
             <tbody id="catalogBody"></tbody>
           </table>
         </div>
@@ -111,8 +126,14 @@ limitations under the License.
       <div><a href="https://opentelemetry.io/docs/specs/opamp/" target="_blank" rel="noopener noreferrer">OpAMP Specification</a> • <a href="/doc-set">Latest docs</a></div>
     </footer>
 
+    <div class="floating-reload-wrap">
+      <button id="reload-ui" type="button" class="button-link">Reload UI</button>
+    </div>
+
     <script>
       (function() {
+        const CATALOG_UI_COLUMN_ORDER_STORAGE_KEY = 'catalog_ui_column_order';
+        const CLIENT_ERRORS_ENDPOINT = '__CATALOG_CLIENT_ERRORS_ENDPOINT__';
         const state = {
           rows: [],
           columns: [],
@@ -121,34 +142,115 @@ limitations under the License.
           page: 1,
           pageSize: 20,
           filter: '',
+          columnFilters: {},
           uiFeatureItems: [],
           configEditorUrl: '',
           configEditorAvailable: false
         };
+        let draggingColumnKey = '';
+        let skipSortClickForColumn = '';
+        let lastUiErrorFingerprint = '';
+        let lastUiErrorAt = 0;
+        let isReportingUiError = false;
         const filterInput = document.getElementById('catalogFilter');
         const pageSizeInput = document.getElementById('catalogPageSize');
         const summary = document.getElementById('catalogSummary');
         const headerRow = document.getElementById('catalogHeaderRow');
+        const columnFilterRow = document.getElementById('catalogColumnFilterRow');
         const body = document.getElementById('catalogBody');
         const pageNum = document.getElementById('catalogPageNum');
         const featureMenuGroup = document.getElementById('featureMenuGroup');
         const featureMenuSelect = document.getElementById('featureMenuSelect');
+        const reloadUiButton = document.getElementById('reload-ui');
         const readonlyOverlay = document.getElementById('catalogReadonlyOverlay');
         const readonlyTitle = document.getElementById('catalogReadonlyTitle');
         const readonlyPath = document.getElementById('catalogReadonlyPath');
         const readonlyText = document.getElementById('catalogReadonlyText');
         const readonlyError = document.getElementById('catalogReadonlyError');
 
+        function normalizeColumns(columns) {
+          if (!Array.isArray(columns)) return [];
+          const deduped = [];
+          columns.forEach(column => {
+            const normalized = String(column || '').trim();
+            if (!normalized || deduped.includes(normalized)) return;
+            deduped.push(normalized);
+          });
+          return deduped;
+        }
+
+        function sanitizeColumnOrder(order, availableColumns) {
+          const available = normalizeColumns(availableColumns);
+          const requested = normalizeColumns(order);
+          const selected = requested.filter(column => available.includes(column));
+          const missing = available.filter(column => !selected.includes(column));
+          return [...selected, ...missing];
+        }
+
+        function normalizeColumnFilters(filters, columns) {
+          const normalized = {};
+          normalizeColumns(columns).forEach(column => {
+            normalized[column] = String(filters && filters[column] ? filters[column] : '');
+          });
+          return normalized;
+        }
+
+        function reloadUiWithCacheBust() {
+          const url = new URL(window.location.href);
+          url.searchParams.set('_ui_reload_ts', String(Date.now()));
+          window.location.assign(url.toString());
+        }
+
+        function readStoredColumnOrder(availableColumns) {
+          const fallback = normalizeColumns(availableColumns);
+          try {
+            const raw = window.localStorage.getItem(CATALOG_UI_COLUMN_ORDER_STORAGE_KEY);
+            if (!raw) return fallback;
+            const parsed = JSON.parse(raw);
+            return sanitizeColumnOrder(parsed, fallback);
+          } catch (_err) {
+            return fallback;
+          }
+        }
+
+        function persistColumnOrder() {
+          try {
+            window.localStorage.setItem(
+              CATALOG_UI_COLUMN_ORDER_STORAGE_KEY,
+              JSON.stringify(state.columns)
+            );
+          } catch (_err) {
+            // Ignore storage failures and keep the in-memory ordering.
+          }
+        }
+
+        function moveColumnRelativeToTarget(dragKey, targetKey, placeAfter) {
+          const normalizedDrag = String(dragKey || '').trim();
+          const normalizedTarget = String(targetKey || '').trim();
+          if (!normalizedDrag || !normalizedTarget || normalizedDrag === normalizedTarget) return false;
+          const withoutDrag = state.columns.filter(column => column !== normalizedDrag);
+          const targetIndex = withoutDrag.indexOf(normalizedTarget);
+          if (targetIndex < 0) return false;
+          const insertIndex = placeAfter ? targetIndex + 1 : targetIndex;
+          withoutDrag.splice(insertIndex, 0, normalizedDrag);
+          state.columns = sanitizeColumnOrder(withoutDrag, state.columns);
+          return true;
+        }
+
         function sortedFilteredRows() {
           const needle = String(state.filter || '').toLowerCase();
           const filtered = state.rows.filter(row => {
-            if (!needle) return true;
-            const values = [row.folder, row.filename, row.last_edited];
-            state.columns.forEach(col => {
-              if (col === 'folder' || col === 'filename' || col === 'last_edited') return;
-              values.push((row.metadata && row.metadata[col]) || '');
-            });
-            return values.join(' ').toLowerCase().includes(needle);
+            if (needle) {
+              const values = state.columns.map(col => valueForColumnFilter(row, col));
+              if (!values.join(' ').toLowerCase().includes(needle)) return false;
+            }
+            for (const col of state.columns) {
+              const columnNeedle = String(state.columnFilters[col] || '').trim().toLowerCase();
+              if (!columnNeedle) continue;
+              const value = valueForColumnFilter(row, col).toLowerCase();
+              if (!value.includes(columnNeedle)) return false;
+            }
+            return true;
           });
           const sorted = [...filtered].sort((a, b) => {
             const va = valueFor(a, state.sortKey);
@@ -167,12 +269,199 @@ limitations under the License.
           return String((row.metadata && row.metadata[key]) || '').toLowerCase();
         }
 
+        function rowValueForColumn(row, key, formatTimestamps) {
+          if (key === 'folder') return String(row.folder || '');
+          if (key === 'filename') return String(row.filename || '');
+          if (key === 'last_edited') {
+            if (formatTimestamps) return formatCatalogTimestamp(row.last_edited || '');
+            return String(row.last_edited || '');
+          }
+          return String((row.metadata && row.metadata[key]) || '');
+        }
+
+        function valueForColumnFilter(row, key) {
+          return rowValueForColumn(row, key, true);
+        }
+
+        function displayColumnName(columnName) {
+          if (columnName === 'last_edited') return 'last edited';
+          return String(columnName || '');
+        }
+
+        function formatCatalogTimestamp(value) {
+          const raw = String(value || '').trim();
+          if (!raw) return '';
+          const parsed = new Date(raw);
+          if (Number.isNaN(parsed.getTime())) return raw;
+          return parsed.toLocaleString(undefined, {
+            dateStyle: 'medium',
+            timeStyle: 'medium'
+          });
+        }
+
+        function discoveredValuesForColumn(columnName) {
+          const values = [];
+          const seen = new Set();
+          state.rows.forEach(row => {
+            const value = rowValueForColumn(row, columnName, false).trim();
+            if (!value) return;
+            const key = value.toLowerCase();
+            if (seen.has(key)) return;
+            seen.add(key);
+            values.push(value);
+          });
+          values.sort((left, right) => left.localeCompare(right, undefined, { sensitivity: 'base' }));
+          return values;
+        }
+
+        function reportUiError(details) {
+          const payload = details && typeof details === 'object' ? details : {};
+          const fingerprint = JSON.stringify({
+            kind: payload.kind || '',
+            message: payload.message || '',
+            source: payload.source || '',
+            path: payload.path || '',
+            line: payload.line || '',
+            column: payload.column || '',
+          });
+          const now = Date.now();
+          if (fingerprint === lastUiErrorFingerprint && now - lastUiErrorAt < 4000) {
+            return;
+          }
+          lastUiErrorFingerprint = fingerprint;
+          lastUiErrorAt = now;
+          if (!isReportingUiError) {
+            isReportingUiError = true;
+            try {
+              console.error(
+                '[Catalog UI Error]',
+                String(payload.kind || 'runtime_error'),
+                String(payload.message || 'Unknown UI error'),
+                payload
+              );
+            } catch (_consoleErr) {
+              // Keep error reporting resilient.
+            }
+            isReportingUiError = false;
+          }
+          fetch(CLIENT_ERRORS_ENDPOINT, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              kind: String(payload.kind || 'runtime_error'),
+              message: String(payload.message || 'Unknown UI error'),
+              source: String(payload.source || 'browser'),
+              path: String(payload.path || window.location.href || ''),
+              stack: payload.stack ? String(payload.stack) : '',
+              line: payload.line === undefined ? null : payload.line,
+              column: payload.column === undefined ? null : payload.column,
+            }),
+            keepalive: true,
+          }).catch(function (err) {
+            if (!isReportingUiError) {
+              isReportingUiError = true;
+              try {
+                console.error(
+                  '[Catalog UI Error] Failed to post UI error to backend:',
+                  err && err.message ? err.message : String(err)
+                );
+              } catch (_consoleErr) {
+                // Avoid error-reporting loops when the backend is unavailable.
+              }
+              isReportingUiError = false;
+            }
+          });
+        }
+
+        function formatConsoleArgs(args) {
+          const parts = [];
+          for (let index = 0; index < args.length; index += 1) {
+            const item = args[index];
+            if (item === undefined) {
+              parts.push('undefined');
+            } else if (item === null) {
+              parts.push('null');
+            } else if (item instanceof Error) {
+              parts.push(item.message || String(item));
+            } else if (typeof item === 'object') {
+              try {
+                parts.push(JSON.stringify(item));
+              } catch (_serializeError) {
+                parts.push(String(item));
+              }
+            } else {
+              parts.push(String(item));
+            }
+          }
+          return parts.join(' ');
+        }
+
+        function installGlobalUiErrorHandlers() {
+          if (!window.__CATALOG_UI_CONSOLE_ERROR_PATCHED__) {
+            window.__CATALOG_UI_CONSOLE_ERROR_PATCHED__ = true;
+            const originalConsoleError = console.error;
+            console.error = function () {
+              const args = Array.prototype.slice.call(arguments);
+              originalConsoleError.apply(console, args);
+              if (isReportingUiError) {
+                return;
+              }
+              reportUiError({
+                kind: 'console_error',
+                message: formatConsoleArgs(args) || 'console.error called',
+                source: 'browser_console',
+                path: window.location.href,
+              });
+            };
+          }
+
+          window.addEventListener('error', function (event) {
+            const error = event && event.error;
+            reportUiError({
+              kind: 'window_error',
+              message: error && error.message ? error.message : String((event && event.message) || 'Unhandled UI error'),
+              source: event && event.filename ? event.filename : 'browser',
+              path: window.location.href,
+              stack: error && error.stack ? error.stack : '',
+              line: event && event.lineno ? event.lineno : null,
+              column: event && event.colno ? event.colno : null,
+            });
+          });
+
+          window.addEventListener('unhandledrejection', function (event) {
+            const reason = event ? event.reason : null;
+            let message = 'Unhandled promise rejection';
+            let stack = '';
+            if (reason && typeof reason === 'object') {
+              message = String(reason.message || message);
+              stack = reason.stack ? String(reason.stack) : '';
+            } else if (reason !== undefined && reason !== null) {
+              message = String(reason);
+            }
+            reportUiError({
+              kind: 'unhandledrejection',
+              message: message,
+              source: 'browser',
+              path: window.location.href,
+              stack: stack,
+            });
+          });
+        }
+
         function renderHeader() {
           headerRow.innerHTML = '';
           state.columns.forEach(col => {
             const th = document.createElement('th');
-            th.textContent = col;
+            th.className = 'column-header';
+            th.draggable = true;
+            th.dataset.columnKey = col;
+            th.textContent = displayColumnName(col);
+            th.title = `${displayColumnName(col)} (click to sort, drag to reorder)`;
             th.addEventListener('click', () => {
+              if (skipSortClickForColumn && skipSortClickForColumn === col) {
+                skipSortClickForColumn = '';
+                return;
+              }
               if (state.sortKey === col) {
                 state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
               } else {
@@ -181,19 +470,127 @@ limitations under the License.
               }
               renderBody();
             });
+            th.addEventListener('dragstart', event => {
+              draggingColumnKey = col;
+              th.classList.add('dragging');
+              if (event.dataTransfer) {
+                event.dataTransfer.effectAllowed = 'move';
+                event.dataTransfer.setData('text/plain', col);
+              }
+            });
+            th.addEventListener('dragover', event => {
+              if (!draggingColumnKey || draggingColumnKey === col) return;
+              event.preventDefault();
+              th.classList.add('drag-over');
+              if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+            });
+            th.addEventListener('dragleave', () => {
+              th.classList.remove('drag-over');
+            });
+            th.addEventListener('drop', event => {
+              event.preventDefault();
+              th.classList.remove('drag-over');
+              const dragKey = draggingColumnKey;
+              if (!dragKey || dragKey === col) return;
+              const rect = th.getBoundingClientRect();
+              const placeAfter = (event.clientX - rect.left) > (rect.width / 2);
+              const moved = moveColumnRelativeToTarget(dragKey, col, placeAfter);
+              if (!moved) return;
+              skipSortClickForColumn = col;
+              persistColumnOrder();
+              renderHeader();
+              renderBody();
+            });
+            th.addEventListener('dragend', () => {
+              draggingColumnKey = '';
+              th.classList.remove('dragging');
+              headerRow.querySelectorAll('.drag-over').forEach(item => {
+                item.classList.remove('drag-over');
+              });
+            });
             headerRow.appendChild(th);
+          });
+          renderColumnFilterRow();
+        }
+
+        function renderColumnFilterRow() {
+          if (!columnFilterRow) return;
+          columnFilterRow.innerHTML = '';
+          state.columns.forEach(col => {
+            const th = document.createElement('th');
+            const isDiscoveredSelectColumn = ['config_type', 'engine', 'version'].includes(col);
+            if (isDiscoveredSelectColumn) {
+              const select = document.createElement('select');
+              const defaultOption = document.createElement('option');
+              defaultOption.value = '';
+              defaultOption.textContent = 'All';
+              select.appendChild(defaultOption);
+              discoveredValuesForColumn(col).forEach(value => {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = value;
+                select.appendChild(option);
+              });
+              select.value = String(state.columnFilters[col] || '');
+              select.addEventListener('click', event => {
+                event.stopPropagation();
+              });
+              select.addEventListener('change', () => {
+                state.columnFilters[col] = String(select.value || '');
+                state.page = 1;
+                renderBody();
+              });
+              th.appendChild(select);
+            } else {
+              const input = document.createElement('input');
+              input.type = 'text';
+              input.placeholder = `Filter ${displayColumnName(col)}`;
+              input.value = String(state.columnFilters[col] || '');
+              input.addEventListener('click', event => {
+                event.stopPropagation();
+              });
+              input.addEventListener('input', () => {
+                state.columnFilters[col] = input.value;
+                state.page = 1;
+                renderBody();
+              });
+              th.appendChild(input);
+            }
+            columnFilterRow.appendChild(th);
           });
         }
 
         function renderFeatureMenuItems(items) {
           if (!featureMenuGroup || !featureMenuSelect) return;
           const list = Array.isArray(items) ? items : [];
+          const currentUrl = new URL(window.location.href);
+          const normalizePath = value => {
+            const raw = String(value || '').trim();
+            if (!raw) return '/';
+            return raw.length > 1 ? raw.replace(/\/+$/, '') : raw;
+          };
+          const isCurrentFeatureUrl = url => {
+            try {
+              const targetUrl = new URL(url, window.location.origin);
+              const sameOrigin = targetUrl.origin === currentUrl.origin;
+              const samePath = normalizePath(targetUrl.pathname) === normalizePath(currentUrl.pathname);
+              return sameOrigin && samePath;
+            } catch (_err) {
+              return false;
+            }
+          };
+          const validItems = list.filter(item => {
+            const label = String(item && item.label ? item.label : '').trim();
+            const url = String(item && item.url ? item.url : '').trim();
+            return Boolean(label && url);
+          });
+          const navigableItems = validItems.filter(item => !isCurrentFeatureUrl(item.url));
           featureMenuSelect.innerHTML = '';
           const placeholder = document.createElement('option');
           placeholder.value = '';
           placeholder.textContent = 'Open...';
           featureMenuSelect.appendChild(placeholder);
-          list.forEach(item => {
+          validItems.forEach(item => {
             const label = String(item && item.label ? item.label : '').trim();
             const url = String(item && item.url ? item.url : '').trim();
             const target = String(item && item.target ? item.target : '_self').trim() || '_self';
@@ -204,7 +601,7 @@ limitations under the License.
             option.dataset.target = target;
             featureMenuSelect.appendChild(option);
           });
-          const hasItems = featureMenuSelect.options.length > 1;
+          const hasItems = navigableItems.length > 0;
           featureMenuGroup.classList.toggle('hidden', !hasItems);
           featureMenuSelect.selectedIndex = 0;
         }
@@ -314,7 +711,7 @@ limitations under the License.
               const td = document.createElement('td');
               if (col === 'folder') td.textContent = row.folder || '';
               else if (col === 'filename') td.textContent = row.filename || '';
-              else if (col === 'last_edited') td.textContent = row.last_edited || '';
+              else if (col === 'last_edited') td.textContent = formatCatalogTimestamp(row.last_edited || '');
               else td.textContent = (row.metadata && row.metadata[col]) || '';
               tr.appendChild(td);
             });
@@ -331,7 +728,12 @@ limitations under the License.
             return;
           }
           const payload = await resp.json();
-          state.columns = Array.isArray(payload.columns) ? payload.columns : [];
+          const availableColumns = normalizeColumns(payload.columns);
+          state.columns = sanitizeColumnOrder(
+            readStoredColumnOrder(availableColumns),
+            availableColumns
+          );
+          state.columnFilters = normalizeColumnFilters(state.columnFilters, state.columns);
           state.rows = Array.isArray(payload.rows) ? payload.rows : [];
           renderHeader();
           renderBody();
@@ -361,6 +763,9 @@ limitations under the License.
         if (featureMenuSelect) {
           featureMenuSelect.addEventListener('change', onFeatureMenuChange);
         }
+        if (reloadUiButton) {
+          reloadUiButton.addEventListener('click', reloadUiWithCacheBust);
+        }
         [document.getElementById('catalogReadonlyCloseTop'), document.getElementById('catalogReadonlyCloseBottom')].forEach(button => {
           if (!button) return;
           button.addEventListener('click', closeReadonlyViewer);
@@ -377,6 +782,7 @@ limitations under the License.
             closeReadonlyViewer();
           }
         });
+        installGlobalUiErrorHandlers();
         loadUiFeatures().then(loadRows);
       })();
     </script>
