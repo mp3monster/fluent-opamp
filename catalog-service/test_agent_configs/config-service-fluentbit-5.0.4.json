@@ -1,0 +1,49 @@
+{
+  "version": "5.0.4",
+  "configType": "fluentbit",
+  "config": {
+    "service": {
+      "grace": 0,
+      "_meta": {
+        "comment_lines": [
+          "a service level comment"
+        ],
+        "field_comment_lines": {
+          "grace": [
+            "optional comment"
+          ]
+        }
+      }
+    },
+    "pipeline": {
+      "inputs": [
+        {
+          "name": "exec",
+          "processors": {
+            "logs": [],
+            "metrics": [],
+            "traces": []
+          },
+          "command": "ls -al",
+          "_meta": {}
+        },
+        {
+          "name": "dummy",
+          "processors": {
+            "logs": [],
+            "metrics": [],
+            "traces": []
+          },
+          "fixed_timestamp": false,
+          "_meta": {}
+        }
+      ],
+      "filters": [],
+      "outputs": []
+    },
+    "labels": [],
+    "workers": [],
+    "includes": []
+  },
+  "annotations": {}
+}

@@ -1,0 +1,43 @@
+// config-service: config_type=fluentbit
+// config-service: version=5.0.4
+{
+  "version": "5.0.4",
+  "configType": "fluentbit",
+  "config": {
+    "service": {
+      "flush": 1,
+      "_meta": {}
+    },
+    "pipeline": {
+      "inputs": [
+        {
+          "name": "dummy",
+          "_meta": {
+            "field_comment_lines": {
+              "dummy": [
+                "blah"
+              ]
+            }
+          },
+          "processors": {
+            "logs": [
+              {
+                "name": "modify",
+                "_meta": {}
+              }
+            ],
+            "metrics": [],
+            "traces": []
+          },
+          "dummy": "{\"message\":\"dummy\"}"
+        }
+      ],
+      "filters": [],
+      "outputs": []
+    },
+    "labels": [],
+    "workers": [],
+    "includes": []
+  },
+  "annotations": {}
+}
