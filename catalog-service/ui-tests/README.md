@@ -13,10 +13,12 @@ Current coverage:
 - feature-menu navigation from catalog to config-service UI
 - row-click editor navigation when config-service is available
 - row-click readonly fallback when config-service is not available
+- standalone provider link visibility rules
+- discovered-value dropdown column filters (`config_type`, `engine`, `version`)
+- column drag-and-drop reordering persistence
+- reload UI cache-busting behavior
+- standalone client error reporting endpoint wiring
 
-Scenario maintenance documents live in:
+Canonical scenario and maintenance reference:
 
-- `docs/freestanding-catalog-feature-menu-with-config-service.md`
-- `docs/freestanding-catalog-feature-menu-navigation-to-config-service.md`
-- `docs/freestanding-catalog-row-click-opens-config-editor.md`
-- `docs/freestanding-catalog-row-click-opens-readonly-viewer.md`
+- `../docs/TEST_CASES.md`

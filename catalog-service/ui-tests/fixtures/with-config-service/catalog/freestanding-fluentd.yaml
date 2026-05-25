@@ -1,0 +1,7 @@
+# config-service: config_type=fluentd
+# config-service: engine=fluentd
+# config-service: version=1.16
+<source>
+  @type tail
+  path /var/log/messages
+</source>

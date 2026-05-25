@@ -1,4 +1,5 @@
 # config-service: config_type=fluentbit
+# config-service: engine=fluentbit
 # config-service: version=5.0.4
 service:
   flush: 1
