@@ -1,3 +1,11 @@
+"""Fluentd config parser/renderer for the config-service normalization layer.
+
+This service translates between raw Fluentd `.conf` text and the normalized
+dictionary model used throughout the OpAMP tooling stack. The normalized shape
+lets CLI and API consumers use one consistent contract for validation,
+transformation, and round-trip rendering across multiple config formats.
+"""
+
 from __future__ import annotations
 
 import json
@@ -7,6 +15,8 @@ from typing import Any
 
 LOGGER = logging.getLogger(__name__)
 
+# Fluentd directive identifiers used while parsing and rendering directive
+# trees, including top-level pipeline directives and nested plugin sections.
 DIRECTIVE_NAME_ROOT = "__root__"
 DIRECTIVE_INCLUDE = "@include"
 DIRECTIVE_SYSTEM = "system"
@@ -28,6 +38,7 @@ DIRECTIVE_EXCLUDE = "exclude"
 DIRECTIVE_SECONDARY = "secondary"
 DIRECTIVE_STORE = "store"
 
+# Canonical normalized-payload keys shared with the config-service contracts.
 KEY_NAME = "name"
 KEY_ARG = "arg"
 KEY_PARAMS = "params"
@@ -53,6 +64,7 @@ KEY_PATH = "path"
 KEY_META = "_meta"
 KEY_AT_TYPE = "@type"
 
+# Scalar and formatting helpers for safe Fluentd round-trip rendering.
 SCALAR_TRUE = "true"
 SCALAR_FALSE = "false"
 EMPTY_JSON_OBJECT = "{}"
@@ -65,15 +77,18 @@ COMMENT_PREFIX = "#"
 DQUOTE = '"'
 SQUOTE = "'"
 
+# Directive tokenization patterns for opening and closing Fluentd sections.
 DIRECTIVE_START = re.compile(r"^<(?P<name>[@A-Za-z_][\w@-]*)(?:\s+(?P<arg>.*?))?>$")
 DIRECTIVE_END = re.compile(r"^</(?P<name>[@A-Za-z_][\w@-]*)>$")
 
+# Mapping from Fluentd section names to normalized pipeline collections.
 SECTION_TO_PIPELINE = {
     "source": KEY_INPUTS,
     DIRECTIVE_FILTER: KEY_FILTERS,
     DIRECTIVE_MATCH: KEY_OUTPUTS,
 }
 
+# Fluentd child directives that are represented under plugin `children`.
 SPECIAL_CHILDREN = {
     DIRECTIVE_PARSE,
     DIRECTIVE_BUFFER,
@@ -90,6 +105,7 @@ SPECIAL_CHILDREN = {
     DIRECTIVE_STORE,
 }
 
+# Specialized render/parse behavior switches for nested directives.
 NESTED_OUTPUT_DIRECTIVES = {DIRECTIVE_STORE, DIRECTIVE_SECONDARY}
 DIRECTIVE_ARG_SECTIONS = {DIRECTIVE_FILTER, DIRECTIVE_MATCH}
 ARG_RENDER_SECTIONS = {DIRECTIVE_FILTER, DIRECTIVE_MATCH}

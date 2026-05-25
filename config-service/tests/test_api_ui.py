@@ -91,7 +91,11 @@ async def test_component_entry_points_can_disable_ui_routes(
     client = app.test_client()
 
     ui = await client.get("/config-service/ui")
-    assert ui.status_code == 404
+    assert ui.status_code in {301, 302, 307, 308}
+    assert ui.headers["Location"].startswith(
+        "https://htmlpreview.github.io/?https://raw.githubusercontent.com/"
+        "mp3monster/fluent-opamp/main/github-landingpage/index.html"
+    )
 
     health = await client.get("/config-service/api/v1/health")
     assert health.status_code == 200

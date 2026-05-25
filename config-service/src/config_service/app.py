@@ -20,7 +20,7 @@ import os
 import sys
 from pathlib import Path
 
-from quart import Quart, Response, jsonify, request, send_from_directory
+from quart import Quart, Response, jsonify, redirect, request, send_from_directory
 
 ROOT_PATH = Path(__file__).resolve().parents[3]
 if str(ROOT_PATH) not in sys.path:
@@ -88,6 +88,10 @@ CONFIG_SERVICE_UI_CSS_OVERRIDE_PATH_ENV = "CONFIG_SERVICE_UI_CSS_OVERRIDE_PATH"
 CONFIG_SERVICE_UI_CSS_OVERRIDES_ENV = "CONFIG_SERVICE_UI_CSS_OVERRIDES"
 CONFIG_SERVICE_UI_CSS_OVERRIDES_KEY = "CONFIG_SERVICE_UI_CSS_OVERRIDES"
 _ENV_TRUE_VALUES = {"1", "true", "yes", "on"}
+LANDING_PAGE_REDIRECT_URL = (
+    "https://htmlpreview.github.io/?https://raw.githubusercontent.com/"
+    "mp3monster/fluent-opamp/main/github-landingpage/index.html"
+)
 
 
 def _config_service_root() -> Path:
@@ -312,6 +316,17 @@ def create_app(*, mode: str = "standalone") -> Quart:
             if result.www_authenticate:
                 response.headers[HEADER_WWW_AUTHENTICATE] = result.www_authenticate
             return response, result.status_code
+
+    @app.errorhandler(404)
+    async def redirect_unknown_config_service_route(_: object) -> Response:
+        """Redirect unknown config-service routes to the shared landing page."""
+        app.logger.info(
+            "config-service 404 redirect path=%s remote_addr=%s target=%s",
+            request.path,
+            request.remote_addr,
+            LANDING_PAGE_REDIRECT_URL,
+        )
+        return redirect(LANDING_PAGE_REDIRECT_URL)
 
     register_component_entry_points(app)
 
