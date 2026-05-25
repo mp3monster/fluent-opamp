@@ -4,108 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Fluent OpAMP Landing</title>
-    <style>
-      :root {
-        --text: #18212f;
-        --muted: #5b6470;
-        --border: #d6dce8;
-        --panel-bg: #ffffff;
-        --panel-soft: #f7f9ff;
-      }
-
-      * {
-        box-sizing: border-box;
-      }
-
-      body {
-        margin: 0;
-        font-family: "Space Grotesk", "Trebuchet MS", sans-serif;
-        color: var(--text);
-        background: radial-gradient(circle at top left, #e7eeff 0%, #f5f7fb 55%, #fff4d8 100%);
-        min-height: 100vh;
-      }
-
-      main {
-        max-width: 1120px;
-        margin: 0 auto;
-        padding: 2rem 1.25rem 2.5rem;
-      }
-
-      .logo-wrap {
-        text-align: center;
-        margin-bottom: 1.25rem;
-      }
-
-      .logo-wrap img {
-        width: min(380px, 80vw);
-        height: auto;
-        display: inline-block;
-      }
-
-      h1 {
-        margin: 0 0 0.4rem;
-        text-align: center;
-        font-size: clamp(1.35rem, 3vw, 2rem);
-      }
-
-      .subtitle {
-        margin: 0 0 1.6rem;
-        text-align: center;
-        color: var(--muted);
-      }
-
-      .grid {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 1rem;
-      }
-
-      .card {
-        background: linear-gradient(180deg, var(--panel-soft) 0%, var(--panel-bg) 65%);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 0.95rem 1rem;
-      }
-
-      .card h2 {
-        margin: 0 0 0.6rem;
-        font-size: 1rem;
-      }
-
-      ul {
-        list-style: none;
-        margin: 0;
-        padding: 0;
-      }
-
-      li + li {
-        margin-top: 0.45rem;
-      }
-
-      a {
-        color: #1844af;
-        text-decoration: none;
-      }
-
-      a:hover,
-      a:focus {
-        text-decoration: underline;
-      }
-
-      @media (max-width: 900px) {
-        .grid {
-          grid-template-columns: 1fr;
-        }
-      }
-
-      .footer {
-        margin-top: 1.25rem;
-        padding: 0.75rem 0.25rem 0.1rem;
-        text-align: center;
-        color: var(--muted);
-        font-size: 0.9rem;
-      }
-    </style>
+    <link rel="stylesheet" href="./landing.css" />
   </head>
   <body>
     <main>
@@ -142,6 +41,9 @@
             <li><a href="https://github.com/mp3monster/fluent-opamp/tree/main/catalog-service/docs" target="_blank" rel="noopener noreferrer">Catalog Service Docs</a></li>
             <li><a href="https://github.com/mp3monster/fluent-opamp/tree/main/cli/docs" target="_blank" rel="noopener noreferrer">CLI Docs</a></li>
             <li><a href="https://github.com/mp3monster/fluent-opamp/tree/main/quick-references" target="_blank" rel="noopener noreferrer">Quick References</a></li>
+            <li><a href="https://raw.githack.com/mp3monster/fluent-opamp/main/quick-references/html/fluentbit-3-2-10-schema-quick-reference.html" target="_blank" rel="noopener noreferrer">Quick Reference Rendered: Fluent Bit 3.2.10</a></li>
+            <li><a href="https://raw.githack.com/mp3monster/fluent-opamp/main/quick-references/html/fluentbit-4-2-4-schema-quick-reference.html" target="_blank" rel="noopener noreferrer">Quick Reference Rendered: Fluent Bit 4.2.4</a></li>
+            <li><a href="https://raw.githack.com/mp3monster/fluent-opamp/main/quick-references/html/fluentbit-5-0-4-schema-quick-reference.html" target="_blank" rel="noopener noreferrer">Quick Reference Rendered: Fluent Bit 5.0.4</a></li>
           </ul>
         </article>
 

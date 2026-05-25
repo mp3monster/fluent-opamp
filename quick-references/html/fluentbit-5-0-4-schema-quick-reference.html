@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>fluentbit 5 0 4 schema quick reference</title>
+    <link rel="stylesheet" href="../../github-landingpage/landing.css" />
+    <style>
+      .doc-card {
+        background: #ffffff;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1rem 1.1rem;
+      }
+
+      .doc-header {
+        margin-bottom: 1rem;
+      }
+
+      .doc-header h1 {
+        margin: 0;
+        text-align: left;
+        font-size: 1.45rem;
+      }
+
+      .doc-meta {
+        margin-top: 0.3rem;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .doc-content {
+        line-height: 1.5;
+      }
+
+      .doc-content pre {
+        overflow-x: auto;
+        padding: 0.8rem;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: #f7f9ff;
+      }
+
+      .doc-content code {
+        font-family: "IBM Plex Mono", "Cascadia Code", Consolas, monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="doc-card">
+        <header class="doc-header">
+          <h1>fluentbit 5 0 4 schema quick reference</h1>
+          <div class="doc-meta">Source: <a href="../fluentbit-5-0-4-schema-quick-reference.md">../fluentbit-5-0-4-schema-quick-reference.md</a></div>
+        </header>
+        <article id="content" class="doc-content">Loading markdown...</article>
+      </section>
+
+      <footer class="footer">
+        <div>
+          Licensed under Apache 2.0 • Attribution:
+          <a href="https://mp3monster.org" target="_blank" rel="noopener noreferrer">mp3monster.org</a>
+        </div>
+      </footer>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+      (async function () {
+        const target = document.getElementById("content");
+        try {
+          const response = await fetch("../fluentbit-5-0-4-schema-quick-reference.md", { cache: "no-store" });
+          if (!response.ok) {
+            throw new Error("Failed to load markdown: " + response.status);
+          }
+          const markdown = await response.text();
+          target.innerHTML = marked.parse(markdown);
+        } catch (error) {
+          target.textContent = String(error && error.message ? error.message : error);
+        }
+      })();
+    </script>
+  </body>
+</html>
