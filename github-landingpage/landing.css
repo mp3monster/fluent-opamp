@@ -71,6 +71,12 @@ ul {
   padding: 0;
 }
 
+.card ul ul {
+  list-style: disc;
+  margin-top: 0.45rem;
+  padding-left: 1.3rem;
+}
+
 li + li {
   margin-top: 0.45rem;
 }
