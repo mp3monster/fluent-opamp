@@ -31,7 +31,7 @@ catalog-service = "catalog_service.app:main"
 package-dir = {"" = "src"}
 
 [tool.setuptools.package-data]
-catalog_service = ["config/*.json", "html/*.html"]
+catalog_service = ["config/*.json", "html/*.html", "html/*.css", "html/*.png"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

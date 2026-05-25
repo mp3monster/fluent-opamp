@@ -50,6 +50,8 @@ setup(
         "catalog_service": [
             "config/*.json",
             "html/*.html",
+            "html/*.css",
+            "html/*.png",
         ],
     },
     install_requires=[
