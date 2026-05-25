@@ -15,10 +15,12 @@ from __future__ import annotations
 import asyncio
 import threading
 from types import SimpleNamespace
+from typing import Any, cast
 
 import pytest
 
 from opamp_consumer.client_mixins import ClientRuntimeMixin
+from opamp_consumer.config import ConsumerConfig
 from opamp_consumer.proto import opamp_pb2
 
 
@@ -31,16 +33,22 @@ class _HeartbeatLoopHarness(ClientRuntimeMixin):
         send_outcomes: list[object],
         poll_outcomes: list[object] | None = None,
     ) -> None:
-        self.config = SimpleNamespace(
+        self._config = cast(
+            ConsumerConfig,
+            SimpleNamespace(
             heartbeat_frequency=1,
             log_agent_api_responses=False,
+            ),
         )
-        self.data = SimpleNamespace(
+        self.data = cast(
+            Any,
+            SimpleNamespace(
             allow_heartbeat=True,
             process_lock=threading.RLock(),
             last_heartbeat_results={},
             last_heartbeat_http_codes={},
             logFLB=False,
+            ),
         )
         self._send_outcomes = list(send_outcomes)
         self._poll_outcomes = list(poll_outcomes or [])
@@ -49,6 +57,10 @@ class _HeartbeatLoopHarness(ClientRuntimeMixin):
         self.poll_calls = 0
         self.handle_calls = 0
         self.version_calls = 0
+
+    @property
+    def config(self) -> ConsumerConfig:
+        return self._config
 
     async def _send_disconnect_with_timeout(self, timeout_seconds: float = 1.0) -> None:
         self.disconnect_calls += 1

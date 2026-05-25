@@ -11,10 +11,12 @@
 # limitations under the License.
 
 import pytest
+from typing import cast
 from opamp_consumer.config import ConsumerConfig
 from opamp_consumer.custom_handlers import build_factory_lookup, create_handler
 from opamp_consumer.custom_handlers.shutdowncommand import ShutdownCommand
 from opamp_consumer.fluentbit_client import OpAMPClientData
+from opamp_consumer.opamp_client_interface import OpAMPClientInterface
 
 
 def _make_client_data() -> OpAMPClientData:
@@ -24,7 +26,7 @@ def _make_client_data() -> OpAMPClientData:
         agent_config_path="unused",
         agent_additional_params=[],
         heartbeat_frequency=30,
-        agent_capabilities=["ReportsStatus"],
+        agent_capabilities=0,
         allow_custom_capabilities=True,
         log_level="debug",
     )
@@ -98,7 +100,7 @@ def test_shutdowncommand_execute_action_disconnects_and_exits(monkeypatch) -> No
     )
 
     with pytest.raises(_ExitCalled):
-        handler.execute_action("shutdown", fake_client)
+        handler.execute_action("shutdown", cast(OpAMPClientInterface, fake_client))
 
     assert data.allow_heartbeat is False
     assert fake_client.disconnect_calls == 1
@@ -125,7 +127,7 @@ def test_shutdowncommand_execute_action_raises_on_disconnect_error(
     )
 
     with pytest.raises(RuntimeError, match="disconnect-failed"):
-        handler.execute_action("shutdown", fake_client)
+        handler.execute_action("shutdown", cast(OpAMPClientInterface, fake_client))
 
     assert data.allow_heartbeat is False
     assert fake_client.disconnect_calls == 1
@@ -165,7 +167,7 @@ def test_shutdowncommand_execute_action_times_out_on_slow_disconnect(
     )
 
     with pytest.raises(TimeoutError, match="timed out"):
-        handler.execute_action("shutdown", fake_client)
+        handler.execute_action("shutdown", cast(OpAMPClientInterface, fake_client))
 
     assert data.allow_heartbeat is False
     assert fake_client.disconnect_calls == 1

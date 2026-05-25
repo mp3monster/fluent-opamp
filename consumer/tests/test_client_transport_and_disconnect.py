@@ -15,8 +15,10 @@ import logging
 
 import httpx
 import opamp_consumer.abstract_client as abstract_client
+import opamp_consumer.client_observer_mixin as client_observer_mixin
 import opamp_consumer.client_mixins as client_mixins
 import opamp_consumer.fluentbit_client as client
+import opamp_consumer.process_utils as process_utils
 import pytest
 from opamp_consumer.exceptions import AgentException
 from opamp_consumer.proto import opamp_pb2
@@ -207,6 +209,45 @@ def test_restart_agent_process_raises_on_failed_launch(monkeypatch) -> None:
 
     with pytest.raises(AgentException):
         instance.restart_agent_process()
+
+
+def test_observer_launch_agent_process_uses_regex_process_detection(monkeypatch) -> None:
+    """Observer mode launch should attach to pid discovered by regex."""
+    instance = client.OpAMPClient("http://localhost")
+    instance.config.process_tracking = "observer"
+    instance.config.process_detection_regex = r"fluent-bit\\s+-c"
+
+    monkeypatch.setattr(
+        process_utils.ProcessUtils,
+        "find_pid_by_regex",
+        lambda pattern: 4242 if pattern == r"fluent-bit\\s+-c" else None,
+    )
+
+    assert instance.launch_agent_process() is True
+    assert instance.data.observed_process_pid == 4242
+    assert instance.data.agent_process is None
+
+
+def test_observer_restart_process_calls_terminate_then_launch(monkeypatch) -> None:
+    """Observer restart should terminate, wait, and relaunch via same strategy."""
+    instance = client.OpAMPClient("http://localhost")
+    instance.config.process_tracking = "observer"
+    instance.config.process_detection_regex = r"agent"
+    calls = {"terminate": 0, "launch": 0}
+
+    def _terminate(self) -> None:
+        calls["terminate"] += 1
+
+    def _launch(self) -> bool:
+        calls["launch"] += 1
+        return True
+
+    monkeypatch.setattr(client_mixins.ClientObserverMixin, "terminate_agent_process", _terminate)
+    monkeypatch.setattr(client_mixins.ClientObserverMixin, "launch_agent_process", _launch)
+    monkeypatch.setattr(client_observer_mixin.time, "sleep", lambda _seconds: None)
+
+    assert instance.restart_agent_process() is True
+    assert calls == {"terminate": 1, "launch": 1}
 
 
 def test_send_http_passes_authorization_header_for_env_var_mode(monkeypatch) -> None:

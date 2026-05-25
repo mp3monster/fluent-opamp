@@ -91,6 +91,24 @@ Default config resolution:
 - Fluentd supervisor: `consumer/opamp-fluentd.json` -> `tests/opamp.json` -> `config/opamp.json`
 - Fluentd runtime config path: `consumer/fluentd.conf`
 
+## Process Tracking Modes
+
+The consumer supports two runtime process tracking strategies:
+
+- `Supervisor` (default): launches and manages the agent process directly.
+- `Observer`: does not launch a process; instead, discovers and tracks an external process by regex.
+
+Configuration keys:
+
+- `consumer.processTracking`: `Supervisor` or `Observer` (case-insensitive)
+- `consumer.processDetectionRegex`: required when `processTracking=Observer`
+
+Observer behavior:
+
+- launch attaches to a running process resolved from `processDetectionRegex`
+- restart uses terminate/reattach flow via process utilities
+- terminate attempts graceful signal first (when supported) and then force termination if needed
+
 ## Semaphore Shutdown File
 
 The agent can be shutdown through the use of a Semaphore file in the event of having problems communicating with the agent properly. The consumer checks for a local semaphore file named:
@@ -169,6 +187,7 @@ That guide includes:
     "log_agent_api_responses": false,
     "agent_config_path": "./fluent-bit.conf",
     "agent_additional_params": ["-R"],
+    "processTracking": "Supervisor",
     "heartbeat_frequency": 30,
     "full_update_controller": {
       "fullResendAfter": 1
@@ -192,6 +211,8 @@ That guide includes:
 | `consumer.server_port` | integer | Yes (`--server-port`) | Optional port hint used by startup logic. | `4320` |
 | `consumer.agent_config_path` | string | Yes (`--agent-config-path`) | Path to agent config file loaded by consumer. | `"./fluent-bit.conf"` |
 | `consumer.agent_additional_params` | array[string] | Yes (`--agent-additional-params`) | Extra args passed to the launched agent process. | `["-R"]` |
+| `consumer.processTracking` | string | No | Process lifecycle strategy: `Supervisor` or `Observer`. Defaults to `Supervisor`. | `"Supervisor"` |
+| `consumer.processDetectionRegex` | string | No | Required when `processTracking=Observer`; regex used to detect/attach to an already-running process. | `"fluent-bit\\s+-c"` |
 | `consumer.heartbeat_frequency` | integer | Yes (`--heartbeat-frequency`) | Heartbeat interval in seconds. | `30` |
 | `consumer.full_update_controller` | object | Yes (`--full-update-controller`, JSON string) | Full update controller settings. `fullResendAfter` controls when all reporting flags are reset to `true`. | `{"fullResendAfter":1}` |
 | `consumer.full_update_controller_type` | string | No | Full update controller implementation name (`SentCount`, `AlwaysSend`, `TimeSend`). | `"SentCount"` |

@@ -12,6 +12,7 @@
 
 import json
 import logging
+from typing import cast
 
 from opamp_consumer.config import ConsumerConfig
 from opamp_consumer.custom_handlers.chatops_command import ChatOpsCommand
@@ -27,7 +28,7 @@ def _make_client_data() -> OpAMPClientData:
         agent_config_path="unused",
         agent_additional_params=[],
         heartbeat_frequency=30,
-        agent_capabilities=["ReportsStatus"],
+        agent_capabilities=0,
         allow_custom_capabilities=True,
         log_level="debug",
     )
@@ -171,12 +172,14 @@ def test_chatops_execute_action_reports_failure_custom_message(monkeypatch) -> N
     returned = handler.execute_action("run", fake_client)
 
     assert captured["url"] == "http://localhost:8888/events"
-    assert json.loads(captured["content"].decode("utf-8")) == {
+    content = cast(bytes, captured["content"])
+    headers = cast(dict[str, str], captured["headers"])
+    assert json.loads(content.decode("utf-8")) == {
         "service": "orders",
         "count": 1,
     }
-    assert captured["headers"]["Content-Type"] == "application/json"
-    assert captured["headers"]["Content-Length"] == str(len(captured["content"]))
+    assert headers["Content-Type"] == "application/json"
+    assert headers["Content-Length"] == str(len(content))
     assert captured["timeout"] == 5.0
     assert len(fake_client.sent_messages) == 0
     assert returned is not None

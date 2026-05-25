@@ -50,7 +50,7 @@ class _HttpsOpAMPHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(response_payload)
 
-    def log_message(self, _format: str, *args) -> None:
+    def log_message(self, format: str, *args) -> None:  # noqa: A002
         return None
 
 
@@ -295,7 +295,8 @@ def test_send_http_message_performs_real_https_handshake_with_tls_verify_disable
 
         server, server_thread = _start_https_server(cert_file, key_file)
         try:
-            server_host, server_port = server.server_address
+            server_host = str(server.server_address[0])
+            server_port = int(server.server_address[1])
             msg = opamp_pb2.AgentToServer()
             msg.instance_uid = b"https-real-handshake"
 

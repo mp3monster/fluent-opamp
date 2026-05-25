@@ -27,7 +27,7 @@ def test_main_help_prints_config_parameters_and_skips_client(
         agent_config_path="unused",
         agent_additional_params=[],
         heartbeat_frequency=30,
-        agent_capabilities=["ReportsStatus"],
+        agent_capabilities=0,
         log_level="debug",
     )
     monkeypatch.setattr(
@@ -102,7 +102,7 @@ def test_load_config_from_cli_args_maps_overrides(monkeypatch) -> None:
         agent_config_path="consumer/fluent-bit.yaml",
         agent_additional_params=["--dry-run"],
         heartbeat_frequency=15,
-        agent_capabilities=["ReportsStatus"],
+        agent_capabilities=0,
         log_level="info",
     )
 

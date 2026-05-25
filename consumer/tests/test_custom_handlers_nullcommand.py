@@ -12,11 +12,13 @@
 
 import json
 import logging
+from typing import cast
 
 from opamp_consumer.config import ConsumerConfig
 from opamp_consumer.custom_handlers import build_factory_lookup
 from opamp_consumer.custom_handlers.nullcommand import NullCommand
 from opamp_consumer.fluentbit_client import OpAMPClientData
+from opamp_consumer.opamp_client_interface import OpAMPClientInterface
 from opamp_consumer.proto import opamp_pb2
 
 
@@ -27,7 +29,7 @@ def _make_client_data() -> OpAMPClientData:
         agent_config_path="unused",
         agent_additional_params=[],
         heartbeat_frequency=30,
-        agent_capabilities=["ReportsStatus"],
+        agent_capabilities=0,
         allow_custom_capabilities=True,
         log_level="debug",
     )
@@ -60,7 +62,7 @@ def test_nullcommand_execute_logs_dummy_value(caplog) -> None:
     ).encode("utf-8")
     handler.set_custom_message_handler(payload)
 
-    result = handler.execute(object())
+    result = handler.execute(cast(OpAMPClientInterface, object()))
 
     assert result is None
     assert "dummyValue=log-me" in caplog.text

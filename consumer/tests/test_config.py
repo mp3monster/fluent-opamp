@@ -79,6 +79,60 @@ def test_service_type_defaults_to_fluentbit_when_missing(tmp_path, monkeypatch) 
     assert loaded.service_type == consumer_config.SERVICE_TYPE_FLUENTBIT
 
 
+def test_process_tracking_defaults_to_supervisor_when_missing(
+    tmp_path, monkeypatch
+) -> None:
+    """Consumer process_tracking should default to supervisor when omitted."""
+    config_path = tmp_path / "opamp.json"
+    config_path.write_text(
+        json.dumps(_base_consumer_config(), indent=2),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv(consumer_config.ENV_OPAMP_CONFIG_PATH, str(config_path))
+
+    loaded = consumer_config.load_config()
+
+    assert loaded.process_tracking == consumer_config.PROCESS_TRACKING_SUPERVISOR
+    assert loaded.process_detection_regex is None
+
+
+def test_process_tracking_observer_requires_detection_regex(
+    tmp_path, monkeypatch
+) -> None:
+    """Observer process tracking mode must include processDetectionRegex."""
+    raw = _base_consumer_config()
+    raw["consumer"]["processTracking"] = "Observer"
+    config_path = tmp_path / "opamp.json"
+    config_path.write_text(json.dumps(raw, indent=2), encoding="utf-8")
+    monkeypatch.setenv(consumer_config.ENV_OPAMP_CONFIG_PATH, str(config_path))
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            "consumer.processDetectionRegex is required when "
+            "consumer.processTracking=observer"
+        ),
+    ):
+        consumer_config.load_config()
+
+
+def test_process_tracking_observer_loads_detection_regex(
+    tmp_path, monkeypatch
+) -> None:
+    """Observer process tracking should load regex when provided."""
+    raw = _base_consumer_config()
+    raw["consumer"]["processTracking"] = "observer"
+    raw["consumer"]["processDetectionRegex"] = r"fluent-bit\\s+-c"
+    config_path = tmp_path / "opamp.json"
+    config_path.write_text(json.dumps(raw, indent=2), encoding="utf-8")
+    monkeypatch.setenv(consumer_config.ENV_OPAMP_CONFIG_PATH, str(config_path))
+
+    loaded = consumer_config.load_config()
+
+    assert loaded.process_tracking == consumer_config.PROCESS_TRACKING_OBSERVER
+    assert loaded.process_detection_regex == r"fluent-bit\\s+-c"
+
+
 def test_service_type_simulator_requires_responses_path(tmp_path, monkeypatch) -> None:
     """Simulator mode must provide consumer.simulator_responses_path."""
     raw = _base_consumer_config()

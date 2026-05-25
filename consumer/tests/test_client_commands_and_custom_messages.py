@@ -11,9 +11,13 @@
 # limitations under the License.
 
 import logging
+from typing import cast
 
 import opamp_consumer.fluentbit_client as client
 import pytest
+from opamp_consumer.custom_handlers.handler_interface import (
+    CustomMessageHandlerInterface,
+)
 from opamp_consumer.exceptions import AgentException
 from opamp_consumer.proto import opamp_pb2
 
@@ -103,9 +107,13 @@ def test_get_custom_capabilities_payload_from_registry() -> None:
     """Build custom capability payload from registered custom handlers."""
     instance = client.OpAMPClient("http://localhost")
     instance._custom_handler_lookup = {
-        "org.mp3monster.opamp_provider.command_shutdown_agent": object,
-        "org.mp3monster.opamp_provider.chatopcommand": object,
-        "": object,
+        "org.mp3monster.opamp_provider.command_shutdown_agent": cast(
+            type[CustomMessageHandlerInterface], object
+        ),
+        "org.mp3monster.opamp_provider.chatopcommand": cast(
+            type[CustomMessageHandlerInterface], object
+        ),
+        "": cast(type[CustomMessageHandlerInterface], object),
     }
 
     payload = instance.get_custom_capabilities_payload()
@@ -120,8 +128,12 @@ def test_populate_agent_to_server_includes_custom_capabilities() -> None:
     """Populate AgentToServer with custom capabilities from handler registry."""
     instance = client.OpAMPClient("http://localhost")
     instance._custom_handler_lookup = {
-        "org.mp3monster.opamp_provider.command_shutdown_agent": object,
-        "org.mp3monster.opamp_provider.chatopcommand": object,
+        "org.mp3monster.opamp_provider.command_shutdown_agent": cast(
+            type[CustomMessageHandlerInterface], object
+        ),
+        "org.mp3monster.opamp_provider.chatopcommand": cast(
+            type[CustomMessageHandlerInterface], object
+        ),
     }
     message = opamp_pb2.AgentToServer()
 

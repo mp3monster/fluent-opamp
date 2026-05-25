@@ -11,6 +11,7 @@
 # limitations under the License.
 
 import logging
+from typing import cast
 
 from opamp_consumer.config import ConsumerConfig
 from opamp_consumer.custom_handlers import create_handler, discover_handlers
@@ -27,7 +28,7 @@ def _make_client_data() -> OpAMPClientData:
         agent_config_path="unused",
         agent_additional_params=[],
         heartbeat_frequency=30,
-        agent_capabilities=["ReportsStatus"],
+        agent_capabilities=0,
         allow_custom_capabilities=True,
         log_level="debug",
     )
@@ -133,7 +134,7 @@ class SampleHandler(CustomMessageHandlerInterface):
     )
     assert instance is not None
     assert instance.get_fqdn() == "sample.handler"
-    assert instance._data is not None
+    assert getattr(instance, "_data", None) is not None
 
 
 def test_registry_ignores_missing_folder(tmp_path) -> None:
