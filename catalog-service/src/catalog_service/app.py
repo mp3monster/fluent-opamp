@@ -20,7 +20,7 @@ import sys
 from http import HTTPStatus
 from pathlib import Path
 
-from quart import Quart, Response, jsonify, request
+from quart import Quart, Response, jsonify, redirect, request
 
 ROOT_PATH = Path(__file__).resolve().parents[3]
 if str(ROOT_PATH) not in sys.path:
@@ -53,6 +53,10 @@ MENU_ITEM_TARGET_SELF = "_self"
 RESPONSE_KEY_ITEMS = "items"
 RESPONSE_KEY_COMPONENT_ENTRY_POINTS_REGISTERED = "component_entry_points_registered"
 RESPONSE_KEY_ERROR = "error"
+LANDING_PAGE_REDIRECT_URL = (
+    "https://htmlpreview.github.io/?https://raw.githubusercontent.com/"
+    "mp3monster/fluent-opamp/main/github-landingpage/index.html"
+)
 
 
 def _component_root() -> Path:
@@ -247,6 +251,17 @@ def create_app(*, mode: str = "standalone", config_path: str | None = None) -> Q
             app.config.get(APP_CONFIG_KEY_MODE),
             app.extensions.get(APP_EXTENSION_CONFIG_PATH),
         )
+
+    @app.errorhandler(404)
+    async def redirect_unknown_catalog_route(_: object) -> Response:
+        """Redirect unknown catalog routes to the shared landing page."""
+        app.logger.info(
+            "catalog 404 redirect path=%s remote_addr=%s target=%s",
+            request.path,
+            request.remote_addr,
+            LANDING_PAGE_REDIRECT_URL,
+        )
+        return redirect(LANDING_PAGE_REDIRECT_URL)
 
     return app
 

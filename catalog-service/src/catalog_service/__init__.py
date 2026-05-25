@@ -13,6 +13,14 @@
 """Standalone catalog-service component package."""
 
 from catalog_service.app import create_app, register_catalog_component
+from catalog_service.config_classifiers import (
+    CompositeConfigClassifier,
+    ConfigClassification,
+    ConfigClassifier,
+    FluentBitClassicConfigClassifier,
+    FluentBitYamlConfigClassifier,
+    FluentdConfigClassifier,
+)
 from catalog_service.config import (
     CATALOG_COMPONENT_ENTRY_POINT,
     CatalogSource,
@@ -25,9 +33,15 @@ from catalog_service.service import CatalogFileIndexService
 
 __all__ = [
     "CATALOG_COMPONENT_ENTRY_POINT",
+    "CompositeConfigClassifier",
+    "ConfigClassification",
+    "ConfigClassifier",
     "CatalogFileIndexService",
     "CatalogSource",
     "CatalogServiceConfig",
+    "FluentBitClassicConfigClassifier",
+    "FluentBitYamlConfigClassifier",
+    "FluentdConfigClassifier",
     "catalog_component_entry_from_payload",
     "create_app",
     "load_catalog_service_config",

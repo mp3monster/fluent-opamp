@@ -15,14 +15,19 @@
 from __future__ import annotations
 
 import datetime
+import io
+import logging
 import pathlib
 import re
 from dataclasses import dataclass
 
-from catalog_service.config import CatalogSource, CatalogServiceConfig
+from catalog_service.config import CatalogServiceConfig, CatalogSource
+from catalog_service.config_classifiers import CompositeConfigClassifier
 
+LOGGER = logging.getLogger(__name__)
 HEADER_LINE_PATTERN = re.compile(r"^\s*(?:#|//|;)\s?(.*)$")
 METADATA_PATTERN = re.compile(r"^config-service:\s*([A-Za-z0-9_.-]+)\s*=\s*(.*?)\s*$")
+KEY_CONFIG_TYPE = "config_type"
 ROW_KEY_FOLDER = "folder"
 ROW_KEY_FILENAME = "filename"
 ROW_KEY_PATH = "path"
@@ -52,6 +57,7 @@ class CatalogFileIndexService:
     def __init__(self, *, repo_root: pathlib.Path, config: CatalogServiceConfig) -> None:
         self.repo_root = pathlib.Path(repo_root).resolve()
         self.config = config
+        self.classifier = CompositeConfigClassifier()
 
     def scan(self) -> dict[str, object]:
         """Scan configured sources and return table-ready payload."""
@@ -84,6 +90,7 @@ class CatalogFileIndexService:
             raise FileNotFoundError(str(resolved))
         if self._is_allowed_catalog_file(resolved) is not True:
             raise PermissionError(str(resolved))
+        LOGGER.info("catalog file read requested path=%s", resolved)
         return {
             ROW_KEY_FILENAME: resolved.name,
             ROW_KEY_PATH: str(resolved),
@@ -102,7 +109,7 @@ class CatalogFileIndexService:
                 continue
             if path.suffix.lower() not in allowed_ext:
                 continue
-            metadata = self._extract_header_metadata(path)
+            metadata = self._extract_row_metadata(path)
             metadata_keys.update(metadata.keys())
             folder = str(path.parent.resolve().relative_to(self.repo_root)).replace("\\", "/")
             last_edited = datetime.datetime.fromtimestamp(
@@ -120,6 +127,22 @@ class CatalogFileIndexService:
             )
         return rows
 
+    def _extract_row_metadata(self, path: pathlib.Path) -> dict[str, str]:
+        metadata: dict[str, str] = {}
+        LOGGER.info("catalog file indexed path=%s", path.resolve())
+        try:
+            text = path.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            return metadata
+
+        metadata.update(self._extract_header_metadata(text))
+        classification = self.classifier.classify(io.StringIO(text))
+        if classification is not None:
+            metadata.setdefault(KEY_CONFIG_TYPE, classification.config_type)
+            for key, value in classification.attributes.items():
+                metadata.setdefault(str(key), str(value))
+        return metadata
+
     def _is_allowed_catalog_file(self, path: pathlib.Path) -> bool:
         """Return whether a file path belongs to one configured catalog source."""
         for source in self.config.sources:
@@ -135,12 +158,8 @@ class CatalogFileIndexService:
             return True
         return False
 
-    def _extract_header_metadata(self, path: pathlib.Path) -> dict[str, str]:
+    def _extract_header_metadata(self, text: str) -> dict[str, str]:
         metadata: dict[str, str] = {}
-        try:
-            text = path.read_text(encoding="utf-8", errors="ignore")
-        except OSError:
-            return metadata
 
         for raw_line in text.splitlines():
             if not raw_line.strip():
