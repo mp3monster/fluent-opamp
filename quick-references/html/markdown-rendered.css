@@ -1,0 +1,20 @@
+.doc-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+}
+
+.doc-content th,
+.doc-content td {
+  border: 1px solid var(--border);
+  padding: 0.5rem 0.65rem;
+  text-align: left;
+}
+
+.doc-content thead th {
+  background: #eef3ff;
+}
+
+.doc-content tbody tr:nth-child(even) {
+  background: #f8faff;
+}
