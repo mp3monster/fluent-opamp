@@ -11,11 +11,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Generate a CycloneDX SBOM for the standalone config-service package."""
+"""Generate a CycloneDX SBOM for the standalone config-service package.
+
+This script delegates dependency discovery to the open-source `cyclonedx-py`
+tool from the `cyclonedx-bom` package, then applies OpAMP-specific metadata:
+1. root component identity is kept aligned with package metadata (`build_config`)
+2. git label metadata from `update_component_versions.py` is attached as
+   traceability properties (without replacing package identity/version)
+3. root dependency graph entry is rewritten for stable SBOM consumers
+"""
 
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import subprocess
 import sys
@@ -24,6 +33,7 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = ROOT.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
@@ -66,6 +76,41 @@ def _normalize_component_refs(sbom: dict[str, Any]) -> list[str]:
     return sorted(set(dep_refs))
 
 
+def _load_version_helper_module() -> Any | None:
+    """Load shared git label helpers used by the repository pre-commit hook."""
+    module_path = REPO_ROOT / "scripts" / "update_component_versions.py"
+    if not module_path.exists():
+        return None
+    spec = importlib.util.spec_from_file_location("update_component_versions", module_path)
+    if spec is None or spec.loader is None:
+        return None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _resolve_precommit_git_labels() -> dict[str, str]:
+    """Return git label metadata from the shared pre-commit helper script."""
+    helper = _load_version_helper_module()
+    if helper is None:
+        return {}
+    try:
+        label = str(helper._resolve_latest_git_label(REPO_ROOT) or "").strip()
+        commits_since_label = int(helper._resolve_commits_since_label(REPO_ROOT, label) or 0)
+        effective_label = str(
+            helper._resolve_effective_label(label, commits_since_label=commits_since_label) or ""
+        ).strip()
+        metadata: dict[str, str] = {}
+        if label:
+            metadata["opamp.git_label"] = label
+        if effective_label:
+            metadata["opamp.effective_label"] = effective_label
+        metadata["opamp.commits_since_label"] = str(commits_since_label)
+    except Exception:
+        return {}
+    return metadata
+
+
 def _build_with_cyclonedx() -> dict[str, Any]:
     from build_config import INSTALL_REQUIRES
 
@@ -100,16 +145,25 @@ def build_sbom() -> dict[str, Any]:
 
     sbom = _build_with_cyclonedx()
     dependency_refs = _normalize_component_refs(sbom)
+    root_name = str(PACKAGE_NAME).strip()
+    root_version = str(PACKAGE_VERSION).strip()
+    root_properties = [
+        {"name": name, "value": value}
+        for name, value in sorted(_resolve_precommit_git_labels().items())
+        if value
+    ]
 
-    root_ref = f"pkg:pypi/{PACKAGE_NAME}@{PACKAGE_VERSION}"
+    root_ref = f"pkg:pypi/{root_name}@{root_version}"
     root_component = {
         "type": "application",
-        "name": PACKAGE_NAME,
-        "version": PACKAGE_VERSION,
+        "name": root_name,
+        "version": root_version,
         "bom-ref": root_ref,
         "purl": root_ref,
         "licenses": [{"license": {"id": "Apache-2.0"}}],
     }
+    if root_properties:
+        root_component["properties"] = root_properties
 
     metadata = sbom.get("metadata")
     if not isinstance(metadata, dict):

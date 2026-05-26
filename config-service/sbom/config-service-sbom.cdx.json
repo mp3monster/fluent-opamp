@@ -1,31 +1,4 @@
 {
-  "bomFormat": "CycloneDX",
-  "specVersion": "1.5",
-  "serialNumber": "urn:uuid:config-service-0.1.0",
-  "version": 1,
-  "metadata": {
-    "timestamp": "2026-05-05T22:40:03.720678+00:00",
-    "component": {
-      "type": "application",
-      "name": "config-service",
-      "version": "0.1.0",
-      "bom-ref": "pkg:pypi/config-service@0.1.0",
-      "purl": "pkg:pypi/config-service@0.1.0",
-      "licenses": [
-        {
-          "license": {
-            "name": "Apache-2.0"
-          }
-        }
-      ]
-    },
-    "tools": [
-      {
-        "vendor": "OpenAI Codex",
-        "name": "generate_sbom.py"
-      }
-    ]
-  },
   "components": [
     {
       "type": "application",
@@ -36,105 +9,241 @@
       "licenses": [
         {
           "license": {
-            "name": "Apache-2.0"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "name": "quart",
-      "version": "0.20.0",
-      "bom-ref": "pkg:pypi/quart@0.20.0",
-      "purl": "pkg:pypi/quart@0.20.0",
-      "licenses": [
-        {
-          "license": {
-            "name": "unknown"
+            "id": "Apache-2.0"
           }
         }
       ],
-      "description": "A Python ASGI web framework with the same API as Flask",
-      "externalReferences": [
+      "properties": [
         {
-          "type": "website",
-          "url": "Changes, https://quart.palletsprojects.com/en/latest/changes.html"
+          "name": "opamp.commits_since_label",
+          "value": "110"
+        },
+        {
+          "name": "opamp.effective_label",
+          "value": "0.4.111"
+        },
+        {
+          "name": "opamp.git_label",
+          "value": "0.4"
         }
       ]
     },
     {
-      "type": "library",
-      "name": "pydantic",
-      "version": "2.12.5",
-      "bom-ref": "pkg:pypi/pydantic@2.12.5",
-      "purl": "pkg:pypi/pydantic@2.12.5",
-      "licenses": [
+      "bom-ref": "pkg:pypi/lark",
+      "description": "requirements line 3: lark>=1.2.2",
+      "externalReferences": [
         {
-          "license": {
-            "name": "unknown"
-          }
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/lark/"
         }
       ],
-      "description": "Data validation using Python type hints",
-      "externalReferences": [
-        {
-          "type": "website",
-          "url": "Homepage, https://github.com/pydantic/pydantic"
-        }
-      ]
-    },
-    {
-      "type": "library",
       "name": "lark",
-      "version": "1.3.1",
-      "bom-ref": "pkg:pypi/lark@1.3.1",
-      "purl": "pkg:pypi/lark@1.3.1",
-      "licenses": [
-        {
-          "license": {
-            "name": "MIT"
-          }
-        }
-      ],
-      "description": "a modern parsing library",
-      "externalReferences": [
-        {
-          "type": "website",
-          "url": "Homepage, https://github.com/lark-parser/lark"
-        }
-      ]
+      "purl": "pkg:pypi/lark",
+      "type": "library"
     },
     {
-      "type": "library",
-      "name": "luaparser",
-      "version": "4.0.0",
-      "bom-ref": "pkg:pypi/luaparser@4.0.0",
-      "purl": "pkg:pypi/luaparser@4.0.0",
-      "licenses": [
-        {
-          "license": {
-            "name": "MIT"
-          }
-        }
-      ],
-      "description": "A lua parser in Python",
+      "bom-ref": "pkg:pypi/luaparser",
+      "description": "requirements line 4: luaparser>=4.0.0",
       "externalReferences": [
         {
-          "type": "website",
-          "url": "https://github.com/boolangery/py-lua-parser"
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/luaparser/"
         }
-      ]
+      ],
+      "name": "luaparser",
+      "purl": "pkg:pypi/luaparser",
+      "type": "library"
+    },
+    {
+      "bom-ref": "pkg:pypi/pydantic",
+      "description": "requirements line 2: pydantic>=2,<3",
+      "externalReferences": [
+        {
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/pydantic/"
+        }
+      ],
+      "name": "pydantic",
+      "purl": "pkg:pypi/pydantic",
+      "type": "library"
+    },
+    {
+      "bom-ref": "pkg:pypi/quart",
+      "description": "requirements line 1: quart>=0.19.4",
+      "externalReferences": [
+        {
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/quart/"
+        }
+      ],
+      "name": "quart",
+      "purl": "pkg:pypi/quart",
+      "type": "library"
     }
   ],
   "dependencies": [
     {
       "ref": "pkg:pypi/config-service@0.1.0",
       "dependsOn": [
-        "pkg:pypi/quart@0.20.0",
-        "pkg:pypi/pydantic@2.12.5",
-        "pkg:pypi/lark@1.3.1",
-        "pkg:pypi/luaparser@4.0.0"
+        "pkg:pypi/lark",
+        "pkg:pypi/luaparser",
+        "pkg:pypi/pydantic",
+        "pkg:pypi/quart"
+      ]
+    },
+    {
+      "ref": "requirements-L1"
+    },
+    {
+      "ref": "requirements-L2"
+    },
+    {
+      "ref": "requirements-L3"
+    },
+    {
+      "ref": "requirements-L4"
+    }
+  ],
+  "metadata": {
+    "timestamp": "2026-05-26T19:57:52.363176+00:00",
+    "tools": {
+      "components": [
+        {
+          "description": "CycloneDX Software Bill of Materials (SBOM) generator for Python projects and environments",
+          "externalReferences": [
+            {
+              "type": "build-system",
+              "url": "https://github.com/CycloneDX/cyclonedx-python/actions"
+            },
+            {
+              "type": "distribution",
+              "url": "https://pypi.org/project/cyclonedx-bom/"
+            },
+            {
+              "type": "documentation",
+              "url": "https://cyclonedx-bom-tool.readthedocs.io/"
+            },
+            {
+              "type": "issue-tracker",
+              "url": "https://github.com/CycloneDX/cyclonedx-python/issues"
+            },
+            {
+              "type": "license",
+              "url": "https://github.com/CycloneDX/cyclonedx-python/blob/main/LICENSE"
+            },
+            {
+              "type": "release-notes",
+              "url": "https://github.com/CycloneDX/cyclonedx-python/blob/main/CHANGELOG.md"
+            },
+            {
+              "type": "vcs",
+              "url": "https://github.com/CycloneDX/cyclonedx-python/"
+            },
+            {
+              "type": "website",
+              "url": "https://github.com/CycloneDX/cyclonedx-python/#readme"
+            }
+          ],
+          "group": "CycloneDX",
+          "licenses": [
+            {
+              "license": {
+                "acknowledgement": "declared",
+                "id": "Apache-2.0"
+              }
+            }
+          ],
+          "name": "cyclonedx-py",
+          "type": "application",
+          "version": "7.3.0"
+        },
+        {
+          "description": "Python library for CycloneDX",
+          "externalReferences": [
+            {
+              "type": "build-system",
+              "url": "https://github.com/CycloneDX/cyclonedx-python-lib/actions"
+            },
+            {
+              "type": "distribution",
+              "url": "https://pypi.org/project/cyclonedx-python-lib/"
+            },
+            {
+              "type": "documentation",
+              "url": "https://cyclonedx-python-library.readthedocs.io/"
+            },
+            {
+              "type": "issue-tracker",
+              "url": "https://github.com/CycloneDX/cyclonedx-python-lib/issues"
+            },
+            {
+              "type": "license",
+              "url": "https://github.com/CycloneDX/cyclonedx-python-lib/blob/main/LICENSE"
+            },
+            {
+              "type": "release-notes",
+              "url": "https://github.com/CycloneDX/cyclonedx-python-lib/blob/main/CHANGELOG.md"
+            },
+            {
+              "type": "vcs",
+              "url": "https://github.com/CycloneDX/cyclonedx-python-lib"
+            },
+            {
+              "type": "website",
+              "url": "https://github.com/CycloneDX/cyclonedx-python-lib/#readme"
+            }
+          ],
+          "group": "CycloneDX",
+          "licenses": [
+            {
+              "license": {
+                "acknowledgement": "declared",
+                "id": "Apache-2.0"
+              }
+            }
+          ],
+          "name": "cyclonedx-python-lib",
+          "type": "library",
+          "version": "11.7.0"
+        }
+      ]
+    },
+    "component": {
+      "type": "application",
+      "name": "config-service",
+      "version": "0.1.0",
+      "bom-ref": "pkg:pypi/config-service@0.1.0",
+      "purl": "pkg:pypi/config-service@0.1.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "opamp.commits_since_label",
+          "value": "110"
+        },
+        {
+          "name": "opamp.effective_label",
+          "value": "0.4.111"
+        },
+        {
+          "name": "opamp.git_label",
+          "value": "0.4"
+        }
       ]
     }
-  ]
+  },
+  "serialNumber": "urn:uuid:366e7ef5-b10b-4f54-b8e7-a6fdf7c4e316",
+  "version": 1,
+  "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6"
 }
