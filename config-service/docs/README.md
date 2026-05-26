@@ -14,6 +14,7 @@ This folder contains user-facing documentation for running, configuring, and ext
 9. [UI Testing](./ui-testing.md)
 10. [Developer Tools](./dev-tools.md)
 11. [Test Cases](./TEST_CASES.md)
+12. [UI Framework Decision](./ui-framework-decision.md)
 
 ## What this service provides
 - Versioned Fluent Bit catalog loading from config.
@@ -39,4 +40,4 @@ This folder contains user-facing documentation for running, configuring, and ext
 - Developer tooling and generators: `config-service/dev-tools`
 - Backend lint/test entrypoint: `config-service/dev-tools/run_backend_quality_checks.py`
 - UI browser-test entrypoint: `config-service/dev-tools/run_ui_quality_checks.sh`
-- Fluent Bit quick-reference generator: `config-service/dev-tools/generate_fluentbit_schema_quick_reference.py`
+- Fluent Bit quick-reference generator: `config-service/dev-tools/quick-references/generate_fluentbit_schema_quick_reference.py`
