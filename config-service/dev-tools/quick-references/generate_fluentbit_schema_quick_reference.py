@@ -11,13 +11,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Generate Fluent Bit schema quick-reference markdown files.
+
+What this script does:
+1. Reads Fluent Bit JSON schema files from a source directory.
+2. Builds human-readable markdown quick references for `env`, `upstream_servers`,
+   and pipeline plugin sections (`inputs`, `filters`, `outputs`).
+3. Writes output markdown files into a target directory.
+
+Dependencies:
+1. Python 3.10+.
+2. Python standard library only (`argparse`, `json`, `re`, `pathlib`, `typing`).
+"""
+
+from __future__ import annotations
+
 import argparse
 import json
 import re
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[3]
+CONFIG_SERVICE_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_SOURCE_DIR = CONFIG_SERVICE_ROOT / "json-schemas"
+DEFAULT_OUTPUT_DIR = REPO_ROOT / "quick-references"
+
 SECTION_TITLES = {
     "inputs": "Inputs",
     "filters": "Filters",
@@ -26,18 +45,27 @@ SECTION_TITLES = {
 DEFAULT_VERSIONS = ("3.2.10", "4.2.4", "5.0.4")
 ENV_ANCHOR = "environment-env"
 UPSTREAM_SERVERS_ANCHOR = "upstream-servers-upstream-servers"
+INTERNAL_COMMENT_META_FIELD = "_meta"
 
 
-def schema_path(version: str) -> Path:
-    return REPO_ROOT / "json-schemas" / f"fluentbit-{version}-config-schema.json"
+def schema_path(source_dir: Path, version: str) -> Path:
+    return source_dir / f"fluentbit-{version}-config-schema.json"
 
 
-def output_path(version: str) -> Path:
-    return REPO_ROOT / "dev-notes" / f"fluent-bit-{version}-schema-quick-reference.md"
+def output_path(output_dir: Path, version: str) -> Path:
+    version_token = str(version).replace(".", "-")
+    return output_dir / f"fluentbit-{version_token}-schema-quick-reference.md"
 
 
-def load_schema(version: str) -> dict[str, Any]:
-    return json.loads(schema_path(version).read_text(encoding="utf-8"))
+def _display_path(path: Path) -> str:
+    try:
+        return str(path.resolve().relative_to(REPO_ROOT))
+    except ValueError:
+        return str(path.resolve())
+
+
+def load_schema(source_dir: Path, version: str) -> dict[str, Any]:
+    return json.loads(schema_path(source_dir, version).read_text(encoding="utf-8"))
 
 
 def plugin_variants(schema: dict[str, Any], section: str) -> list[dict[str, Any]]:
@@ -52,7 +80,7 @@ def plugin_name(variant: dict[str, Any]) -> str:
 
 def plugin_doc_url(variant: dict[str, Any]) -> str:
     for field_name, field_schema in variant.get("properties", {}).items():
-        if field_name == "name":
+        if field_name in {"name", INTERNAL_COMMENT_META_FIELD}:
             continue
         ref = field_schema.get("x-doc-reference")
         if ref:
@@ -126,13 +154,21 @@ def escape_pipes(value: str) -> str:
 def sort_field_names(variant: dict[str, Any]) -> list[str]:
     properties = variant.get("properties", {})
     required = set(variant.get("required", []))
+    # `_meta` is an internal, optional comment carrier used by config-service.
+    # It is intentionally omitted from quick-reference output because it is not
+    # part of the Fluent Bit configuration specification.
+    candidate_fields = [
+        field_name
+        for field_name in properties.keys()
+        if field_name != INTERNAL_COMMENT_META_FIELD
+    ]
 
     def sort_key(field_name: str) -> tuple[int, int, str]:
         is_required = field_name in required or properties[field_name].get("x-doc-required") is True
         is_name = field_name == "name"
         return (0 if is_required else 1, 0 if is_name else 1, field_name.lower())
 
-    return sorted(properties.keys(), key=sort_key)
+    return sorted(candidate_fields, key=sort_key)
 
 
 def build_plugin_table(section: str, variant: dict[str, Any]) -> list[str]:
@@ -239,13 +275,12 @@ def build_upstream_servers_section(version: str) -> list[str]:
     ]
 
 
-def generate_markdown(schema: dict[str, Any], version: str) -> str:
-    version_schema_path = schema_path(version)
+def generate_markdown(schema: dict[str, Any], version: str, source_file: Path) -> str:
     lines = [
         f"# Fluent Bit {version} Schema Quick Reference",
         "",
         f"Generated from the local Fluent Bit {version} JSON schema only:",
-        f"- `{version_schema_path.relative_to(REPO_ROOT)}`",
+        f"- `{_display_path(source_file)}`",
         "",
         "Scope:",
         "1. Environment variable map definition for `env`",
@@ -253,6 +288,7 @@ def generate_markdown(schema: dict[str, Any], version: str) -> str:
         "3. Pipeline plugin definitions",
         "4. Grouped by `inputs`, `filters`, and `outputs`",
         "5. Includes mandatory flags, defaults, descriptions, and Fluent Bit documentation links",
+        "6. Excludes internal optional `_meta` comment metadata fields because they are not part of the Fluent Bit specification",
         "",
         "## Jump Lists",
         "",
@@ -278,7 +314,8 @@ def generate_markdown(schema: dict[str, Any], version: str) -> str:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Generate Fluent Bit schema quick reference markdown.",
+        description="Generate Fluent Bit schema quick-reference markdown files.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
         "--version",
@@ -286,17 +323,37 @@ def parse_args() -> argparse.Namespace:
         dest="versions",
         help="Fluent Bit version to generate. Repeat for multiple versions.",
     )
+    parser.add_argument(
+        "--source-dir",
+        type=Path,
+        default=DEFAULT_SOURCE_DIR,
+        help="Directory containing fluentbit-<version>-config-schema.json files.",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=DEFAULT_OUTPUT_DIR,
+        help="Directory where markdown quick-reference files are written.",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
     versions = tuple(args.versions) if args.versions else DEFAULT_VERSIONS
+    source_dir = args.source_dir.expanduser().resolve()
+    output_dir = args.output_dir.expanduser().resolve()
+    output_dir.mkdir(parents=True, exist_ok=True)
+
     for version in versions:
-        schema = load_schema(version)
-        version_output_path = output_path(version)
-        version_output_path.write_text(generate_markdown(schema, version), encoding="utf-8")
-        print(f"Wrote {version_output_path}")
+        source_file = schema_path(source_dir, version)
+        schema = load_schema(source_dir, version)
+        target_file = output_path(output_dir, version)
+        target_file.write_text(
+            generate_markdown(schema, version, source_file),
+            encoding="utf-8",
+        )
+        print(f"Wrote {target_file}")
 
 
 if __name__ == "__main__":

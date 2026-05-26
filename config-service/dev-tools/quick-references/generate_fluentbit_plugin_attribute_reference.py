@@ -12,6 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Generate Fluent Bit plugin attribute reference markdown files.
+
+What this script does:
+1. Reads Fluent Bit plugin catalog JSON files from a source directory.
+2. Produces markdown tables listing plugin attributes for `inputs`, `filters`,
+   and `outputs`.
+3. Writes markdown reference files into a target directory.
+
+Dependencies:
+1. Python 3.10+.
+2. Python standard library only (`argparse`, `json`, `pathlib`, `typing`).
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -19,15 +32,32 @@ import json
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFINITIONS_DIR = REPO_ROOT / "config-service" / "json-definitions"
-OUTPUT_DIR = REPO_ROOT / "config-service" / "dev-notes"
+REPO_ROOT = Path(__file__).resolve().parents[3]
+CONFIG_SERVICE_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_SOURCE_DIR = CONFIG_SERVICE_ROOT / "json-definitions"
+DEFAULT_OUTPUT_DIR = REPO_ROOT / "quick-references"
 DEFAULT_VERSIONS = ("3.2.10", "4.2.4", "5.0.4")
 SECTION_TITLES = (
     ("inputs", "Inputs"),
     ("filters", "Filters"),
     ("outputs", "Outputs"),
 )
+
+
+def _display_path(path: Path) -> str:
+    try:
+        return str(path.resolve().relative_to(REPO_ROOT))
+    except ValueError:
+        return str(path.resolve())
+
+
+def _input_path(source_dir: Path, version: str) -> Path:
+    return source_dir / f"fluent-bit-{version}-all-plugins-catalog.json"
+
+
+def _output_path(output_dir: Path, version: str) -> Path:
+    version_token = str(version).replace(".", "-")
+    return output_dir / f"fluentbit-{version_token}-plugin-attribute-reference.md"
 
 
 def _link(title: str, reference: str) -> str:
@@ -59,12 +89,13 @@ def _section_rows(section_plugins: dict[str, Any]) -> list[str]:
     return rows
 
 
-def _render_markdown(version: str, payload: dict[str, Any]) -> str:
+def _render_markdown(version: str, payload: dict[str, Any], source_file: Path) -> str:
     plugins = payload.get("plugins", {})
     lines: list[str] = [
         f"# Fluent Bit {version} Plugin Attribute Reference",
         "",
         "Generated from the local catalog JSON only.",
+        f"- `{_display_path(source_file)}`",
         "",
         "Scope: this reference includes the field-based `inputs`, `filters`, and `outputs` plugin groups from the catalog JSON. The `custom_plugins` block is not tabulated because it does not provide per-attribute documentation links in the same structure.",
     ]
@@ -85,16 +116,18 @@ def _render_markdown(version: str, payload: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def generate_reference(version: str) -> None:
-    input_path = DEFINITIONS_DIR / f"fluent-bit-{version}-all-plugins-catalog.json"
-    output_path = OUTPUT_DIR / f"fluent-bit-{version}-plugin-attribute-reference.md"
+def generate_reference(version: str, source_dir: Path, output_dir: Path) -> None:
+    input_path = _input_path(source_dir, version)
+    output_path = _output_path(output_dir, version)
     payload = json.loads(input_path.read_text(encoding="utf-8"))
-    output_path.write_text(_render_markdown(version, payload), encoding="utf-8")
+    output_path.write_text(_render_markdown(version, payload, input_path), encoding="utf-8")
+    print(f"Wrote {output_path}")
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Generate Fluent Bit plugin attribute reference markdown from catalog JSON.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
         "--version",
@@ -102,14 +135,29 @@ def parse_args() -> argparse.Namespace:
         dest="versions",
         help="Fluent Bit version to generate. Repeat for multiple versions.",
     )
+    parser.add_argument(
+        "--source-dir",
+        type=Path,
+        default=DEFAULT_SOURCE_DIR,
+        help="Directory containing fluent-bit-<version>-all-plugins-catalog.json files.",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=DEFAULT_OUTPUT_DIR,
+        help="Directory where markdown reference files are written.",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
     versions = tuple(args.versions) if args.versions else DEFAULT_VERSIONS
+    source_dir = args.source_dir.expanduser().resolve()
+    output_dir = args.output_dir.expanduser().resolve()
+    output_dir.mkdir(parents=True, exist_ok=True)
     for version in versions:
-        generate_reference(version)
+        generate_reference(version, source_dir, output_dir)
 
 
 if __name__ == "__main__":
