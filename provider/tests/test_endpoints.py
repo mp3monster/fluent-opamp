@@ -2308,3 +2308,15 @@ async def test_set_client_actions_rejects_invalid() -> None:
             json={"actions": ["not-a-real-action"]},
         )
         assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_unknown_provider_route_redirects_to_landing_page() -> None:
+    """Verify provider unknown routes redirect to the shared landing page."""
+    async with app.test_client() as client:
+        resp = await client.get("/does-not-exist")
+        assert resp.status_code in {301, 302, 307, 308}
+        assert resp.headers["Location"].startswith(
+            "https://htmlpreview.github.io/?https://raw.githubusercontent.com/"
+            "mp3monster/fluent-opamp/main/github-landingpage/index.html"
+        )

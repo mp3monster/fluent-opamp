@@ -113,6 +113,10 @@ _REGISTERED_COMPONENT_ENTRY_POINTS, _CONFIGURED_COMPONENT_ENTRY_POINTS = registe
 _UI_FEATURE_MENU_ITEMS: list[UiFeatureMenuItem] = ui_menu_items_from_component_entries(
     _CONFIGURED_COMPONENT_ENTRY_POINTS
 )
+LANDING_PAGE_REDIRECT_URL = (
+    "https://htmlpreview.github.io/?https://raw.githubusercontent.com/"
+    "mp3monster/fluent-opamp/main/github-landingpage/index.html"
+)
 
 CONTENT_TYPE_PROTO = "application/x-protobuf"  # Content-Type for protobuf payloads.
 LOG_HTTP_MSG = "opamp http AgentToServer:\n%s"  # Log format for HTTP messages.
@@ -250,6 +254,18 @@ ERR_AGENT_BLOCKED = "agent is blocked"
 ERR_AGENT_AUTH_FAILED = "agent authentication failed"
 ERR_OPAMP_AUTH_CONFIG_INVALID = "invalid opamp-use-authorization configuration"
 ERR_UI_AUTH_CONFIG_INVALID = "invalid ui-use-authorization configuration"
+
+
+@app.errorhandler(HTTPStatus.NOT_FOUND)
+async def redirect_unknown_provider_route(_: HTTPException) -> Response:
+    """Redirect unknown provider routes to the shared project landing page."""
+    logger.info(
+        "provider 404 redirect path=%s remote_addr=%s target=%s",
+        request.path,
+        request.remote_addr,
+        LANDING_PAGE_REDIRECT_URL,
+    )
+    return redirect(LANDING_PAGE_REDIRECT_URL)
 
 # Keep in-memory client heartbeat defaults aligned with loaded provider config.
 STORE.set_default_heartbeat_frequency(
@@ -1557,6 +1573,32 @@ async def _finalize_server() -> None:
     """Finalizer to cleanly close WebSocket connections on shutdown."""
     await _close_websockets()
     _save_state_snapshot("graceful_shutdown")
+
+
+@app.post("/api/client-errors")
+async def client_errors() -> Response:
+    """Record one client-side UI error reported by browser JavaScript."""
+    body = await request.get_json(silent=True) or {}
+    message = str(body.get("message") or "Unknown UI error").strip()
+    kind = str(body.get("kind") or "runtime_error").strip()
+    source = str(body.get("source") or "browser").strip()
+    path = str(body.get("path") or request.headers.get("Referer") or "").strip()
+    stack = str(body.get("stack") or "").strip()
+    line = body.get("line")
+    column = body.get("column")
+    user_agent = request.headers.get("User-Agent", "")
+
+    log_message = (
+        f"UI ERROR | kind={kind} | source={source} | path={path or '-'} | "
+        f"line={line if line is not None else '-'} | column={column if column is not None else '-'} | "
+        f"message={message}"
+    )
+    if user_agent:
+        log_message += f" | user_agent={user_agent}"
+    if stack:
+        log_message += f"\n{stack}"
+    logger.error(log_message)
+    return jsonify({"ok": True}), HTTPStatus.OK
 
 
 @app.get("/api/clients")
