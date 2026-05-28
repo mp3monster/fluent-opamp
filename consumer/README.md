@@ -75,13 +75,7 @@ Use this minimal config for a fast local startup:
 
 ## Run Scripts
 
-Helper scripts in repo root:
-- `scripts/run_fluentbit_supervisor.cmd`
-- `scripts/run_fluentbit_supervisor.sh`
-- `scripts/run_fluentd_supervisor.cmd`
-- `scripts/run_fluentd_supervisor.sh`
-- `scripts/run_all_supervisors.cmd`
-- `scripts/run_all_supervisors.sh`
+Preferred local launch paths are the installed CLI commands or direct Python entrypoints for the consumer components.
 
 Fluent Bit writes to `logs/supervisor_fluentbit.log` and Fluentd writes to
 `logs/supervisor_fluentd.log` (each rotates on startup).
