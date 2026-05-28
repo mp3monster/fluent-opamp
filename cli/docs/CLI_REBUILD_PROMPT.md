@@ -41,18 +41,24 @@ cli/
   main.py
   __init__.py
   __main__.py
+  config/
+    demo_consumer_profiles.json
   docs/
     README.md
-    IMPLEMENTATION_PROMPT.md
     CLI_EXTENSION_GUIDE.md
     CLI_REBUILD_PROMPT.md
+    DEMO_AND_DEV_FLAGS.md
+    TEST_CASES.md
   runtime/
     .gitkeep
   src/
     opamp_cli/
       __init__.py
       __main__.py
+      common.py
+      constants.py
       main.py
+      script_mode.py
       version.json
   tests/
     conftest.py
@@ -63,8 +69,10 @@ cli/
 Notes:
 
 - `cli/main.py` is a compatibility launcher for `python cli/main.py`
-- `cli/src/opamp_cli/main.py` contains the real implementation
+- `cli/src/opamp_cli/main.py` contains the orchestration layer
+- shared helpers should be split into focused modules such as `common.py`, `constants.py`, and `script_mode.py`
 - `cli/runtime/` is for generated state and logs, not checked-in runtime payloads except `.gitkeep`
+- `cli/config/demo_consumer_profiles.json` is the lookup file for demo profile names and config-file mappings
 
 ## Packaging Requirements
 
@@ -140,7 +148,7 @@ Support:
 
 ## Guided Command Requirements
 
-The CLI must support guided `start` and `stop` commands.
+The CLI must support guided `start`, `stop`, and `restart` commands.
 
 ### Required guided targets
 
@@ -157,12 +165,19 @@ For `start`:
 For `stop`:
 
 - `Server`
+- `Config Catalog UI`
 - `Broker`
 - `Simulator`
 - `Config Service`
 - `Fluent Bit client`
 - `Fluentd client`
 - `All clients`
+- `All managed`
+
+For `restart`:
+
+- support restart for the same restart-safe targets exposed by current `start`/`stop` overlap
+- implement restart as an explicit stop-then-start lifecycle, not as a shell shortcut
 
 ### Important design rule
 
@@ -196,11 +211,30 @@ Examples:
 - `start catalog`
 - `stop broker`
 - `stop clients`
+- `stop all`
+- `restart server`
 
 ### Availability rule for catalog UI
 
 `Config Catalog UI` should only appear when catalog sources are configured in `config/opamp.json`.
 If required, the CLI should generate a temporary runtime config under `cli/runtime/` to enable catalog launch without mutating the repo config.
+
+### Demo profile rule
+
+When `OPAMP_DEMO=true`, guided `start` and `stop` must expose demo consumer profile entries loaded from:
+
+- `cli/config/demo_consumer_profiles.json`
+
+Each profile must provide:
+
+- a logical display name
+- a simulator instances file
+- a Fluent Bit OpAMP config path
+- a Fluent Bit agent config path
+- a Fluentd OpAMP config path
+- a Fluentd agent config path
+
+Direct input such as `start demo consumers` should behave like a category selector and then offer the named profiles from the lookup file.
 
 ## Process Management Requirements
 
@@ -245,6 +279,19 @@ It should print:
 - process tailing enabled/disabled
 - each recorded process with PID, status, cwd, start time, and log path
 
+### List command
+
+Provide:
+
+- `list`
+
+It should print:
+
+- active detected behavior flags that affect CLI behavior
+- top-level commands
+- guided `start` / `stop` / `restart` hierarchy
+- only the options currently available after applying control-flag gating
+
 ### Stop behavior
 
 Support:
@@ -252,6 +299,19 @@ Support:
 - HTTP shutdown where appropriate
 - recorded PID termination where appropriate
 - shell-based multi-client stop where appropriate
+- `stop all` to loop through every recorded managed process and stop it
+
+### Behavior flag visibility
+
+At interactive startup, print only the flags/settings currently detected as enabled when they affect CLI behavior.
+
+This should include:
+
+- `OPAMP_DEMO=true` when demo mode is enabled
+- `APP_ENABLE_DEV_FEATURES=true` when already enabled in the environment
+- `enable_process_tail=true` when stored as enabled in CLI settings
+
+Do not print unset or disabled behavior flags in the startup banner.
 
 ## Process Tailing Feature
 
@@ -284,7 +344,7 @@ Fallbacks:
 Autocomplete behavior:
 
 - top-level commands should be suggested in interactive mode
-- `start` and `stop` should have context-aware suggestions
+- `start`, `stop`, and `restart` should have context-aware suggestions
 - path completion should be supported for script/file-like arguments
 - avoid suggesting raw wrapper-script filenames as guided menu choices
 
@@ -301,6 +361,15 @@ Expected direct-launch style:
 - simulator via the simulator Python launcher
 
 Use `PYTHONPATH` augmentation where necessary.
+
+The implementation must also support:
+
+- installed package mode
+- `python -m opamp_cli`
+- `python cli/main.py`
+- `python cli/src/opamp_cli/main.py`
+
+If relative imports would fail in direct file execution mode, add a safe fallback import path for that use case.
 
 ## Deployment and Packaging Requirements
 
@@ -334,6 +403,8 @@ Must describe:
 - installed command usage
 - basic commands
 - interactive examples
+- demo mode profile usage
+- `list`, `status`, `restart`, and `stop all`
 - autocomplete behavior
 - Windows notes
 - runtime files
@@ -342,11 +413,7 @@ Must describe:
 
 Must act as a small index of CLI component docs.
 
-### 3. `cli/docs/IMPLEMENTATION_PROMPT.md`
-
-Must preserve a phased implementation summary for the CLI’s original creation path.
-
-### 4. `cli/docs/CLI_EXTENSION_GUIDE.md`
+### 3. `cli/docs/CLI_EXTENSION_GUIDE.md`
 
 Must explain:
 
@@ -359,9 +426,24 @@ Must explain:
 - which data structures are position-sensitive
 - at least one worked example
 
-### 5. `cli/docs/CLI_REBUILD_PROMPT.md`
+### 4. `cli/docs/CLI_REBUILD_PROMPT.md`
 
 Must be a prompt for recreating the CLI from scratch.
+
+### 5. `cli/docs/DEMO_AND_DEV_FLAGS.md`
+
+Must document:
+
+- `OPAMP_DEMO`
+- `APP_ENABLE_DEV_FEATURES`
+- demo profile lookup behavior
+- which CLI workflows are gated or affected by those flags
+
+Keep this as a standalone CLI note rather than linking it from the main project docs.
+
+### 6. `cli/docs/TEST_CASES.md`
+
+Must summarize the CLI-focused test coverage and notable scenarios.
 
 ### Code-to-doc link requirement
 
@@ -382,9 +464,14 @@ Cover:
 - shell-safe command reconstruction from argv
 - ordered action materialization
 - alias matching
+- partial guided selection behavior for inputs such as `start demo consumers`
 - catalog runtime config generation
 - process-tail settings persistence
 - stable start/stop action order
+- `stop all`
+- `list` output with and without feature flags
+- startup behavior-flag reporting
+- direct execution import fallback for `python cli/src/opamp_cli/main.py`
 
 ### End-to-end tests
 
@@ -396,6 +483,7 @@ Cover:
 
 - `--help`
 - `status`
+- `list`
 - direct command execution
 - script generation
 - invalid guided target handling
@@ -437,7 +525,9 @@ The recreation is complete when:
 2. `python -m opamp_cli` works
 3. `opamp-cli` works after install
 4. `start` / `stop` guided actions are ordered and alias-driven
-5. `status`, `enable-process-tail`, and `disable-process-tail` work
+5. `status`, `list`, `enable-process-tail`, and `disable-process-tail` work
 6. managed process state/log files are written under `cli/runtime/`
-7. docs are present and internally consistent
-8. unit tests and E2E tests pass
+7. demo profile actions appear only when `OPAMP_DEMO=true`
+8. direct execution via `python cli/src/opamp_cli/main.py --help` works
+9. docs are present and internally consistent
+10. unit tests and E2E tests pass

@@ -1,0 +1,34 @@
+{
+  "profiles": [
+    {
+      "name": "Test option (FLBx1, Fdx1)",
+      "description": "Matches the existing Windows demo scripts: tests opamp/fluent-bit + consumer fluentd config.",
+      "simulator": {
+        "instances_path": "consumer-sim/consumer_instances.json"
+      },
+      "fluentbit": {
+        "config_path": "tests/opamp.json",
+        "agent_config_path": "tests/fluent-bit.yaml"
+      },
+      "fluentd": {
+        "config_path": "consumer/opamp-fluentd.json",
+        "agent_config_path": "consumer/fluentd.conf"
+      }
+    },
+    {
+      "name": "Demo setup (Simx1, Flbx1, Fdx1)",
+      "description": "Uses repository default opamp config with consumer-local agent configs.",
+      "simulator": {
+        "instances_path": "consumer-sim/consumer_instances.json"
+      },
+      "fluentbit": {
+        "config_path": "config/opamp.json",
+        "agent_config_path": "consumer/fluent-bit.yaml"
+      },
+      "fluentd": {
+        "config_path": "config/opamp.json",
+        "agent_config_path": "consumer/fluentd.conf"
+      }
+    }
+  ]
+}

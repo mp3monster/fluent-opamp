@@ -1,0 +1,88 @@
+# CLI Demo Mode And Dev Flags
+
+This note documents two behavior switches used by the OpAMP CLI and nearby consumer workflows:
+
+- `OPAMP_DEMO`
+- `APP_ENABLE_DEV_FEATURES`
+
+This file is intentionally kept as a standalone CLI note rather than being linked from the main project docs.
+
+## `OPAMP_DEMO`
+
+`OPAMP_DEMO` is the flag that enables demo-specific guided options in `opamp-cli`.
+
+When it is set to a truthy value such as `1`, `true`, `yes`, or `on`, the CLI adds profile-based demo actions to guided `start` and `stop`.
+
+The current profile lookup file is:
+
+- `cli/config/demo_consumer_profiles.json`
+
+Each profile in that file provides:
+
+- a logical profile name
+- a consumer simulator instances file
+- a Fluent Bit OpAMP config path
+- a Fluent Bit agent config path
+- a Fluentd OpAMP config path
+- a Fluentd agent config path
+
+When `OPAMP_DEMO` is enabled:
+
+- `opamp-cli start` includes `Demo consumers (<profile-name>)` entries
+- `opamp-cli stop` includes matching demo stop entries
+- `start demo consumers` acts as a category selector and offers the named profiles from the lookup file
+- demo-launched process records are written into `cli/runtime/managed_processes.json`
+- those records are profile-scoped, so one demo profile can be stopped independently of another
+
+## `APP_ENABLE_DEV_FEATURES`
+
+`APP_ENABLE_DEV_FEATURES` is not a CLI-only flag. It is a broader runtime flag used by development-oriented workflows.
+
+In the CLI-related area, it currently matters most for simulator-oriented startup paths.
+
+Current use:
+
+- the simulator launcher wrappers set it before starting consumer-sim
+- the CLI demo-consumer start flow sets it for the simulator start step
+- interactive CLI startup reports it when it is already enabled in the current environment
+
+Relevant CLI behavior:
+
+- demo profile starts set `APP_ENABLE_DEV_FEATURES=true` when invoking `consumer-sim`
+- startup messaging in interactive CLI only mentions this flag when it is actually detected as enabled
+
+One important non-CLI interaction is the security checks flow:
+
+- `scripts/security_checks.py` explicitly removes `APP_ENABLE_DEV_FEATURES` from the environment before running checks
+
+That keeps validation runs aligned with non-dev behavior.
+
+## CLI Replacements
+
+The CLI now covers the main lifecycle operations that older wrapper scripts previously handled. Those workflows can be performed with:
+
+- `opamp-cli start simulator`
+- `opamp-cli stop simulator`
+- `opamp-cli start fluentbit client`
+- `opamp-cli stop fluentbit client`
+- `opamp-cli start fluentd client`
+- `opamp-cli stop fluentd client`
+
+## Scripts That Should Not Be Treated As Direct CLI Replacements
+
+The following scripts still have distinct behavior and should not be grouped into the removal list just because the CLI now covers much of the normal consumer lifecycle:
+
+- `scripts/start_fluentd.sh`
+- `scripts/start_fluentd.cmd`
+- `scripts/stop_supervisor.sh`
+- `scripts/stop_supervisor.cmd`
+- `scripts/terminate_fluent_bit.sh`
+- `scripts/terminate_fluent_bit.cmd`
+
+Why they are different:
+
+- `start_fluentd.*` starts Fluentd directly, not the OpAMP consumer wrapper flow
+- `stop_supervisor.*` is a minimal semaphore helper
+- `terminate_fluent_bit.*` is an emergency direct process terminator for `fluent-bit`
+
+Those may still be useful as low-level operational helpers even if the CLI becomes the primary entrypoint.
