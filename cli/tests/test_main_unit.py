@@ -156,6 +156,7 @@ def test_rejected_guided_action_is_logged(tmp_path: Path, monkeypatch) -> None:
 def test_resolve_guided_action_matches_aliases() -> None:
     start_action = cli_main._resolve_guided_action("start", "catalog")  # type: ignore[attr-defined]
     stop_action = cli_main._resolve_guided_action("stop", "clients")  # type: ignore[attr-defined]
+    stop_all_action = cli_main._resolve_guided_action("stop", "all")  # type: ignore[attr-defined]
     restart_action = cli_main._resolve_guided_action("restart", "catalog")  # type: ignore[attr-defined]
 
     assert start_action is not None
@@ -163,11 +164,14 @@ def test_resolve_guided_action_matches_aliases() -> None:
     assert "-m catalog_service " in str(start_action.get("command_text") or "")
     assert stop_action is not None
     assert stop_action["label"] == "All clients"
+    assert stop_all_action is not None
+    assert stop_all_action["label"] == "All managed processes"
     assert restart_action is not None
     assert restart_action["label"] == "Config Catalog UI"
 
 
-def test_start_and_stop_action_orders_are_stable() -> None:
+def test_start_and_stop_action_orders_are_stable(monkeypatch) -> None:
+    monkeypatch.delenv("OPAMP_DEMO", raising=False)
     start_labels = [label for label, _action in cli_main._start_actions()]  # type: ignore[attr-defined]
     stop_labels = [label for label, _action in cli_main._stop_actions()]  # type: ignore[attr-defined]
     restart_labels = [label for label, _action in cli_main._restart_actions()]  # type: ignore[attr-defined]
@@ -190,8 +194,59 @@ def test_start_and_stop_action_orders_are_stable() -> None:
         "Fluent Bit client",
         "Fluentd client",
         "All clients",
+        "All managed processes",
     ]
     assert restart_labels == start_labels
+
+
+def test_list_command_prints_hierarchy(monkeypatch, capsys) -> None:
+    monkeypatch.delenv("OPAMP_DEMO", raising=False)
+
+    exit_code = cli_main._handle_command("list")  # type: ignore[attr-defined]
+    output = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert "Control flags:" in output
+    assert "Top-level commands:" in output
+    assert "Guided actions:" in output
+    assert "start:" in output
+    assert "stop:" in output
+    assert "restart:" in output
+
+
+def test_list_command_reflects_demo_flag(monkeypatch, tmp_path: Path, capsys) -> None:
+    demo_config = tmp_path / "demo_profiles.json"
+    demo_config.write_text(
+        json.dumps(
+            {
+                "profiles": [
+                    {
+                        "name": "script-defaults",
+                        "simulator": {"instances_path": "consumer-sim/consumer_instances.json"},
+                        "fluentbit": {
+                            "config_path": "tests/opamp.json",
+                            "agent_config_path": "tests/fluent-bit.yaml",
+                        },
+                        "fluentd": {
+                            "config_path": "consumer/opamp-fluentd.json",
+                            "agent_config_path": "consumer/fluentd.conf",
+                        },
+                    }
+                ]
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("OPAMP_DEMO", "true")
+    monkeypatch.setattr(cli_main, "_demo_consumer_config_path", lambda: demo_config)
+
+    exit_code = cli_main._handle_command("list")  # type: ignore[attr-defined]
+    output = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert "OPAMP_DEMO: enabled" in output
+    assert "Demo consumers (script-defaults)" in output
 
 
 def test_restart_action_runs_stop_wait_cleanup_then_start(monkeypatch) -> None:
@@ -234,3 +289,184 @@ def test_restart_action_runs_stop_wait_cleanup_then_start(monkeypatch) -> None:
 
     assert code == 0
     assert events == ["track", "stop", "wait", "cleanup", "start"]
+
+
+def test_demo_mode_adds_profile_actions(monkeypatch, tmp_path: Path) -> None:
+    demo_config = tmp_path / "demo_profiles.json"
+    demo_config.write_text(
+        json.dumps(
+            {
+                "profiles": [
+                    {
+                        "name": "script-defaults",
+                        "simulator": {"instances_path": "consumer-sim/consumer_instances.json"},
+                        "fluentbit": {
+                            "config_path": "tests/opamp.json",
+                            "agent_config_path": "tests/fluent-bit.yaml",
+                        },
+                        "fluentd": {
+                            "config_path": "consumer/opamp-fluentd.json",
+                            "agent_config_path": "consumer/fluentd.conf",
+                        },
+                    }
+                ]
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setenv("OPAMP_DEMO", "true")
+    monkeypatch.setattr(cli_main, "_demo_consumer_config_path", lambda: demo_config)
+
+    start_labels = [label for label, _action in cli_main._start_actions()]  # type: ignore[attr-defined]
+    stop_labels = [label for label, _action in cli_main._stop_actions()]  # type: ignore[attr-defined]
+
+    assert "Demo consumers (script-defaults)" in start_labels
+    assert "Demo consumers (script-defaults)" in stop_labels
+
+
+def test_demo_profile_alias_resolves_guided_action(monkeypatch, tmp_path: Path) -> None:
+    demo_config = tmp_path / "demo_profiles.json"
+    demo_config.write_text(
+        json.dumps(
+            {
+                "profiles": [
+                    {
+                        "name": "repo-defaults",
+                        "simulator": {"instances_path": "consumer-sim/consumer_instances.json"},
+                        "fluentbit": {
+                            "config_path": "config/opamp.json",
+                            "agent_config_path": "consumer/fluent-bit.yaml",
+                        },
+                        "fluentd": {
+                            "config_path": "config/opamp.json",
+                            "agent_config_path": "consumer/fluentd.conf",
+                        },
+                    }
+                ]
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setenv("OPAMP_DEMO", "true")
+    monkeypatch.setattr(cli_main, "_demo_consumer_config_path", lambda: demo_config)
+
+    action = cli_main._resolve_guided_action("start", "demo consumers repo-defaults")  # type: ignore[attr-defined]
+
+    assert action is not None
+    assert action["kind"] == "demo_consumers_start"
+    assert action["profile_name"] == "repo-defaults"
+
+
+def test_start_demo_consumers_prompts_for_profile_choices(monkeypatch, tmp_path: Path) -> None:
+    demo_config = tmp_path / "demo_profiles.json"
+    demo_config.write_text(
+        json.dumps(
+            {
+                "profiles": [
+                    {
+                        "name": "script-defaults",
+                        "simulator": {"instances_path": "consumer-sim/consumer_instances.json"},
+                        "fluentbit": {
+                            "config_path": "tests/opamp.json",
+                            "agent_config_path": "tests/fluent-bit.yaml",
+                        },
+                        "fluentd": {
+                            "config_path": "consumer/opamp-fluentd.json",
+                            "agent_config_path": "consumer/fluentd.conf",
+                        },
+                    },
+                    {
+                        "name": "repo-defaults",
+                        "simulator": {"instances_path": "consumer-sim/consumer_instances.json"},
+                        "fluentbit": {
+                            "config_path": "config/opamp.json",
+                            "agent_config_path": "consumer/fluent-bit.yaml",
+                        },
+                        "fluentd": {
+                            "config_path": "config/opamp.json",
+                            "agent_config_path": "consumer/fluentd.conf",
+                        },
+                    },
+                ]
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("OPAMP_DEMO", "true")
+    monkeypatch.setattr(cli_main, "_demo_consumer_config_path", lambda: demo_config)
+
+    captured_labels: list[str] = []
+
+    def fake_select(*, input_reader, intent, actions):  # type: ignore[no-untyped-def]
+        del input_reader
+        del intent
+        captured_labels.extend(label for label, _action in actions)
+        return actions[0][1]
+
+    monkeypatch.setattr(cli_main, "_select_guided_action", fake_select)
+    monkeypatch.setattr(cli_main, "_execute_start_action", lambda action: 0)
+
+    code = cli_main._execute_guided_action(  # type: ignore[attr-defined]
+        input_reader=None,
+        intent="start",
+        selection="demo consumers",
+    )
+
+    assert code == 0
+    assert captured_labels == [
+        "Demo consumers (script-defaults)",
+        "Demo consumers (repo-defaults)",
+    ]
+
+
+def test_stop_all_recorded_processes_loops_all_record_names(monkeypatch) -> None:
+    monkeypatch.setattr(
+        cli_main,
+        "_prune_cli_process_state",
+        lambda: {
+            "processes": [
+                {"name": "Server", "pid": 1001},
+                {"name": "Fluent Bit client", "pid": 1002},
+                {"name": "Server", "pid": 1003},
+            ]
+        },
+    )
+    captured: dict[str, list[str]] = {"names": []}
+
+    def fake_stop(names):
+        captured["names"] = list(names)
+        return 0
+
+    monkeypatch.setattr(cli_main, "_stop_recorded_processes", fake_stop)
+
+    code = cli_main._stop_all_recorded_processes()  # type: ignore[attr-defined]
+
+    assert code == 0
+    assert sorted(captured["names"]) == ["Fluent Bit client", "Server"]
+
+
+def test_detected_behavior_flags_returns_empty_when_none_set(monkeypatch) -> None:
+    monkeypatch.delenv("OPAMP_DEMO", raising=False)
+    monkeypatch.delenv("APP_ENABLE_DEV_FEATURES", raising=False)
+    monkeypatch.setattr(cli_main, "_process_tail_enabled", lambda: False)
+
+    detected = cli_main._detected_behavior_flags()  # type: ignore[attr-defined]
+
+    assert detected == []
+
+
+def test_detected_behavior_flags_returns_only_enabled_flags(monkeypatch) -> None:
+    monkeypatch.setenv("OPAMP_DEMO", "true")
+    monkeypatch.setenv("APP_ENABLE_DEV_FEATURES", "true")
+    monkeypatch.setattr(cli_main, "_process_tail_enabled", lambda: True)
+
+    detected = cli_main._detected_behavior_flags()  # type: ignore[attr-defined]
+
+    assert "OPAMP_DEMO=true" in detected
+    assert "APP_ENABLE_DEV_FEATURES=true" in detected
+    assert "enable_process_tail=true" in detected

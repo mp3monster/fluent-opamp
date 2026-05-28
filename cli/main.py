@@ -15,6 +15,7 @@
 
 from __future__ import annotations
 
+import importlib
 import sys
 from pathlib import Path
 
@@ -27,8 +28,7 @@ def main(argv: list[str] | None = None) -> int:
     src_path = _src_path()
     if str(src_path) not in sys.path:
         sys.path.insert(0, str(src_path))
-    from opamp_cli.main import main as cli_main
-
+    cli_main = importlib.import_module("opamp_cli.main").main
     return cli_main(argv)
 
 

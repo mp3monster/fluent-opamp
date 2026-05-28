@@ -60,6 +60,15 @@ def test_status_command_reports_runtime_paths() -> None:
     assert "CLI log file:" in completed.stdout
 
 
+def test_list_command_reports_option_hierarchy() -> None:
+    completed = _run_cli("list")
+
+    assert completed.returncode == 0
+    assert "Control flags:" in completed.stdout
+    assert "Top-level commands:" in completed.stdout
+    assert "Guided actions:" in completed.stdout
+
+
 def test_direct_execution_runs_python_command() -> None:
     completed = _run_cli(sys.executable, "-c", "print('cli-e2e-ok')")
 
