@@ -7,19 +7,15 @@ This table lists the helper scripts and their platform-specific names.
 | Run the OpAMP server (provider) | `scripts/run_opamp_server.sh` | `scripts/run_opamp_server.cmd` |
 | Run the OpAMP broker | `scripts/run_opamp_broker.sh` | `scripts/run_opamp_broker.cmd` |
 | Stop OpAMP broker service mode | `scripts/run_opamp_broker_stop.sh` | `scripts/run_opamp_broker_stop.cmd` |
-| Run the OpAMP supervisor (consumer) | `scripts/run_fluentbit_supervisor.sh` | `scripts/run_fluentbit_supervisor.cmd` |
-| Run the OpAMP supervisor (Fluentd consumer) | `scripts/run_fluentd_supervisor.sh` | `scripts/run_fluentd_supervisor.cmd` |
-| Run all supervisor launch scripts (each in a new window) | `scripts/run_all_supervisors.sh` | `scripts/run_all_supervisors.cmd` |
 | Start Fluentd directly | `scripts/start_fluentd.sh` | `scripts/start_fluentd.cmd` |
 | Configure local Keycloak for JWT auth testing | `scripts/configure_keycloak.sh` | `scripts/configure_keycloak.cmd` / `scripts/configure_keycloak.ps1` |
-| Start consumer simulator batch launcher | `scripts/run_consumer_sim_start.sh` | `scripts/run_consumer_sim_start.cmd` |
-| Stop consumer simulator batch launcher | `scripts/run_consumer_sim_stop.sh` | `scripts/run_consumer_sim_stop.cmd` |
-| Demo start: launch simulator + Fluent Bit client + Fluentd client together | `scripts/demo-start-consumers.sh` | `scripts/demo-start-consumers.cmd` |
-| Demo stop: stop simulator + request client shutdowns | `scripts/demo-stop-consumers.sh` | `scripts/demo-stop-consumers.cmd` |
 | Generate self-signed TLS cert/key for local HTTPS testing | `scripts/generate_self_signed_tls_cert.py` | `scripts\generate_self_signed_tls_cert.py` |
 | Ensure `provider.tls` settings exist in config JSON | `scripts/ensure_provider_tls_config.py` | `scripts\ensure_provider_tls_config.py` |
 | Render Mermaid `.mmd` to PNG (local wrapper) | `scripts/render_mermaid_png.sh` | n/a |
 | Request server shutdown via API | `scripts/shutdown_opamp_server.sh` | `scripts/shutdown_opamp_server.cmd` |
+| Install CLI aliases/macros for Linux shells | `cli/scripts/install_cli_aliases.sh` | n/a |
+| Install CLI aliases/macros for cmd | n/a | `cli\scripts\install_cli_aliases.cmd` |
+| Install CLI aliases/macros for PowerShell | n/a | `cli\scripts\install_cli_aliases.ps1` |
 | Install repo git hooks path (`core.hooksPath=.githooks`) | `scripts/install_git_hooks.sh` | `scripts/install_git_hooks.cmd` |
 | Build deployable Python artifacts (provider + consumer) | `scripts/build_artifacts.sh` | `scripts/build_artifacts.cmd` |
 | Build wheel artifacts and optionally publish to GitHub release assets | `scripts/build_and_publish_wheels.py` | `scripts\build_and_publish_wheels.py` |
@@ -65,12 +61,27 @@ That guide includes:
 
 ## Supervisor config defaults
 
-- `run_fluentbit_supervisor` resolves config in this order:
+- `run_fluentbit_supervisor` legacy wrapper resolves config in this order:
   `tests/opamp.json` -> `config/opamp.json`.
-- `run_fluentd_supervisor` resolves config in this order:
+- `run_fluentd_supervisor` legacy wrapper resolves config in this order:
   `consumer/opamp-fluentd.json` -> `tests/opamp.json` -> `config/opamp.json`.
 - `run_fluentd_supervisor` and `start_fluentd` use `consumer/fluentd.conf`
   as the canonical Fluentd config path.
+
+## CLI demo profile mapping
+
+When `OPAMP_DEMO=true`, the CLI exposes profile-based demo start/stop options.
+Profile mapping lives in:
+
+- `cli/config/demo_consumer_profiles.json`
+
+Each profile includes a logical name and file references for:
+
+- simulator instances file
+- Fluent Bit OpAMP config + agent config
+- Fluentd OpAMP config + agent config
+
+The CLI demo flow supports profile selection by logical name without relying on wrapper scripts.
 
 ## Artifact build scripts
 
