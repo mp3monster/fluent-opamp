@@ -25,6 +25,7 @@ Extension guide:
 from __future__ import annotations
 
 import json
+import importlib
 import logging
 import os
 import shlex
@@ -34,137 +35,201 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
-TRUE_VALUES = {"1", "true", "yes", "on"}
-SCRIPT_KEYWORD = "script"
-DEFAULT_OUTPUT_DIR = Path("scripts")
-CLI_RUNTIME_DIRNAME = "runtime"
-CLI_LOG_DIRNAME = "cli"
-CLI_PROCESS_STATE_FILENAME = "managed_processes.json"
-CLI_SETTINGS_FILENAME = "settings.json"
-CLI_COMPONENT_LOG_FILENAME = "opamp_cli.log"
-CLI_SETTING_ENABLE_PROCESS_TAIL = "enable_process_tail"
-DEFAULT_SERVER_PORT = 4320
-DEFAULT_CATALOG_WEB_PORT = 8090
-PROCESS_START_CHECK_DELAY_SECONDS = 1.0
-PROCESS_READY_TIMEOUT_SECONDS = 5.0
-PROCESS_READY_POLL_INTERVAL_SECONDS = 0.25
-PROCESS_STOP_TIMEOUT_SECONDS = 20.0
-PROCESS_STOP_POLL_INTERVAL_SECONDS = 0.25
-PROCESS_TAIL_INITIAL_LINES = 50
-STARTUP_FAILURE_MARKERS = (
-    "address already in use",
-    "traceback (most recent call last):",
-    "modulenotfounderror:",
-    "importerror:",
-)
-# The order of these identifiers is user-visible and position-sensitive.
-# It defines:
-# - the numbered menu order shown by interactive `start` / `stop`
-# - the examples in help/docs
-# - which item a user gets when they type a menu number
-# Update docs/tests alongside any reordering.
-GUIDED_START_ACTION_ORDER = [
-    "server",
-    "catalog_ui",
-    "config_service",
-    "broker",
-    "simulator",
-    "fluentbit_client",
-    "fluentd_client",
-]
-GUIDED_STOP_ACTION_ORDER = [
-    "server",
-    "catalog_ui",
-    "broker",
-    "simulator",
-    "config_service",
-    "fluentbit_client",
-    "fluentd_client",
-    "all_clients",
-]
-GUIDED_ACTION_ALIASES = {
-    "server": ["srv"],
-    "catalog_ui": ["catalog", "catalog ui", "config catalog", "config catalog ui"],
-    "config_service": ["config", "cfg", "config service", "config-service"],
-    "broker": ["brk"],
-    "simulator": ["sim"],
-    "fluentbit_client": ["fluent bit", "fluentbit", "fluent bit client", "fb"],
-    "fluentd_client": ["fluentd", "fluentd client", "fd"],
-    "all_clients": ["clients"],
-}
-HELP_TEXT = """Usage:
-  opamp-cli
-  opamp-cli script <output_name> <command...>
-  opamp-cli <command...>
-  opamp-cli help
-  opamp-cli status
-  opamp-cli enable-process-tail
-  opamp-cli disable-process-tail
-
-Behavior:
-  - Interactive `start`, `stop`, and `restart` commands open guided multi-stage choices.
-  - `status` shows recorded managed processes, PID liveness, and log paths.
-  - `enable-process-tail` opens a new shell tailing each managed process log after start.
-  - If first token is `script`, generate an OS-native script file.
-  - Otherwise execute the command immediately.
-  - Direct `.py`/`.pyw` targets are auto-run via Python.
-
-Examples:
-  # Start server
-  opamp-cli start server
-
-  # Start config catalog UI
-  opamp-cli start "config catalog ui"
-
-  # Stop server
-  opamp-cli stop server
-
-  # Restart server
-  opamp-cli restart server
-
-  # Show managed process status
-  opamp-cli status
-
-  # Enable log tail windows for future managed starts
-  opamp-cli enable-process-tail
-
-Notes:
-  - Interactive autocomplete uses prompt_toolkit when installed.
-  - Fallback completion uses readline when available.
-  - Guided actions can be run directly, for example `start config service`.
-  - Guided start/stop/restart actions run components directly instead of relying on repo wrapper scripts.
-  - Guided starts record launched PIDs in cli/runtime/managed_processes.json.
-  - Process-tail shells are opened on a best-effort basis and may be unavailable in headless terminals.
-"""
+try:
+    from .common import (
+        _is_windows,
+        _normalize_python_script_command,
+        _normalized_label,
+        _shell_quote,
+        _slugify,
+        _utc_timestamp,
+    )
+    from .constants import (
+        ACTION_ID_ALL_CLIENTS,
+        ACTION_ID_ALL_MANAGED,
+        ACTION_ID_BROKER,
+        ACTION_KIND_BACKGROUND_START,
+        ACTION_ID_CATALOG_UI,
+        ACTION_ID_CONFIG_SERVICE,
+        ACTION_ID_FLUENTBIT_CLIENT,
+        ACTION_ID_FLUENTD_CLIENT,
+        ACTION_KIND_DEMO_CONSUMERS_START,
+        ACTION_KIND_DEMO_CONSUMERS_STOP,
+        ACTION_KIND_RESTART,
+        ACTION_ID_SERVER,
+        ACTION_ID_SIMULATOR,
+        ACTION_KIND_SHELL,
+        ACTION_KIND_SIMULATOR_START,
+        ACTION_KIND_STOP_ALL_RECORDED,
+        ACTION_KIND_STOP_RECORDED,
+        APP_ENABLE_DEV_FEATURES_ENV,
+        CLI_COMPONENT_LOG_FILENAME,
+        CLI_DEMO_CONFIG_PATH,
+        CLI_DEMO_FLAG_ENV,
+        CLI_LOG_DIRNAME,
+        CLI_PROCESS_STATE_FILENAME,
+        CLI_RUNTIME_DIRNAME,
+        COMMAND_DISABLE_PROCESS_TAIL,
+        COMMAND_ENABLE_PROCESS_TAIL,
+        COMMAND_EXIT,
+        COMMAND_HELP,
+        COMMAND_LIST,
+        COMMAND_QUIT,
+        COMMAND_STATUS,
+        CLI_SETTING_ENABLE_PROCESS_TAIL,
+        CLI_SETTINGS_FILENAME,
+        DEFAULT_CATALOG_WEB_PORT,
+        DEFAULT_SERVER_PORT,
+        ENABLED_FLAG_VALUE,
+        GUIDED_ACTION_ALIASES,
+        GUIDED_INTENTS,
+        GUIDED_START_ACTION_ORDER,
+        GUIDED_STOP_ACTION_ORDER,
+        HELP_TEXT,
+        HTTP_READY_FAILURE_STATUS_THRESHOLD,
+        INTENT_RESTART,
+        INTENT_START,
+        INTENT_STOP,
+        LABEL_ALL_CLIENTS,
+        LABEL_ALL_MANAGED_PROCESSES,
+        LABEL_BROKER,
+        LABEL_CONFIG_CATALOG_UI,
+        LABEL_CONFIG_SERVICE,
+        LABEL_FLUENTBIT_CLIENT,
+        LABEL_FLUENTD_CLIENT,
+        LABEL_SERVER,
+        LABEL_SIMULATOR,
+        PROCESS_READY_POLL_INTERVAL_SECONDS,
+        PROCESS_READY_TIMEOUT_SECONDS,
+        PROCESS_START_CHECK_DELAY_SECONDS,
+        PROCESS_STOP_POLL_INTERVAL_SECONDS,
+        PROCESS_STOP_TIMEOUT_SECONDS,
+        PROCESS_TAIL_INITIAL_LINES,
+        SCRIPT_KEYWORD,
+        SIMULATOR_RECORD_PREFIX,
+        STARTUP_FAILURE_MARKERS,
+        TRUE_VALUES,
+    )
+    from .script_mode import (
+        _resolve_script_path,
+        _split_script_directive,
+        _write_script,
+    )
+except ImportError:
+    # Support direct execution: `python cli/src/opamp_cli/main.py`
+    current_dir = Path(__file__).resolve().parent
+    if str(current_dir) not in sys.path:
+        sys.path.insert(0, str(current_dir))
+    from common import (  # type: ignore[no-redef]
+        _is_windows,
+        _normalize_python_script_command,
+        _normalized_label,
+        _shell_quote,
+        _slugify,
+        _utc_timestamp,
+    )
+    from constants import (  # type: ignore[no-redef]
+        ACTION_ID_ALL_CLIENTS,
+        ACTION_ID_ALL_MANAGED,
+        ACTION_ID_BROKER,
+        ACTION_KIND_BACKGROUND_START,
+        ACTION_ID_CATALOG_UI,
+        ACTION_ID_CONFIG_SERVICE,
+        ACTION_ID_FLUENTBIT_CLIENT,
+        ACTION_ID_FLUENTD_CLIENT,
+        ACTION_KIND_DEMO_CONSUMERS_START,
+        ACTION_KIND_DEMO_CONSUMERS_STOP,
+        ACTION_KIND_RESTART,
+        ACTION_ID_SERVER,
+        ACTION_ID_SIMULATOR,
+        ACTION_KIND_SHELL,
+        ACTION_KIND_SIMULATOR_START,
+        ACTION_KIND_STOP_ALL_RECORDED,
+        ACTION_KIND_STOP_RECORDED,
+        APP_ENABLE_DEV_FEATURES_ENV,
+        CLI_COMPONENT_LOG_FILENAME,
+        CLI_DEMO_CONFIG_PATH,
+        CLI_DEMO_FLAG_ENV,
+        CLI_LOG_DIRNAME,
+        CLI_PROCESS_STATE_FILENAME,
+        CLI_RUNTIME_DIRNAME,
+        COMMAND_DISABLE_PROCESS_TAIL,
+        COMMAND_ENABLE_PROCESS_TAIL,
+        COMMAND_EXIT,
+        COMMAND_HELP,
+        COMMAND_LIST,
+        COMMAND_QUIT,
+        COMMAND_STATUS,
+        CLI_SETTING_ENABLE_PROCESS_TAIL,
+        CLI_SETTINGS_FILENAME,
+        DEFAULT_CATALOG_WEB_PORT,
+        DEFAULT_SERVER_PORT,
+        ENABLED_FLAG_VALUE,
+        GUIDED_ACTION_ALIASES,
+        GUIDED_INTENTS,
+        GUIDED_START_ACTION_ORDER,
+        GUIDED_STOP_ACTION_ORDER,
+        HELP_TEXT,
+        HTTP_READY_FAILURE_STATUS_THRESHOLD,
+        INTENT_RESTART,
+        INTENT_START,
+        INTENT_STOP,
+        LABEL_ALL_CLIENTS,
+        LABEL_ALL_MANAGED_PROCESSES,
+        LABEL_BROKER,
+        LABEL_CONFIG_CATALOG_UI,
+        LABEL_CONFIG_SERVICE,
+        LABEL_FLUENTBIT_CLIENT,
+        LABEL_FLUENTD_CLIENT,
+        LABEL_SERVER,
+        LABEL_SIMULATOR,
+        PROCESS_READY_POLL_INTERVAL_SECONDS,
+        PROCESS_READY_TIMEOUT_SECONDS,
+        PROCESS_START_CHECK_DELAY_SECONDS,
+        PROCESS_STOP_POLL_INTERVAL_SECONDS,
+        PROCESS_STOP_TIMEOUT_SECONDS,
+        PROCESS_TAIL_INITIAL_LINES,
+        SCRIPT_KEYWORD,
+        SIMULATOR_RECORD_PREFIX,
+        STARTUP_FAILURE_MARKERS,
+        TRUE_VALUES,
+    )
+    from script_mode import (  # type: ignore[no-redef]
+        _resolve_script_path,
+        _split_script_directive,
+        _write_script,
+    )
 
 CLI_LOGGER_NAME = "opamp_cli"
-_CLI_LOGGER: logging.Logger | None = None
-_CLI_LOGGER_PATH: Path | None = None
+_CLI_LOGGER_CACHE: dict[str, logging.Logger | Path | None] = {
+    "logger": None,
+    "path": None,
+}
 
 
 def _dev_features_enabled() -> bool:
     """Return whether APP_ENABLE_DEV_FEATURES is enabled for this process."""
-    raw_value = os.environ.get("APP_ENABLE_DEV_FEATURES", "")
+    raw_value = os.environ.get(APP_ENABLE_DEV_FEATURES_ENV, "")
     return str(raw_value or "").strip().lower() in TRUE_VALUES
 
 
-def _is_windows() -> bool:
-    """Return whether the current OS is Windows."""
-    return os.name == "nt"
-
-
-def _target_extension() -> str:
-    """Return script extension for the current OS."""
-    return ".cmd" if _is_windows() else ".sh"
+def _demo_mode_enabled() -> bool:
+    """Return whether demo-only guided actions should be enabled."""
+    raw_value = os.environ.get(CLI_DEMO_FLAG_ENV, "")
+    return str(raw_value or "").strip().lower() in TRUE_VALUES
 
 
 def _repo_root() -> Path:
     """Return repository root for this CLI component."""
     return Path(__file__).resolve().parents[3]
+
+
+def _demo_consumer_config_path() -> Path:
+    """Return configured demo consumer profile mapping path."""
+    return (_repo_root() / CLI_DEMO_CONFIG_PATH).resolve()
 
 
 def _cli_runtime_dir() -> Path:
@@ -186,7 +251,7 @@ def _cli_settings_path() -> Path:
 
 def _cli_log_dir() -> Path:
     """Return log directory used for CLI-started background processes."""
-    log_dir = (_cli_runtime_dir() / "logs").resolve()
+    log_dir = (_cli_runtime_dir() / CLI_LOG_DIRNAME).resolve()
     log_dir.mkdir(parents=True, exist_ok=True)
     return log_dir
 
@@ -198,11 +263,11 @@ def _cli_component_log_path() -> Path:
 
 def _get_logger() -> logging.Logger:
     """Return a configured component logger that writes to the CLI runtime log."""
-    global _CLI_LOGGER, _CLI_LOGGER_PATH
-
     log_path = _cli_component_log_path()
-    if _CLI_LOGGER is not None and _CLI_LOGGER_PATH == log_path:
-        return _CLI_LOGGER
+    cached_logger = _CLI_LOGGER_CACHE.get("logger")
+    cached_path = _CLI_LOGGER_CACHE.get("path")
+    if isinstance(cached_logger, logging.Logger) and cached_path == log_path:
+        return cached_logger
 
     logger = logging.getLogger(CLI_LOGGER_NAME)
     logger.setLevel(logging.INFO)
@@ -221,106 +286,9 @@ def _get_logger() -> logging.Logger:
     )
     logger.addHandler(file_handler)
 
-    _CLI_LOGGER = logger
-    _CLI_LOGGER_PATH = log_path
+    _CLI_LOGGER_CACHE["logger"] = logger
+    _CLI_LOGGER_CACHE["path"] = log_path
     return logger
-
-
-def _resolve_script_path(raw_name: str) -> Path:
-    """Resolve output script path for current OS.
-
-    Plain names are written under `scripts/`.
-    """
-    base = Path(raw_name.strip()).expanduser()
-    if not base.name:
-        raise ValueError("script name cannot be empty")
-
-    target_ext = _target_extension()
-    resolved = base.with_suffix(target_ext)
-    if resolved.parent == Path("."):
-        resolved = DEFAULT_OUTPUT_DIR / resolved.name
-    return resolved.resolve()
-
-
-def _render_script(command_text: str) -> str:
-    """Render platform-specific script content."""
-    launcher = "python" if _is_windows() else "python3"
-    rendered_command = _normalize_python_script_command(
-        command_text,
-        launcher=launcher,
-    )
-    if _is_windows():
-        return "\n".join([
-            "@echo off",
-            "setlocal",
-            "",
-            rendered_command,
-            "",
-        ])
-
-    return "\n".join([
-        "#!/usr/bin/env bash",
-        "set -euo pipefail",
-        "",
-        rendered_command,
-        "",
-    ])
-
-
-def _write_script(output_path: Path, command_text: str) -> Path:
-    """Write the generated script file to disk."""
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(_render_script(command_text), encoding="utf-8")
-    if not _is_windows():
-        output_path.chmod(output_path.stat().st_mode | 0o111)
-    return output_path
-
-
-def _split_script_directive(raw: str) -> tuple[str, str]:
-    """Parse `script <name> <command...>` directive without command validation."""
-    parts = raw.strip().split(maxsplit=2)
-    if len(parts) < 3:
-        raise ValueError("script mode requires: script <output_name> <command...>")
-    _, output_name, command_text = parts
-    return output_name, command_text.strip()
-
-
-def _first_token(command_text: str) -> str:
-    """Return first shell token or empty string when tokenization fails."""
-    text = str(command_text or "").strip()
-    if not text:
-        return ""
-    try:
-        tokens = shlex.split(text, posix=not _is_windows())
-    except ValueError:
-        tokens = text.split()
-    if not tokens:
-        return ""
-    return str(tokens[0] or "").strip().strip("\"'")
-
-
-def _is_python_launcher(token: str) -> bool:
-    """Return whether token is a Python interpreter command."""
-    normalized = Path(str(token or "").strip().strip("\"'")).name.lower()
-    return normalized in {"python", "python3", "py", "python.exe", "py.exe"}
-
-
-def _is_python_script_target(token: str) -> bool:
-    """Return whether token points to a Python source script."""
-    cleaned = str(token or "").strip().strip("\"'")
-    return Path(cleaned).suffix.lower() in {".py", ".pyw"}
-
-
-def _normalize_python_script_command(command_text: str, *, launcher: str) -> str:
-    """Prefix direct .py/.pyw invocations with a Python launcher."""
-    first = _first_token(command_text)
-    if not first:
-        return command_text
-    if _is_python_launcher(first):
-        return command_text
-    if not _is_python_script_target(first):
-        return command_text
-    return f"\"{launcher}\" {command_text}"
 
 
 def _execute_command(command_text: str) -> int:
@@ -357,7 +325,7 @@ def _script_mode_enabled(command_text: str) -> bool:
     return first.lower() == SCRIPT_KEYWORD
 
 
-def _handle_command(raw_command: str) -> int:
+def _handle_command(raw_command: str) -> int:  # noqa: PLR0911
     """Process one command line according to Phase 1 rules."""
     logger = _get_logger()
     command_text = raw_command.strip()
@@ -367,26 +335,29 @@ def _handle_command(raw_command: str) -> int:
 
     lowered = command_text.lower()
     if lowered in {
-        "enable-process-tail",
+        COMMAND_ENABLE_PROCESS_TAIL,
         "enable process-tail",
         "enable process tail",
-        "enable enable-process-tail",
+        f"enable {COMMAND_ENABLE_PROCESS_TAIL}",
     }:
         logger.info("enabling process tail feature")
         _set_process_tail_enabled(True)
         return 0
     if lowered in {
-        "disable-process-tail",
+        COMMAND_DISABLE_PROCESS_TAIL,
         "disable process-tail",
         "disable process tail",
-        "disable enable-process-tail",
+        f"disable {COMMAND_ENABLE_PROCESS_TAIL}",
     }:
         logger.info("disabling process tail feature")
         _set_process_tail_enabled(False)
         return 0
-    if lowered == "status":
+    if lowered == COMMAND_STATUS:
         logger.info("printing CLI status")
         return _print_status()
+    if lowered == COMMAND_LIST:
+        logger.info("printing CLI option hierarchy")
+        return _print_option_hierarchy()
 
     if _script_mode_enabled(command_text):
         output_name, script_command = _split_script_directive(command_text)
@@ -406,23 +377,22 @@ def _handle_command(raw_command: str) -> int:
 def _top_level_commands() -> list[str]:
     """Return top-level interactive commands and common executables."""
     return [
-        "help",
+        COMMAND_HELP,
         "--help",
         "-h",
-        "start",
-        "stop",
-        "restart",
-        "status",
-        "enable-process-tail",
-        "disable-process-tail",
-        "exit",
-        "quit",
-        "script",
+        INTENT_START,
+        INTENT_STOP,
+        INTENT_RESTART,
+        COMMAND_LIST,
+        COMMAND_STATUS,
+        COMMAND_ENABLE_PROCESS_TAIL,
+        COMMAND_DISABLE_PROCESS_TAIL,
+        COMMAND_EXIT,
+        COMMAND_QUIT,
+        SCRIPT_KEYWORD,
         "python",
         "python3",
         "py",
-        "pip",
-        "pytest",
         "uv",
         "curl",
     ]
@@ -484,6 +454,11 @@ def _guided_action_aliases(action: dict[str, Any]) -> list[str]:
     action_id = str(action.get("id") or _slugify(label).replace("-", "_")).strip()
     normalized = _normalized_label(label)
     aliases: list[str] = [label, str(label).lower(), _slugify(label)]
+    aliases.extend(
+        str(item).strip()
+        for item in action.get("aliases", [])
+        if str(item).strip()
+    )
     aliases.extend(GUIDED_ACTION_ALIASES.get(action_id, []))
     if action_id == normalized:
         aliases.extend(GUIDED_ACTION_ALIASES.get(normalized, []))
@@ -504,11 +479,11 @@ def _guided_action_aliases(action: dict[str, Any]) -> list[str]:
 
 def _guided_labels_for_intent(intent: str) -> list[str]:
     """Return guided labels for the requested intent."""
-    if intent == "start":
+    if intent == INTENT_START:
         return _start_action_labels()
-    if intent == "stop":
+    if intent == INTENT_STOP:
         return _stop_action_labels()
-    if intent == "restart":
+    if intent == INTENT_RESTART:
         return _restart_action_labels()
     return []
 
@@ -548,7 +523,7 @@ def _matching_guided_labels(intent: str, partial_selection: str) -> list[str]:
 def _setup_readline_completion(words: Iterable[str]) -> None:
     """Enable simple TAB completion when readline is available."""
     try:
-        import readline  # type: ignore
+        readline = importlib.import_module("readline")
     except ImportError:
         return
 
@@ -569,10 +544,13 @@ def _prompt_toolkit_input_reader(words: Iterable[str]) -> Callable[[str], str] |
     if not (sys.stdin.isatty() and sys.stdout.isatty()):
         return None
     try:
-        from prompt_toolkit import prompt as pt_prompt  # type: ignore
-        from prompt_toolkit.completion import Completer, Completion, PathCompleter  # type: ignore
+        pt_prompt = importlib.import_module("prompt_toolkit").prompt
+        pt_completion = importlib.import_module("prompt_toolkit.completion")
     except ImportError:
         return None
+    Completer = pt_completion.Completer
+    Completion = pt_completion.Completion
+    PathCompleter = pt_completion.PathCompleter
 
     top_level_words = sorted({str(word).strip() for word in words if str(word).strip()})
     path_completer = PathCompleter(expanduser=True)
@@ -610,7 +588,7 @@ def _prompt_toolkit_input_reader(words: Iterable[str]) -> Callable[[str], str] |
     class _OpampCliCompleter(Completer):
         """Context-aware completer for top-level and guided CLI commands."""
 
-        def get_completions(self, document: Any, complete_event: Any) -> Iterable[Any]:
+        def get_completions(self, document: Any, complete_event: Any) -> Iterable[Any]:  # noqa: PLR0911
             text = str(document.text_before_cursor or "")
             stripped = text.lstrip()
             lowered = stripped.lower()
@@ -622,37 +600,37 @@ def _prompt_toolkit_input_reader(words: Iterable[str]) -> Callable[[str], str] |
             if lowered.startswith("start "):
                 selection = stripped[6:]
                 yield from _yield_word_matches(
-                    options=_matching_guided_labels("start", selection),
+                    options=_matching_guided_labels(INTENT_START, selection),
                     prefix=selection,
                 )
                 return
 
-            if lowered == "start":
-                yield Completion("start ", start_position=0)
+            if lowered == INTENT_START:
+                yield Completion(f"{INTENT_START} ", start_position=0)
                 return
 
             if lowered.startswith("stop "):
                 selection = stripped[5:]
                 yield from _yield_word_matches(
-                    options=_matching_guided_labels("stop", selection),
+                    options=_matching_guided_labels(INTENT_STOP, selection),
                     prefix=selection,
                 )
                 return
 
-            if lowered == "stop":
-                yield Completion("stop ", start_position=0)
+            if lowered == INTENT_STOP:
+                yield Completion(f"{INTENT_STOP} ", start_position=0)
                 return
 
             if lowered.startswith("restart "):
                 selection = stripped[8:]
                 yield from _yield_word_matches(
-                    options=_matching_guided_labels("restart", selection),
+                    options=_matching_guided_labels(INTENT_RESTART, selection),
                     prefix=selection,
                 )
                 return
 
-            if lowered == "restart":
-                yield Completion("restart ", start_position=0)
+            if lowered == INTENT_RESTART:
+                yield Completion(f"{INTENT_RESTART} ", start_position=0)
                 return
 
             line_prefix = _line_prefix(document)
@@ -684,7 +662,7 @@ def _prompt_toolkit_input_reader(words: Iterable[str]) -> Callable[[str], str] |
     return reader
 
 
-def _builtin_tty_input_reader(words: Iterable[str]) -> Callable[[str], str] | None:
+def _builtin_tty_input_reader(words: Iterable[str]) -> Callable[[str], str] | None:  # noqa: PLR0915
     """Return a lightweight built-in reader with tab completion for TTY use.
 
     This is primarily a Windows fallback for direct `python cli/main.py` runs
@@ -696,7 +674,7 @@ def _builtin_tty_input_reader(words: Iterable[str]) -> Callable[[str], str] | No
         return None
 
     try:
-        import msvcrt  # type: ignore
+        msvcrt = importlib.import_module("msvcrt")
     except ImportError:
         return None
 
@@ -714,7 +692,7 @@ def _builtin_tty_input_reader(words: Iterable[str]) -> Callable[[str], str] | No
         lowered = prefix.lower()
         return [entry for entry in entries if entry.lower().startswith(lowered)]
 
-    def reader(prompt_text: str) -> str:
+    def reader(prompt_text: str) -> str:  # noqa: PLR0912,PLR0915
         buffer: list[str] = []
         tab_prefix = ""
         tab_matches: list[str] = []
@@ -786,35 +764,6 @@ def _builtin_tty_input_reader(words: Iterable[str]) -> Callable[[str], str] | No
                 tab_index = -1
 
     return reader
-
-
-def _shell_quote(value: str) -> str:
-    """Return shell-safe quoting for one argument fragment."""
-    if _is_windows():
-        escaped = str(value).replace('"', '""')
-        return f'"{escaped}"'
-    return shlex.quote(str(value))
-
-
-def _utc_timestamp() -> str:
-    """Return UTC timestamp in ISO-8601 format."""
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-
-
-def _slugify(label: str) -> str:
-    """Convert a human label into a stable lowercase slug."""
-    cleaned = "".join(
-        char.lower() if char.isalnum() else "-"
-        for char in str(label or "").strip()
-    )
-    while "--" in cleaned:
-        cleaned = cleaned.replace("--", "-")
-    return cleaned.strip("-") or "process"
-
-
-def _normalized_label(label: str) -> str:
-    """Return a stable comparison key for guided action labels."""
-    return _slugify(label).replace("-", "")
 
 
 def _is_process_running(pid: int) -> bool:
@@ -911,7 +860,7 @@ def _prune_cli_process_state() -> dict[str, Any]:
     return cleaned
 
 
-def _record_cli_process(
+def _record_cli_process(  # noqa: PLR0913
     *,
     name: str,
     pid: int,
@@ -1077,7 +1026,10 @@ def _http_ready(url: str) -> bool:
     request = urllib.request.Request(url, method="GET")
     try:
         with urllib.request.urlopen(request, timeout=1.0) as response:
-            return int(getattr(response, "status", 200)) < 500
+            return (
+                int(getattr(response, "status", 200))
+                < HTTP_READY_FAILURE_STATUS_THRESHOLD
+            )
     except (urllib.error.URLError, TimeoutError, ValueError):
         return False
 
@@ -1163,6 +1115,43 @@ def _print_status() -> int:
         if log_file:
             print(f"   log: {log_file}")
     return 0
+
+
+def _print_option_hierarchy() -> int:
+    """Print top-level commands and guided action hierarchy."""
+    print("Control flags:")
+    print(f"  {CLI_DEMO_FLAG_ENV}: {'enabled' if _demo_mode_enabled() else 'disabled'}")
+    print(
+        f"  {APP_ENABLE_DEV_FEATURES_ENV}: "
+        f"{'enabled' if _dev_features_enabled() else 'disabled'}"
+    )
+    print(f"  {CLI_SETTING_ENABLE_PROCESS_TAIL}: {'enabled' if _process_tail_enabled() else 'disabled'}")
+    print("")
+    print("Top-level commands:")
+    for command in _top_level_commands():
+        print(f"  - {command}")
+    print("")
+    print("Guided actions:")
+    for intent in GUIDED_INTENTS:
+        print(f"  {intent}:")
+        actions = _guided_actions_for_intent(intent)
+        for label, _action in actions:
+            print(f"    - {label}")
+        if not actions:
+            print("    - (none)")
+    return 0
+
+
+def _detected_behavior_flags() -> list[str]:
+    """Return enabled behavior-affecting flags/settings for startup display."""
+    detected: list[str] = []
+    if _demo_mode_enabled():
+        detected.append(f"{CLI_DEMO_FLAG_ENV}=true")
+    if _dev_features_enabled():
+        detected.append(f"{APP_ENABLE_DEV_FEATURES_ENV}={ENABLED_FLAG_VALUE}")
+    if _process_tail_enabled():
+        detected.append(f"{CLI_SETTING_ENABLE_PROCESS_TAIL}=true")
+    return detected
 
 
 def _existing_path(*candidates: Path) -> Path | None:
@@ -1278,6 +1267,77 @@ def _load_json_file(path: Path) -> dict[str, Any]:
     return payload if isinstance(payload, dict) else {}
 
 
+def _resolve_path_from_repo(raw_path: str) -> Path:
+    """Resolve one path relative to repository root."""
+    candidate = Path(str(raw_path or "").strip()).expanduser()
+    if candidate.is_absolute():
+        return candidate.resolve()
+    return (_repo_root() / candidate).resolve()
+
+
+def _load_demo_consumer_profiles() -> list[dict[str, Any]]:
+    """Load validated demo consumer profile entries from JSON mapping."""
+    config_path = _demo_consumer_config_path()
+    payload = _load_json_file(config_path)
+    profiles_raw = payload.get("profiles", [])
+    if not isinstance(profiles_raw, list):
+        return []
+    profiles: list[dict[str, Any]] = []
+    for entry in profiles_raw:
+        if not isinstance(entry, dict):
+            continue
+        name = str(entry.get("name") or "").strip()
+        if not name:
+            continue
+        fluentbit = entry.get("fluentbit", {})
+        fluentd = entry.get("fluentd", {})
+        simulator = entry.get("simulator", {})
+        if not isinstance(fluentbit, dict) or not isinstance(fluentd, dict) or not isinstance(simulator, dict):
+            continue
+        profiles.append(
+            {
+                "name": name,
+                "description": str(entry.get("description") or "").strip(),
+                "fluentbit": dict(fluentbit),
+                "fluentd": dict(fluentd),
+                "simulator": dict(simulator),
+            }
+        )
+    return profiles
+
+
+def _demo_profile_by_name(profile_name: str) -> dict[str, Any] | None:
+    """Return one demo profile entry by logical name."""
+    normalized = _normalized_label(profile_name)
+    if not normalized:
+        return None
+    for profile in _load_demo_consumer_profiles():
+        if _normalized_label(str(profile.get("name") or "")) == normalized:
+            return profile
+    return None
+
+
+def _demo_record_prefix(profile_name: str) -> str:
+    """Return record-name prefix used for one demo profile."""
+    return f"Demo:{profile_name}"
+
+
+def _simulator_state_path_from_profile(profile: dict[str, Any]) -> Path:
+    """Return expected simulator launcher state-file path for one profile."""
+    simulator = dict(profile.get("simulator", {}))
+    instances_path = _resolve_path_from_repo(str(simulator.get("instances_path") or ""))
+    payload = _load_json_file(instances_path)
+    state_file_raw = ""
+    if payload:
+        state_file_raw = str(payload.get("state_file") or "").strip()
+    if state_file_raw:
+        state_candidate = Path(state_file_raw).expanduser()
+        if state_candidate.is_absolute():
+            return state_candidate.resolve()
+        return (instances_path.parent / state_candidate).resolve()
+    return (_repo_root() / "consumer-sim" / "runtime" / "launcher_state.json").resolve()
+
+
 def _catalog_launch_config_path(
     *,
     base_config_path: Path,
@@ -1343,7 +1403,7 @@ def _broker_stop_command(pid_file: Path) -> str:
     )
 
 
-def _background_start_action(
+def _background_start_action(  # noqa: PLR0913
     *,
     action_id: str,
     label: str,
@@ -1357,7 +1417,7 @@ def _background_start_action(
     """Create one background-launch guided action."""
     return {
         "id": action_id,
-        "kind": "background_start",
+        "kind": ACTION_KIND_BACKGROUND_START,
         "label": label,
         "command_text": command_text,
         "argv": argv,
@@ -1370,7 +1430,7 @@ def _background_start_action(
     }
 
 
-def _simulator_start_action(
+def _simulator_start_action(  # noqa: PLR0913
     *,
     action_id: str,
     label: str,
@@ -1383,7 +1443,7 @@ def _simulator_start_action(
     """Create one simulator batch-start guided action."""
     return {
         "id": action_id,
-        "kind": "simulator_start",
+        "kind": ACTION_KIND_SIMULATOR_START,
         "label": label,
         "command_text": command_text,
         "argv": argv,
@@ -1402,13 +1462,47 @@ def _stop_recorded_action(
     """Create one stop action that terminates recorded managed processes."""
     return {
         "id": str(action_id or _slugify(label).replace("-", "_")).strip(),
-        "kind": "stop_recorded",
+        "kind": ACTION_KIND_STOP_RECORDED,
         "label": label,
         "record_names": list(record_names),
     }
 
 
-def _start_actions() -> list[tuple[str, dict[str, Any]]]:
+def _demo_consumer_start_action(profile: dict[str, Any]) -> dict[str, Any]:
+    """Create one guided demo-consumer start action for one profile."""
+    profile_name = str(profile.get("name") or "").strip()
+    profile_slug = _slugify(profile_name).replace("-", "_")
+    return {
+        "id": f"demo_consumers_{profile_slug}",
+        "kind": ACTION_KIND_DEMO_CONSUMERS_START,
+        "label": f"Demo consumers ({profile_name})",
+        "profile_name": profile_name,
+        "aliases": [
+            f"demo consumers {profile_name}",
+            f"demo {profile_name}",
+            f"consumers {profile_name}",
+        ],
+    }
+
+
+def _demo_consumer_stop_action(profile: dict[str, Any]) -> dict[str, Any]:
+    """Create one guided demo-consumer stop action for one profile."""
+    profile_name = str(profile.get("name") or "").strip()
+    profile_slug = _slugify(profile_name).replace("-", "_")
+    return {
+        "id": f"demo_consumers_{profile_slug}",
+        "kind": ACTION_KIND_DEMO_CONSUMERS_STOP,
+        "label": f"Demo consumers ({profile_name})",
+        "profile_name": profile_name,
+        "aliases": [
+            f"demo consumers {profile_name}",
+            f"demo {profile_name}",
+            f"consumers {profile_name}",
+        ],
+    }
+
+
+def _start_actions() -> list[tuple[str, dict[str, Any]]]:  # noqa: PLR0915
     """Return guided start actions available in current workspace."""
     action_map: dict[str, dict[str, Any]] = {}
     repo_root = _repo_root()
@@ -1423,9 +1517,9 @@ def _start_actions() -> list[tuple[str, dict[str, Any]]]:
         env=server_env,
         cwd=repo_root,
     )
-    action_map["server"] = _background_start_action(
-        action_id="server",
-        label="Server",
+    action_map[ACTION_ID_SERVER] = _background_start_action(
+        action_id=ACTION_ID_SERVER,
+        label=LABEL_SERVER,
         command_text=server_cmd,
         argv=_python_module_argv(module_name="opamp_provider.server", args=server_args),
         cwd=repo_root,
@@ -1463,9 +1557,9 @@ def _start_actions() -> list[tuple[str, dict[str, Any]]]:
             args=catalog_args,
             cwd=repo_root,
         )
-        action_map["catalog_ui"] = _background_start_action(
-            action_id="catalog_ui",
-            label="Config Catalog UI",
+        action_map[ACTION_ID_CATALOG_UI] = _background_start_action(
+            action_id=ACTION_ID_CATALOG_UI,
+            label=LABEL_CONFIG_CATALOG_UI,
             command_text=catalog_server_cmd,
             argv=_python_module_argv(module_name="catalog_service", args=catalog_args),
             cwd=repo_root,
@@ -1496,9 +1590,9 @@ def _start_actions() -> list[tuple[str, dict[str, Any]]]:
         args=config_service_args,
         cwd=repo_root,
     )
-    action_map["config_service"] = _background_start_action(
-        action_id="config_service",
-        label="Config Service",
+    action_map[ACTION_ID_CONFIG_SERVICE] = _background_start_action(
+        action_id=ACTION_ID_CONFIG_SERVICE,
+        label=LABEL_CONFIG_SERVICE,
         command_text=config_service_cmd,
         argv=_python_module_argv(module_name="config_service", args=config_service_args),
         cwd=repo_root,
@@ -1524,9 +1618,9 @@ def _start_actions() -> list[tuple[str, dict[str, Any]]]:
         env=broker_env,
         cwd=repo_root / "agent_broker",
     )
-    action_map["broker"] = _background_start_action(
-        action_id="broker",
-        label="Broker",
+    action_map[ACTION_ID_BROKER] = _background_start_action(
+        action_id=ACTION_ID_BROKER,
+        label=LABEL_BROKER,
         command_text=broker_cmd,
         argv=_python_module_argv(module_name="opamp_broker.broker_app"),
         cwd=repo_root / "agent_broker",
@@ -1536,7 +1630,7 @@ def _start_actions() -> list[tuple[str, dict[str, Any]]]:
         ),
     )
 
-    simulator_env = {"APP_ENABLE_DEV_FEATURES": "true"}
+    simulator_env = {APP_ENABLE_DEV_FEATURES_ENV: ENABLED_FLAG_VALUE}
     simulator_state_file = repo_root / "consumer-sim" / "runtime" / "launcher_state.json"
     simulator_cmd = _python_script_command(
         script_path=repo_root / "consumer-sim" / "src" / "consumer_sim_launcher.py",
@@ -1544,9 +1638,9 @@ def _start_actions() -> list[tuple[str, dict[str, Any]]]:
         env=simulator_env,
         cwd=repo_root,
     )
-    action_map["simulator"] = _simulator_start_action(
-        action_id="simulator",
-        label="Simulator",
+    action_map[ACTION_ID_SIMULATOR] = _simulator_start_action(
+        action_id=ACTION_ID_SIMULATOR,
+        label=LABEL_SIMULATOR,
         command_text=simulator_cmd,
         argv=_python_script_argv(
             script_path=repo_root / "consumer-sim" / "src" / "consumer_sim_launcher.py",
@@ -1581,9 +1675,9 @@ def _start_actions() -> list[tuple[str, dict[str, Any]]]:
         env=fluentbit_env,
         cwd=repo_root,
     )
-    action_map["fluentbit_client"] = _background_start_action(
-        action_id="fluentbit_client",
-        label="Fluent Bit client",
+    action_map[ACTION_ID_FLUENTBIT_CLIENT] = _background_start_action(
+        action_id=ACTION_ID_FLUENTBIT_CLIENT,
+        label=LABEL_FLUENTBIT_CLIENT,
         command_text=fluentbit_cmd,
         argv=_python_module_argv(module_name="opamp_consumer.fluentbit_client", args=fluentbit_args),
         cwd=repo_root,
@@ -1614,9 +1708,9 @@ def _start_actions() -> list[tuple[str, dict[str, Any]]]:
         env=fluentd_env,
         cwd=repo_root,
     )
-    action_map["fluentd_client"] = _background_start_action(
-        action_id="fluentd_client",
-        label="Fluentd client",
+    action_map[ACTION_ID_FLUENTD_CLIENT] = _background_start_action(
+        action_id=ACTION_ID_FLUENTD_CLIENT,
+        label=LABEL_FLUENTD_CLIENT,
         command_text=fluentd_cmd,
         argv=_python_module_argv(module_name="opamp_consumer.fluentd_client", args=fluentd_args),
         cwd=repo_root,
@@ -1626,10 +1720,20 @@ def _start_actions() -> list[tuple[str, dict[str, Any]]]:
         ),
     )
 
-    return _materialize_ordered_actions(
+    actions = _materialize_ordered_actions(
         order=GUIDED_START_ACTION_ORDER,
         action_map=action_map,
     )
+    if _demo_mode_enabled():
+        for profile in _load_demo_consumer_profiles():
+            demo_action = _demo_consumer_start_action(profile)
+            actions.append(
+                (
+                    str(demo_action.get("label") or ""),
+                    demo_action,
+                )
+            )
+    return actions
 
 
 def _stop_actions() -> list[tuple[str, dict[str, Any]]]:
@@ -1641,25 +1745,25 @@ def _stop_actions() -> list[tuple[str, dict[str, Any]]]:
         "curl -sS -X POST http://127.0.0.1:4320/api/shutdown "
         "-H \"Content-Type: application/json\" -d \"{\\\"confirm\\\": true}\""
     )
-    action_map["server"] = {
-        "id": "server",
-        "kind": "shell",
-        "label": "Server",
+    action_map[ACTION_ID_SERVER] = {
+        "id": ACTION_ID_SERVER,
+        "kind": ACTION_KIND_SHELL,
+        "label": LABEL_SERVER,
         "command_text": server_stop_cmd,
     }
 
     broker_stop_cmd = _broker_stop_command(repo_root / "agent_broker" / ".broker" / "broker.pid")
-    action_map["broker"] = {
-        "id": "broker",
-        "kind": "shell",
-        "label": "Broker",
+    action_map[ACTION_ID_BROKER] = {
+        "id": ACTION_ID_BROKER,
+        "kind": ACTION_KIND_SHELL,
+        "label": LABEL_BROKER,
         "command_text": broker_stop_cmd,
     }
 
-    action_map["catalog_ui"] = _stop_recorded_action(
-        action_id="catalog_ui",
-        label="Config Catalog UI",
-        record_names=["Config Catalog UI"],
+    action_map[ACTION_ID_CATALOG_UI] = _stop_recorded_action(
+        action_id=ACTION_ID_CATALOG_UI,
+        label=LABEL_CONFIG_CATALOG_UI,
+        record_names=[LABEL_CONFIG_CATALOG_UI],
     )
 
     simulator_stop_cmd = _python_script_command(
@@ -1667,27 +1771,27 @@ def _stop_actions() -> list[tuple[str, dict[str, Any]]]:
         args=["stop"],
         cwd=repo_root,
     )
-    action_map["simulator"] = {
-        "id": "simulator",
-        "kind": "shell",
-        "label": "Simulator",
+    action_map[ACTION_ID_SIMULATOR] = {
+        "id": ACTION_ID_SIMULATOR,
+        "kind": ACTION_KIND_SHELL,
+        "label": LABEL_SIMULATOR,
         "command_text": simulator_stop_cmd,
     }
 
-    action_map["config_service"] = _stop_recorded_action(
-        action_id="config_service",
-        label="Config Service",
-        record_names=["Config Service"],
+    action_map[ACTION_ID_CONFIG_SERVICE] = _stop_recorded_action(
+        action_id=ACTION_ID_CONFIG_SERVICE,
+        label=LABEL_CONFIG_SERVICE,
+        record_names=[LABEL_CONFIG_SERVICE],
     )
-    action_map["fluentbit_client"] = _stop_recorded_action(
-        action_id="fluentbit_client",
-        label="Fluent Bit client",
-        record_names=["Fluent Bit client"],
+    action_map[ACTION_ID_FLUENTBIT_CLIENT] = _stop_recorded_action(
+        action_id=ACTION_ID_FLUENTBIT_CLIENT,
+        label=LABEL_FLUENTBIT_CLIENT,
+        record_names=[LABEL_FLUENTBIT_CLIENT],
     )
-    action_map["fluentd_client"] = _stop_recorded_action(
-        action_id="fluentd_client",
-        label="Fluentd client",
-        record_names=["Fluentd client"],
+    action_map[ACTION_ID_FLUENTD_CLIENT] = _stop_recorded_action(
+        action_id=ACTION_ID_FLUENTD_CLIENT,
+        label=LABEL_FLUENTD_CLIENT,
+        record_names=[LABEL_FLUENTD_CLIENT],
     )
 
     semaphore_path = repo_root / "OpAMPSupervisor.signal"
@@ -1711,16 +1815,31 @@ def _stop_actions() -> list[tuple[str, dict[str, Any]]]:
             ),
             cwd=repo_root,
         )
-    action_map["all_clients"] = {
-        "id": "all_clients",
-        "kind": "shell",
-        "label": "All clients",
+    action_map[ACTION_ID_ALL_CLIENTS] = {
+        "id": ACTION_ID_ALL_CLIENTS,
+        "kind": ACTION_KIND_SHELL,
+        "label": LABEL_ALL_CLIENTS,
         "command_text": client_stop_cmd,
     }
-    return _materialize_ordered_actions(
+    action_map[ACTION_ID_ALL_MANAGED] = {
+        "id": ACTION_ID_ALL_MANAGED,
+        "kind": ACTION_KIND_STOP_ALL_RECORDED,
+        "label": LABEL_ALL_MANAGED_PROCESSES,
+    }
+    actions = _materialize_ordered_actions(
         order=GUIDED_STOP_ACTION_ORDER,
         action_map=action_map,
     )
+    if _demo_mode_enabled():
+        for profile in _load_demo_consumer_profiles():
+            demo_action = _demo_consumer_stop_action(profile)
+            actions.append(
+                (
+                    str(demo_action.get("label") or ""),
+                    demo_action,
+                )
+            )
+    return actions
 
 
 def _restart_actions() -> list[tuple[str, dict[str, Any]]]:
@@ -1743,7 +1862,7 @@ def _restart_actions() -> list[tuple[str, dict[str, Any]]]:
                 label,
                 {
                     "id": action_id,
-                    "kind": "restart",
+                    "kind": ACTION_KIND_RESTART,
                     "label": label,
                     "start_action": start_action,
                     "stop_action": stop_action,
@@ -1755,11 +1874,11 @@ def _restart_actions() -> list[tuple[str, dict[str, Any]]]:
 
 def _guided_actions_for_intent(intent: str) -> list[tuple[str, dict[str, Any]]]:
     """Return guided action list for one intent."""
-    if intent == "start":
+    if intent == INTENT_START:
         return _start_actions()
-    if intent == "stop":
+    if intent == INTENT_STOP:
         return _stop_actions()
-    if intent == "restart":
+    if intent == INTENT_RESTART:
         return _restart_actions()
     return []
 
@@ -1804,7 +1923,18 @@ def _select_guided_action(
 def _split_guided_command(command_text: str) -> tuple[str, str] | None:
     """Return guided intent and selection for `start`/`stop`/`restart` commands."""
     stripped = str(command_text or "").strip()
-    for intent in ("start", "stop", "restart"):
+    if not stripped:
+        return None
+    try:
+        tokens = shlex.split(stripped, posix=not _is_windows())
+    except ValueError:
+        tokens = stripped.split()
+    if tokens:
+        intent = str(tokens[0] or "").strip().strip("\"'").lower()
+        if intent in GUIDED_INTENTS:
+            selection = " ".join(str(token) for token in tokens[1:]).strip()
+            return intent, selection
+    for intent in GUIDED_INTENTS:
         if stripped.lower() == intent:
             return intent, ""
         if stripped.lower().startswith(f"{intent} "):
@@ -1827,7 +1957,7 @@ def _resolve_guided_action_by_label(
     intent: str | None = None,
 ) -> dict[str, Any] | None:
     """Resolve one action from its current display label."""
-    intents = [intent] if intent in {"start", "stop", "restart"} else ["start", "stop", "restart"]
+    intents = [intent] if intent in GUIDED_INTENTS else list(GUIDED_INTENTS)
     for current_intent in intents:
         actions = _guided_actions_for_intent(current_intent)
         for current_label, action in actions:
@@ -1839,24 +1969,30 @@ def _resolve_guided_action_by_label(
 def _execute_start_action(action: dict[str, Any]) -> int:
     """Execute one start action by kind."""
     kind = str(action.get("kind", "")).strip().lower()
-    if kind == "background_start":
+    if kind == ACTION_KIND_BACKGROUND_START:
         return _launch_background_process(action)
-    if kind == "simulator_start":
+    if kind == ACTION_KIND_SIMULATOR_START:
         return _record_simulator_batch(action)
+    if kind == ACTION_KIND_DEMO_CONSUMERS_START:
+        return _start_demo_consumers(action)
     raise ValueError(f"unsupported start action kind: {kind}")
 
 
 def _execute_stop_action(action: dict[str, Any]) -> int:
     """Execute one stop action by kind."""
     kind = str(action.get("kind", "")).strip().lower()
-    if kind == "shell":
+    if kind == ACTION_KIND_SHELL:
         command_text = str(action.get("command_text") or "").strip()
         print(f"Executing: {command_text}")
         return _handle_command(command_text)
-    if kind == "stop_recorded":
+    if kind == ACTION_KIND_STOP_RECORDED:
         return _stop_recorded_processes(
             [str(item) for item in action.get("record_names", [])]
         )
+    if kind == ACTION_KIND_STOP_ALL_RECORDED:
+        return _stop_all_recorded_processes()
+    if kind == ACTION_KIND_DEMO_CONSUMERS_STOP:
+        return _stop_demo_consumers(action)
     raise ValueError(f"unsupported stop action kind: {kind}")
 
 
@@ -1869,7 +2005,9 @@ def _record_name_matches_restart(
     """Return whether one record name should be tracked for restart waiting."""
     if record_name in tracked_names:
         return True
-    if action_id == "simulator" and record_name.startswith("Simulator:"):
+    if action_id == ACTION_ID_SIMULATOR and record_name.startswith(
+        f"{SIMULATOR_RECORD_PREFIX}:"
+    ):
         return True
     return False
 
@@ -1885,7 +2023,7 @@ def _tracked_restart_pids(*, action_id: str, start_action: dict[str, Any], stop_
     if start_record_name:
         tracked_names.add(start_record_name)
 
-    if not tracked_names and action_id != "simulator":
+    if not tracked_names and action_id != ACTION_ID_SIMULATOR:
         return []
 
     payload = _prune_cli_process_state()
@@ -1992,18 +2130,40 @@ def _execute_guided_action(
     if selection:
         selected_action = _resolve_guided_action(intent, selection)
         if selected_action is None:
-            available = ", ".join(label for label, _action in actions)
-            logger.warning(
-                "rejected guided action intent=%s selection=%s available=%s",
-                intent,
-                selection,
-                available,
-            )
-            print(
-                f"Unknown {intent} target '{selection}'. Available: {available}",
-                file=sys.stderr,
-            )
-            return 1
+            partial_matches = _matching_guided_labels(intent, selection)
+            if partial_matches:
+                match_set = set(partial_matches)
+                matched_actions = [
+                    (label, action)
+                    for label, action in actions
+                    if label in match_set
+                ]
+                selected_action = _select_guided_action(
+                    input_reader=input_reader,
+                    intent=intent,
+                    actions=matched_actions,
+                )
+                if not selected_action:
+                    logger.info(
+                        "guided partial selection cancelled intent=%s selection=%s matches=%s",
+                        intent,
+                        selection,
+                        partial_matches,
+                    )
+                    return 0
+            else:
+                available = ", ".join(label for label, _action in actions)
+                logger.warning(
+                    "rejected guided action intent=%s selection=%s available=%s",
+                    intent,
+                    selection,
+                    available,
+                )
+                print(
+                    f"Unknown {intent} target '{selection}'. Available: {available}",
+                    file=sys.stderr,
+                )
+                return 1
     else:
         selected_action = _select_guided_action(
             input_reader=input_reader,
@@ -2022,13 +2182,187 @@ def _execute_guided_action(
         kind,
     )
     print(f"Selected: {selected_action.get('label', f'{intent} action')}")
-    if intent == "start":
+    if intent == INTENT_START:
         return _execute_start_action(selected_action)
-    if intent == "stop":
+    if intent == INTENT_STOP:
         return _execute_stop_action(selected_action)
-    if intent == "restart":
+    if intent == INTENT_RESTART:
         return _execute_restart_action(selected_action)
     raise ValueError(f"unsupported guided intent: {intent}")
+
+
+def _recorded_names_with_prefix(prefix: str) -> list[str]:
+    """Return recorded process names that begin with one prefix."""
+    payload = _prune_cli_process_state()
+    names: list[str] = []
+    for record in payload.get("processes", []):
+        name = str(record.get("name") or "").strip()
+        if name.startswith(prefix):
+            names.append(name)
+    return sorted(set(names))
+
+
+def _stop_recorded_processes_by_prefix(
+    *,
+    prefix: str,
+    allow_empty: bool = True,
+) -> int:
+    """Stop recorded managed processes that match one name prefix."""
+    names = _recorded_names_with_prefix(prefix)
+    if not names:
+        if not allow_empty:
+            print(f"No recorded process IDs found for profile prefix '{prefix}'.")
+        return 0
+    return _stop_recorded_processes(names)
+
+
+def _start_demo_consumers(action: dict[str, Any]) -> int:
+    """Start simulator + consumer clients for one demo profile."""
+    logger = _get_logger()
+    profile_name = str(action.get("profile_name") or "").strip()
+    profile = _demo_profile_by_name(profile_name)
+    if profile is None:
+        print(f"Demo profile not found: {profile_name}", file=sys.stderr)
+        return 1
+
+    fluentbit = dict(profile.get("fluentbit", {}))
+    fluentd = dict(profile.get("fluentd", {}))
+    simulator = dict(profile.get("simulator", {}))
+
+    fluentbit_config = _resolve_path_from_repo(str(fluentbit.get("config_path") or ""))
+    fluentbit_agent = _resolve_path_from_repo(str(fluentbit.get("agent_config_path") or ""))
+    fluentd_config = _resolve_path_from_repo(str(fluentd.get("config_path") or ""))
+    fluentd_agent = _resolve_path_from_repo(str(fluentd.get("agent_config_path") or ""))
+    simulator_instances = _resolve_path_from_repo(str(simulator.get("instances_path") or ""))
+    simulator_state_file = _simulator_state_path_from_profile(profile)
+
+    required_paths = [
+        fluentbit_config,
+        fluentbit_agent,
+        fluentd_config,
+        fluentd_agent,
+        simulator_instances,
+    ]
+    for required in required_paths:
+        if required.is_file() is not True:
+            print(f"Demo profile path not found: {required}", file=sys.stderr)
+            return 1
+
+    repo_root = _repo_root()
+    prefix = _demo_record_prefix(profile_name)
+    common_metadata = {"demo_profile": profile_name}
+
+    simulator_action = _simulator_start_action(
+        action_id=f"demo_simulator_{_slugify(profile_name)}",
+        label=f"{LABEL_SIMULATOR} ({profile_name})",
+        command_text=_python_script_command(
+            script_path=repo_root / "consumer-sim" / "src" / "consumer_sim_launcher.py",
+            args=["start"],
+            env={
+                APP_ENABLE_DEV_FEATURES_ENV: ENABLED_FLAG_VALUE,
+                "CONSUMER_SIM_CONFIG": str(simulator_instances),
+            },
+            cwd=repo_root,
+        ),
+        argv=_python_script_argv(
+            script_path=repo_root / "consumer-sim" / "src" / "consumer_sim_launcher.py",
+            args=["start"],
+        ),
+        cwd=repo_root,
+        env=_build_exec_env(
+            env={
+                APP_ENABLE_DEV_FEATURES_ENV: ENABLED_FLAG_VALUE,
+                "CONSUMER_SIM_CONFIG": str(simulator_instances),
+            }
+        ),
+        state_file=simulator_state_file,
+    )
+    simulator_action["record_prefix"] = prefix
+    simulator_action["record_metadata"] = dict(common_metadata)
+
+    fluentbit_args = [
+        "--config-path",
+        str(fluentbit_config),
+        "--agent-config-path",
+        str(fluentbit_agent),
+    ]
+    fluentbit_action = _background_start_action(
+        action_id=f"demo_fluentbit_{_slugify(profile_name)}",
+        label=f"{LABEL_FLUENTBIT_CLIENT} ({profile_name})",
+        command_text=_python_module_command(
+            module_name="opamp_consumer.fluentbit_client",
+            python_paths=[repo_root / "consumer" / "src"],
+            args=fluentbit_args,
+            env={"OPAMP_CONFIG_PATH": str(fluentbit_config)},
+            cwd=repo_root,
+        ),
+        argv=_python_module_argv(module_name="opamp_consumer.fluentbit_client", args=fluentbit_args),
+        cwd=repo_root,
+        env=_build_exec_env(
+            python_paths=[repo_root / "consumer" / "src"],
+            env={"OPAMP_CONFIG_PATH": str(fluentbit_config)},
+        ),
+    )
+    fluentbit_action["record_name"] = f"{prefix}:{LABEL_FLUENTBIT_CLIENT}"
+    fluentbit_action["metadata"] = dict(common_metadata)
+    fluentbit_action["log_name"] = f"demo-{_slugify(profile_name)}-fluentbit-client"
+
+    fluentd_args = [
+        "--config-path",
+        str(fluentd_config),
+        "--agent-config-path",
+        str(fluentd_agent),
+    ]
+    fluentd_action = _background_start_action(
+        action_id=f"demo_fluentd_{_slugify(profile_name)}",
+        label=f"{LABEL_FLUENTD_CLIENT} ({profile_name})",
+        command_text=_python_module_command(
+            module_name="opamp_consumer.fluentd_client",
+            python_paths=[repo_root / "consumer" / "src"],
+            args=fluentd_args,
+            env={"OPAMP_CONFIG_PATH": str(fluentd_config)},
+            cwd=repo_root,
+        ),
+        argv=_python_module_argv(module_name="opamp_consumer.fluentd_client", args=fluentd_args),
+        cwd=repo_root,
+        env=_build_exec_env(
+            python_paths=[repo_root / "consumer" / "src"],
+            env={"OPAMP_CONFIG_PATH": str(fluentd_config)},
+        ),
+    )
+    fluentd_action["record_name"] = f"{prefix}:{LABEL_FLUENTD_CLIENT}"
+    fluentd_action["metadata"] = dict(common_metadata)
+    fluentd_action["log_name"] = f"demo-{_slugify(profile_name)}-fluentd-client"
+
+    sequence = [simulator_action, fluentbit_action, fluentd_action]
+    for sub_action in sequence:
+        sub_kind = str(sub_action.get("kind") or "").strip()
+        if sub_kind == ACTION_KIND_SIMULATOR_START:
+            code = _record_simulator_batch(sub_action)
+        else:
+            code = _launch_background_process(sub_action)
+        if int(code) != 0:
+            logger.warning(
+                "demo profile start failed profile=%s step_kind=%s exit_code=%s",
+                profile_name,
+                sub_kind,
+                int(code),
+            )
+            _stop_recorded_processes_by_prefix(prefix=prefix)
+            return int(code)
+
+    print(f"Started demo consumers for profile '{profile_name}'.")
+    return 0
+
+
+def _stop_demo_consumers(action: dict[str, Any]) -> int:
+    """Stop simulator + consumer clients for one demo profile."""
+    profile_name = str(action.get("profile_name") or "").strip()
+    prefix = _demo_record_prefix(profile_name)
+    code = _stop_recorded_processes_by_prefix(prefix=prefix, allow_empty=False)
+    if int(code) == 0:
+        print(f"Stop request completed for demo profile '{profile_name}'.")
+    return int(code)
 
 
 def _launch_background_process(action: dict[str, Any]) -> int:
@@ -2133,6 +2467,10 @@ def _launch_background_process(action: dict[str, Any]) -> int:
         command_text=str(action.get("command_text") or ""),
         cwd=cwd,
         log_file=log_file,
+        metadata={
+            str(key): value
+            for key, value in dict(action.get("metadata", {})).items()
+        },
     )
     _append_log_line(log_file, f"[{_utc_timestamp()}] pid={process.pid}")
     logger.info(
@@ -2161,10 +2499,10 @@ def _record_simulator_batch(action: dict[str, Any]) -> int:
         for key, value in dict(action.get("env", {})).items()
     }
     log_file = _prepare_launch_log(
-        label=str(action.get("label") or "Simulator"),
+        label=str(action.get("label") or LABEL_SIMULATOR),
         command_text=str(action.get("command_text") or ""),
         cwd=cwd,
-        log_name=_slugify(str(action.get("label") or "Simulator")),
+        log_name=_slugify(str(action.get("label") or LABEL_SIMULATOR)),
     )
     with log_file.open("a", encoding="utf-8") as log_handle:
         completed = subprocess.run(
@@ -2207,6 +2545,8 @@ def _record_simulator_batch(action: dict[str, Any]) -> int:
     instances = payload.get("instances", []) if isinstance(payload, dict) else []
     if not isinstance(instances, list):
         instances = []
+    record_prefix = str(action.get("record_prefix") or "").strip()
+    extra_metadata = dict(action.get("record_metadata", {}))
     recorded = 0
     for instance in instances:
         if not isinstance(instance, dict):
@@ -2224,13 +2564,19 @@ def _record_simulator_batch(action: dict[str, Any]) -> int:
                 state_file,
             )
             continue
+        record_name = f"{SIMULATOR_RECORD_PREFIX}:{name}"
+        if record_prefix:
+            record_name = f"{record_prefix}:{SIMULATOR_RECORD_PREFIX}:{name}"
+        metadata = {"state_file": str(state_file)}
+        for key, value in extra_metadata.items():
+            metadata[str(key)] = value
         _record_cli_process(
-            name=f"Simulator:{name}",
+            name=record_name,
             pid=pid,
             command_text=str(action.get("command_text") or ""),
             cwd=Path(str(instance.get("working_dir") or cwd)).resolve(),
             log_file=log_file,
-            metadata={"state_file": str(state_file)},
+            metadata=metadata,
         )
         recorded += 1
     logger.info(
@@ -2241,7 +2587,7 @@ def _record_simulator_batch(action: dict[str, Any]) -> int:
     )
     print(f"Started Simulator batch with {recorded} recorded process(es)")
     _open_process_tail_if_enabled(
-        label=str(action.get("label") or "Simulator"),
+        label=str(action.get("label") or LABEL_SIMULATOR),
         log_file=log_file,
     )
     return 0
@@ -2286,7 +2632,25 @@ def _stop_recorded_processes(record_names: list[str]) -> int:
     return 0
 
 
-def _interactive_loop() -> int:
+def _stop_all_recorded_processes() -> int:
+    """Stop every currently recorded managed process."""
+    payload = _prune_cli_process_state()
+    names: list[str] = []
+    for record in payload.get("processes", []):
+        if not isinstance(record, dict):
+            continue
+        name = str(record.get("name") or "").strip()
+        if not name:
+            continue
+        names.append(name)
+    unique_names = sorted(set(names))
+    if not unique_names:
+        print("No recorded managed processes to stop.")
+        return 0
+    return _stop_recorded_processes(unique_names)
+
+
+def _interactive_loop() -> int:  # noqa: PLR0912,PLR0915
     """Run a REPL that executes or generates on each submitted line."""
     logger = _get_logger()
     words = _top_level_commands()
@@ -2307,6 +2671,11 @@ def _interactive_loop() -> int:
     )
     print("You can type `start server`, `stop config service`, or `restart server` directly.")
     print("Use `enable-process-tail` to tail managed process logs in a new shell.")
+    detected_flags = _detected_behavior_flags()
+    if detected_flags:
+        print("Detected behavior flags/settings:")
+        for entry in detected_flags:
+            print(f"  - {entry}")
     print("Type 'exit' or press Ctrl+D to quit.")
     logger.info("interactive CLI loop started")
 
@@ -2325,14 +2694,14 @@ def _interactive_loop() -> int:
             print()
             continue
 
-        if raw.strip().lower() in {"exit", "quit"}:
+        if raw.strip().lower() in {COMMAND_EXIT, COMMAND_QUIT}:
             logger.info("interactive CLI loop exited via explicit command")
             return 0
-        if raw.strip().lower() in {"help", "-h", "--help"}:
+        if raw.strip().lower() in {COMMAND_HELP, "-h", "--help"}:
             logger.info("interactive help requested")
             print(HELP_TEXT)
             continue
-        if raw.strip().lower() == "status":
+        if raw.strip().lower() == COMMAND_STATUS:
             logger.info("interactive status requested")
             _print_status()
             continue
@@ -2378,7 +2747,7 @@ def main(argv: list[str] | None = None) -> int:
         exit_code = _interactive_loop()
         logger.info("CLI main completed interactive exit_code=%s", exit_code)
         return exit_code
-    if args[0] in {"-h", "--help", "help"}:
+    if args[0] in {"-h", "--help", COMMAND_HELP}:
         logger.info("CLI help requested argv=%s", args)
         print(HELP_TEXT)
         return 0
