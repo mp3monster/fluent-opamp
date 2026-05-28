@@ -57,6 +57,13 @@ setup(
     install_requires=[
         "quart>=0.20.0",
     ],
+    extras_require={
+        "dev": [
+            "pylint>=3.0",
+            "pytest>=8.0",
+            "ruff>=0.15.0",
+        ],
+    },
     python_requires=">=3.10",
     entry_points={
         "console_scripts": [

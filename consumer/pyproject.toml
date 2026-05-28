@@ -22,6 +22,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
 authors = [{ name = "Phil Wilkins", email = "phil-AT-mp3monster.org" }]
+keywords = ["opamp", "observability", "agent", "consumer", "supervisor"]
 dependencies = [
   "protobuf>=5.27",
   "grpcio-tools>=1.60",
@@ -33,14 +34,57 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+  "pylint>=3.0",
   "pytest>=8.0",
   "pytest-asyncio>=0.23",
+  "pytest-cov>=7.0.0",
+  "ruff>=0.15.0",
 ]
 
 [project.scripts]
 opamp-consumer = "opamp_consumer.client:main"
 opamp-consumer-fluentd = "opamp_consumer.fluentd_client:main"
 opamp-consumer-simulator = "opamp_consumer.simulator_client:main"
+
+[project.urls]
+Repository = "https://github.com/mp3monster/fluent-opamp"
+Homepage = "https://htmlpreview.github.io/?https://raw.githubusercontent.com/mp3monster/fluent-opamp/main/github-landingpage/index.html"
+Blog = "https://blog.mp3monster.org/category/technology/fluent-observability/opamp/"
+
+[tool.pytest.ini_options]
+addopts = [
+  "-s",
+  "--cov=opamp_consumer",
+  "--cov-report=term-missing",
+  "--cov-report=xml:coverage.xml",
+  "--cov-branch",
+]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["opamp_consumer"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+precision = 2
+exclude_lines = [
+  "pragma: no cover",
+  "if __name__ == .__main__.:",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "S"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["opamp_consumer"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/opamp_consumer"]
