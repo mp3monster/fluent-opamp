@@ -11,40 +11,66 @@ The CLI can also open a separate tail shell for managed process logs when `enabl
 ## Structure
 
 - `README.md`: component overview and startup guide
+- `scripts/`: shell-specific helper scripts for alias / macro setup
 - `docs/`: component-specific documentation and implementation notes
 - `src/opamp_cli/`: implementation package
 - `runtime/`: generated runtime metadata, process state, and log files
 - `pyproject.toml`: packaging metadata and console entrypoint
 - `requirements.txt`: runtime requirements
 
-## Start the CLI Tool
+## How To Run
 
-From repository root, choose one of the following:
+You can run the CLI either from the repository root or from inside the `cli/` directory.
 
-### Option 1: Run module directly (no install)
+From repository root:
+
+- `python3 cli/main.py`
+- `PYTHONPATH=cli/src python3 -m opamp_cli`
+- `python3 -m cli`
+- `python3 -m pip install -e cli && opamp-cli`
+
+From the `cli/` directory:
+
+- `python3 main.py`
+- `PYTHONPATH=src python3 -m opamp_cli`
+- `python3 -m pip install -e . && opamp-cli`
+
+## Shell Setup
+
+If you want a persistent shell shortcut for `opamp-cli` and `opamp`, use the helper script for your shell:
+
+Linux / macOS shells:
 
 ```bash
-python3 cli/main.py
+./cli/scripts/install_cli_aliases.sh
 ```
 
-### Option 2: Run package module
+Windows `cmd.exe`:
 
-```bash
-PYTHONPATH=cli/src python3 -m opamp_cli
+```cmd
+cli\scripts\install_cli_aliases.cmd
 ```
 
-### Option 3: Use compatibility launcher
+Windows PowerShell:
 
-```bash
-python3 -m cli
+```powershell
+.\cli\scripts\install_cli_aliases.ps1
 ```
 
-### Option 4: Install editable package and use command
+What these do:
 
-```bash
-python3 -m pip install -e cli
-opamp-cli
-```
+- `install_cli_aliases.sh`: updates `~/.bashrc` and `~/.zshrc`
+- `install_cli_aliases.cmd`: writes a `doskey` macro file and shows the optional `AutoRun` command
+- `install_cli_aliases.ps1`: updates the current PowerShell profile and legacy Windows PowerShell profile when needed
+
+All three create:
+
+- `opamp-cli`
+- `opamp`
+
+Both shortcuts run the compatibility entrypoint:
+
+- `python .../cli/main.py`
 
 ## Documentation
 
@@ -58,9 +84,11 @@ opamp-cli
   - Type `start` in interactive mode, then choose what to start
     (for example `server`, `config catalog ui`, `config service`, `broker`, `simulator`, `fluentbit client`, `fluentd client`).
   - Type `stop` in interactive mode, then choose what to stop.
+  - `stop all` stops all CLI-managed recorded processes.
   - Type `restart` in interactive mode, then choose what to restart.
   - You can also run guided actions directly on one line, for example `start server`, `stop config service`, or `restart server`.
   - Type `status` in interactive mode to list managed processes, PID liveness, and log paths.
+  - Type `list` in interactive mode to display the current command hierarchy and guided options (including flag-gated options).
   - Type `enable-process-tail` to open a separate tail shell for each future managed start log.
   - Type `disable-process-tail` to turn that behavior off again.
   - `Config Catalog UI` is shown when catalog sources are configured in `config/opamp.json`. The CLI writes a temporary runtime config under `cli/runtime/` so the catalog can be launched without editing the repo config.
@@ -78,6 +106,7 @@ script demo-start-clients python -m opamp_consumer.fluentbit_client
 python -m pytest -s
 cli/main.py --help
 opamp-cli status
+opamp-cli list
 opamp-cli enable-process-tail
 ```
 
@@ -85,9 +114,27 @@ Guided examples:
 
 ```text
 opamp-cli start server
+opamp-cli stop all
 
 opamp-cli
 opamp> start config service
+```
+
+Demo consumer mode:
+
+- Set `OPAMP_DEMO=true` to expose profile-based demo consumer actions in guided `start` and `stop`.
+- Demo profiles are loaded from `cli/config/demo_consumer_profiles.json`.
+- Each profile maps a logical profile name to:
+  - simulator instances file
+  - Fluent Bit OpAMP config + agent config
+  - Fluentd OpAMP config + agent config
+- CLI records profile-scoped PIDs in `cli/runtime/managed_processes.json`, so `stop` can terminate one demo profile independently.
+
+Example:
+
+```text
+OPAMP_DEMO=true opamp-cli start
+OPAMP_DEMO=true opamp-cli stop "demo consumers script-defaults"
 ```
 
 Type `exit` or `quit` to leave interactive mode.
