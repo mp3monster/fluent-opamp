@@ -39,7 +39,7 @@ if warn_if_cli_missing is not None:
 
 setup(
     name="catalog-service",
-    version="0.1.0",
+    version="0.4.0",
     description="Standalone OpAMP configuration catalog backend and UI",
     long_description=(ROOT / "README.md").read_text(encoding="utf-8"),
     long_description_content_type="text/markdown",

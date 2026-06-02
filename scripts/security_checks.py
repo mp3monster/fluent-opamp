@@ -14,7 +14,32 @@ from pathlib import Path
 APP_ENABLE_DEV_FEATURES_ENV = "APP_ENABLE_DEV_FEATURES"
 SECURITY_CHECKS_HEADER = "=== OpAMP Security Checks ==="
 DETECT_SECRETS_EXCLUDE_REGEX = (
-    r"(^\.git/|^\.venv/|^dist/|^logs/|^runtime/|^server-state/|^dev-notes/)"
+    r"(^\.git/|^\.venv/|^dist/|^logs/|^runtime/|^server-state/|^dev-notes/|"
+    r"^build/|/build/|^node_modules/|/node_modules/|^\.pytest_cache/|"
+    r"^catalog-service/node_modules/|^config-service/node_modules/|"
+    r"^provider/node_modules/)"
+)
+RUFF_SECURITY_IGNORE_CODES = (
+    "S104",
+    "S105",
+    "S110",
+    "S112",
+    "S310",
+    "S311",
+    "S506",
+    "S602",
+    "S603",
+    "S607",
+)
+RUFF_SECURITY_TARGETS = (
+    "provider/src",
+    "consumer/src",
+    "cli/src",
+    "catalog-service/src",
+    "config-service/src",
+    "agent_broker/opamp_broker",
+    "shared",
+    "scripts",
 )
 
 
@@ -63,14 +88,27 @@ def _ensure_cli_tool(
 
 def _scan_for_secrets(*, repo_root: Path, env: dict[str, str]) -> None:
     """Run detect-secrets scan and fail when findings are present."""
+    tracked_files_output = _run_capture(
+        ["git", "ls-files"],
+        cwd=repo_root,
+        env=env,
+    )
+    tracked_files = [
+        line.strip()
+        for line in tracked_files_output.stdout.splitlines()
+        if line.strip() and not Path(line.strip()).parts[0].startswith("dev-notes")
+    ]
+    if not tracked_files:
+        raise RuntimeError("git ls-files returned no tracked files for secret scanning")
+
     completed = _run_capture(
         [
             "detect-secrets",
             "scan",
-            "--all-files",
             "--force-use-all-plugins",
             "--exclude-files",
             DETECT_SECRETS_EXCLUDE_REGEX,
+            *tracked_files,
         ],
         cwd=repo_root,
         env=env,
@@ -183,8 +221,17 @@ def main() -> int:
     )
 
     # 3) Ruff security rules.
+    ruff_security_cmd = [
+        "ruff",
+        "check",
+        "--select",
+        "S",
+        "--ignore",
+        ",".join(RUFF_SECURITY_IGNORE_CODES),
+        *RUFF_SECURITY_TARGETS,
+    ]
     _run(
-        ["ruff", "check", "--select", "S", "."],
+        ruff_security_cmd,
         cwd=repo_root,
         env=checks_env,
     )

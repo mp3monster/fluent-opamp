@@ -1,0 +1,71 @@
+{
+  "launched_at": "2026-05-28T16:31:48Z",
+  "instances": [
+    {
+      "name": "consumer-simulator-1",
+      "pid": 57112,
+      "process_group_id": null,
+      "command": [
+        "C:\\languages\\Python\\Python311\\python.exe",
+        "-m",
+        "opamp_consumer.simulator_client",
+        "--config-path",
+        "D:\\dev\\opamp\\consumer\\opamp-simulator.json",
+        "--heartbeat-frequency",
+        "20",
+        "--log-level",
+        "INFO",
+        "--agent-additional-params",
+        "{\"service_instance_uid\":\"sim-launcher-01\",\"client_version\":\"2.0.0\",\"config_version\":\"cfg-launcher-001\"}"
+      ],
+      "working_dir": "D:\\dev\\opamp",
+      "config_path": "D:\\dev\\opamp\\consumer\\opamp-simulator.json",
+      "launched_at": "2026-05-28T16:31:47Z",
+      "status": "running"
+    },
+    {
+      "name": "consumer-simulator-2",
+      "pid": 57220,
+      "process_group_id": null,
+      "command": [
+        "C:\\languages\\Python\\Python311\\python.exe",
+        "-m",
+        "opamp_consumer.simulator_client",
+        "--config-path",
+        "D:\\dev\\opamp\\consumer\\opamp-simulator.json",
+        "--heartbeat-frequency",
+        "10",
+        "--log-level",
+        "INFO",
+        "--agent-additional-params",
+        "{\"service_instance_uid\":\"sim-launcher-02\",\"client_version\":\"Fluent Bit 4.2.1 (Community Edition)\",\"config_version\":\"cfg-launcher-001\"}"
+      ],
+      "working_dir": "D:\\dev\\opamp",
+      "config_path": "D:\\dev\\opamp\\consumer\\opamp-simulator.json",
+      "launched_at": "2026-05-28T16:31:47Z",
+      "status": "running"
+    },
+    {
+      "name": "consumer-simulator-3",
+      "pid": 57064,
+      "process_group_id": null,
+      "command": [
+        "C:\\languages\\Python\\Python311\\python.exe",
+        "-m",
+        "opamp_consumer.simulator_client",
+        "--config-path",
+        "D:\\dev\\opamp\\consumer\\opamp-simulator.json",
+        "--heartbeat-frequency",
+        "12",
+        "--log-level",
+        "INFO",
+        "--agent-additional-params",
+        "{\"service_instance_uid\":\"sim-launcher-03\",\"client_version\":\"Fluentd 1.1.19\",\"config_version\":\"cfg-launcher-001\"}"
+      ],
+      "working_dir": "D:\\dev\\opamp",
+      "config_path": "D:\\dev\\opamp\\consumer\\opamp-simulator.json",
+      "launched_at": "2026-05-28T16:31:48Z",
+      "status": "running"
+    }
+  ]
+}

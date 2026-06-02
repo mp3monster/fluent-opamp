@@ -84,6 +84,7 @@ from opamp_provider.state_persistence import (
     save_state_snapshot,
 )
 from opamp_provider.transport import decode_message, encode_message
+from opamp_provider.ui_assets import mini_filename
 from shared.opamp_config import (
     OPAMP_HTTP_PATH,
     OPAMP_TRANSPORT_HEADER_NONE,
@@ -2445,7 +2446,7 @@ def _read_ui_js_asset(
 ) -> str:
     """Read one UI JS asset with source/minified selection and fallback logging."""
     source_path = _HTML_DIR / source_filename
-    mini_path = _HTML_DIR / source_filename.replace(".js", ".mini.js")
+    mini_path = _HTML_DIR / mini_filename(source_filename)
     prefer_dev_assets = _app_enable_dev_features_enabled()
     preferred_path = source_path if prefer_dev_assets else mini_path
     fallback_path = mini_path if prefer_dev_assets else source_path
@@ -2481,8 +2482,8 @@ def _read_ui_js_asset(
         return fallback_path.read_text(encoding=UTF8_ENCODING)
 
     raise FileNotFoundError(
-        "no UI asset found for %s; expected at least one of %s or %s"
-        % (source_filename, source_path, mini_path)
+        f"no UI asset found for {source_filename}; "
+        f"expected at least one of {source_path} or {mini_path}"
     )
 
 

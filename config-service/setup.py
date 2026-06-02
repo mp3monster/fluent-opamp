@@ -60,7 +60,6 @@ setup(
     long_description=(ROOT / "README.md").read_text(encoding="utf-8"),
     long_description_content_type="text/markdown",
     author="Phil Wilkins",
-    author_email="phil-AT-mp3monster.org",
     license="Apache-2.0",
     packages=find_packages(
         where="src",

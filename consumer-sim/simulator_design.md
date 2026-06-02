@@ -40,7 +40,7 @@ Simulator runtime is protected by development-flag gating:
 - On block, the simulator logs the reason and exits gracefully before reporting any agent details to the server.
 
 Operational note:
-- Wrapper scripts (`scripts/run_consumer_sim_start.sh` and `.cmd`) set this flag automatically.
+- The CLI demo-consumer flow sets this flag automatically.
 - Direct/manual simulator launches must set the flag explicitly.
 
 ## Identity And Version Simulation
@@ -117,9 +117,9 @@ This keeps cleanup reliable and avoids stale state on partial failures.
 
 1. Define many simulator instances in `consumer-sim/consumer_instances.json`.
 2. Give each instance distinct metadata JSON in `agent-additional-params`.
-3. Run `scripts/run_consumer_sim_start.sh` or `.cmd`.
+3. Run the simulator directly or use the CLI demo-consumer flow.
 4. Exercise server UI/API/tooling against the simulated population.
-5. Run `scripts/run_consumer_sim_stop.sh` or `.cmd`.
+5. Stop the simulator directly or use the CLI stop flow.
 
 ## Scope And Limitations
 

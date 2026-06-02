@@ -14,6 +14,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
+from shared import packaging_warnings
 from shared.packaging_warnings import build_cli_missing_warning
 
 
@@ -26,7 +29,11 @@ def test_build_cli_missing_warning_returns_none_when_workspace_cli_exists() -> N
     assert warning is None
 
 
-def test_build_cli_missing_warning_reports_missing_cli(tmp_path: Path) -> None:
+def test_build_cli_missing_warning_reports_missing_cli(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setattr(packaging_warnings, "_detect_cli_distribution", lambda: None)
     warning = build_cli_missing_warning(
         component_label="provider wheel build",
         repo_root=tmp_path,

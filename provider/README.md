@@ -279,9 +279,16 @@ For the shared provider+consumer guide on implementing and deploying custom acti
 - The help page includes the server component version generated from git commit/date metadata.
 - Latest docs redirect: `http://localhost:8080/doc-set`
 - JavaScript asset mode is controlled by `APP_ENABLE_DEV_FEATURES`:
-  - truthy (`1`, `true`, `yes`, `on`): prefer readable source files (`web_ui_*.js`)
-  - otherwise: prefer compacted files (`web_ui_*.mini.js`)
+  - truthy (`1`, `true`, `yes`, `on`): prefer readable source files
+  - otherwise: prefer compacted files
+- Provider UI asset compaction covers:
+  - `web_ui_state.js`
+  - `web_ui_functions.js`
+  - `web_ui_framework.js`
+  - `web_ui_bindings.js`
+- Each source asset has a matching compacted file with the `.mini.js` suffix.
 - If preferred assets are unavailable, provider falls back to available assets and logs a warning that the flag preference could not be honored.
+- Minification workflow details are documented in `../docs/minification_process.md`.
 - Provider feature dropdown entries are configuration-driven from top-level `component-entry-points.quart` entries that provide `label` and `url` values.
 - Provider can embed additional Quart components at startup via `component-entry-points.quart` entrypoints (for example config-service integration).
 - Provider catalog feature is configured under top-level `opamp.config_catalog` and scans configured folders/extensions for metadata columns derived from top comment lines (`config-service: key=value`).

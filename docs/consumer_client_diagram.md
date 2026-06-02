@@ -167,10 +167,8 @@ classDiagram
 
 ```mermaid
 flowchart TD
-    A["scripts/run_fluentbit_supervisor.sh or .cmd"] --> B["python -m opamp_consumer.fluentbit_client"]
-    C["scripts/run_fluentd_supervisor.sh or .cmd"] --> D["python -m opamp_consumer.fluentd_client"]
-    E["installed CLI: opamp-consumer"] --> B
-    F["installed CLI: opamp-consumer-fluentd"] --> D
+    A["installed CLI: opamp-consumer"] --> B["python -m opamp_consumer.fluentbit_client"]
+    C["installed CLI: opamp-consumer-fluentd"] --> D["python -m opamp_consumer.fluentd_client"]
 
     B --> G["fluentbit_client.main()"]
     G --> H["client_bootstrap.run_default_client_main(...)"]

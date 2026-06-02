@@ -1879,11 +1879,17 @@ async def test_web_ui_references_external_javascript_bundle(monkeypatch) -> None
         )
         bindings_js_text = (await bindings_js_resp.get_data()).decode("utf-8")
 
-    assert ":root {" in css_text
-    assert "const state = {" in state_js_text
-    assert "async function fetchClients()" in functions_js_text
+    assert ":root" in css_text
+    assert "const state={" in state_js_text or "const state = {" in state_js_text
+    assert (
+        "async function fetchClients()" in functions_js_text
+        or "async function fetchClients(){" in functions_js_text
+    )
     assert "ProviderUiFramework" in framework_js_text
-    assert "init();" in bindings_js_text
+    assert (
+        "init();" in bindings_js_text
+        or "ProviderUiFramework.bootstrap" in bindings_js_text
+    )
 
 
 @pytest.mark.asyncio

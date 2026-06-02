@@ -16,12 +16,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "opamp-cli"
-version = "0.1.0"
+version = "0.4.0"
 description = "Prompt-driven command generator and runner for OpAMP local workflows"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
-authors = [{ name = "Phil Wilkins", email = "phil-AT-mp3monster.org" }]
+authors = [{ name = "Phil Wilkins" }]
 keywords = ["opamp", "observability", "cli", "tooling", "orchestration"]
 dependencies = [
   "prompt_toolkit>=3.0",

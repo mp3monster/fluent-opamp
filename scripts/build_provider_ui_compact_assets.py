@@ -8,16 +8,12 @@ This script minifies the provider UI JavaScript files and writes deterministic
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import shutil
 import subprocess
 from pathlib import Path
 
 UTF8 = "utf-8"
-JS_FILENAMES = (
-    "web_ui_state.js",
-    "web_ui_functions.js",
-    "web_ui_bindings.js",
-)
 
 
 def _run(cmd: list[str], *, cwd: Path) -> None:
@@ -39,6 +35,29 @@ def _require_npx() -> None:
 def _mini_filename(source_filename: str) -> str:
     """Return deterministic compacted filename for one source JS filename."""
     return source_filename.replace(".js", ".mini.js")
+
+
+def _provider_ui_js_filenames(repo_root: Path) -> tuple[str, ...]:
+    """Load the canonical provider UI asset list from provider source."""
+    module_path = repo_root / "provider" / "src" / "opamp_provider" / "ui_assets.py"
+    if not module_path.exists():
+        raise RuntimeError(f"provider UI asset definitions not found: {module_path}")
+
+    spec = importlib.util.spec_from_file_location("opamp_provider.ui_assets", module_path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"unable to load provider UI asset definitions: {module_path}")
+
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    filenames = getattr(module, "PROVIDER_UI_JS_FILENAMES", None)
+    if not isinstance(filenames, tuple) or not all(
+        isinstance(item, str) and item.endswith(".js") for item in filenames
+    ):
+        raise RuntimeError(
+            "provider UI asset definitions must expose PROVIDER_UI_JS_FILENAMES "
+            "as a tuple[str, ...] of .js filenames"
+        )
+    return filenames
 
 
 def _parse_args() -> argparse.Namespace:
@@ -72,10 +91,11 @@ def main() -> int:
     args = _parse_args()
     repo_root = Path(args.repo_root).resolve()
     html_dir = (repo_root / args.html_dir).resolve()
+    js_filenames = _provider_ui_js_filenames(repo_root)
     if not html_dir.exists():
         raise RuntimeError(f"HTML directory not found: {html_dir}")
 
-    for source_name in JS_FILENAMES:
+    for source_name in js_filenames:
         mini_path = html_dir / _mini_filename(source_name)
         if mini_path.exists():
             mini_path.unlink()
@@ -87,7 +107,7 @@ def main() -> int:
 
     _require_npx()
 
-    for source_name in JS_FILENAMES:
+    for source_name in js_filenames:
         source_path = html_dir / source_name
         if not source_path.exists():
             raise RuntimeError(f"source UI JS file not found: {source_path}")

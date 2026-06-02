@@ -16,12 +16,12 @@ build-backend = "hatchling.build"
 
 [project]
 name = "opamp-server"
-version = "0.5.0"
+version = "0.4.0"
 description = "OpAMP Server - upstream source https://github.com/mp3monster/fluent-opamp "
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
-authors = [{ name = "Phil Wilkins", email = "phil-AT-mp3monster.org" }]
+authors = [{ name = "Phil Wilkins" }]
 keywords = ["opamp", "observability", "otel", "server", "control-plane"]
 dependencies = [
   "quart>=0.19",

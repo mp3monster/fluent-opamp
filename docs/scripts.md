@@ -20,7 +20,7 @@ This table lists the helper scripts and their platform-specific names.
 | Build deployable Python artifacts (provider + consumer) | `scripts/build_artifacts.sh` | `scripts/build_artifacts.cmd` |
 | Build wheel artifacts and optionally publish to GitHub release assets | `scripts/build_and_publish_wheels.py` | `scripts\build_and_publish_wheels.py` |
 | Build consolidated OpAMP PDF manual | `scripts/build_opamp_manual.sh` | `scripts\build_opamp_manual.cmd` |
-| Build compacted provider web UI JavaScript assets (`*.mini.js`) | `scripts/build_provider_ui_compact_assets.py` | `scripts\build_provider_ui_compact_assets.py` |
+| Build compacted provider web UI JavaScript assets (`web_ui_state`, `web_ui_functions`, `web_ui_framework`, `web_ui_bindings`) | `scripts/build_provider_ui_compact_assets.py` | `scripts\build_provider_ui_compact_assets.py` |
 | Run security checks gate (minify, tests, ruff security, detect-secrets, pip-audit) | `scripts/security-checks` | `scripts\security-checks.cmd` |
 | Configure MCP for Claude Desktop (wrapper) | `mcp/configure-claude-desktop-fastmcp.sh` | `mcp\configure-claude-desktop-fastmcp.ps1` |
 | Configure MCP for ChatGPT/Codex (wrapper) | `mcp/configure-codex-fastmcp.sh` | `mcp\configure-codex-fastmcp.ps1` |
@@ -157,7 +157,11 @@ Optional publish flags:
 By default, `build_and_publish_wheels.py` regenerates:
 
 - `dist/manual/opamp_manual.pdf`
-- provider UI compact JS assets (`web_ui_*.mini.js`)
+- provider UI compact JS assets:
+  - `web_ui_state.mini.js`
+  - `web_ui_functions.mini.js`
+  - `web_ui_framework.mini.js`
+  - `web_ui_bindings.mini.js`
 - provider and consumer deployable-artifact SBOMs (CycloneDX JSON)
 
 SBOM freshness/integrity enforcement:
@@ -173,6 +177,10 @@ By default, `build_and_publish_wheels.py` also runs security checks via:
 Security checks include:
 
 - provider UI compaction (`build_provider_ui_compact_assets.py`)
+  - `web_ui_state.js` -> `web_ui_state.mini.js`
+  - `web_ui_functions.js` -> `web_ui_functions.mini.js`
+  - `web_ui_framework.js` -> `web_ui_framework.mini.js`
+  - `web_ui_bindings.js` -> `web_ui_bindings.mini.js`
 - full unit test stack (`pytest`)
 - Ruff security rules (`ruff check --select S .`)
 - detect-secrets scan
@@ -182,6 +190,7 @@ Security checks include:
 
 - if `APP_ENABLE_DEV_FEATURES` is set, it is unset for the check run and a message is logged before checks execute
 - this ensures checks run against non-dev asset-selection behavior
+- full process details are documented in [`minification_process.md`](minification_process.md)
 
 When `--publish` is used, the provider wheel, consumer wheel, provider SBOM, consumer SBOM, and generated PDF manual are uploaded as release assets.
 

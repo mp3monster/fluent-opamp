@@ -16,12 +16,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "config-service"
-version = "0.1.0"
+version = "0.4.0"
 description = "Tool for viewing and editing observability agent configurations."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
-authors = [{ name = "Phil Wilkins", email = "phil-AT-mp3monster.org" }]
+authors = [{ name = "Phil Wilkins" }]
 keywords = ["opamp", "observability", "configuration", "editor", "validation"]
 dependencies = [
   "quart>=0.19.4",
