@@ -60,6 +60,10 @@ async def test_catalog_routes_render_ui_help_and_api(tmp_path: Path) -> None:
         assert "Config Catalog" in ui_html
         assert "/catalog/api/files" in ui_html
         assert "/catalog/api/file-content" in ui_html
+        assert "Selection checkbox state" in ui_html
+        assert "Unselected" in ui_html
+        assert "config type (metadata)" in ui_html
+        assert "engine (inferred)" in ui_html
         assert 'id="featureMenuGroup"' in ui_html
         assert "catalogReadonlyOverlay" in ui_html
         assert "CONFIG_SERVICE_ENTRY_POINT" not in ui_html
@@ -69,6 +73,8 @@ async def test_catalog_routes_render_ui_help_and_api(tmp_path: Path) -> None:
         assert help_resp.status_code == 200
         help_html = (await help_resp.get_data()).decode("utf-8")
         assert "How Metadata Columns Are Built" in help_html
+        assert "Selection Checkbox Direction" in help_html
+        assert "selected and unselected rows available for direct filtering" in help_html
 
         data_resp = await client.get("/catalog/api/files")
         assert data_resp.status_code == 200

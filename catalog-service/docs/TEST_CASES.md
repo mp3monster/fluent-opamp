@@ -48,3 +48,9 @@ It covers unit tests, route-level tests, runtime-config tests, and the freestand
   - Covered in `ui-tests/docs/freestanding-catalog-row-click-opens-config-editor.md`.
 - `freestanding catalog row click opens readonly viewer`
   - Covered in `ui-tests/docs/freestanding-catalog-row-click-opens-readonly-viewer.md`.
+- `selection checkbox click marks a row without opening the viewer`
+  - Verifies checkbox interaction does not trigger the row-level navigation/view action.
+- `selection filter isolates selected and unselected rows`
+  - Verifies the fixed selection column supports direct selected/unselected filtering.
+- `selection column remains fixed while other columns reorder`
+  - Verifies drag-reordering does not move the fixed selection checkbox column.

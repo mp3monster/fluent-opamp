@@ -24,6 +24,10 @@ limitations under the License.
       .catalog-table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
       .catalog-table th, .catalog-table td { padding: 0.55rem 0.65rem; border-bottom: 1px solid var(--border); text-align: left; font-size: 0.88rem; }
       .catalog-table th { background: #eef2ff; cursor: pointer; user-select: none; }
+      .catalog-table th.selection-column,
+      .catalog-table td.selection-column { width: 4rem; min-width: 4rem; text-align: center; }
+      .catalog-table th.selection-column { cursor: default; }
+      .catalog-table td.selection-column input[type="checkbox"] { width: 1rem; height: 1rem; cursor: pointer; }
       .catalog-table th.column-header { cursor: grab; }
       .catalog-table th.column-header.dragging { opacity: 0.45; cursor: grabbing; }
       .catalog-table th.column-header.drag-over { box-shadow: inset 0 -3px 0 0 #8bb5ea; background: #e6efff; }
@@ -33,6 +37,7 @@ limitations under the License.
       .catalog-table tr.column-filter-row select { width: 100%; min-width: 7rem; padding: 0.3rem 0.45rem; font-size: 0.8rem; }
       .catalog-table tr:hover { background: #f8faff; }
       .catalog-table tr.is-clickable { cursor: pointer; }
+      .catalog-table tr.is-selected { background: #eef6ff; }
       .muted { color: var(--muted); }
       .catalog-pagination { display: flex; gap: 0.7rem; align-items: center; margin-top: 0.8rem; }
       .title-actions .button-link { white-space: nowrap; }
@@ -134,6 +139,15 @@ limitations under the License.
       (function() {
         const CATALOG_UI_COLUMN_ORDER_STORAGE_KEY = 'catalog_ui_column_order';
         const CLIENT_ERRORS_ENDPOINT = '__CATALOG_CLIENT_ERRORS_ENDPOINT__';
+        const SELECTION_COLUMN_KEY = 'selected';
+        const SELECTION_FILTER_BOTH = 'both';
+        const SELECTION_FILTER_SELECTED = 'selected';
+        const SELECTION_FILTER_UNSELECTED = 'unselected';
+        const COLUMN_LABEL_OVERRIDES = {
+          selected: 'selected',
+          config_type: 'config type (metadata)',
+          engine: 'engine (inferred)'
+        };
         const state = {
           rows: [],
           columns: [],
@@ -143,6 +157,8 @@ limitations under the License.
           pageSize: 20,
           filter: '',
           columnFilters: {},
+          selectedPaths: [],
+          selectionFilter: SELECTION_FILTER_BOTH,
           uiFeatureItems: [],
           configEditorUrl: '',
           configEditorAvailable: false
@@ -195,6 +211,48 @@ limitations under the License.
           return normalized;
         }
 
+        // Return a stable row identifier so selection survives filtering and paging changes.
+        function rowPath(row) {
+          return String(row && row.path ? row.path : '').trim();
+        }
+
+        // Return whether one row is currently selected by checkbox state.
+        function isRowSelected(row) {
+          const path = rowPath(row);
+          if (!path) return false;
+          return state.selectedPaths.includes(path);
+        }
+
+        // Toggle row selection while preserving click order for future workflow extensions.
+        function setRowSelected(row, selected) {
+          const path = rowPath(row);
+          if (!path) return;
+          const nextSelected = Boolean(selected);
+          const withoutPath = state.selectedPaths.filter(selectedPath => selectedPath !== path);
+          state.selectedPaths = nextSelected ? [...withoutPath, path] : withoutPath;
+        }
+
+        // Keep selected paths aligned with the currently loaded catalog rows.
+        function reconcileSelectedPaths(rows) {
+          const availablePaths = new Set(
+            (Array.isArray(rows) ? rows : [])
+              .map(row => rowPath(row))
+              .filter(path => Boolean(path))
+          );
+          state.selectedPaths = state.selectedPaths.filter(path => availablePaths.has(path));
+        }
+
+        // Return whether one row should remain visible for the active selection filter.
+        function rowMatchesSelectionFilter(row) {
+          if (state.selectionFilter === SELECTION_FILTER_SELECTED) {
+            return isRowSelected(row);
+          }
+          if (state.selectionFilter === SELECTION_FILTER_UNSELECTED) {
+            return !isRowSelected(row);
+          }
+          return true;
+        }
+
         function reloadUiWithCacheBust() {
           const url = new URL(window.location.href);
           url.searchParams.set('_ui_reload_ts', String(Date.now()));
@@ -240,6 +298,7 @@ limitations under the License.
         function sortedFilteredRows() {
           const needle = String(state.filter || '').toLowerCase();
           const filtered = state.rows.filter(row => {
+            if (!rowMatchesSelectionFilter(row)) return false;
             if (needle) {
               const values = state.columns.map(col => valueForColumnFilter(row, col));
               if (!values.join(' ').toLowerCase().includes(needle)) return false;
@@ -284,8 +343,12 @@ limitations under the License.
         }
 
         function displayColumnName(columnName) {
+          const normalizedColumnName = String(columnName || '');
+          if (Object.prototype.hasOwnProperty.call(COLUMN_LABEL_OVERRIDES, normalizedColumnName)) {
+            return COLUMN_LABEL_OVERRIDES[normalizedColumnName];
+          }
           if (columnName === 'last_edited') return 'last edited';
-          return String(columnName || '');
+          return normalizedColumnName;
         }
 
         function formatCatalogTimestamp(value) {
@@ -448,8 +511,70 @@ limitations under the License.
           });
         }
 
+        // Render the fixed selection header so checkbox state is always available and non-movable.
+        function renderSelectionHeaderCell() {
+          const th = document.createElement('th');
+          th.className = 'selection-column';
+          th.dataset.columnKey = SELECTION_COLUMN_KEY;
+          th.textContent = displayColumnName(SELECTION_COLUMN_KEY);
+          th.title = 'Selection checkbox state';
+          headerRow.appendChild(th);
+        }
+
+        // Render the fixed selection filter with both/selected/unselected choices.
+        function renderSelectionFilterCell() {
+          const th = document.createElement('th');
+          th.className = 'selection-column';
+          const select = document.createElement('select');
+          [
+            { value: SELECTION_FILTER_BOTH, label: 'Both' },
+            { value: SELECTION_FILTER_SELECTED, label: 'Selected' },
+            { value: SELECTION_FILTER_UNSELECTED, label: 'Unselected' },
+          ].forEach(optionSpec => {
+            const option = document.createElement('option');
+            option.value = optionSpec.value;
+            option.textContent = optionSpec.label;
+            select.appendChild(option);
+          });
+          select.value = String(state.selectionFilter || SELECTION_FILTER_BOTH);
+          select.addEventListener('click', event => {
+            event.stopPropagation();
+          });
+          select.addEventListener('change', () => {
+            state.selectionFilter = String(select.value || SELECTION_FILTER_BOTH);
+            state.page = 1;
+            renderBody();
+          });
+          th.appendChild(select);
+          columnFilterRow.appendChild(th);
+        }
+
+        // Render one non-navigating selection checkbox cell for a row.
+        function renderSelectionBodyCell(row, tr) {
+          const td = document.createElement('td');
+          td.className = 'selection-column';
+          td.addEventListener('click', event => {
+            event.stopPropagation();
+          });
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.checked = isRowSelected(row);
+          checkbox.setAttribute('aria-label', `Select ${String(row && row.filename ? row.filename : 'row')}`);
+          checkbox.addEventListener('click', event => {
+            event.stopPropagation();
+          });
+          checkbox.addEventListener('change', event => {
+            setRowSelected(row, event.target && event.target.checked);
+            state.page = 1;
+            renderBody();
+          });
+          td.appendChild(checkbox);
+          tr.appendChild(td);
+        }
+
         function renderHeader() {
           headerRow.innerHTML = '';
+          renderSelectionHeaderCell();
           state.columns.forEach(col => {
             const th = document.createElement('th');
             th.className = 'column-header';
@@ -516,6 +641,7 @@ limitations under the License.
         function renderColumnFilterRow() {
           if (!columnFilterRow) return;
           columnFilterRow.innerHTML = '';
+          renderSelectionFilterCell();
           state.columns.forEach(col => {
             const th = document.createElement('th');
             const isDiscoveredSelectColumn = ['config_type', 'engine', 'version'].includes(col);
@@ -695,6 +821,9 @@ limitations under the License.
           body.innerHTML = '';
           pageRows.forEach(row => {
             const tr = document.createElement('tr');
+            if (isRowSelected(row)) {
+              tr.classList.add('is-selected');
+            }
             const editorUrl = configEditorLinkForRow(row);
             if (row && row.path) {
               tr.classList.add('is-clickable');
@@ -707,6 +836,7 @@ limitations under the License.
                 openReadonlyViewer(row);
               });
             }
+            renderSelectionBodyCell(row, tr);
             state.columns.forEach(col => {
               const td = document.createElement('td');
               if (col === 'folder') td.textContent = row.folder || '';
@@ -717,7 +847,7 @@ limitations under the License.
             });
             body.appendChild(tr);
           });
-          summary.textContent = `${rows.length} entries`;
+          summary.textContent = `${rows.length} entries • ${state.selectedPaths.length} selected`;
           pageNum.textContent = String(state.page);
         }
 
@@ -735,6 +865,7 @@ limitations under the License.
           );
           state.columnFilters = normalizeColumnFilters(state.columnFilters, state.columns);
           state.rows = Array.isArray(payload.rows) ? payload.rows : [];
+          reconcileSelectedPaths(state.rows);
           renderHeader();
           renderBody();
         }

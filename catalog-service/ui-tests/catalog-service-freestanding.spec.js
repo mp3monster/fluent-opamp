@@ -77,8 +77,8 @@ test("column filters for config type engine and version are discovered-value dro
   test.skip(testInfo.project.name !== WITH_CONFIG_SERVICE);
   await openCatalog(page);
 
-  const configTypeFilter = await columnSelectFilter(page, "config_type");
-  const engineFilter = await columnSelectFilter(page, "engine");
+  const configTypeFilter = await columnSelectFilter(page, "config type (metadata)");
+  const engineFilter = await columnSelectFilter(page, "engine (inferred)");
   const versionFilter = await columnSelectFilter(page, "version");
   await expect(configTypeFilter).toBeVisible();
   await expect(engineFilter).toBeVisible();
@@ -93,7 +93,7 @@ test("dropdown column filters reduce rows using discovered values", async ({ pag
   test.skip(testInfo.project.name !== WITH_CONFIG_SERVICE);
   await openCatalog(page);
 
-  const configTypeFilter = await columnSelectFilter(page, "config_type");
+  const configTypeFilter = await columnSelectFilter(page, "config type (metadata)");
   const versionFilter = await columnSelectFilter(page, "version");
 
   await configTypeFilter.selectOption({ label: "fluentd" });
@@ -106,6 +106,39 @@ test("dropdown column filters reduce rows using discovered values", async ({ pag
   await expect(page.locator("#catalogBody")).toContainText("freestanding-fluentbit.yaml");
 });
 
+test("selection checkbox click marks the row without opening the readonly viewer", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== WITHOUT_CONFIG_SERVICE);
+  await openCatalog(page);
+
+  const row = page.locator("#catalogBody tr", { hasText: "freestanding-fluentbit.yaml" }).first();
+  const checkbox = row.locator('input[type="checkbox"]').first();
+
+  await checkbox.click();
+
+  await expect(checkbox).toBeChecked();
+  await expect(page.locator("#catalogReadonlyOverlay")).toHaveClass(/hidden/);
+  await expect(page).toHaveURL(/\/catalog$/);
+});
+
+test("selection filter shows selected and unselected rows independently", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== WITH_CONFIG_SERVICE);
+  await openCatalog(page);
+
+  const selectedFilter = await columnSelectFilter(page, "selected");
+  const fluentbitRow = page.locator("#catalogBody tr", { hasText: "freestanding-fluentbit.yaml" }).first();
+  const fluentbitCheckbox = fluentbitRow.locator('input[type="checkbox"]').first();
+
+  await fluentbitCheckbox.click();
+  await expect(page).toHaveURL(/\/catalog$/);
+  await selectedFilter.selectOption({ label: "Selected" });
+  await expect(page.locator("#catalogBody tr")).toHaveCount(1);
+  await expect(page.locator("#catalogBody")).toContainText("freestanding-fluentbit.yaml");
+
+  await selectedFilter.selectOption({ label: "Unselected" });
+  await expect(page.locator("#catalogBody tr")).toHaveCount(1);
+  await expect(page.locator("#catalogBody")).toContainText("freestanding-fluentd.yaml");
+});
+
 test("table columns can be reordered by drag and drop and persist on reload", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== WITH_CONFIG_SERVICE);
   await openCatalog(page);
@@ -113,11 +146,13 @@ test("table columns can be reordered by drag and drop and persist on reload", as
   const versionHeader = page.locator("#catalogHeaderRow th", { hasText: /^version$/ }).first();
   const folderHeader = page.locator("#catalogHeaderRow th", { hasText: /^folder$/ }).first();
   await versionHeader.dragTo(folderHeader);
-  await expect(page.locator("#catalogHeaderRow th").first()).toHaveText("version");
+  await expect(page.locator("#catalogHeaderRow th").first()).toHaveText("selected");
+  await expect(page.locator("#catalogHeaderRow th").nth(1)).toHaveText("version");
 
   await page.reload();
   await expect.poll(async () => page.locator("#catalogBody tr").count()).toBeGreaterThan(0);
-  await expect(page.locator("#catalogHeaderRow th").first()).toHaveText("version");
+  await expect(page.locator("#catalogHeaderRow th").first()).toHaveText("selected");
+  await expect(page.locator("#catalogHeaderRow th").nth(1)).toHaveText("version");
 });
 
 test("reload UI button forces cache-busted catalog reload", async ({ page }) => {

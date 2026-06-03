@@ -37,6 +37,20 @@ limitations under the License.
           <li>Missing values remain blank; <code>last_edited</code> always comes from filesystem timestamps.</li>
         </ol>
       </section>
+
+      <section class="panel">
+        <h2>Selection Checkbox Direction</h2>
+        <p>
+          The catalog selection checkbox capability remains available as part of the normal catalog
+          workflow rather than being hidden behind a separate toggle.
+        </p>
+        <ul>
+          <li>This keeps selected and unselected rows available for direct filtering.</li>
+          <li>This uses a fixed first-column checkbox so row-click viewing behavior remains unchanged.</li>
+          <li>This also supports future ordered file-selection workflows without changing row-click viewing behavior.</li>
+          <li>Standalone catalog behavior and provider deployments without the catalog feature should continue to operate independently.</li>
+        </ul>
+      </section>
     </main>
     <footer class="footer">
       <div>Licensed under Apache 2.0 • Attribution: <a href="https://mp3monster.org" target="_blank" rel="noopener noreferrer">mp3monster.org</a></div>

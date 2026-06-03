@@ -12,6 +12,11 @@ Catalog row behavior is configuration-driven:
 - when a configured component endpoint advertises the config-service feature, clicking a row opens the config editor
 - otherwise, clicking a row opens the built-in readonly file viewer
 
+Documented catalog direction:
+- the selection checkbox workflow stays available during normal catalog use
+- a fixed first column supports direct selected/unselected filtering without a separate selection-mode toggle
+- the standalone catalog and provider-without-catalog paths should continue to operate independently
+
 Repository source layout:
 - Python backend package: `src/catalog_service`
 - example configuration: `config`
