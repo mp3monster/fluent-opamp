@@ -189,8 +189,8 @@ It is responsible for:
 See:
 
 - [Provider README](../provider/README.md)
-- [Provider UI minification process](minification_process.md)
-- [Provider server UML source](provider_server_diagram.md)
+- [Provider UI minification process](dev/minification_process.md)
+- [Provider server UML source](dev/provider_server_diagram.md)
 - [Provider rendered diagram walkthrough](provider_server_diagrams.md)
 - [Endpoints](endpoints.md)
 - [Authentication](authentication.md)
@@ -211,11 +211,11 @@ It includes:
 See:
 
 - [Consumer README](../consumer/README.md)
-- [Consumer UML source](consumer_client_diagram.md)
+- [Consumer UML source](dev/consumer_client_diagram.md)
 - [Consumer rendered diagram walkthrough](consumer_client_diagrams.md)
-- [Consumer custom handlers](consumer_custom_handlers.md)
-- [Consumer update controllers](consumer_update_controllers.md)
-- [Consumer mixin design](consumer_mixins.md)
+- [Consumer custom handlers](dev/consumer_custom_handlers.md)
+- [Consumer update controllers](dev/consumer_update_controllers.md)
+- [Consumer mixin design](dev/consumer_mixins.md)
 
 ### CLI
 
@@ -287,16 +287,24 @@ See:
 ## Core documentation map
 
 - [Features and spec alignment](features.md)
-- [Design and implementation philosophy](implementation_philosophy.md)
-- [Command implementation notes](command_process_implementation_note.md)
+- [OpAMP JSON reference map](opamp_json_reference.md)
+- [Provider config reference](provider_config_reference.md)
 - [UI screenshots](screenshots.md)
 - [Scripts reference](scripts.md)
-- [Component versioning](component_versioning.md)
 - [API gateway requirements](api_gateway_requirements.md)
 - [Service daemon setup](service_daemon_setup.md)
 - [Self-signed TLS setup](self_signed_tls_setup.md)
-- [UI consistency checklist](ui_consistency_checklist.md)
 - [MCP scripts and setup](../mcp/README.md)
+
+## Development documentation map
+
+- [Development docs index](dev/index.md)
+- [Design and implementation philosophy](dev/implementation_philosophy.md)
+- [Command implementation notes](dev/command_process_implementation_note.md)
+- [Adding your own custom action](dev/adding_your_own_custom_action.md)
+- [Component versioning](dev/component_versioning.md)
+- [UI consistency checklist](dev/ui_consistency_checklist.md)
+- [Provider UI minification process](dev/minification_process.md)
 
 ## Documentation rules
 

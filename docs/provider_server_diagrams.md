@@ -4,11 +4,11 @@ This page explains the rendered provider/server diagrams and links each one back
 
 ## Source and Related Docs
 
-- Mermaid source: [docs/provider_server_diagram.md](provider_server_diagram.md)
+- Mermaid source: [docs/dev/provider_server_diagram.md](dev/provider_server_diagram.md)
 - Provider endpoint inventory: [docs/endpoints.md](endpoints.md)
 - Provider auth setup and token modes: [docs/authentication.md](authentication.md)
-- Command queue and payload internals: [docs/command_process_implementation_note.md](command_process_implementation_note.md)
-- Mixin design reference (consumer-side pattern): [docs/consumer_mixins.md](consumer_mixins.md)
+- Command queue and payload internals: [docs/dev/command_process_implementation_note.md](dev/command_process_implementation_note.md)
+- Mixin design reference (consumer-side pattern): [docs/dev/consumer_mixins.md](dev/consumer_mixins.md)
 
 ## Diagram 1: Class and Module Relationships
 

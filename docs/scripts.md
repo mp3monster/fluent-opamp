@@ -4,18 +4,12 @@ This table lists the helper scripts and their platform-specific names.
 
 | Purpose | Linux / macOS | Windows |
 | --- | --- | --- |
-| Run the OpAMP server (provider) | `scripts/run_opamp_server.sh` | `scripts/run_opamp_server.cmd` |
-| Run the OpAMP broker | `scripts/run_opamp_broker.sh` | `scripts/run_opamp_broker.cmd` |
-| Stop OpAMP broker service mode | `scripts/run_opamp_broker_stop.sh` | `scripts/run_opamp_broker_stop.cmd` |
 | Start Fluentd directly | `scripts/start_fluentd.sh` | `scripts/start_fluentd.cmd` |
 | Configure local Keycloak for JWT auth testing | `scripts/configure_keycloak.sh` | `scripts/configure_keycloak.cmd` / `scripts/configure_keycloak.ps1` |
 | Generate self-signed TLS cert/key for local HTTPS testing | `scripts/generate_self_signed_tls_cert.py` | `scripts\generate_self_signed_tls_cert.py` |
 | Ensure `provider.tls` settings exist in config JSON | `scripts/ensure_provider_tls_config.py` | `scripts\ensure_provider_tls_config.py` |
 | Render Mermaid `.mmd` to PNG (local wrapper) | `scripts/render_mermaid_png.sh` | n/a |
 | Request server shutdown via API | `scripts/shutdown_opamp_server.sh` | `scripts/shutdown_opamp_server.cmd` |
-| Install CLI aliases/macros for Linux shells | `cli/scripts/install_cli_aliases.sh` | n/a |
-| Install CLI aliases/macros for cmd | n/a | `cli\scripts\install_cli_aliases.cmd` |
-| Install CLI aliases/macros for PowerShell | n/a | `cli\scripts\install_cli_aliases.ps1` |
 | Install repo git hooks path (`core.hooksPath=.githooks`) | `scripts/install_git_hooks.sh` | `scripts/install_git_hooks.cmd` |
 | Build deployable Python artifacts (provider + consumer) | `scripts/build_artifacts.sh` | `scripts/build_artifacts.cmd` |
 | Build wheel artifacts and optionally publish to GitHub release assets | `scripts/build_and_publish_wheels.py` | `scripts\build_and_publish_wheels.py` |
@@ -190,7 +184,7 @@ Security checks include:
 
 - if `APP_ENABLE_DEV_FEATURES` is set, it is unset for the check run and a message is logged before checks execute
 - this ensures checks run against non-dev asset-selection behavior
-- full process details are documented in [`minification_process.md`](minification_process.md)
+- full process details are documented in [`dev/minification_process.md`](dev/minification_process.md)
 
 When `--publish` is used, the provider wheel, consumer wheel, provider SBOM, consumer SBOM, and generated PDF manual are uploaded as release assets.
 

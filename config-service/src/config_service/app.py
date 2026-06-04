@@ -26,11 +26,6 @@ ROOT_PATH = Path(__file__).resolve().parents[3]
 if str(ROOT_PATH) not in sys.path:
     sys.path.insert(0, str(ROOT_PATH))
 
-from shared.opamp_config import (
-    ComponentEntryPoint,
-    register_component_entry_points as shared_register_component_entry_points,
-)
-
 from config_service.agent_validation.service import ExternalAgentValidationService
 from config_service.auth_integration import evaluate_ui_http_auth
 from config_service.routes.api import create_api_blueprint
@@ -57,6 +52,10 @@ from config_service.services.service_definition_service import ServiceDefinition
 from config_service.services.ui_document_service import UiDocumentService
 from config_service.services.validation_service import ValidationService
 from config_service.services.yaml_render_service import YamlRenderService
+from shared.opamp_config import (
+    ComponentEntryPoint,
+    register_component_entry_points as shared_register_component_entry_points,
+)
 
 APP_CONFIG_KEY_MODE = "CONFIG_SERVICE_MODE"
 APP_CONFIG_KEY_READ_ONLY = "CONFIG_SERVICE_READ_ONLY"

@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import pathlib
 import sys
+from types import SimpleNamespace
 
 import pytest
 
@@ -145,6 +146,28 @@ def test_clear_stale_shutdown_semaphore_removes_file(tmp_path: pathlib.Path) -> 
     launcher._clear_stale_shutdown_semaphore(working_dir=tmp_path)
 
     assert semaphore_file.exists() is False
+
+
+def test_is_process_running_uses_tasklist_on_windows(monkeypatch) -> None:
+    """Windows PID checks should use tasklist instead of os.kill."""
+    called = {"kill": 0}
+
+    def fake_kill(_pid: int, _signal: int) -> None:
+        called["kill"] += 1
+        raise OSError(87, "The parameter is incorrect")
+
+    def fake_run(*_args, **_kwargs):
+        return SimpleNamespace(
+            returncode=0,
+            stdout='"python.exe","4321","Console","1","12,000 K"\n',
+        )
+
+    monkeypatch.setattr(launcher, "_is_windows", lambda: True)
+    monkeypatch.setattr(launcher.os, "kill", fake_kill)
+    monkeypatch.setattr(launcher.subprocess, "run", fake_run)
+
+    assert launcher._is_process_running(4321) is True
+    assert called["kill"] == 0
 
 
 def test_normalize_custom_command_string() -> None:
@@ -406,14 +429,13 @@ def test_stop_instances_removes_state_file_when_all_stopped(
 
 
 def test_is_process_running_handles_windows_bad_format_oserror(monkeypatch) -> None:
-    """Windows bad-format OSError from os.kill should be treated as not running."""
+    """Windows tasklist failures should be treated as not running."""
 
-    class _BadFormatError(OSError):
-        def __init__(self):
-            super().__init__("bad format")
-            self.winerror = 11
-
-    monkeypatch.setattr(launcher.os, "kill", lambda _pid, _sig: (_ for _ in ()).throw(_BadFormatError()))
-    monkeypatch.setattr(launcher.os, "name", "nt")
+    monkeypatch.setattr(launcher, "_is_windows", lambda: True)
+    monkeypatch.setattr(
+        launcher.subprocess,
+        "run",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError("bad format")),
+    )
 
     assert launcher._is_process_running(12345) is False

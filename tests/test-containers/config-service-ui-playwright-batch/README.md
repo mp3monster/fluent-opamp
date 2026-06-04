@@ -1,6 +1,6 @@
 # config-service-ui-playwright-batch
 
-Container harness for running Config Service UI chapter-YAML validation using Playwright.
+Container harness for running Config Editor chapter-YAML validation using Playwright.
 
 Run via convenience script:
 

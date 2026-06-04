@@ -2,6 +2,65 @@
 
 `config-service` now includes browser-based UI behavior tests using Playwright.
 
+## Prompt Standard
+
+Use `tests/playwright-test-prompt-template.md` as the canonical prompt format when asking Codex to
+add or update Playwright coverage for `config-service/ui-tests/config-ui.spec.js`.
+
+Use this populated suite instance as the starting point:
+
+```text
+Create Playwright regression test(s) for Config Editor field behavior, mode switching, partial
+load handling, metadata editing, and save/render output.
+
+Context:
+- Page: /config-service/ui
+- Config type/version context: default Fluent Bit startup state, Fluentd mode switching, and
+  fixture-driven Fluent Bit YAML loads
+- Current behavior: the suite covers service and parser dropdowns, plugin add behavior without
+  config-type churn, client-error reporting, tooltip text quality, partial YAML load warnings,
+  metadata separation, and header comment save/render output
+- Expected behavior: stable controls stay populated, mode switching updates the right panels,
+  partial loads remain usable while surfacing warnings, metadata keys stay separated from normal
+  environment values, and save/render output preserves header comment ordering
+
+Test scope:
+- Add test(s) to: `config-service/ui-tests/config-ui.spec.js`
+- Use existing test style and selectors from that file.
+- Keep tests deterministic and avoid timing flakiness.
+
+Steps to automate:
+1. Open `/config-service/ui`, wait for the page heading and parser/plugin option lists to load,
+   and capture the current config type/version when the scenario should preserve them.
+2. Exercise service and parser controls, add plugins, and switch config type to `fluentd` only
+   when the scenario is about panel visibility.
+3. Load fixture YAML files from `config-service/ui-tests/fixtures` to validate partial-load
+   warnings and metadata/environment separation.
+4. Trigger `console.error(...)` and assert the client-errors endpoint receives the browser payload.
+5. Use Save and Render flows to verify metadata normalization and header comment ordering in the
+   downloaded or rendered output.
+
+Assertions:
+- Service and parser dropdowns expose expected enum and parser values.
+- Adding a plugin updates `#plugin-list` immediately without changing config type or version.
+- Switching to Fluentd hides `#add-plugin-panel` and shows `#labels-panel` and `#workers-panel`.
+- Help tooltip text remains human-readable and excludes raw `http://` and `https://` URLs.
+- Partial YAML load warnings populate `#status-message` and `#validation-issues` while preserving
+  visible loaded plugin content.
+- Metadata keys are separated from normal environment values and saved with `_metadata.` prefixes.
+- Header comments are written before saved content and prepended to rendered output.
+
+Constraints:
+- Do not change config type/version unless the scenario requires it.
+- Prefer role/name selectors for buttons and explicit CSS ids for fields.
+- If needed, add or extend fixture files under config-service/ui-tests/fixtures.
+
+Deliverables:
+- Implement test code.
+- Run `npm run ui:test -- --list` and confirm test is discovered.
+- Summarize what was added and which files changed.
+```
+
 ## What these tests cover
 The Playwright suite focuses on high-value UI behaviors that are awkward to verify with backend tests alone.
 

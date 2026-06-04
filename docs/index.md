@@ -7,21 +7,13 @@ Welcome to the Fluent Bit & Fluentd OpAMP implementation docs. This page links t
 - [Setup README](README.md) — full setup and run instructions.
 - [Features - spec alignment](features.md) — feature notes and design direction.
 - [UI examples](screenshots.md) - Some of the elements of the UI to illustrate the user experience.
-- [Design & Implementation principles](implementation_philosophy.md) — project architecture and engineering principles.
-- [Command_process_implementation_notes](command_process_implementation_note.md) — command API/queue/dispatch implementation details.
-- [How to add_your_own_custom_action](adding_your_own_custom_action.md) — how to implement and deploy a custom provider+consumer action using `nullcommand` as the baseline.
-- [Client (consumer)_diagram (in Mermaid format)](consumer_client_diagram.md) — consumer client architecture and runtime relationship diagrams.
 - [Client (consumer)_diagrams (as images)](consumer_client_diagrams.md) — rendered consumer diagrams with explanation per diagram panel.
-- [Server (provider)_server_diagrams (in Mermaid format)](provider_server_diagram.md) — provider/server Mermaid source diagrams.
 - [Server_(provider) diagrams (as images)](provider_server_diagrams.md) — rendered provider/server diagrams plus links to auth, endpoints, and command docs.
-- [Client (consumer) use of mixins](consumer_mixins.md) — how consumer mixins are composed, dispatched, and overridden.
-- [Client (consumer) custom_handlers](consumer_custom_handlers.md) — built-in custom handlers, runtime discovery, and how to implement/deploy additional handlers.
-- [Client (consumer)_update_controllers](consumer_update_controllers.md) — how full update controllers drive reporting flags and outbound message field cadence.
 - [Authentication](authentication.md) — bearer token auth modes, static-token setup, Keycloak/JWT setup, and MCP token usage.
 - [Web Endpoints](endpoints.md) — provider endpoint inventory, including UI/API/tool/MCP routes and `/doc-set`.
+- [OpAMP JSON reference map](opamp_json_reference.md) — guide to which docs explain each top-level section of `config/opamp.json`.
+- [Provider config reference](provider_config_reference.md) — dedicated reference for `provider.*` values, defaults, and UI editability.
 - [OpAMP Config Catalog UI](opamp_config_catalog_ui.md) — configuration-driven catalog index page and help route details.
-- [OpAMP Config Catalog Service Prompt](opamp_config_catalog_service_prompt.md) — implementation prompt and scope for the catalog service.
-- [UI Consistency Checklist](ui_consistency_checklist.md) — PR checklist for consistent UI architecture, libraries, routing, and verification.
 - [Self_signed_TLS_setup](self_signed_tls_setup.md) — generate local self-signed cert/key and apply config values for HTTPS testing.
 - [API_gateway_suggested use and requirements](api_gateway_requirements.md) — recommended API gateway controls, internal vs external client profiles, and required auth/route hardening updates.
 - [Service_daemon_setup](service_daemon_setup.md) — running provider/consumer as `systemd` or Windows services, including Fluent Bit/Fluentd launch permissions.
@@ -32,7 +24,21 @@ Welcome to the Fluent Bit & Fluentd OpAMP implementation docs. This page links t
 - [Agent broker README](../agent_broker/README.md) — optional standalone conversation broker overview and run steps.
 - [Agent broker docs index](../agent_broker/docs/README.md) — broker runbooks (startup/shutdown/logging, Slack setup, architecture notes).
 - [Scripts](scripts.md) — script reference table by platform.
-- [Component Versioning](component_versioning.md) — git commit/date version metadata and where it appears in CLI/UI help.
+
+## Development guides
+
+- [Development docs index](dev/index.md) — implementation internals, extension points, build workflows, and source diagrams.
+- [Design & Implementation principles](dev/implementation_philosophy.md) — project architecture and engineering principles.
+- [Command_process_implementation_notes](dev/command_process_implementation_note.md) — command API/queue/dispatch implementation details.
+- [How to add_your_own_custom_action](dev/adding_your_own_custom_action.md) — how to implement and deploy a custom provider+consumer action using `nullcommand` as the baseline.
+- [Client (consumer)_diagram (in Mermaid format)](dev/consumer_client_diagram.md) — consumer client architecture and runtime relationship diagrams.
+- [Server (provider)_server_diagrams (in Mermaid format)](dev/provider_server_diagram.md) — provider/server Mermaid source diagrams.
+- [Client (consumer) use of mixins](dev/consumer_mixins.md) — how consumer mixins are composed, dispatched, and overridden.
+- [Client (consumer) custom_handlers](dev/consumer_custom_handlers.md) — built-in custom handlers, runtime discovery, and how to implement/deploy additional handlers.
+- [Client (consumer)_update_controllers](dev/consumer_update_controllers.md) — how full update controllers drive reporting flags and outbound message field cadence.
+- [OpAMP Config Catalog Service Prompt](dev/opamp_config_catalog_service_prompt.md) — implementation prompt and scope for the catalog service.
+- [UI Consistency Checklist](dev/ui_consistency_checklist.md) — PR checklist for consistent UI architecture, libraries, routing, and verification.
+- [Component Versioning](dev/component_versioning.md) — git commit/date version metadata and where it appears in CLI/UI help.
 
 ## Optional components
 

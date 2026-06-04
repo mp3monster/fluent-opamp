@@ -314,7 +314,7 @@
       isReportingUiError = true;
       try {
         console.error(
-          "[Config Service UI Error]",
+          "[Config Editor Error]",
           String(payload.kind || "runtime_error"),
           String(payload.message || "Unknown UI error"),
           payload
@@ -342,7 +342,7 @@
         isReportingUiError = true;
         try {
           console.error(
-            "[Config Service UI Error] Failed to post UI error to backend:",
+            "[Config Editor Error] Failed to post UI error to backend:",
             err && err.message ? err.message : String(err)
           );
         } catch (_consoleErr) {
