@@ -64,10 +64,16 @@ async def test_catalog_routes_render_ui_help_and_api(tmp_path: Path) -> None:
         assert "Unselected" in ui_html
         assert "config type (metadata)" in ui_html
         assert "engine (inferred)" in ui_html
+        assert 'id="catalogSelectionActions"' in ui_html
+        assert 'id="catalogApplySelectionBtn"' in ui_html
+        assert "selection_callback" in ui_html
         assert 'id="featureMenuGroup"' in ui_html
         assert "catalogReadonlyOverlay" in ui_html
         assert "CONFIG_SERVICE_ENTRY_POINT" not in ui_html
         assert "config_service.opamp_integration:register_config_service_feature" in ui_html
+        assert 'data-history-back-button="true"' in ui_html
+        assert 'hidden' in ui_html
+        assert 'href="/ui" >Server Console</a>' in ui_html
 
         help_resp = await client.get("/catalog/help")
         assert help_resp.status_code == 200
@@ -75,6 +81,7 @@ async def test_catalog_routes_render_ui_help_and_api(tmp_path: Path) -> None:
         assert "How Metadata Columns Are Built" in help_html
         assert "Selection Checkbox Direction" in help_html
         assert "selected and unselected rows available for direct filtering" in help_html
+        assert "Apply button appears when a callback URL is provided" in help_html
 
         data_resp = await client.get("/catalog/api/files")
         assert data_resp.status_code == 200
@@ -151,6 +158,11 @@ async def test_standalone_catalog_app_exposes_feature_payload(tmp_path: Path, mo
         assert '/catalog/assets/catalog_ui.css' in ui_html
         assert '/catalog/assets/opamp_logo.png' in ui_html
         assert '/catalog/assets/config_editor_icon.png' in ui_html
+        assert 'data-history-back-button="true"' in ui_html
+        assert 'aria-hidden="true"' in ui_html
+        assert 'tabindex="-1"' in ui_html
+        assert ">Back</button>" in ui_html
+        assert ">Server Console</a>" in ui_html
         css_resp = await client.get("/catalog/assets/catalog_ui.css")
         assert css_resp.status_code == 200
         assert css_resp.content_type.startswith("text/css")
@@ -241,7 +253,7 @@ async def test_standalone_catalog_app_exposes_config_service_feature_when_config
               },
               {
                 "entry_point": "config_service.opamp_integration:register_config_service_feature",
-                "label": "Config Service UI",
+                "label": "Config Editor",
                 "url": "/config-service/ui",
                 "enabled": true
               }
@@ -287,7 +299,7 @@ async def test_standalone_catalog_app_exposes_config_service_feature_when_config
 
     assert [item["label"] for item in feature_payload["items"]] == [
         "Config Catalog",
-        "Config Service UI",
+        "Config Editor",
     ]
     assert "config_service.opamp_integration:register_config_service_feature" in ui_html
 

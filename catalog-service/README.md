@@ -96,5 +96,6 @@ The current Playwright scenarios cover:
 - feature-menu navigation to the config-service UI
 - row-click navigation into the config editor
 - row-click fallback into the readonly file viewer
-
-Scenario maintenance notes for each Playwright test live in `ui-tests/docs/`.
+- selection checkbox filtering and fixed-column behavior
+- prompt guidance for new browser tests in `ui-tests/README.md`
+- scenario coverage details in `docs/TEST_CASES.md`

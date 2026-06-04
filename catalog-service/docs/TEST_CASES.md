@@ -40,14 +40,15 @@ It covers unit tests, route-level tests, runtime-config tests, and the freestand
 ## Browser Tests
 
 ### `catalog-service/ui-tests/catalog-service-freestanding.spec.js`
+- Playwright request prompts for this spec should follow the shared structure in `tests/playwright-test-prompt-template.md`, adapted for `/catalog` and `catalog-service/ui-tests/catalog-service-freestanding.spec.js`.
 - `freestanding catalog feature menu appears with config-service`
-  - Covered in `ui-tests/docs/freestanding-catalog-feature-menu-with-config-service.md`.
+  - Verifies the feature menu is visible when the config-service feature is configured.
 - `freestanding catalog feature menu navigates to config-service`
-  - Covered in `ui-tests/docs/freestanding-catalog-feature-menu-navigation-to-config-service.md`.
+  - Verifies selecting the feature-menu entry opens the embedded config-service UI.
 - `freestanding catalog row click opens config editor`
-  - Covered in `ui-tests/docs/freestanding-catalog-row-click-opens-config-editor.md`.
+  - Verifies row clicks open the config editor when config-service is available.
 - `freestanding catalog row click opens readonly viewer`
-  - Covered in `ui-tests/docs/freestanding-catalog-row-click-opens-readonly-viewer.md`.
+  - Verifies row clicks fall back to the readonly viewer when config-service is not available.
 - `selection checkbox click marks a row without opening the viewer`
   - Verifies checkbox interaction does not trigger the row-level navigation/view action.
 - `selection filter isolates selected and unselected rows`

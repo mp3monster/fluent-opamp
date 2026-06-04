@@ -95,7 +95,7 @@ def test_runtime_config_preserves_explicit_component_entries_for_freestanding_ed
                         },
                         {
                             "entry_point": "config_service.opamp_integration:register_config_service_feature",
-                            "label": "Config Service UI",
+                            "label": "Config Editor",
                             "url": "/config-service/ui",
                             "enabled": True,
                         },
@@ -119,7 +119,7 @@ def test_runtime_config_preserves_explicit_component_entries_for_freestanding_ed
         "catalog_service.app:register_catalog_component",
         "config_service.opamp_integration:register_config_service_feature",
     ]
-    assert [entry.label for entry in entries] == ["Config Catalog", "Config Service UI"]
+    assert [entry.label for entry in entries] == ["Config Catalog", "Config Editor"]
 
 
 def test_runtime_config_omits_config_service_entry_when_not_configured(

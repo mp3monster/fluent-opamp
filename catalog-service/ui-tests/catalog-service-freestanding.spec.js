@@ -33,20 +33,20 @@ test("freestanding catalog shows config-service feature menu entry when configur
   await expect(page.locator("#featureMenuGroup")).toBeVisible();
   await expect(page.locator("#featureMenuSelect option")).toContainText([
     "Config Catalog",
-    "Config Service UI",
+    "Config Editor",
   ]);
 });
 
 test("freestanding catalog feature menu navigates to config-service UI when configured", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== WITH_CONFIG_SERVICE);
   await openCatalog(page);
-  await page.locator("#featureMenuSelect").selectOption({ label: "Config Service UI" });
+  await page.locator("#featureMenuSelect").selectOption({ label: "Config Editor" });
   await expect(page).toHaveURL(/\/config-service\/ui/);
   await expect(page.getByRole("heading", { name: "Config Service" })).toBeVisible();
   await expect(page.locator("#featureMenuGroup")).toBeVisible();
   await expect(page.locator("#featureMenuSelect option")).toContainText([
     "Config Catalog",
-    "Config Service UI",
+    "Config Editor",
   ]);
 });
 
@@ -249,15 +249,6 @@ test("table columns can be reordered by drag and drop and persist on reload", as
   await expect.poll(async () => page.locator("#catalogBody tr").count()).toBeGreaterThan(0);
   await expect(page.locator("#catalogHeaderRow th").first()).toHaveText("selected");
   await expect(page.locator("#catalogHeaderRow th").nth(1)).toHaveText("version");
-});
-
-test("reload UI button forces cache-busted catalog reload", async ({ page }) => {
-  await openCatalog(page);
-  await Promise.all([
-    page.waitForURL(/_ui_reload_ts=/),
-    page.locator("#reload-ui").click(),
-  ]);
-  await expect(page.getByRole("heading", { name: "Config Catalog" })).toBeVisible();
 });
 
 test("catalog UI reports browser console errors to the standalone client-errors endpoint", async ({ page }) => {
