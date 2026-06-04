@@ -30,6 +30,7 @@ When `OPAMP_DEMO` is enabled:
 
 - `opamp-cli start` includes `Demo consumers (<profile-name>)` entries
 - `opamp-cli stop` includes matching demo stop entries
+- `opamp-cli demo` acts as shorthand for `opamp-cli start demo consumers`
 - `start demo consumers` acts as a category selector and offers the named profiles from the lookup file
 - demo-launched process records are written into `cli/runtime/managed_processes.json`
 - those records are profile-scoped, so one demo profile can be stopped independently of another
@@ -74,15 +75,12 @@ The following scripts still have distinct behavior and should not be grouped int
 
 - `scripts/start_fluentd.sh`
 - `scripts/start_fluentd.cmd`
-- `scripts/stop_supervisor.sh`
-- `scripts/stop_supervisor.cmd`
 - `scripts/terminate_fluent_bit.sh`
 - `scripts/terminate_fluent_bit.cmd`
 
 Why they are different:
 
 - `start_fluentd.*` starts Fluentd directly, not the OpAMP consumer wrapper flow
-- `stop_supervisor.*` is a minimal semaphore helper
 - `terminate_fluent_bit.*` is an emergency direct process terminator for `fluent-bit`
 
 Those may still be useful as low-level operational helpers even if the CLI becomes the primary entrypoint.

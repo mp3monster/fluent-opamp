@@ -316,6 +316,7 @@ def test_list_command_reflects_demo_flag(monkeypatch, tmp_path: Path, capsys) ->
 
     assert exit_code == 0
     assert "OPAMP_DEMO: enabled" in output
+    assert "  - demo" in output
     assert "Demo consumers (script-defaults)" in output
 
 
@@ -429,6 +430,27 @@ def test_demo_profile_alias_resolves_guided_action(monkeypatch, tmp_path: Path) 
     assert action is not None
     assert action["kind"] == "demo_consumers_start"
     assert action["profile_name"] == "repo-defaults"
+
+
+def test_top_level_commands_include_demo_when_enabled(monkeypatch) -> None:
+    monkeypatch.setenv("OPAMP_DEMO", "true")
+
+    commands = cli_main._top_level_commands()  # type: ignore[attr-defined]
+
+    assert "demo" in commands
+
+
+def test_split_guided_command_maps_demo_shorthand_when_enabled(monkeypatch) -> None:
+    monkeypatch.setenv("OPAMP_DEMO", "true")
+
+    assert cli_main._split_guided_command("demo") == ("start", "demo consumers")  # type: ignore[attr-defined]
+    assert cli_main._split_guided_command("demo repo-defaults") == ("start", "demo repo-defaults")  # type: ignore[attr-defined]
+
+
+def test_split_guided_command_ignores_demo_shorthand_when_disabled(monkeypatch) -> None:
+    monkeypatch.delenv("OPAMP_DEMO", raising=False)
+
+    assert cli_main._split_guided_command("demo") is None  # type: ignore[attr-defined]
 
 
 def test_start_demo_consumers_prompts_for_profile_choices(monkeypatch, tmp_path: Path) -> None:

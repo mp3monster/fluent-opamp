@@ -124,6 +124,7 @@ Demo consumer mode:
 
 - Set `OPAMP_DEMO=true` to expose profile-based demo consumer actions in guided `start` and `stop`.
 - Demo profiles are loaded from `cli/config/demo_consumer_profiles.json`.
+- In interactive or direct CLI mode, `demo` acts as shorthand for `start demo consumers`.
 - Each profile maps a logical profile name to:
   - simulator instances file
   - Fluent Bit OpAMP config + agent config
@@ -134,6 +135,7 @@ Example:
 
 ```text
 OPAMP_DEMO=true opamp-cli start
+OPAMP_DEMO=true opamp-cli demo
 OPAMP_DEMO=true opamp-cli stop "demo consumers script-defaults"
 ```
 

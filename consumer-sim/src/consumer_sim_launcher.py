@@ -25,6 +25,7 @@ Set `CONSUMER_SIM_CONFIG` to override configuration file path.
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import os
 import pathlib
@@ -78,6 +79,11 @@ TERMINATE_WAIT_SECONDS = 5.0
 POLL_INTERVAL_SECONDS = 0.25
 SEMAPHORE_FILENAME = "OpAMPSupervisor.signal"
 SCHEMA_FILENAME = "consumer_instances.schema.json"
+
+
+def _is_windows() -> bool:
+    """Return True when the launcher runs on Windows."""
+    return os.name == "nt"
 SIGKILL_SIGNAL = getattr(signal, "SIGKILL", signal.SIGTERM)
 
 
@@ -383,21 +389,49 @@ def _is_process_running(pid: int) -> bool:
     """Return True when process ID appears alive."""
     if pid <= 0:
         return False
+    if _is_windows():
+        return _is_process_running_windows(pid)
     try:
         os.kill(pid, 0)
     except ProcessLookupError:
         return False
     except PermissionError:
         return True
-    except OSError as error:
-        # Windows can raise OSError for stale/invalid PID handles instead of
-        # ProcessLookupError. Treat access denied as "still running"; all other
-        # OS errors mean "not running" to keep launcher start/stop resilient.
-        win_error = int(getattr(error, "winerror", 0) or 0)
-        if os.name == "nt" and win_error == 5:
-            return True
+    except OSError:
         return False
     return True
+
+
+def _is_process_running_windows(pid: int) -> bool:
+    """Return True when `tasklist` still reports one Windows PID."""
+    try:
+        completed = subprocess.run(
+            ["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV", "/NH"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError:
+        return False
+
+    if completed.returncode != 0:
+        return False
+
+    output = str(completed.stdout or "").strip()
+    if not output:
+        return False
+
+    for line in output.splitlines():
+        row = line.strip()
+        if not row or row.upper().startswith("INFO:"):
+            continue
+        try:
+            columns = next(csv.reader([row]))
+        except csv.Error:
+            continue
+        if len(columns) >= 2 and columns[1].strip() == str(pid):
+            return True
+    return False
 
 
 def _wait_for_exit(pid: int, timeout_seconds: float) -> bool:

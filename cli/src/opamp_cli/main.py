@@ -24,8 +24,9 @@ Extension guide:
 
 from __future__ import annotations
 
-import json
+import csv
 import importlib
+import json
 import logging
 import os
 import shlex
@@ -35,8 +36,9 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import Any, Callable, Iterable
+from typing import Any
 
 try:
     from .common import (
@@ -51,16 +53,16 @@ try:
         ACTION_ID_ALL_CLIENTS,
         ACTION_ID_ALL_MANAGED,
         ACTION_ID_BROKER,
-        ACTION_KIND_BACKGROUND_START,
         ACTION_ID_CATALOG_UI,
         ACTION_ID_CONFIG_SERVICE,
         ACTION_ID_FLUENTBIT_CLIENT,
         ACTION_ID_FLUENTD_CLIENT,
+        ACTION_ID_SERVER,
+        ACTION_ID_SIMULATOR,
+        ACTION_KIND_BACKGROUND_START,
         ACTION_KIND_DEMO_CONSUMERS_START,
         ACTION_KIND_DEMO_CONSUMERS_STOP,
         ACTION_KIND_RESTART,
-        ACTION_ID_SERVER,
-        ACTION_ID_SIMULATOR,
         ACTION_KIND_SHELL,
         ACTION_KIND_SIMULATOR_START,
         ACTION_KIND_STOP_ALL_RECORDED,
@@ -72,6 +74,9 @@ try:
         CLI_LOG_DIRNAME,
         CLI_PROCESS_STATE_FILENAME,
         CLI_RUNTIME_DIRNAME,
+        CLI_SETTING_ENABLE_PROCESS_TAIL,
+        CLI_SETTINGS_FILENAME,
+        COMMAND_DEMO,
         COMMAND_DISABLE_PROCESS_TAIL,
         COMMAND_ENABLE_PROCESS_TAIL,
         COMMAND_EXIT,
@@ -79,8 +84,6 @@ try:
         COMMAND_LIST,
         COMMAND_QUIT,
         COMMAND_STATUS,
-        CLI_SETTING_ENABLE_PROCESS_TAIL,
-        CLI_SETTINGS_FILENAME,
         DEFAULT_CATALOG_WEB_PORT,
         DEFAULT_SERVER_PORT,
         ENABLED_FLAG_VALUE,
@@ -135,16 +138,16 @@ except ImportError:
         ACTION_ID_ALL_CLIENTS,
         ACTION_ID_ALL_MANAGED,
         ACTION_ID_BROKER,
-        ACTION_KIND_BACKGROUND_START,
         ACTION_ID_CATALOG_UI,
         ACTION_ID_CONFIG_SERVICE,
         ACTION_ID_FLUENTBIT_CLIENT,
         ACTION_ID_FLUENTD_CLIENT,
+        ACTION_ID_SERVER,
+        ACTION_ID_SIMULATOR,
+        ACTION_KIND_BACKGROUND_START,
         ACTION_KIND_DEMO_CONSUMERS_START,
         ACTION_KIND_DEMO_CONSUMERS_STOP,
         ACTION_KIND_RESTART,
-        ACTION_ID_SERVER,
-        ACTION_ID_SIMULATOR,
         ACTION_KIND_SHELL,
         ACTION_KIND_SIMULATOR_START,
         ACTION_KIND_STOP_ALL_RECORDED,
@@ -156,6 +159,8 @@ except ImportError:
         CLI_LOG_DIRNAME,
         CLI_PROCESS_STATE_FILENAME,
         CLI_RUNTIME_DIRNAME,
+        CLI_SETTING_ENABLE_PROCESS_TAIL,
+        CLI_SETTINGS_FILENAME,
         COMMAND_DISABLE_PROCESS_TAIL,
         COMMAND_ENABLE_PROCESS_TAIL,
         COMMAND_EXIT,
@@ -163,8 +168,6 @@ except ImportError:
         COMMAND_LIST,
         COMMAND_QUIT,
         COMMAND_STATUS,
-        CLI_SETTING_ENABLE_PROCESS_TAIL,
-        CLI_SETTINGS_FILENAME,
         DEFAULT_CATALOG_WEB_PORT,
         DEFAULT_SERVER_PORT,
         ENABLED_FLAG_VALUE,
@@ -204,6 +207,9 @@ except ImportError:
     )
 
 CLI_LOGGER_NAME = "opamp_cli"
+SIMULATOR_STATE_KEY_INSTANCES = "instances"
+SIMULATOR_STATE_KEY_NAME = "name"
+SIMULATOR_STATE_KEY_PID = "pid"
 _CLI_LOGGER_CACHE: dict[str, logging.Logger | Path | None] = {
     "logger": None,
     "path": None,
@@ -376,7 +382,7 @@ def _handle_command(raw_command: str) -> int:  # noqa: PLR0911
 
 def _top_level_commands() -> list[str]:
     """Return top-level interactive commands and common executables."""
-    return [
+    commands = [
         COMMAND_HELP,
         "--help",
         "-h",
@@ -396,6 +402,9 @@ def _top_level_commands() -> list[str]:
         "uv",
         "curl",
     ]
+    if _demo_mode_enabled():
+        commands.append(COMMAND_DEMO)
+    return commands
 
 
 def _catalog_start_available() -> bool:
@@ -770,6 +779,8 @@ def _is_process_running(pid: int) -> bool:
     """Return whether a process ID appears to still be running."""
     if pid <= 0:
         return False
+    if _is_windows():
+        return _is_process_running_windows(pid)
     try:
         os.kill(pid, 0)
     except PermissionError:
@@ -777,6 +788,38 @@ def _is_process_running(pid: int) -> bool:
     except OSError:
         return False
     return True
+
+
+def _is_process_running_windows(pid: int) -> bool:
+    """Return whether a Windows process ID appears in `tasklist` output."""
+    try:
+        completed = subprocess.run(
+            ["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV", "/NH"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError:
+        return False
+
+    if completed.returncode != 0:
+        return False
+
+    output = (completed.stdout or "").strip()
+    if not output:
+        return False
+
+    for line in output.splitlines():
+        row = line.strip()
+        if not row or row.upper().startswith("INFO:"):
+            continue
+        try:
+            columns = next(csv.reader([row]))
+        except csv.Error:
+            continue
+        if len(columns) >= 2 and columns[1].strip() == str(pid):
+            return True
+    return False
 
 
 def _load_cli_process_state() -> dict[str, Any]:
@@ -1019,6 +1062,40 @@ def _log_has_startup_failure(log_file: Path) -> str | None:
         if marker in contents:
             return marker
     return None
+
+
+def _last_non_empty_log_line(log_file: Path) -> str:
+    """Return the last non-empty line from one log file, or an empty string."""
+    if log_file.is_file() is not True:
+        return ""
+    try:
+        lines = log_file.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return ""
+    for line in reversed(lines):
+        stripped = line.strip()
+        if stripped:
+            return stripped
+    return ""
+
+
+def _running_simulator_instance_names(state_file: Path) -> list[str]:
+    """Return running simulator instance names from one launcher state file."""
+    payload = _load_json_file(state_file)
+    instances = payload.get(SIMULATOR_STATE_KEY_INSTANCES, [])
+    if not isinstance(instances, list):
+        return []
+
+    running_names: list[str] = []
+    for instance in instances:
+        if not isinstance(instance, dict):
+            continue
+        pid = int(instance.get(SIMULATOR_STATE_KEY_PID, 0) or 0)
+        if pid <= 0 or _is_process_running(pid) is not True:
+            continue
+        name = str(instance.get(SIMULATOR_STATE_KEY_NAME) or "simulator").strip() or "simulator"
+        running_names.append(name)
+    return running_names
 
 
 def _http_ready(url: str) -> bool:
@@ -1742,7 +1819,7 @@ def _stop_actions() -> list[tuple[str, dict[str, Any]]]:
     repo_root = _repo_root()
 
     server_stop_cmd = (
-        "curl -sS -X POST http://127.0.0.1:4320/api/shutdown "
+        f"curl -sS -X POST http://127.0.0.1:{DEFAULT_SERVER_PORT}/api/shutdown "
         "-H \"Content-Type: application/json\" -d \"{\\\"confirm\\\": true}\""
     )
     action_map[ACTION_ID_SERVER] = {
@@ -1939,6 +2016,26 @@ def _split_guided_command(command_text: str) -> tuple[str, str] | None:
             return intent, ""
         if stripped.lower().startswith(f"{intent} "):
             return intent, stripped[len(intent) :].strip()
+    demo_command = _split_demo_shorthand_command(stripped)
+    if demo_command is not None:
+        return demo_command
+    return None
+
+
+def _split_demo_shorthand_command(command_text: str) -> tuple[str, str] | None:
+    """Return start-intent mapping for demo shorthand commands."""
+    if _demo_mode_enabled() is not True:
+        return None
+    stripped = str(command_text or "").strip()
+    if not stripped:
+        return None
+    lowered = stripped.lower()
+    if lowered == COMMAND_DEMO:
+        return INTENT_START, "demo consumers"
+    if lowered == "demo consumers":
+        return INTENT_START, "demo consumers"
+    if lowered.startswith(f"{COMMAND_DEMO} "):
+        return INTENT_START, stripped
     return None
 
 
@@ -2492,6 +2589,24 @@ def _launch_background_process(action: dict[str, Any]) -> int:
 def _record_simulator_batch(action: dict[str, Any]) -> int:
     """Run simulator launcher start and record all spawned instance PIDs."""
     logger = _get_logger()
+    label = str(action.get("label") or LABEL_SIMULATOR)
+    state_file = Path(str(action.get("state_file") or "")).resolve()
+    running_names = _running_simulator_instance_names(state_file)
+    if running_names:
+        logger.info(
+            "simulator batch start skipped because instances are already running "
+            "label=%s state_file=%s instances=%s",
+            label,
+            state_file,
+            running_names,
+        )
+        print(
+            f"{label} already running: {', '.join(running_names)}. "
+            "Stop simulator before starting it again.",
+            file=sys.stderr,
+        )
+        return 1
+
     argv = [str(item) for item in action.get("argv", [])]
     cwd = Path(str(action.get("cwd") or _repo_root())).resolve()
     env = {
@@ -2499,10 +2614,10 @@ def _record_simulator_batch(action: dict[str, Any]) -> int:
         for key, value in dict(action.get("env", {})).items()
     }
     log_file = _prepare_launch_log(
-        label=str(action.get("label") or LABEL_SIMULATOR),
+        label=label,
         command_text=str(action.get("command_text") or ""),
         cwd=cwd,
-        log_name=_slugify(str(action.get("label") or LABEL_SIMULATOR)),
+        log_name=_slugify(label),
     )
     with log_file.open("a", encoding="utf-8") as log_handle:
         completed = subprocess.run(
@@ -2513,7 +2628,6 @@ def _record_simulator_batch(action: dict[str, Any]) -> int:
             stdout=log_handle,
             stderr=subprocess.STDOUT,
         )
-    _append_log_line(log_file, f"[{_utc_timestamp()}] exit_code={int(completed.returncode)}")
     if int(completed.returncode) != 0:
         logger.warning(
             "simulator batch launcher exited non-zero argv=%s cwd=%s exit_code=%s log_file=%s",
@@ -2522,9 +2636,22 @@ def _record_simulator_batch(action: dict[str, Any]) -> int:
             int(completed.returncode),
             log_file,
         )
+        failure_detail = _last_non_empty_log_line(log_file)
+        if failure_detail:
+            print(
+                f"{label} failed to start: {failure_detail} log={log_file}",
+                file=sys.stderr,
+            )
+        else:
+            print(
+                f"{label} failed to start: launcher exit code {int(completed.returncode)} "
+                f"log={log_file}",
+                file=sys.stderr,
+            )
+        _append_log_line(log_file, f"[{_utc_timestamp()}] exit_code={int(completed.returncode)}")
         return int(completed.returncode)
+    _append_log_line(log_file, f"[{_utc_timestamp()}] exit_code={int(completed.returncode)}")
 
-    state_file = Path(str(action.get("state_file") or "")).resolve()
     if state_file.is_file() is not True:
         logger.warning(
             "simulator batch rejected because state file was not created state_file=%s",

@@ -32,10 +32,10 @@ CLI_SETTING_ENABLE_PROCESS_TAIL = "enable_process_tail"
 CLI_DEMO_FLAG_ENV = "OPAMP_DEMO"
 APP_ENABLE_DEV_FEATURES_ENV = "APP_ENABLE_DEV_FEATURES"
 CLI_DEMO_CONFIG_PATH = Path("cli/config/demo_consumer_profiles.json")
-DEFAULT_SERVER_PORT = 4320
+DEFAULT_SERVER_PORT = 8080
 DEFAULT_CATALOG_WEB_PORT = 8090
 PROCESS_START_CHECK_DELAY_SECONDS = 1.0
-PROCESS_READY_TIMEOUT_SECONDS = 5.0
+PROCESS_READY_TIMEOUT_SECONDS = 10.0
 PROCESS_READY_POLL_INTERVAL_SECONDS = 0.25
 PROCESS_STOP_TIMEOUT_SECONDS = 20.0
 PROCESS_STOP_POLL_INTERVAL_SECONDS = 0.25
@@ -56,6 +56,7 @@ COMMAND_LIST = "list"
 COMMAND_STATUS = "status"
 COMMAND_EXIT = "exit"
 COMMAND_QUIT = "quit"
+COMMAND_DEMO = "demo"
 COMMAND_ENABLE_PROCESS_TAIL = "enable-process-tail"
 COMMAND_DISABLE_PROCESS_TAIL = "disable-process-tail"
 ACTION_KIND_BACKGROUND_START = "background_start"
@@ -131,6 +132,7 @@ HELP_TEXT = """Usage:
   opamp-cli help
   opamp-cli list
   opamp-cli status
+  opamp-cli demo
   opamp-cli enable-process-tail
   opamp-cli disable-process-tail
 
@@ -165,6 +167,9 @@ Examples:
   # Show current command/target hierarchy
   opamp-cli list
 
+  # Open demo profile choices when OPAMP_DEMO=true
+  opamp-cli demo
+
   # Enable log tail windows for future managed starts
   opamp-cli enable-process-tail
 
@@ -172,6 +177,7 @@ Notes:
   - Interactive autocomplete uses prompt_toolkit when installed.
   - Fallback completion uses readline when available.
   - Guided actions can be run directly, for example `start config service`.
+  - When OPAMP_DEMO=true, `demo` acts like `start demo consumers`.
   - Guided start/stop/restart actions run components directly instead of relying on repo wrapper scripts.
   - Set OPAMP_DEMO=true to enable demo consumer options from cli/config/demo_consumer_profiles.json.
   - Guided starts record launched PIDs in cli/runtime/managed_processes.json.
