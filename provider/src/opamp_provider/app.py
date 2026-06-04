@@ -537,8 +537,13 @@ def _server_capabilities_mask() -> int:
 def _serialize_client_record_for_api(record: ClientRecord) -> dict[str, object]:
     """Return one API-facing client payload enriched with provider UI capability flags."""
     payload = record.model_dump(mode=MODEL_DUMP_MODE)
-    payload["remote_config_files_allowed"] = _provider_allows_remote_config()
-    payload["remote_config_capability_reported"] = _client_supports_remote_config(record)
+    provider_remote_config_enabled = _provider_allows_remote_config()
+    remote_config_capability_reported = _client_supports_remote_config(record)
+    payload["provider_remote_config_enabled"] = provider_remote_config_enabled
+    payload["remote_config_capability_reported"] = remote_config_capability_reported
+    payload["remote_config_files_allowed"] = (
+        provider_remote_config_enabled and remote_config_capability_reported
+    )
     return payload
 
 

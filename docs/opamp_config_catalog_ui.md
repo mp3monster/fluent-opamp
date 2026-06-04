@@ -71,7 +71,7 @@ Example:
     "quart": [
       {
         "entry_point": "config_service.opamp_integration:register_config_service_feature",
-        "label": "Config Service UI",
+        "label": "Config Editor",
         "url": "/config-service/ui",
         "enabled": true
       }
@@ -85,3 +85,29 @@ Example:
 Catalog help page:
 
 - `/catalog/help`
+
+## Selection Checkbox Direction
+
+The catalog selection checkbox capability remains available as part of normal catalog use rather
+than being hidden behind a separate mode toggle.
+
+- The fixed first column shows a checkbox for each catalog row.
+- The matching column filter supports `Both`, `Selected`, and `Unselected`.
+- Clicking the checkbox updates selection state without changing the existing row-click behavior for
+  viewing or opening a configuration file.
+- The same checkbox workflow can later support ordered file-selection callbacks when those provider
+  integration flows are enabled.
+- This direction should not prevent the catalog from running standalone, and it should not create a
+  dependency for provider deployments that do not enable the catalog feature.
+
+## Callback Apply Flow
+
+When the catalog is opened with a `selection_callback` query parameter:
+
+- an **Apply** button is shown at the bottom-right of the catalog page
+- the selected files are posted back to that callback in the order their checkboxes were chosen
+- the callback can normalize the list before returning it to the opening server console window
+- on success, the catalog popup closes
+
+The checkbox column is still present when no callback is supplied, so standalone catalog browsing and
+selection-based filtering continue to work without any provider dependency.

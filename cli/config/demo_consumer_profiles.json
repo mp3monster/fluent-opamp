@@ -17,7 +17,7 @@
     },
     {
       "name": "Demo setup (Simx1, Flbx1, Fdx1)",
-      "description": "Uses repository default opamp config with consumer-local agent configs.",
+      "description": "Uses the repository default Fluent Bit config and the dedicated Fluentd demo config.",
       "simulator": {
         "instances_path": "consumer-sim/consumer_instances.json"
       },
@@ -26,7 +26,7 @@
         "agent_config_path": "consumer/fluent-bit.yaml"
       },
       "fluentd": {
-        "config_path": "config/opamp.json",
+        "config_path": "consumer/opamp-fluentd.json",
         "agent_config_path": "consumer/fluentd.conf"
       }
     }

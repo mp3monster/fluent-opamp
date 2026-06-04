@@ -1532,8 +1532,31 @@ async def test_clients_endpoint_includes_remote_config_flags() -> None:
 
     assert payload["total"] == 1
     assert payload["clients"][0]["client_id"] == client_id
+    assert payload["clients"][0]["provider_remote_config_enabled"] is True
     assert payload["clients"][0]["remote_config_files_allowed"] is True
     assert payload["clients"][0]["remote_config_capability_reported"] is True
+
+
+@pytest.mark.asyncio
+async def test_clients_endpoint_keeps_remote_config_ui_disabled_without_client_capability() -> None:
+    """Verify provider config does not override a client that did not report support."""
+    client_id = "95959595959595959595959595959595"
+    _seed_tool_agent_record(
+        client_id=client_id,
+        capabilities=opamp_pb2.AgentCapabilities.AgentCapabilities_ReportsStatus,
+    )
+
+    async with app.test_client() as client:
+        resp = await client.get("/api/clients")
+        assert resp.status_code == 200
+        payload = await resp.get_json()
+
+    matching_client = next(
+        item for item in payload["clients"] if item["client_id"] == client_id
+    )
+    assert matching_client["provider_remote_config_enabled"] is True
+    assert matching_client["remote_config_capability_reported"] is False
+    assert matching_client["remote_config_files_allowed"] is False
 
 
 @pytest.mark.asyncio

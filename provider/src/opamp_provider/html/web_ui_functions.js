@@ -479,6 +479,9 @@
         return;
       }
 
+      const providerAllowsRemoteConfig =
+        client && client.provider_remote_config_enabled === true;
+      const capabilityReported = client && client.remote_config_capability_reported === true;
       const clientAllowsRemoteConfig =
         client && client.remote_config_files_allowed === true;
       remoteConfigEnhancedPanel.classList.toggle(
@@ -491,8 +494,9 @@
         remoteConfigEmptyState.classList.remove("hidden");
         selectRemoteConfigsBtn.classList.add("hidden");
         sendRemoteConfigFilesBtn.disabled = true;
-        remoteConfigCatalogHint.textContent =
-          "Remote config file selection is disabled by provider configuration.";
+        remoteConfigCatalogHint.textContent = providerAllowsRemoteConfig
+          ? "Remote config file selection is disabled because this client is not reporting remote-config support."
+          : "Remote config file selection is disabled by provider configuration.";
         clearRemoteConfigStatus();
         return;
       }
@@ -500,7 +504,6 @@
       const clientId = String(client && client.client_id ? client.client_id : "").trim();
       const selections = remoteConfigSelectionsForClient(clientId);
       const catalogAvailable = Boolean(String(state.catalogFeatureUrl || "").trim());
-      const capabilityReported = client && client.remote_config_capability_reported === true;
 
       selectRemoteConfigsBtn.classList.toggle("hidden", !catalogAvailable);
       sendRemoteConfigFilesBtn.disabled = selections.length === 0;
