@@ -11,6 +11,11 @@ async function openCatalog(page) {
   await expect.poll(async () => page.locator("#catalogBody tr").count()).toBeGreaterThan(0);
 }
 
+function basenameForPath(pathValue) {
+  const segments = String(pathValue || "").split(/[\\/]/);
+  return String(segments[segments.length - 1] || "");
+}
+
 async function columnIndex(page, columnName) {
   const names = (await page.locator("#catalogHeaderRow th").allTextContents()).map((value) => value.trim());
   return names.indexOf(columnName);
@@ -66,9 +71,9 @@ test("freestanding catalog falls back to readonly viewer when config-service is 
   await expect(page.locator("#catalogReadonlyOverlay")).toHaveClass(/hidden/);
 });
 
-test("freestanding catalog hides provider UI navigation link", async ({ page }) => {
+test("freestanding catalog hides Server Console navigation link", async ({ page }) => {
   await openCatalog(page);
-  const providerLink = page.locator("a.button-link", { hasText: "Provider UI" });
+  const providerLink = page.locator("a.button-link", { hasText: "Server Console" });
   await expect(providerLink).toHaveAttribute("aria-hidden", "true");
   await expect(providerLink).toHaveAttribute("style", /display:none/);
 });
@@ -137,6 +142,97 @@ test("selection filter shows selected and unselected rows independently", async 
   await selectedFilter.selectOption({ label: "Unselected" });
   await expect(page.locator("#catalogBody tr")).toHaveCount(1);
   await expect(page.locator("#catalogBody")).toContainText("freestanding-fluentd.yaml");
+});
+
+test("catalog apply button posts ordered selected files when a callback is provided", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== WITH_CONFIG_SERVICE);
+  let callbackPayload = null;
+  await page.addInitScript(() => {
+    window.__catalogCloseCalled = false;
+    window.__catalogPostedMessage = null;
+    Object.defineProperty(window, "opener", {
+      configurable: true,
+      value: {
+        postMessage(payload, origin) {
+          window.__catalogPostedMessage = { payload, origin };
+        },
+      },
+    });
+    window.close = () => {
+      window.__catalogCloseCalled = true;
+    };
+  });
+
+  await page.route("**/*", async (route) => {
+    const requestUrl = new URL(route.request().url());
+    if (requestUrl.pathname !== "/catalog/api/test-selection-callback") {
+      await route.continue();
+      return;
+    }
+    callbackPayload = JSON.parse(route.request().postData() || "{}");
+    const files = Array.isArray(callbackPayload.files)
+      ? callbackPayload.files.map((item) => {
+        const sourcePath = String(item.source_path || "");
+        const filename = basenameForPath(sourcePath);
+        return {
+          source_path: sourcePath,
+          target_name: filename,
+          filename,
+        };
+      })
+      : [];
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "accepted",
+        client_id: "catalog-test-client",
+        files,
+      }),
+    });
+  });
+
+  await page.goto("/catalog?selection_callback=/catalog/api/test-selection-callback");
+  await expect(page.getByRole("heading", { name: "Config Catalog" })).toBeVisible();
+  await expect.poll(async () => page.locator("#catalogBody tr").count()).toBeGreaterThan(0);
+
+  await page.locator("#catalogBody tr", { hasText: "freestanding-fluentd.yaml" }).first().locator('input[type="checkbox"]').click();
+  await page.locator("#catalogBody tr", { hasText: "freestanding-fluentbit.yaml" }).first().locator('input[type="checkbox"]').click();
+  await page.locator("#catalogApplySelectionBtn").click();
+
+  await expect(page.locator("#catalogApplySelectionStatus")).toContainText("Applied 2 selected files.");
+  await expect.poll(async () => page.evaluate(() => window.__catalogCloseCalled)).toBe(true);
+  const postedMessage = await page.evaluate(() => window.__catalogPostedMessage);
+
+  expect(callbackPayload).toEqual({
+    files: [
+      {
+        source_path: expect.stringMatching(/freestanding-fluentd\.yaml$/),
+      },
+      {
+        source_path: expect.stringMatching(/freestanding-fluentbit\.yaml$/),
+      },
+    ],
+  });
+  expect(postedMessage).toEqual({
+    origin: expect.stringMatching(/^http:\/\/127\.0\.0\.1:/),
+    payload: {
+      type: "opamp-catalog-selection-applied",
+      client_id: "catalog-test-client",
+      files: [
+        {
+          source_path: expect.stringMatching(/freestanding-fluentd\.yaml$/),
+          target_name: "freestanding-fluentd.yaml",
+          filename: "freestanding-fluentd.yaml",
+        },
+        {
+          source_path: expect.stringMatching(/freestanding-fluentbit\.yaml$/),
+          target_name: "freestanding-fluentbit.yaml",
+          filename: "freestanding-fluentbit.yaml",
+        },
+      ],
+    },
+  });
 });
 
 test("table columns can be reordered by drag and drop and persist on reload", async ({ page }, testInfo) => {

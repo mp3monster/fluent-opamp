@@ -24,7 +24,7 @@
     "quart": [
       {
         "entry_point": "config_service.opamp_integration:register_config_service_feature",
-        "label": "Config Service UI",
+        "label": "Config Editor",
         "url": "/config-service/ui",
         "enabled": true
       }

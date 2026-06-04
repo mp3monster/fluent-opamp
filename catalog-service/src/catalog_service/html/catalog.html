@@ -40,6 +40,11 @@ limitations under the License.
       .catalog-table tr.is-selected { background: #eef6ff; }
       .muted { color: var(--muted); }
       .catalog-pagination { display: flex; gap: 0.7rem; align-items: center; margin-top: 0.8rem; }
+      .catalog-selection-actions { display: flex; gap: 0.8rem; align-items: center; justify-content: flex-end; margin-top: 0.9rem; }
+      .catalog-selection-actions.hidden { display: none; }
+      .catalog-apply-status { min-height: 1.2rem; color: var(--muted); font-size: 0.84rem; }
+      .catalog-apply-status.success { color: #166534; }
+      .catalog-apply-status.error { color: #9f1239; }
       .title-actions .button-link { white-space: nowrap; }
       .catalog-viewer-overlay { position: fixed; inset: 0; background: rgba(23, 29, 41, 0.45); display: flex; align-items: center; justify-content: center; padding: 1.25rem; z-index: 1000; }
       .catalog-viewer-overlay.hidden, .catalog-viewer-overlay[hidden] { display: none !important; pointer-events: none; }
@@ -77,7 +82,7 @@ limitations under the License.
               </select>
             </div>
             <a class="button-link" href="__CATALOG_HELP_PATH__" target="_blank" rel="noopener noreferrer">Help</a>
-            <a class="button-link" href="/ui" __CATALOG_PROVIDER_UI_LINK_ATTRS__>Provider UI</a>
+            <a class="button-link" href="/ui" __CATALOG_PROVIDER_UI_LINK_ATTRS__>Server Console</a>
           </div>
         </div>
       </header>
@@ -105,6 +110,10 @@ limitations under the License.
           <button id="catalogPrev" type="button">Prev</button>
           <button id="catalogNext" type="button">Next</button>
           <span class="muted">Page <strong id="catalogPageNum">1</strong></span>
+        </div>
+        <div id="catalogSelectionActions" class="catalog-selection-actions hidden">
+          <div id="catalogApplySelectionStatus" class="catalog-apply-status" aria-live="polite"></div>
+          <button id="catalogApplySelectionBtn" type="button" class="button-link hidden">Apply</button>
         </div>
       </section>
     </main>
@@ -139,6 +148,8 @@ limitations under the License.
       (function() {
         const CATALOG_UI_COLUMN_ORDER_STORAGE_KEY = 'catalog_ui_column_order';
         const CLIENT_ERRORS_ENDPOINT = '__CATALOG_CLIENT_ERRORS_ENDPOINT__';
+        const CATALOG_SELECTION_CALLBACK_QUERY = 'selection_callback';
+        const CATALOG_SELECTION_APPLIED_MESSAGE_TYPE = 'opamp-catalog-selection-applied';
         const SELECTION_COLUMN_KEY = 'selected';
         const SELECTION_FILTER_BOTH = 'both';
         const SELECTION_FILTER_SELECTED = 'selected';
@@ -175,6 +186,9 @@ limitations under the License.
         const columnFilterRow = document.getElementById('catalogColumnFilterRow');
         const body = document.getElementById('catalogBody');
         const pageNum = document.getElementById('catalogPageNum');
+        const selectionActions = document.getElementById('catalogSelectionActions');
+        const applySelectionButton = document.getElementById('catalogApplySelectionBtn');
+        const applySelectionStatus = document.getElementById('catalogApplySelectionStatus');
         const featureMenuGroup = document.getElementById('featureMenuGroup');
         const featureMenuSelect = document.getElementById('featureMenuSelect');
         const reloadUiButton = document.getElementById('reload-ui');
@@ -183,6 +197,101 @@ limitations under the License.
         const readonlyPath = document.getElementById('catalogReadonlyPath');
         const readonlyText = document.getElementById('catalogReadonlyText');
         const readonlyError = document.getElementById('catalogReadonlyError');
+        const selectionCallbackUrl = String(
+          new URLSearchParams(window.location.search).get(CATALOG_SELECTION_CALLBACK_QUERY) || ''
+        ).trim();
+
+        function hasSelectionCallback() {
+          return Boolean(selectionCallbackUrl);
+        }
+
+        function setApplySelectionStatus(message, tone) {
+          if (!applySelectionStatus) return;
+          applySelectionStatus.textContent = String(message || '');
+          applySelectionStatus.classList.remove('success', 'error');
+          if (tone === 'success' || tone === 'error') {
+            applySelectionStatus.classList.add(tone);
+          }
+        }
+
+        function selectedRowsInOrder() {
+          const rowsByPath = new Map();
+          state.rows.forEach(row => {
+            const path = rowPath(row);
+            if (!path) return;
+            rowsByPath.set(path, row);
+          });
+          return state.selectedPaths
+            .map(path => rowsByPath.get(path))
+            .filter(row => Boolean(row));
+        }
+
+        function syncSelectionActions() {
+          if (!selectionActions || !applySelectionButton) return;
+          const callbackEnabled = hasSelectionCallback();
+          selectionActions.classList.toggle('hidden', !callbackEnabled);
+          applySelectionButton.classList.toggle('hidden', !callbackEnabled);
+          applySelectionButton.disabled = !callbackEnabled || state.selectedPaths.length === 0;
+          if (!callbackEnabled) {
+            setApplySelectionStatus('');
+            return;
+          }
+          if (state.selectedPaths.length === 0) {
+            setApplySelectionStatus('Select one or more files, then Apply to return them to the server console.');
+          }
+        }
+
+        async function applySelectedRows() {
+          if (!hasSelectionCallback() || !applySelectionButton) return;
+          const selectedRows = selectedRowsInOrder();
+          if (selectedRows.length === 0) {
+            setApplySelectionStatus('Select at least one file before applying.', 'error');
+            return;
+          }
+          const originalLabel = applySelectionButton.textContent;
+          applySelectionButton.disabled = true;
+          applySelectionButton.textContent = 'Applying...';
+          setApplySelectionStatus(`Applying ${selectedRows.length} selected file${selectedRows.length === 1 ? '' : 's'}...`);
+          try {
+            const resp = await fetch(selectionCallbackUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                files: selectedRows.map(row => ({
+                  source_path: row.path,
+                })),
+              }),
+            });
+            const payload = await resp.json().catch(() => ({}));
+            if (!resp.ok) {
+              throw new Error(String(payload && payload.error ? payload.error : 'Failed to apply selected files.'));
+            }
+            if (window.opener && typeof window.opener.postMessage === 'function') {
+              const targetOrigin = new URL(selectionCallbackUrl, window.location.origin).origin;
+              window.opener.postMessage(
+                {
+                  type: CATALOG_SELECTION_APPLIED_MESSAGE_TYPE,
+                  client_id: String(payload && payload.client_id ? payload.client_id : ''),
+                  files: Array.isArray(payload && payload.files) ? payload.files : [],
+                },
+                targetOrigin
+              );
+            }
+            setApplySelectionStatus(
+              `Applied ${selectedRows.length} selected file${selectedRows.length === 1 ? '' : 's'}.`,
+              'success'
+            );
+            window.close();
+          } catch (err) {
+            setApplySelectionStatus(
+              String(err && err.message ? err.message : err || 'Failed to apply selected files.'),
+              'error'
+            );
+          } finally {
+            applySelectionButton.disabled = state.selectedPaths.length === 0;
+            applySelectionButton.textContent = originalLabel;
+          }
+        }
 
         function normalizeColumns(columns) {
           if (!Array.isArray(columns)) return [];
@@ -849,6 +958,7 @@ limitations under the License.
           });
           summary.textContent = `${rows.length} entries • ${state.selectedPaths.length} selected`;
           pageNum.textContent = String(state.page);
+          syncSelectionActions();
         }
 
         async function loadRows() {
@@ -891,6 +1001,11 @@ limitations under the License.
           state.page = Math.min(totalPages, state.page + 1);
           renderBody();
         });
+        if (applySelectionButton) {
+          applySelectionButton.addEventListener('click', () => {
+            void applySelectedRows();
+          });
+        }
         if (featureMenuSelect) {
           featureMenuSelect.addEventListener('change', onFeatureMenuChange);
         }
@@ -914,6 +1029,7 @@ limitations under the License.
           }
         });
         installGlobalUiErrorHandlers();
+        syncSelectionActions();
         loadUiFeatures().then(loadRows);
       })();
     </script>

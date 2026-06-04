@@ -51,6 +51,18 @@ limitations under the License.
           <li>Standalone catalog behavior and provider deployments without the catalog feature should continue to operate independently.</li>
         </ul>
       </section>
+
+      <section class="panel">
+        <h2>Callback Apply Mode</h2>
+        <p>
+          Apply button appears when a callback URL is provided in the catalog page query string.
+        </p>
+        <ul>
+          <li>The callback receives the tickbox-selected files in the order they were selected.</li>
+          <li>The checkbox column stays available even when no callback is supplied, so standalone filtering behavior remains unchanged.</li>
+          <li>When the callback succeeds, the catalog attempts to return the normalized file list to the opening server console window and then closes the popup.</li>
+        </ul>
+      </section>
     </main>
     <footer class="footer">
       <div>Licensed under Apache 2.0 • Attribution: <a href="https://mp3monster.org" target="_blank" rel="noopener noreferrer">mp3monster.org</a></div>

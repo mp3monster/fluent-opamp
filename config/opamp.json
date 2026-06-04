@@ -18,6 +18,7 @@
     },
     "full_update_controller_type": "SentCount",
     "allow_custom_capabilities": true,
+    "allow-remote-config": true,
     "log_level": "debug",
     "service_name": "Fluentbit",
     "service_namespace": "FluentBitNS",
@@ -38,6 +39,7 @@
     "default_heartbeat_frequency": 30,
     "latest_docs_url": "https://github.com/mp3monster/fluent-opamp/blob/main/README.md",
     "human_in_loop_approval": false,
+    "allow-remote-config": true,
     "opamp-use-authorization": "none",
     "ui-use-authorization": "none",
     "state_persistence": {
@@ -52,7 +54,7 @@
     "quart": [
       {
         "entry_point": "config_service.opamp_integration:register_config_service_feature",
-        "label": "Config Service UI",
+        "label": "Config Editor",
         "url": "/config-service/ui",
         "enabled": true
       }
@@ -60,7 +62,7 @@
   },
   "opamp": {
     "config_catalog": {
-      "enabled": false,
+      "enabled": true,
       "menu_label": "Config Catalog",
       "route_path": "/catalog",
       "help_path": "/catalog/help",
