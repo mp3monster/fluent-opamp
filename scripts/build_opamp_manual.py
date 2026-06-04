@@ -227,7 +227,7 @@ MANUAL_CHAPTERS: tuple[ChapterSpec, ...] = (
             "provider/README.md",
             "docs/screenshots.md",
             "docs/provider_server_diagrams.md",
-            "docs/command_process_implementation_note.md",
+            "docs/dev/command_process_implementation_note.md",
             "docs/endpoints.md",
         ),
     ),
@@ -236,9 +236,9 @@ MANUAL_CHAPTERS: tuple[ChapterSpec, ...] = (
         markdown_files=(
             "consumer/README.md",
             "docs/consumer_client_diagrams.md",
-            "docs/consumer_custom_handlers.md",
-            "docs/consumer_update_controllers.md",
-            "docs/consumer_mixins.md",
+            "docs/dev/consumer_custom_handlers.md",
+            "docs/dev/consumer_update_controllers.md",
+            "docs/dev/consumer_mixins.md",
         ),
     ),
     ChapterSpec(
@@ -297,7 +297,7 @@ MANUAL_CHAPTERS: tuple[ChapterSpec, ...] = (
         title="Chapter 9 - Development and Build Processes",
         markdown_files=(
             "docs/scripts.md",
-            "docs/component_versioning.md",
+            "docs/dev/component_versioning.md",
             "docs/service_daemon_setup.md",
         ),
     ),
