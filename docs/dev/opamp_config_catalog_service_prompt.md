@@ -29,7 +29,11 @@ Requirements:
    - sortable columns
    - client-side filtering
    - pagination
-10. Provide tests:
+10. Treat catalog selection checkboxes as an always-available capability in normal catalog use so
+    selected/unselected filtering does not depend on a separate mode toggle.
+11. Preserve current standalone behavior and allow provider deployments to operate without the
+    catalog feature enabled.
+12. Provide tests:
     - unit tests for scanner/metadata extraction
     - endpoint tests for catalog API/UI routes
     - Playwright tests for navigation and rendered table expectations

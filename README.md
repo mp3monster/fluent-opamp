@@ -24,31 +24,45 @@ The documentation includes background such as the implementation philosophies th
 ## Docs
 
 - [docs/README.md](docs/README.md) — full setup and run instructions.
+- [docs/README.md#uml-component-view](docs/README.md#uml-component-view) — high-level architecture diagram showing required and optional components.
 - [docs/index.md](docs/index.md) — documentation landing page and project overview.
 - [docs/consumer_client_diagrams.md](docs/consumer_client_diagrams.md) — rendered consumer client diagrams with walkthrough notes.
 - [docs/provider_server_diagrams.md](docs/provider_server_diagrams.md) — rendered provider/server diagrams with architecture walkthrough notes.
 - [docs/features.md](docs/features.md) — feature notes and design direction.
 - [mcp/README.md](mcp/README.md) — MCP setup wrappers/canonical script behavior, FastMCP client role, command-line parameters, and verification.
 - [docs/scripts.md](docs/scripts.md) — script reference table by platform.
-- [docs/component_versioning.md](docs/component_versioning.md) — git-derived component version metadata, help/UI exposure, and hook/build integration.
+- [docs/dev/component_versioning.md](docs/dev/component_versioning.md) — git-derived component version metadata, help/UI exposure, and hook/build integration.
+- [cli/README.md](cli/README.md) — CLI launcher/orchestration usage and local operator workflows.
 - [consumer/README.md](consumer/README.md) — consumer configuration and CLI usage.
+- [consumer-sim/README.md](consumer-sim/README.md) — simulator launcher usage and local multi-instance test flows.
 - [provider/README.md](provider/README.md) — provider configuration and web UI notes.
+- [catalog-service/README.md](catalog-service/README.md) — optional catalog service overview and setup notes.
+- [config-service/README.md](config-service/README.md) — optional editor/config service overview and setup notes.
 - [agent_broker/README.md](agent_broker/README.md) — optional conversation broker overview, setup, and run modes.
 - [agent_broker/docs/README.md](agent_broker/docs/README.md) — broker documentation index and operational guides.
 
-## Optional Broker
+## Optional Components
 
-The conversation broker under `agent_broker/` is optional. The core OpAMP
-provider/server and consumer/client run without it.
+The core OpAMP provider/server and consumer/client run without the optional
+components listed below:
 
-When used, the broker is a separate process with its own startup/shutdown flow
-and configuration. It is started independently from provider and consumer.
+- `agent_broker/` — conversation broker
+- `consumer-sim/` — simulator launcher and local demo/test helper
+- `catalog-service/` — catalog browsing and supporting service components
+- `config-service/` — editor/config validation service components
+
+When used, these components run as separate processes or supporting services
+with their own startup/shutdown flow and configuration.
 
 ## Folder summary
 
 - `agent_broker` — optional standalone conversation broker package and docs.
+- `catalog-service` — optional catalog service package, UI assets, and docs.
+- `cli` — optional local launcher/orchestration utility and docs.
 - `config` — default configuration files (including `opamp.json`).
+- `config-service` — optional editor/config validation service package and docs.
 - `consumer` — the OpAMP consumer (client) package, tests, and config samples.
+- `consumer-sim` — optional simulator launcher utilities and docs.
 - `dist` — SBOM and Wheel files.
 - `docs` — project documentation.
 - `logs` — runtime logs created by scripts.

@@ -164,5 +164,4 @@ Related examples:
 
 Consumer handlers are one side of the custom command path. Provider command object/capability setup is documented in:
 
-- `docs/adding_your_own_custom_action.md`
-
+- `docs/dev/adding_your_own_custom_action.md`
