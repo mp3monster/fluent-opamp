@@ -115,15 +115,27 @@ class MCPClient:
         await self._client.aclose()
 
     @staticmethod
+    def _ascii_safe_text(value: str, *, limit: int | None = None) -> str:
+        """Return ASCII-safe text suitable for cross-platform logging."""
+        normalized = str(value or "").strip()
+        if not normalized:
+            return "<empty>"
+        if limit is not None and limit >= 0:
+            normalized = normalized[:limit]
+        return normalized.encode("ascii", "backslashreplace").decode("ascii")
+
+    @staticmethod
     def _debug_payload_preview(payload: Any) -> str:
         """Return a bounded text preview for debug logging."""
         try:
             rendered = json.dumps(payload, ensure_ascii=False, default=str)
         except (TypeError, ValueError):
             rendered = str(payload)
-        if len(rendered) > MAX_DEBUG_PAYLOAD_CHARS:
-            return rendered[:MAX_DEBUG_PAYLOAD_CHARS] + "...<truncated>"
-        return rendered
+        truncated = len(rendered) > MAX_DEBUG_PAYLOAD_CHARS
+        preview = MCPClient._ascii_safe_text(rendered, limit=MAX_DEBUG_PAYLOAD_CHARS)
+        if truncated:
+            return preview + "...<truncated>"
+        return preview
 
     async def _rpc(
         self,
@@ -237,7 +249,7 @@ class MCPClient:
                 exc.response.encoding or "utf-8",
                 errors="replace",
             ).strip()
-            response_body_summary = response_body[:500] if response_body else "<empty>"
+            response_body_summary = self._ascii_safe_text(response_body, limit=500)
             if status_code >= 500:
                 raise MCPServerUnavailableError(
                     f"MCP server returned {status_code} for {method}: "
@@ -340,7 +352,7 @@ class MCPClient:
         try:
             parsed_data = json.loads(body_text)
         except json.JSONDecodeError as exc:
-            body_summary = body_text.strip()[:500] if body_text.strip() else "<empty>"
+            body_summary = self._ascii_safe_text(body_text, limit=500)
             raise RuntimeError(
                 f"MCP response decode failed for {method}: "
                 f"content_type={content_type or '<unknown>'} "
