@@ -7,7 +7,6 @@ Current docs:
 - freestanding example config in `../config/catalog-service.freestanding.example.json`
 - test-case index in `./TEST_CASES.md`
 - browser test harness in `../ui-tests/README.md`
-- Playwright scenario notes in `../ui-tests/docs/`
 - repository-wide catalog design notes remain in `../../docs/opamp_config_catalog_ui.md`
 
 Packaging note:

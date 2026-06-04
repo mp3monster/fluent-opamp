@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import importlib
 import json
+import subprocess
 from pathlib import Path
 
 cli_main = importlib.import_module("opamp_cli.main")
@@ -133,6 +134,75 @@ def test_main_writes_component_lifecycle_log(tmp_path: Path, monkeypatch) -> Non
     assert "CLI main started" in log_text
     assert "printing CLI status" in log_text
     assert "CLI main completed command" in log_text
+
+
+def test_is_process_running_uses_tasklist_on_windows(monkeypatch) -> None:
+    captured_commands: list[list[str]] = []
+
+    def fake_run(command: list[str], **_kwargs) -> subprocess.CompletedProcess[str]:
+        captured_commands.append(command)
+        return subprocess.CompletedProcess(
+            args=command,
+            returncode=0,
+            stdout='"python.exe","4321","Console","1","10,240 K"\n',
+            stderr="",
+        )
+
+    monkeypatch.setattr(cli_main, "_is_windows", lambda: True)
+    monkeypatch.setattr(cli_main.subprocess, "run", fake_run)
+
+    is_running = cli_main._is_process_running(4321)  # type: ignore[attr-defined]
+
+    assert is_running is True
+    assert captured_commands == [["tasklist", "/FI", "PID eq 4321", "/FO", "CSV", "/NH"]]
+
+
+def test_status_command_handles_windows_managed_processes(tmp_path: Path, monkeypatch, capsys) -> None:
+    runtime_dir = tmp_path / "runtime"
+    state_path = runtime_dir / "managed_processes.json"
+    monkeypatch.setattr(cli_main, "_cli_runtime_dir", lambda: runtime_dir)
+    monkeypatch.setattr(cli_main, "_is_windows", lambda: True)
+    monkeypatch.setattr(
+        cli_main.os,
+        "kill",
+        lambda _pid, _signal: (_ for _ in ()).throw(AssertionError("os.kill should not be used")),
+    )
+
+    runtime_dir.mkdir(parents=True, exist_ok=True)
+    state_path.write_text(
+        json.dumps(
+            {
+                "processes": [
+                    {
+                        "name": "Server",
+                        "pid": 9876,
+                        "started_at": "2026-06-03T15:50:04Z",
+                        "cwd": "D:/dev/opamp",
+                        "log_file": "D:/dev/opamp/cli/runtime/logs/server.log",
+                    }
+                ]
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    def fake_run(command: list[str], **_kwargs) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(
+            args=command,
+            returncode=0,
+            stdout='"python.exe","9876","Console","1","10,240 K"\n',
+            stderr="",
+        )
+
+    monkeypatch.setattr(cli_main.subprocess, "run", fake_run)
+
+    exit_code = cli_main.main(["status"])
+    output = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert "Managed processes: 1" in output
+    assert "status: running" in output
 
 
 def test_rejected_guided_action_is_logged(tmp_path: Path, monkeypatch) -> None:
@@ -448,6 +518,140 @@ def test_stop_all_recorded_processes_loops_all_record_names(monkeypatch) -> None
 
     assert code == 0
     assert sorted(captured["names"]) == ["Fluent Bit client", "Server"]
+
+
+def test_stop_recorded_processes_reports_when_nothing_matches(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        cli_main,
+        "_prune_cli_process_state",
+        lambda: {
+            "processes": [
+                {"name": "Config Service", "pid": 1001},
+            ]
+        },
+    )
+
+    code = cli_main._stop_recorded_processes(["Server"])  # type: ignore[attr-defined]
+    output = capsys.readouterr().out
+
+    assert code == 0
+    assert "No recorded process IDs found for that selection." in output
+
+
+def test_execute_stop_server_propagates_failure_when_not_running(monkeypatch, capsys) -> None:
+    action = cli_main._resolve_guided_action("stop", "server")  # type: ignore[attr-defined]
+    captured: dict[str, str] = {"command": ""}
+
+    def fake_handle_command(command_text: str) -> int:
+        captured["command"] = command_text
+        return 1
+
+    monkeypatch.setattr(cli_main, "_handle_command", fake_handle_command)
+
+    assert action is not None
+
+    code = cli_main._execute_stop_action(action)  # type: ignore[attr-defined]
+    output = capsys.readouterr().out
+
+    assert code == 1
+    assert "Executing:" in output
+    assert "127.0.0.1:8080" in captured["command"]
+    assert "/api/shutdown" in captured["command"]
+
+
+def test_stop_all_recorded_processes_reports_when_none_recorded(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(cli_main, "_prune_cli_process_state", lambda: {"processes": []})
+
+    code = cli_main._stop_all_recorded_processes()  # type: ignore[attr-defined]
+    output = capsys.readouterr().out
+
+    assert code == 0
+    assert "No recorded managed processes to stop." in output
+
+
+def test_record_simulator_batch_reports_logged_failure_detail(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    log_file = tmp_path / "simulator.log"
+    state_file = tmp_path / "launcher_state.json"
+
+    def fake_prepare_log(**_kwargs) -> Path:
+        log_file.write_text("", encoding="utf-8")
+        return log_file
+
+    def fake_run(argv: list[str], **kwargs) -> subprocess.CompletedProcess[str]:
+        stdout_handle = kwargs["stdout"]
+        stdout_handle.write(
+            "[consumer-sim] cannot start: existing launched consumer instances are still running\n"
+        )
+        return subprocess.CompletedProcess(args=argv, returncode=1)
+
+    monkeypatch.setattr(cli_main, "_prepare_launch_log", fake_prepare_log)
+    monkeypatch.setattr(cli_main.subprocess, "run", fake_run)
+
+    code = cli_main._record_simulator_batch(  # type: ignore[attr-defined]
+        {
+            "label": "Simulator",
+            "command_text": "python consumer-sim/src/consumer_sim_launcher.py start",
+            "argv": ["python", "consumer-sim/src/consumer_sim_launcher.py", "start"],
+            "cwd": str(tmp_path),
+            "env": {},
+            "state_file": str(state_file),
+        }
+    )
+    captured = capsys.readouterr()
+
+    assert code == 1
+    assert "Simulator failed to start:" in captured.err
+    assert "existing launched consumer instances are still running" in captured.err
+    assert str(log_file) in captured.err
+
+
+def test_record_simulator_batch_short_circuits_when_already_running(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    state_file = tmp_path / "launcher_state.json"
+    state_file.write_text(
+        json.dumps(
+            {
+                "instances": [
+                    {"name": "consumer-simulator-1", "pid": 4321},
+                    {"name": "consumer-simulator-2", "pid": 4322},
+                ]
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(cli_main, "_is_process_running", lambda pid: pid in {4321, 4322})
+    monkeypatch.setattr(
+        cli_main.subprocess,
+        "run",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("launcher should not run")),
+    )
+
+    code = cli_main._record_simulator_batch(  # type: ignore[attr-defined]
+        {
+            "label": "Simulator",
+            "command_text": "python consumer-sim/src/consumer_sim_launcher.py start",
+            "argv": ["python", "consumer-sim/src/consumer_sim_launcher.py", "start"],
+            "cwd": str(tmp_path),
+            "env": {},
+            "state_file": str(state_file),
+        }
+    )
+    captured = capsys.readouterr()
+
+    assert code == 1
+    assert "Simulator already running:" in captured.err
+    assert "consumer-simulator-1" in captured.err
+    assert "consumer-simulator-2" in captured.err
+    assert "Stop simulator before starting it again." in captured.err
 
 
 def test_detected_behavior_flags_returns_empty_when_none_set(monkeypatch) -> None:
