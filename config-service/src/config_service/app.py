@@ -59,6 +59,7 @@ from shared.opamp_config import (
 
 APP_CONFIG_KEY_MODE = "CONFIG_SERVICE_MODE"
 APP_CONFIG_KEY_READ_ONLY = "CONFIG_SERVICE_READ_ONLY"
+APP_MODE_STANDALONE = "standalone"
 
 EXT_CATALOG_SERVICE = "catalog_service"
 EXT_RULES_REGISTRY_SERVICE = "rules_registry_service"
@@ -91,6 +92,7 @@ LANDING_PAGE_REDIRECT_URL = (
     "https://htmlpreview.github.io/?https://raw.githubusercontent.com/"
     "mp3monster/fluent-opamp/main/github-landingpage/index.html"
 )
+PLACEHOLDER_PROVIDER_UI_LINK_ATTRS = "__CONFIG_SERVICE_PROVIDER_UI_LINK_ATTRS__"
 
 
 def _config_service_root() -> Path:
@@ -151,6 +153,16 @@ def _append_suffix(url: str, suffix: str) -> str:
     return url + joiner + suffix.lstrip("?")
 
 
+def _standalone_mode(app: Quart) -> bool:
+    return str(app.config.get(APP_CONFIG_KEY_MODE) or "").strip().lower() == APP_MODE_STANDALONE
+
+
+def _provider_ui_link_attrs(app: Quart) -> str:
+    if _standalone_mode(app):
+        return 'style="display:none" aria-hidden="true" tabindex="-1"'
+    return ""
+
+
 def _configure_logging() -> None:
     level_name = resolve_log_level_name()
     level = getattr(logging, level_name, logging.INFO)
@@ -196,6 +208,10 @@ def register_ui_component(app: Quart) -> None:
         rendered = rendered.replace(
             "__CONFIG_SERVICE_UI_ASSET_SUFFIX__",
             asset_suffix,
+        )
+        rendered = rendered.replace(
+            PLACEHOLDER_PROVIDER_UI_LINK_ATTRS,
+            _provider_ui_link_attrs(app),
         )
         response = Response(rendered, mimetype="text/html")
         if _app_enable_dev_features_enabled():

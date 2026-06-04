@@ -1,6 +1,6 @@
 import { ChangeEvent, useEffect, useMemo, useState } from 'react';
 
-import { fetchCatalog, fetchHealth, fetchVersions, renderYaml, validateConfig } from './api/client';
+import { fetchCatalog, fetchVersions, renderYaml, validateConfig } from './api/client';
 import { PluginCard } from './components/PluginCard';
 import { CatalogPayload, PluginDefinition, PluginSection } from './types/catalog';
 import { DesignDoc, PluginInstance } from './types/config';
@@ -52,15 +52,11 @@ export default function App(): JSX.Element {
   const [pluginSection, setPluginSection] = useState<PluginSection>('inputs');
   const [pluginName, setPluginName] = useState('');
   const [collapseState, setCollapseState] = useState<Record<string, boolean>>({});
-  const [devFeaturesEnabled, setDevFeaturesEnabled] = useState(false);
-
   const groups = useMemo(() => pluginGroups(catalog), [catalog]);
   const pluginNames = useMemo(() => Object.keys(groups[pluginSection] ?? {}), [groups, pluginSection]);
 
   useEffect(() => {
     (async () => {
-      const health = await fetchHealth();
-      setDevFeaturesEnabled(Boolean(health.app_enable_dev_features));
       const versionsResp = await fetchVersions();
       setVersions(versionsResp.versions);
       const cookieDoc = localStorage.getItem(LAST_DOC_STORAGE);
@@ -239,16 +235,6 @@ export default function App(): JSX.Element {
         <button type="button" onClick={createNewConfig}>
           New Configuration
         </button>
-        {devFeaturesEnabled ? (
-          <button
-            type="button"
-            onClick={() => {
-              window.location.reload();
-            }}
-          >
-            Reload UI
-          </button>
-        ) : null}
 
         <label>
           Version

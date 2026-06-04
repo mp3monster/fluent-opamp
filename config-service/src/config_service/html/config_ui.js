@@ -162,12 +162,6 @@
     });
   }
 
-  function reloadUiWithCacheBust() {
-    var url = new URL(window.location.href);
-    url.searchParams.set("_ui_reload_ts", String(Date.now()));
-    window.location.assign(url.toString());
-  }
-
   // Cache DOM lookups once during startup.
   // We intentionally keep this flat so render/event code can reference
   // stable element handles without repeated selector queries.
@@ -180,7 +174,6 @@
     saveConfig: document.getElementById("save-config"),
     saveAsConfig: document.getElementById("save-as-config"),
     newConfig: document.getElementById("new-config"),
-    reloadUi: document.getElementById("reload-ui"),
     versionSelect: document.getElementById("version-select"),
     configTypeSelect: document.getElementById("config-type-select"),
     headerCommentsToggle: document.getElementById("header-comments-toggle"),
@@ -696,8 +689,7 @@
           node.id === "yaml-toggle" ||
           node.id === "dry-run-btn" ||
           node.id === "validate-btn" ||
-          node.id === "render-btn" ||
-          node.id === "reload-ui";
+          node.id === "render-btn";
         if (allowAction) {
           return;
         }
@@ -3453,10 +3445,6 @@ function renderPlugins() {
       triggerConfigDownload(true);
     });
 
-    el.reloadUi.addEventListener("click", function () {
-      reloadUiWithCacheBust();
-    });
-
     el.validationToggle.addEventListener("click", function () {
       state.validationCollapsed = !state.validationCollapsed;
       updateResultPanels();
@@ -3993,9 +3981,6 @@ function renderPlugins() {
       .then(function (health) {
         state.readOnly = Boolean(health.read_only);
         updateReadOnlyState();
-        if (health.app_enable_dev_features) {
-          el.reloadUi.classList.remove("hidden");
-        }
       })
       .catch(function (err) {
         state.catalogLoaded = false;

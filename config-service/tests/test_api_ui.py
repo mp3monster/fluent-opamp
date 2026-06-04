@@ -177,6 +177,23 @@ async def test_top_level_help_link_is_rendered() -> None:
     assert 'aria-label="Open UI help in a new tab"' in html
     assert ">Help</a>" in html
     assert 'id="featureMenuGroup"' in html
+    assert 'data-history-back-button="true"' in html
+    assert 'aria-hidden="true"' in html
+    assert 'tabindex="-1"' in html
+    assert ">Back</button>" in html
+    assert ">Server Console</a>" in html
+
+
+@pytest.mark.asyncio
+async def test_server_console_link_is_visible_in_embedded_mode() -> None:
+    app = create_app(mode="embedded")
+    client = app.test_client()
+    response = await client.get("/config-service/ui")
+    assert response.status_code == 200
+    html = (await response.get_data()).decode("utf-8")
+    assert 'data-history-back-button="true"' in html
+    assert 'hidden' in html
+    assert 'href="/ui" >Server Console</a>' in html
 
 @pytest.mark.asyncio
 async def test_ui_routes_disable_cache_in_dev_mode(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -50,6 +50,15 @@ limitations under the License.
               class="button-link"
               aria-label="Open UI help in a new tab"
             >Help</a>
+            <button
+              type="button"
+              class="button-link"
+              onclick="window.history.back();"
+              data-history-back-button="true"
+              hidden
+              __CONFIG_SERVICE_PROVIDER_UI_LINK_ATTRS__
+            >Back</button>
+            <a class="button-link" href="/ui" __CONFIG_SERVICE_PROVIDER_UI_LINK_ATTRS__>Server Console</a>
           </div>
         </div>
       </header>
@@ -409,13 +418,34 @@ limitations under the License.
 
     <footer class="footer">
       <div>Licensed under Apache 2.0 • Attribution: <a href="https://mp3monster.org" target="_blank" rel="noopener noreferrer">mp3monster.org</a></div>
-      <div><a href="https://opentelemetry.io/docs/specs/opamp/" target="_blank" rel="noopener noreferrer">OpAMP Specification</a> • <a href="/doc-set">Latest docs</a></div>
+      <div><a href="https://opentelemetry.io/docs/specs/opamp/" target="_blank" rel="noopener noreferrer">OpAMP Specification</a> • <a href="https://htmlpreview.github.io/?https://raw.githubusercontent.com/mp3monster/fluent-opamp/main/github-landingpage/index.html">Latest docs</a></div>
     </footer>
 
-    <div class="floating-reload-wrap">
-      <button id="reload-ui" type="button" class="hidden">Reload UI</button>
-    </div>
+    <script>
+      (function () {
+        function syncHistoryBackButton() {
+          var button = document.querySelector('[data-history-back-button="true"]');
+          if (!button) {
+            return;
+          }
+          if (button.getAttribute("aria-hidden") === "true") {
+            return;
+          }
+          if (window.history.length > 1) {
+            button.removeAttribute("hidden");
+            return;
+          }
+          button.setAttribute("hidden", "hidden");
+        }
 
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", syncHistoryBackButton, { once: true });
+        } else {
+          syncHistoryBackButton();
+        }
+        window.addEventListener("pageshow", syncHistoryBackButton);
+      })();
+    </script>
     <script src="/config-service/ui/assets/config_ui_helpers.js__CONFIG_SERVICE_UI_ASSET_SUFFIX__"></script>
     <script src="/config-service/ui/assets/config_ui_comments.js__CONFIG_SERVICE_UI_ASSET_SUFFIX__"></script>
     <script src="/config-service/ui/assets/config_ui_plugins.js__CONFIG_SERVICE_UI_ASSET_SUFFIX__"></script>

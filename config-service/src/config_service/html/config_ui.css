@@ -716,13 +716,6 @@ pre {
   font-size: 0.85rem;
 }
 
-.floating-reload-wrap {
-  position: fixed;
-  right: 1rem;
-  bottom: 1rem;
-  z-index: 1000;
-}
-
 .footer {
   padding: 20px 36px 32px;
   color: var(--muted);

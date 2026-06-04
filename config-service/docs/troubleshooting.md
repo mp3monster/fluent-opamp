@@ -12,16 +12,6 @@ Check:
 2. Browser can reach `/config-service/api/v1/versions`.
 3. Console/network tab for CORS/proxy issues.
 
-## Reload UI button missing
-Expected when:
-- `APP_ENABLE_DEV_FEATURES` is not enabled.
-
-Enable with one of:
-- `APP_ENABLE_DEV_FEATURES=1`
-- `APP_ENABLE_DEV_FEATURES=true`
-- `APP_ENABLE_DEV_FEATURES=yes`
-- `APP_ENABLE_DEV_FEATURES=on`
-
 ## Validation returns unknown plugin errors
 Check:
 1. Selected version is correct for the plugin.

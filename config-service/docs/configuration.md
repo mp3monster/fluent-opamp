@@ -29,7 +29,7 @@
   - Takes precedence over JSON file settings.
 - `APP_ENABLE_DEV_FEATURES`
   - Truthy values: `1`, `true`, `yes`, `on`
-  - Controls developer-only UI features (for example, `Reload UI` button visibility)
+  - Enables developer-oriented backend behavior and diagnostics routes used in local development.
 - `CONFIG_SERVICE_UI_CSS_OVERRIDE_PATH`
   - Optional single CSS URL/path loaded after default UI CSS.
 - `CONFIG_SERVICE_UI_CSS_OVERRIDES`

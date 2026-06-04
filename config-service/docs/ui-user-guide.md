@@ -136,9 +136,6 @@ The UI includes a `Service Section` panel to manage top-level service settings:
 7. When a configuration was loaded from a source file and the original source positions are still trustworthy, validation issues also show the corresponding source line number.
 8. After the configuration is edited in the UI, source-line hints are cleared so stale line numbers are not shown.
 
-## Developer-only reload
-`Reload UI` button appears only when `APP_ENABLE_DEV_FEATURES` is enabled on the backend.
-
 ## Read-only mode
 When backend read-only mode is enabled:
 1. Editing controls are disabled.
