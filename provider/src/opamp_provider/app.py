@@ -15,8 +15,10 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import logging
+import mimetypes
 import os
 import pathlib
 import re
@@ -77,6 +79,13 @@ from opamp_provider.opamp_protocol import (
     provider_authorization_mode_to_auth_mode as protocol_provider_authorization_mode_to_auth_mode,
 )
 from opamp_provider.proto import opamp_pb2
+from opamp_provider.remote_config_offer import (
+    RemoteConfigOfferCommand,
+    config_editor_validation_available,
+    normalize_ui_remote_config_file_specs,
+    normalize_ui_remote_config_selection_specs,
+    validate_ui_remote_config_files,
+)
 from opamp_provider.state import STORE, ClientRecord
 from opamp_provider.state_persistence import (
     list_snapshot_files,
@@ -126,7 +135,10 @@ ERR_UNSUPPORTED_HEADER = "unsupported transport header"  # Transport header erro
 LOG_REST_COMMAND = "queued command for client %s classifier=%s action=%s at %s"  # Log format for queued REST-originated commands.
 LOG_SEND_COMMAND = "sent command to client %s at %s"  # Log format for command dispatch completion.
 OPAMP_HEADER_NONE = OPAMP_TRANSPORT_HEADER_NONE  # Expected transport header value.
-SERVER_CAPABILITIES = int(ServerCapabilities.AcceptsStatus)  # Server advertises AcceptsStatus only.
+SERVER_CAPABILITIES_BASE = int(ServerCapabilities.AcceptsStatus)  # Base server capability advertisement.
+SERVER_CAPABILITIES_REMOTE_CONFIG = int(
+    ServerCapabilities.OffersRemoteConfig
+)  # Additional capability bit used when remote-config support is enabled.
 DEFAULT_HEARTBEAT_INTERVAL_SECONDS = 30  # Fallback heartbeat interval for connection settings offers.
 MODEL_DUMP_MODE = "json"  # Pydantic model_dump mode used for API JSON payloads.
 CERT_NOT_AFTER_SUFFIX_GMT = " GMT"  # Trailing timezone marker emitted by ssl certificate decoder.
@@ -161,6 +173,9 @@ ACTION_CHANGE_CONNECTIONS = "change_connections"  # Next-action token to build c
 ACTION_PACKAGE_AVAILABLE = "package_availabe"  # Next-action token to build packages available payload.
 ACTION_COMMAND_AGENT = "command_agent"  # Next-action token to send an OpAMP standard command.
 ACTION_CUSTOM_AGENT_COMMAND = "custom_agent_command"  # Next-action token to send a custom capability command.
+CLIENT_REMOTE_CONFIG_CAPABILITY = "Accepts Remote Config"  # Human-readable capability required for AgentRemoteConfig offers.
+REMOTE_CONFIG_SELECTION_STATUS_ACCEPTED = "accepted"  # Response status for catalog callback selection payloads.
+ERR_REMOTE_CONFIG_DISABLED = "remote config is disabled by provider configuration"
 # Allowed next-action values accepted by /rest/nextAction.
 ACTION_OPTIONS = {
     ACTION_APPLY_CONFIG,
@@ -432,6 +447,119 @@ def _websocket_remote_addr() -> str | None:
 def _diagnostic_mode_enabled() -> bool:
     """Return whether server diagnostic mode is enabled."""
     return bool(app.config.get("DIAGNOSTIC_MODE", False))
+
+
+def _resolve_remote_config_content_type(
+    *,
+    content_type: object,
+    source_path: pathlib.Path,
+) -> str | None:
+    """Return explicit or inferred content type for one remote-config file."""
+    explicit = str(content_type or "").strip()
+    if explicit:
+        return explicit
+    suffix = source_path.suffix.lower()
+    if suffix in {".yaml", ".yml"}:
+        return "application/x-yaml"
+    if suffix == ".json":
+        return "application/json"
+    if suffix == ".xml":
+        return "application/xml"
+    guessed, _encoding = mimetypes.guess_type(str(source_path))
+    return guessed
+
+
+def _read_remote_config_file_specs(
+    files_payload: object,
+) -> list[dict[str, str | bytes | None]]:
+    """Normalize a list of file path inputs for test AgentRemoteConfig construction."""
+    if not isinstance(files_payload, list) or not files_payload:
+        raise ValueError("files must be a non-empty list")
+
+    file_specs: list[dict[str, str | bytes | None]] = []
+    for item in files_payload:
+        if isinstance(item, str):
+            source_path = pathlib.Path(item).expanduser()
+            target_name = source_path.name
+            content_type = None
+        elif isinstance(item, dict):
+            raw_source_path = item.get("source_path") or item.get("path")
+            if not raw_source_path:
+                raise ValueError("each file item requires source_path")
+            source_path = pathlib.Path(str(raw_source_path)).expanduser()
+            target_name = str(
+                item.get("target_name")
+                or item.get("target_path")
+                or item.get("filename")
+                or source_path.name
+            ).strip()
+            content_type = item.get("content_type")
+        else:
+            raise ValueError("each file item must be a string path or object")
+
+        if not target_name:
+            raise ValueError("target file name cannot be blank")
+        if not source_path.is_file():
+            raise ValueError(f"source file does not exist: {source_path}")
+
+        file_specs.append(
+            {
+                "source_path": str(source_path.resolve()),
+                "target_name": target_name,
+                "content_type": _resolve_remote_config_content_type(
+                    content_type=content_type,
+                    source_path=source_path,
+                ),
+                "body": source_path.read_bytes(),
+            }
+        )
+    return file_specs
+
+
+def _client_supports_remote_config(client: ClientRecord) -> bool:
+    """Return whether a client has announced remote-config acceptance capability."""
+    return CLIENT_REMOTE_CONFIG_CAPABILITY in client.capabilities
+
+
+def _provider_allows_remote_config() -> bool:
+    """Return whether provider configuration enables remote-config UI and queueing support."""
+    return provider_config.CONFIG.allow_remote_config is True
+
+
+def _server_capabilities_mask() -> int:
+    """Return the effective server capability bitmask for the current provider config."""
+    mask = SERVER_CAPABILITIES_BASE
+    if _provider_allows_remote_config():
+        mask |= SERVER_CAPABILITIES_REMOTE_CONFIG
+    return mask
+
+
+def _serialize_client_record_for_api(record: ClientRecord) -> dict[str, object]:
+    """Return one API-facing client payload enriched with provider UI capability flags."""
+    payload = record.model_dump(mode=MODEL_DUMP_MODE)
+    payload["remote_config_files_allowed"] = _provider_allows_remote_config()
+    payload["remote_config_capability_reported"] = _client_supports_remote_config(record)
+    return payload
+
+
+def _build_agent_remote_config_from_specs(
+    file_specs: list[dict[str, str | bytes | None]],
+    *,
+    include_hash: bool,
+) -> opamp_pb2.AgentRemoteConfig:
+    """Construct an AgentRemoteConfig payload from normalized file specs."""
+    remote_config = opamp_pb2.AgentRemoteConfig()
+    for file_spec in file_specs:
+        target_name = str(file_spec["target_name"])
+        config_file = remote_config.config.config_map[target_name]
+        config_file.body = bytes(file_spec["body"] or b"")
+        content_type = str(file_spec["content_type"] or "").strip()
+        if content_type:
+            config_file.content_type = content_type
+    if include_hash:
+        serialized = remote_config.config.SerializeToString(deterministic=True)
+        remote_config.config_hash = hashlib.sha256(serialized).digest()
+    return remote_config
 
 
 def _coerce_bool_setting(value: object, *, key: str) -> bool:
@@ -774,9 +902,17 @@ def _log_blocked_agent_attempt(
     )
 
 
-def _build_apply_config(response: opamp_pb2.ServerToAgent) -> opamp_pb2.ServerToAgent:
+def _build_apply_config(
+    response: opamp_pb2.ServerToAgent,
+    client: ClientRecord | None = None,
+) -> opamp_pb2.ServerToAgent:
     """Attach a remote_config action to the ServerToAgent response."""
     logger.info("building next action payload: %s", ACTION_APPLY_CONFIG)
+    if client is not None:
+        pending_remote_config = STORE.pop_pending_remote_config(client.client_id)
+        if pending_remote_config:
+            response.remote_config.ParseFromString(pending_remote_config)
+            return response
     response.remote_config.SetInParent()
     return response
 
@@ -993,7 +1129,7 @@ def _apply_next_action(
 ) -> opamp_pb2.ServerToAgent:
     """Dispatch the next action string to the correct builder."""
     if action == ACTION_APPLY_CONFIG:
-        return _build_apply_config(response)
+        return _build_apply_config(response, client)
     if action == ACTION_CHANGE_CONNECTIONS:
         return _build_change_connections(response, client)
     if action == ACTION_PACKAGE_AVAILABLE:
@@ -1020,8 +1156,8 @@ def _build_response(
     else:
         logger.warning("Cant set response instance_uid")
 
-    # Server capability advertisement is fixed to AcceptsStatus.
-    response.capabilities = SERVER_CAPABILITIES
+    # Server capability advertisement is driven by provider feature toggles.
+    response.capabilities = _server_capabilities_mask()
     custom_capabilities = get_custom_capabilities_list()
     if custom_capabilities:
         response.custom_capabilities.capabilities.extend(custom_capabilities)
@@ -1635,7 +1771,7 @@ async def list_clients() -> Response:
         value is not None for value in (service_instance_id, client_version, host_name, host_ip)
     )
     clients = [
-        client.model_dump(mode=MODEL_DUMP_MODE)
+        _serialize_client_record_for_api(client)
         for client in STORE.list()
         if _client_matches_api_clients_filters(
             client,
@@ -1737,7 +1873,7 @@ async def get_client(client_id: str) -> Response:
     record = STORE.get(client_id)
     if record is None:
         return jsonify({"error": "client not found"}), HTTPStatus.NOT_FOUND
-    return jsonify(record.model_dump(mode=MODEL_DUMP_MODE))
+    return jsonify(_serialize_client_record_for_api(record))
 
 
 @app.delete("/api/clients/<client_id>")
@@ -2245,6 +2381,222 @@ async def set_requested_config(client_id: str) -> Response:
         apply_at=apply_at,
     )
     return jsonify(record.model_dump(mode=MODEL_DUMP_MODE))
+
+
+@app.post("/api/clients/<client_id>/remote-config-selection")
+async def accept_remote_config_selection(client_id: str) -> Response:
+    """Normalize ordered catalog selections for one client without mutating server-side client state."""
+    if not _provider_allows_remote_config():
+        logger.warning(
+            "remote config selection rejected because provider setting is disabled client_id=%s",
+            client_id,
+        )
+        return jsonify({"error": ERR_REMOTE_CONFIG_DISABLED}), HTTPStatus.FORBIDDEN
+
+    payload = await request.get_json(silent=True)
+    if not payload:
+        return jsonify({"error": "payload is required"}), HTTPStatus.BAD_REQUEST
+
+    client = STORE.get(client_id)
+    if client is None:
+        logger.warning(
+            "remote config selection rejected for unknown client client_id=%s",
+            client_id,
+        )
+        return jsonify({"error": "client not found"}), HTTPStatus.NOT_FOUND
+
+    try:
+        selection_specs = normalize_ui_remote_config_selection_specs(payload.get("files"))
+    except ValueError as exc:
+        logger.warning(
+            "remote config selection validation failed client_id=%s error=%s",
+            client_id,
+            exc,
+        )
+        return jsonify({"error": str(exc)}), HTTPStatus.BAD_REQUEST
+
+    return jsonify(
+        {
+            "status": REMOTE_CONFIG_SELECTION_STATUS_ACCEPTED,
+            "client_id": client_id,
+            "files": [
+                {
+                    "source_path": str(selection_spec.source_path),
+                    "target_name": selection_spec.target_name,
+                    "filename": selection_spec.filename,
+                }
+                for selection_spec in selection_specs
+            ],
+        }
+    )
+
+
+@app.post("/api/clients/<client_id>/remote-config")
+async def queue_remote_config_offer(client_id: str) -> Response:
+    """Validate, build, and queue a remote-config offer for a client."""
+    if not _provider_allows_remote_config():
+        logger.warning(
+            "remote config request rejected because provider setting is disabled client_id=%s",
+            client_id,
+        )
+        return jsonify({"error": ERR_REMOTE_CONFIG_DISABLED}), HTTPStatus.FORBIDDEN
+
+    payload = await request.get_json(silent=True)
+    if not payload:
+        return jsonify({"error": "payload is required"}), HTTPStatus.BAD_REQUEST
+
+    client = STORE.get(client_id)
+    if client is None:
+        logger.warning(
+            "remote config request rejected for unknown client client_id=%s",
+            client_id,
+        )
+        return jsonify({"error": "client not found"}), HTTPStatus.NOT_FOUND
+    if not _client_supports_remote_config(client):
+        logger.warning(
+            "remote config request rejected client_id=%s capabilities=%s missing=%s",
+            client_id,
+            client.capabilities,
+            CLIENT_REMOTE_CONFIG_CAPABILITY,
+        )
+        return (
+            jsonify(
+                {
+                    "error": "client does not accept remote config",
+                    "required_capability": CLIENT_REMOTE_CONFIG_CAPABILITY,
+                    "client_capabilities": client.capabilities,
+                }
+            ),
+            HTTPStatus.CONFLICT,
+        )
+
+    try:
+        file_specs = normalize_ui_remote_config_file_specs(payload.get("files"))
+        include_hash = _coerce_bool_setting(
+            payload.get("include_hash", True),
+            key="include_hash",
+        )
+        validation_results = validate_ui_remote_config_files(
+            file_specs,
+            app_extensions=app.extensions,
+            validation_payload=payload.get("validation"),
+        )
+    except ValueError as exc:
+        logger.warning(
+            "remote config request validation failed client_id=%s error=%s",
+            client_id,
+            exc,
+        )
+        return jsonify({"error": str(exc)}), HTTPStatus.BAD_REQUEST
+
+    command = RemoteConfigOfferCommand(
+        key_values={
+            "client_id": client_id,
+            "file_count": str(len(file_specs)),
+        }
+    )
+    remote_config = command.build_remote_config(
+        file_specs,
+        include_hash=include_hash,
+    )
+    remote_config_bytes = remote_config.SerializeToString()
+    config_hash_hex = remote_config.config_hash.hex() if remote_config.config_hash else ""
+    logger.info(
+        "queued remote config offer client_id=%s files=%s payload_size_bytes=%s config_hash=%s",
+        client_id,
+        len(file_specs),
+        len(remote_config_bytes),
+        config_hash_hex or "none",
+    )
+
+    STORE.set_pending_remote_config(client_id, remote_config_bytes)
+    record = STORE.enqueue_next_action(client_id, ACTION_APPLY_CONFIG)
+    return (
+        jsonify(
+            {
+                "client_id": client_id,
+                "files": [
+                    {
+                        "source_path": str(file_spec.source_path),
+                        "target_name": file_spec.target_name,
+                        "content_type": file_spec.content_type,
+                        "size_bytes": file_spec.size_bytes,
+                    }
+                    for file_spec in file_specs
+                ],
+                "validation": validation_results,
+                "config_hash": config_hash_hex,
+                "payload_size_bytes": len(remote_config_bytes),
+                "queued_action": ACTION_APPLY_CONFIG,
+                "next_actions": record.next_actions,
+                "editor_validation_available": config_editor_validation_available(
+                    app.extensions
+                ),
+            }
+        ),
+        HTTPStatus.CREATED,
+    )
+
+
+@app.post("/api/test/clients/<client_id>/remote-config")
+async def build_test_remote_config(client_id: str) -> Response:
+    """Construct and queue a test AgentRemoteConfig payload for a client."""
+    if not _diagnostic_mode_enabled():
+        return (
+            jsonify({"error": "diagnostic mode is disabled"}),
+            HTTPStatus.FORBIDDEN,
+        )
+    payload = await request.get_json(silent=True)
+    if not payload:
+        return jsonify({"error": "payload is required"}), HTTPStatus.BAD_REQUEST
+    try:
+        file_specs = _read_remote_config_file_specs(payload.get("files"))
+        include_hash = _coerce_bool_setting(
+            payload.get("include_hash", True),
+            key="include_hash",
+        )
+        queue_action = _coerce_bool_setting(
+            payload.get("queue_action", True),
+            key="queue_action",
+        )
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), HTTPStatus.BAD_REQUEST
+
+    remote_config = _build_agent_remote_config_from_specs(
+        file_specs,
+        include_hash=include_hash,
+    )
+    record = STORE.set_pending_remote_config(
+        client_id,
+        remote_config.SerializeToString(),
+    )
+    if queue_action:
+        record = STORE.enqueue_next_action(client_id, ACTION_APPLY_CONFIG)
+
+    return (
+        jsonify(
+            {
+                "client_id": client_id,
+                "diagnostic_enabled": True,
+                "files": [
+                    {
+                        "source_path": str(file_spec["source_path"]),
+                        "target_name": str(file_spec["target_name"]),
+                        "content_type": str(file_spec["content_type"] or ""),
+                        "size_bytes": len(bytes(file_spec["body"] or b"")),
+                    }
+                    for file_spec in file_specs
+                ],
+                "include_hash": include_hash,
+                "config_hash": remote_config.config_hash.hex()
+                if remote_config.config_hash
+                else "",
+                "queued_action": ACTION_APPLY_CONFIG if queue_action else None,
+                "next_actions": record.next_actions,
+            }
+        ),
+        HTTPStatus.CREATED,
+    )
 
 
 @app.get("/")

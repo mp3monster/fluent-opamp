@@ -25,6 +25,9 @@
       httpsCertificateExpiryDate: null,
       httpsCertificateDaysRemaining: null,
       httpsCertificateExpiringSoon: false,
+      catalogFeatureUrl: "",
+      configServiceFeatureAvailable: false,
+      remoteConfigSelectionsByClient: {},
       filters: {
         serviceInstanceId: "",
         clientVersion: "",
@@ -83,6 +86,28 @@
     const modalTitle = document.getElementById("modalTitle");
     const configInput = document.getElementById("configInput");
     const currentConfigOutput = document.getElementById("currentConfigOutput");
+    const remoteConfigEnhancedPanel = document.getElementById(
+      "remoteConfigEnhancedPanel"
+    );
+    const remoteConfigCatalogHint = document.getElementById(
+      "remoteConfigCatalogHint"
+    );
+    const remoteConfigSelectionBody = document.getElementById(
+      "remoteConfigSelectionBody"
+    );
+    const remoteConfigEmptyState = document.getElementById(
+      "remoteConfigEmptyState"
+    );
+    const remoteConfigSelectionTable = document.getElementById(
+      "remoteConfigSelectionTable"
+    );
+    const selectRemoteConfigsBtn = document.getElementById(
+      "selectRemoteConfigsBtn"
+    );
+    const sendRemoteConfigFilesBtn = document.getElementById(
+      "sendRemoteConfigFilesBtn"
+    );
+    const remoteConfigStatus = document.getElementById("remoteConfigStatus");
     const componentHealthPanel = document.getElementById("componentHealthPanel");
     const componentHealthBody = document.getElementById("componentHealthBody");
     const hideHealthDataBtn = document.getElementById("hideHealthDataBtn");
@@ -103,7 +128,6 @@
     const historyTabBtn = document.getElementById("historyTabBtn");
     const eventsHistoryList = document.getElementById("eventsHistoryList");
     const eventsSortBtn = document.getElementById("eventsSortBtn");
-    const shutdownButton = document.getElementById("shutdownButton");
     const contextMenu = document.getElementById("contextMenu");
     const removeClientBtn = document.getElementById("removeClientBtn");
     const issueIdBtn = document.getElementById("issueIdBtn");
@@ -318,6 +342,14 @@
             modalTitle,
             configInput,
             currentConfigOutput,
+            remoteConfigEnhancedPanel,
+            remoteConfigCatalogHint,
+            remoteConfigSelectionBody,
+            remoteConfigEmptyState,
+            remoteConfigSelectionTable,
+            selectRemoteConfigsBtn,
+            sendRemoteConfigFilesBtn,
+            remoteConfigStatus,
             componentHealthPanel,
             componentHealthBody,
             hideHealthDataBtn,
@@ -336,7 +368,6 @@
             historyTabBtn,
             eventsHistoryList,
             eventsSortBtn,
-            shutdownButton,
             contextMenu,
             removeClientBtn,
             issueIdBtn,

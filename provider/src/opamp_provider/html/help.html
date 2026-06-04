@@ -150,6 +150,23 @@
       </ul>
     </section>
     <section class="custom-commands">
+      <h2>Configuration Tab Remote Files</h2>
+      <p>
+        When <code>provider.allow-remote-config</code> is enabled, the client
+        <strong>Configuration</strong> tab includes a remote file workflow in addition to the
+        existing requested-config text area.
+      </p>
+      <ul class="command-list">
+        <li><strong>Requested Configuration:</strong> Becomes read-only when <strong>Config Editor</strong> is available from the Feature menu.</li>
+        <li><strong>Availability:</strong> The remote file panel appears only when provider remote-config support is enabled.</li>
+        <li><strong>Select Configs:</strong> Appears only when the catalog feature is available in this deployment.</li>
+        <li><strong>Popup selection:</strong> The catalog opens in a popup, and checkbox selection order is preserved when files are returned.</li>
+        <li><strong>Drag reorder and remove:</strong> Selected files can be dragged into a new order or removed before sending.</li>
+        <li><strong>Separate send step:</strong> Choosing files does not queue them automatically. Use <strong>Send Remote Config Files</strong> to submit the selected list.</li>
+        <li><strong>Capability note:</strong> The provider still validates agent remote-config support when the send request is queued.</li>
+      </ul>
+    </section>
+    <section class="custom-commands">
       <h2>Global Settings Overview</h2>
       <p>
         Use the <strong>Global Settings</strong> button in the main header to open provider-wide settings.
@@ -230,7 +247,7 @@
         The main UI header can show a <strong>Feature</strong> dropdown when optional component endpoints are configured.
       </p>
       <ul class="command-list">
-        <li><strong>Config Service UI:</strong> Opens embedded config-service editor when configured via <code>component-entry-points.quart</code>.</li>
+        <li><strong>Config Editor:</strong> Opens embedded config-service editor when configured via <code>component-entry-points.quart</code>.</li>
         <li><strong>Config Catalog:</strong> Opens provider catalog view when <code>opamp.config_catalog.enabled=true</code>.</li>
         <li><strong>Catalog help:</strong> <code>/catalog/help</code> (available when catalog feature is enabled).</li>
       </ul>

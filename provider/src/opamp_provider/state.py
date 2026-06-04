@@ -268,6 +268,7 @@ class ClientStore:
         self._pending_approvals: dict[str, ClientRecord] = {}
         self._blocked_agents: dict[str, dict[str, Any]] = {}
         self._pending_instance_uid_replacements: dict[str, str] = {}
+        self._pending_remote_configs: dict[str, bytes] = {}
         self._default_heartbeat_frequency = DEFAULT_HEARTBEAT_FREQUENCY
 
     def get(self, client_id: str) -> Optional[ClientRecord]:
@@ -622,6 +623,24 @@ class ClientStore:
             record.next_actions = actions if actions else None
             return record
 
+    def enqueue_next_action(self, client_id: str, action: str) -> ClientRecord:
+        """Append one next-action item to the client's pending action queue."""
+        normalized_action = str(action).strip()
+        if not normalized_action:
+            raise ValueError("action cannot be blank")
+        with self._lock:
+            record = self._clients.get(client_id)
+            if record is None:
+                record = ClientRecord(
+                    client_id=client_id,
+                    heartbeat_frequency=self._default_heartbeat_frequency,
+                )
+                self._clients[client_id] = record
+            queued_actions = list(record.next_actions or [])
+            queued_actions.append(normalized_action)
+            record.next_actions = queued_actions
+            return record
+
     def add_event(
         self, client_id: str, *, description: str, max_events: int
     ) -> ClientRecord:
@@ -746,11 +765,37 @@ class ClientStore:
                 record.next_actions = None
             return action
 
+    def set_pending_remote_config(
+        self, client_id: str, remote_config_bytes: bytes
+    ) -> ClientRecord:
+        """Store one serialized AgentRemoteConfig payload for a client."""
+        with self._lock:
+            record = self._clients.get(client_id)
+            if record is None:
+                record = ClientRecord(
+                    client_id=client_id,
+                    heartbeat_frequency=self._default_heartbeat_frequency,
+                )
+                self._clients[client_id] = record
+            self._pending_remote_configs[client_id] = remote_config_bytes
+            return record
+
+    def get_pending_remote_config(self, client_id: str) -> Optional[bytes]:
+        """Return one serialized AgentRemoteConfig payload without consuming it."""
+        with self._lock:
+            return self._pending_remote_configs.get(client_id)
+
+    def pop_pending_remote_config(self, client_id: str) -> Optional[bytes]:
+        """Return and remove one serialized AgentRemoteConfig payload."""
+        with self._lock:
+            return self._pending_remote_configs.pop(client_id, None)
+
     def remove_client(self, client_id: str) -> Optional[ClientRecord]:
         """Remove and return a client record by ID if it exists."""
         with self._lock:
             record = self._clients.pop(client_id, None)
             self._pending_approvals.pop(client_id, None)
+            self._pending_remote_configs.pop(client_id, None)
             pending_targets = [
                 target_id
                 for target_id, source_id in self._pending_instance_uid_replacements.items()

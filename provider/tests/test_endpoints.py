@@ -15,6 +15,7 @@ import pathlib
 from datetime import datetime, timedelta, timezone
 
 import pytest
+
 from opamp_provider import auth as provider_auth
 from opamp_provider import config as provider_config
 from opamp_provider.app import (
@@ -55,11 +56,13 @@ def reset_store_state() -> None:
     STORE._clients.clear()
     STORE._pending_approvals.clear()
     STORE._blocked_agents.clear()
+    STORE._pending_remote_configs.clear()
     STORE._pending_instance_uid_replacements.clear()
     yield
     STORE._clients.clear()
     STORE._pending_approvals.clear()
     STORE._blocked_agents.clear()
+    STORE._pending_remote_configs.clear()
     STORE._pending_instance_uid_replacements.clear()
     app.config["DIAGNOSTIC_MODE"] = False
 
@@ -70,6 +73,7 @@ def _test_provider_config(
     opamp_use_authorization: str = provider_config.OPAMP_USE_AUTHORIZATION_NONE,
     ui_use_authorization: str = provider_config.DEFAULT_UI_USE_AUTHORIZATION,
     latest_docs_url: str = provider_config.DEFAULT_LATEST_DOCS_URL,
+    allow_remote_config: bool = provider_config.DEFAULT_ALLOW_REMOTE_CONFIG,
 ) -> ProviderConfig:
     """Build a ProviderConfig suitable for endpoint tests."""
     return ProviderConfig(
@@ -85,6 +89,7 @@ def _test_provider_config(
         human_in_loop_approval=human_in_loop_approval,
         opamp_use_authorization=opamp_use_authorization,
         ui_use_authorization=ui_use_authorization,
+        allow_remote_config=allow_remote_config,
     )
 
 
@@ -705,6 +710,856 @@ async def test_get_server_opamp_config_returns_config_when_diagnostic_enabled() 
     loaded = json.loads(payload["config_text"])
     assert isinstance(loaded, dict)
     assert "provider" in loaded
+
+
+@pytest.mark.asyncio
+async def test_build_test_remote_config_requires_diagnostic_flag(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Verify test remote-config endpoint is forbidden when diagnostic mode is disabled."""
+    file_path = tmp_path / "agent.yaml"
+    file_path.write_text("enabled: true\n", encoding="utf-8")
+    app.config["DIAGNOSTIC_MODE"] = False
+
+    async with app.test_client() as client:
+        resp = await client.post(
+            "/api/test/clients/abcd/remote-config",
+            json={"files": [str(file_path)]},
+        )
+
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_build_test_remote_config_queues_payload_and_http_consumes(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Verify test remote-config endpoint queues a real AgentRemoteConfig payload."""
+    app.config["DIAGNOSTIC_MODE"] = True
+    client_id = "abcd"
+    source_path = tmp_path / "agent.yaml"
+    source_path.write_text("enabled: true\n", encoding="utf-8")
+
+    async with app.test_client() as client:
+        resp = await client.post(
+            f"/api/test/clients/{client_id}/remote-config",
+            json={
+                "files": [
+                    {
+                        "source_path": str(source_path),
+                        "target_name": "configs/agent.yaml",
+                    }
+                ]
+            },
+        )
+        assert resp.status_code == 201
+        payload = await resp.get_json()
+        assert payload["client_id"] == client_id
+        assert payload["queued_action"] == ACTION_APPLY_CONFIG
+        assert payload["files"] == [
+            {
+                "source_path": str(source_path.resolve()),
+                "target_name": "configs/agent.yaml",
+                "content_type": "application/x-yaml",
+                "size_bytes": len(b"enabled: true\n"),
+            }
+        ]
+        assert isinstance(payload["config_hash"], str)
+        assert payload["config_hash"]
+
+        agent_msg = opamp_pb2.AgentToServer(instance_uid=bytes.fromhex(client_id))
+        resp = await client.post(
+            "/v1/opamp",
+            data=agent_msg.SerializeToString(),
+            headers={"Content-Type": "application/x-protobuf"},
+        )
+        assert resp.status_code == 200
+        server_msg = opamp_pb2.ServerToAgent()
+        server_msg.ParseFromString(await resp.get_data())
+
+    assert server_msg.HasField("remote_config")
+    config_file = server_msg.remote_config.config.config_map["configs/agent.yaml"]
+    assert config_file.body == b"enabled: true\n"
+    assert config_file.content_type == "application/x-yaml"
+    assert server_msg.remote_config.config_hash.hex() == payload["config_hash"]
+    record = STORE.get(client_id)
+    assert record is not None
+    assert record.next_actions is None
+    assert STORE.get_pending_remote_config(client_id) is None
+
+
+@pytest.mark.asyncio
+async def test_remote_config_selection_endpoint_accepts_ordered_files(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Verify catalog callback selections are normalized and returned in the original order."""
+    client_id = "91919191919191919191919191919191"
+    _seed_tool_agent_record(
+        client_id=client_id,
+        capabilities=opamp_pb2.AgentCapabilities.AgentCapabilities_ReportsStatus,
+    )
+    first_path = tmp_path / "alpha.yaml"
+    first_path.write_text("enabled: true\n", encoding="utf-8")
+    second_path = tmp_path / "beta.conf"
+    second_path.write_text("<source>\n  @type tail\n</source>\n", encoding="utf-8")
+
+    async with app.test_client() as client:
+        resp = await client.post(
+            f"/api/clients/{client_id}/remote-config-selection",
+            json={
+                "files": [
+                    str(first_path),
+                    {
+                        "source_path": str(second_path),
+                        "target_name": "custom/beta.conf",
+                    },
+                ]
+            },
+        )
+        assert resp.status_code == 200
+        payload = await resp.get_json()
+
+    assert payload == {
+        "status": "accepted",
+        "client_id": client_id,
+        "files": [
+            {
+                "source_path": str(first_path.resolve()),
+                "target_name": "alpha.yaml",
+                "filename": "alpha.yaml",
+            },
+            {
+                "source_path": str(second_path.resolve()),
+                "target_name": "custom/beta.conf",
+                "filename": "beta.conf",
+            },
+        ],
+    }
+
+
+@pytest.mark.asyncio
+async def test_remote_config_selection_endpoint_rejects_when_disabled(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Verify catalog callback selections are blocked when provider remote config is disabled."""
+    provider_config.set_config(_test_provider_config(allow_remote_config=False))
+    client_id = "92929292929292929292929292929292"
+    _seed_tool_agent_record(
+        client_id=client_id,
+        capabilities=opamp_pb2.AgentCapabilities.AgentCapabilities_ReportsStatus,
+    )
+    source_path = tmp_path / "agent.yaml"
+    source_path.write_text("enabled: true\n", encoding="utf-8")
+
+    async with app.test_client() as client:
+        resp = await client.post(
+            f"/api/clients/{client_id}/remote-config-selection",
+            json={"files": [str(source_path)]},
+        )
+        assert resp.status_code == 403
+        payload = await resp.get_json()
+
+    assert payload == {
+        "error": "remote config is disabled by provider configuration"
+    }
+
+
+@pytest.mark.asyncio
+async def test_queue_remote_config_offer_requires_client_support(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Verify the UI remote-config endpoint rejects clients without capability support."""
+    client_id = "10101010101010101010101010101010"
+    _seed_tool_agent_record(
+        client_id=client_id,
+        capabilities=opamp_pb2.AgentCapabilities.AgentCapabilities_ReportsStatus,
+    )
+    source_path = tmp_path / "agent.yaml"
+    source_path.write_text("enabled: true\n", encoding="utf-8")
+
+    async with app.test_client() as client:
+        resp = await client.post(
+            f"/api/clients/{client_id}/remote-config",
+            json={"files": [str(source_path)]},
+        )
+        assert resp.status_code == 409
+        payload = await resp.get_json()
+
+    assert payload["error"] == "client does not accept remote config"
+    assert payload["required_capability"] == "Accepts Remote Config"
+    assert STORE.get_pending_remote_config(client_id) is None
+
+
+@pytest.mark.asyncio
+async def test_queue_remote_config_offer_rejects_when_disabled(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Verify the UI remote-config endpoint is disabled when provider remote config is off."""
+    provider_config.set_config(_test_provider_config(allow_remote_config=False))
+    client_id = "93939393939393939393939393939393"
+    _seed_tool_agent_record(
+        client_id=client_id,
+        capabilities=opamp_pb2.AgentCapabilities.AgentCapabilities_AcceptsRemoteConfig,
+    )
+    source_path = tmp_path / "agent.yaml"
+    source_path.write_text("enabled: true\n", encoding="utf-8")
+
+    async with app.test_client() as client:
+        resp = await client.post(
+            f"/api/clients/{client_id}/remote-config",
+            json={"files": [str(source_path)]},
+        )
+        assert resp.status_code == 403
+        payload = await resp.get_json()
+
+    assert payload == {
+        "error": "remote config is disabled by provider configuration"
+    }
+    assert STORE.get_pending_remote_config(client_id) is None
+
+
+@pytest.mark.asyncio
+async def test_queue_remote_config_offer_validates_and_http_consumes(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Verify the UI remote-config endpoint queues validated files for a capable client."""
+    client_id = "20202020202020202020202020202020"
+    _seed_tool_agent_record(
+        client_id=client_id,
+        capabilities=(
+            opamp_pb2.AgentCapabilities.AgentCapabilities_ReportsStatus
+            | opamp_pb2.AgentCapabilities.AgentCapabilities_AcceptsRemoteConfig
+        ),
+    )
+    yaml_path = tmp_path / "agent.yaml"
+    yaml_path.write_text("enabled: true\n", encoding="utf-8")
+    text_path = tmp_path / "notes.txt"
+    text_path.write_text("plain text config\n", encoding="utf-8")
+
+    async with app.test_client() as client:
+        resp = await client.post(
+            f"/api/clients/{client_id}/remote-config",
+            json={
+                "files": [
+                    {
+                        "source_path": str(yaml_path),
+                        "target_name": "configs/agent.yaml",
+                    },
+                    str(text_path),
+                ]
+            },
+        )
+        assert resp.status_code == 201
+        payload = await resp.get_json()
+        assert payload["client_id"] == client_id
+        assert payload["queued_action"] == ACTION_APPLY_CONFIG
+        assert payload["payload_size_bytes"] > 0
+        assert payload["editor_validation_available"] is False
+        assert payload["files"] == [
+            {
+                "source_path": str(yaml_path.resolve()),
+                "target_name": "configs/agent.yaml",
+                "content_type": "application/x-yaml",
+                "size_bytes": len(b"enabled: true\n"),
+            },
+            {
+                "source_path": str(text_path.resolve()),
+                "target_name": "notes.txt",
+                "content_type": "text/plain",
+                "size_bytes": len(b"plain text config\n"),
+            },
+        ]
+        assert payload["validation"] == [
+            {
+                "target_name": "configs/agent.yaml",
+                "validation_mode": "basic",
+            },
+            {
+                "target_name": "notes.txt",
+                "validation_mode": "basic",
+            },
+        ]
+
+        agent_msg = opamp_pb2.AgentToServer(instance_uid=bytes.fromhex(client_id))
+        resp = await client.post(
+            "/v1/opamp",
+            data=agent_msg.SerializeToString(),
+            headers={"Content-Type": "application/x-protobuf"},
+        )
+        assert resp.status_code == 200
+        server_msg = opamp_pb2.ServerToAgent()
+        server_msg.ParseFromString(await resp.get_data())
+
+    yaml_config_file = server_msg.remote_config.config.config_map["configs/agent.yaml"]
+    text_config_file = server_msg.remote_config.config.config_map["notes.txt"]
+    assert yaml_config_file.body == b"enabled: true\n"
+    assert yaml_config_file.content_type == "application/x-yaml"
+    assert text_config_file.body == b"plain text config\n"
+    assert text_config_file.content_type == "text/plain"
+    assert server_msg.remote_config.config_hash.hex() == payload["config_hash"]
+    assert STORE.get_pending_remote_config(client_id) is None
+
+
+@pytest.mark.asyncio
+async def test_queue_remote_config_offer_without_config_editor_falls_back_to_basic_validation(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Verify fluentbit/fluentd files use basic validation when config editor is unavailable."""
+    client_id = "21212121212121212121212121212121"
+    _seed_tool_agent_record(
+        client_id=client_id,
+        capabilities=opamp_pb2.AgentCapabilities.AgentCapabilities_AcceptsRemoteConfig,
+    )
+    yaml_path = tmp_path / "fluent-bit.yaml"
+    yaml_path.write_text("pipeline:\n  inputs: []\n", encoding="utf-8")
+    fluentd_path = tmp_path / "fluentd.conf"
+    fluentd_path.write_text("<source>\n  @type tail\n</source>\n", encoding="utf-8")
+
+    async with app.test_client() as client:
+        resp = await client.post(
+            f"/api/clients/{client_id}/remote-config",
+            json={
+                "files": [str(yaml_path), str(fluentd_path)],
+                "validation": {"config_type": "fluentbit", "version": "5.0.4"},
+            },
+        )
+        assert resp.status_code == 201
+        payload = await resp.get_json()
+
+    assert payload["editor_validation_available"] is False
+    assert payload["validation"] == [
+        {
+            "target_name": "fluent-bit.yaml",
+            "validation_mode": "basic",
+        },
+        {
+            "target_name": "fluentd.conf",
+            "validation_mode": "basic",
+        },
+    ]
+    assert payload["files"] == [
+        {
+            "source_path": str(yaml_path.resolve()),
+            "target_name": "fluent-bit.yaml",
+            "content_type": "application/x-yaml",
+            "size_bytes": len(b"pipeline:\n  inputs: []\n"),
+        },
+        {
+            "source_path": str(fluentd_path.resolve()),
+            "target_name": "fluentd.conf",
+            "content_type": "text/plain",
+            "size_bytes": len(b"<source>\n  @type tail\n</source>\n"),
+        },
+    ]
+
+
+@pytest.mark.asyncio
+async def test_queue_remote_config_offer_rejects_invalid_yaml(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Verify invalid YAML is rejected before a remote-config offer is queued."""
+    client_id = "30303030303030303030303030303030"
+    _seed_tool_agent_record(
+        client_id=client_id,
+        capabilities=opamp_pb2.AgentCapabilities.AgentCapabilities_AcceptsRemoteConfig,
+    )
+    source_path = tmp_path / "broken.yaml"
+    source_path.write_text("enabled: [\n", encoding="utf-8")
+
+    async with app.test_client() as client:
+        resp = await client.post(
+            f"/api/clients/{client_id}/remote-config",
+            json={"files": [str(source_path)]},
+        )
+        assert resp.status_code == 400
+        payload = await resp.get_json()
+
+    assert "invalid YAML" in payload["error"]
+    assert STORE.get_pending_remote_config(client_id) is None
+
+
+@pytest.mark.asyncio
+async def test_queue_remote_config_offer_uses_config_editor_validation(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify embedded config-service validation is used when available."""
+    client_id = "40404040404040404040404040404040"
+    _seed_tool_agent_record(
+        client_id=client_id,
+        capabilities=opamp_pb2.AgentCapabilities.AgentCapabilities_AcceptsRemoteConfig,
+    )
+    source_path = tmp_path / "agent.json"
+    source_path.write_text('{"pipeline": {"inputs": []}}', encoding="utf-8")
+
+    calls: dict[str, object] = {}
+
+    class FakeCatalogService:
+        def get_default_version(self, *, config_type: str) -> str:
+            calls["default_version_config_type"] = config_type
+            return "5.0.4"
+
+        def get_catalog(self, version: str, *, config_type: str) -> dict[str, str]:
+            calls["catalog"] = (version, config_type)
+            return {"engine": "fluentbit"}
+
+    class FakeParserDefinitionService:
+        def get_definition(self, version: str, *, config_type: str) -> dict[str, str]:
+            calls["parser_definition"] = (version, config_type)
+            return {}
+
+    class FakeValidationService:
+        def validate(
+            self,
+            *,
+            version: str,
+            payload: dict[str, object],
+            catalog: dict[str, object],
+            profile: str | None,
+            parser_definition: dict[str, object] | None = None,
+        ) -> dict[str, object]:
+            calls["validation"] = {
+                "version": version,
+                "payload": payload,
+                "catalog": catalog,
+                "profile": profile,
+                "parser_definition": parser_definition,
+            }
+            return {"ok": True, "errors": []}
+
+    monkeypatch.setitem(app.extensions, "catalog_service", FakeCatalogService())
+    monkeypatch.setitem(
+        app.extensions,
+        "parser_definition_service",
+        FakeParserDefinitionService(),
+    )
+    monkeypatch.setitem(app.extensions, "validation_service", FakeValidationService())
+
+    async with app.test_client() as client:
+        resp = await client.post(
+            f"/api/clients/{client_id}/remote-config",
+            json={"files": [str(source_path)]},
+        )
+        assert resp.status_code == 201
+        payload = await resp.get_json()
+
+    assert payload["editor_validation_available"] is True
+    assert payload["validation"] == [
+        {
+            "target_name": "agent.json",
+            "validation_mode": "config_editor",
+        }
+    ]
+    assert calls["default_version_config_type"] == "fluentbit"
+    assert calls["catalog"] == ("5.0.4", "fluentbit")
+    assert calls["parser_definition"] == ("5.0.4", "fluentbit")
+    assert calls["validation"] == {
+        "version": "5.0.4",
+        "payload": {"config": {"pipeline": {"inputs": []}}},
+        "catalog": {"engine": "fluentbit"},
+        "profile": None,
+        "parser_definition": {},
+    }
+
+
+@pytest.mark.asyncio
+async def test_queue_remote_config_offer_uses_config_editor_validation_for_fluentbit_yaml(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify fluentbit YAML files use embedded config-editor validation when available."""
+    client_id = "41414141414141414141414141414141"
+    _seed_tool_agent_record(
+        client_id=client_id,
+        capabilities=opamp_pb2.AgentCapabilities.AgentCapabilities_AcceptsRemoteConfig,
+    )
+    source_path = tmp_path / "fluent-bit.yaml"
+    source_path.write_text("pipeline:\n  inputs: []\n", encoding="utf-8")
+
+    calls: dict[str, object] = {}
+
+    class FakeCatalogService:
+        def get_default_version(self, *, config_type: str) -> str:
+            calls["default_version_config_type"] = config_type
+            return "5.1.0"
+
+        def get_catalog(self, version: str, *, config_type: str) -> dict[str, str]:
+            calls["catalog"] = (version, config_type)
+            return {"engine": "fluentbit"}
+
+    class FakeParserDefinitionService:
+        def get_definition(self, version: str, *, config_type: str) -> dict[str, str]:
+            calls["parser_definition"] = (version, config_type)
+            return {"builtin": []}
+
+    class FakeFluentBitYamlConfigService:
+        def parse(self, text: str) -> dict[str, object]:
+            calls["fluentbit_parse"] = text
+            return {"config": {"pipeline": {"inputs": []}}, "errors": []}
+
+    class FakeValidationService:
+        def validate(
+            self,
+            *,
+            version: str,
+            payload: dict[str, object],
+            catalog: dict[str, object],
+            profile: str | None,
+            parser_definition: dict[str, object] | None = None,
+        ) -> dict[str, object]:
+            calls["validation"] = {
+                "version": version,
+                "payload": payload,
+                "catalog": catalog,
+                "profile": profile,
+                "parser_definition": parser_definition,
+            }
+            return {"ok": True, "errors": []}
+
+    monkeypatch.setitem(app.extensions, "catalog_service", FakeCatalogService())
+    monkeypatch.setitem(
+        app.extensions,
+        "parser_definition_service",
+        FakeParserDefinitionService(),
+    )
+    monkeypatch.setitem(
+        app.extensions,
+        "fluentbit_yaml_config_service",
+        FakeFluentBitYamlConfigService(),
+    )
+    monkeypatch.setitem(app.extensions, "validation_service", FakeValidationService())
+
+    async with app.test_client() as client:
+        resp = await client.post(
+            f"/api/clients/{client_id}/remote-config",
+            json={"files": [str(source_path)]},
+        )
+        assert resp.status_code == 201
+        payload = await resp.get_json()
+
+    assert payload["validation"] == [
+        {
+            "target_name": "fluent-bit.yaml",
+            "validation_mode": "config_editor",
+        }
+    ]
+    assert calls["default_version_config_type"] == "fluentbit"
+    assert calls["catalog"] == ("5.1.0", "fluentbit")
+    assert calls["parser_definition"] == ("5.1.0", "fluentbit")
+    assert calls["fluentbit_parse"] == "pipeline:\n  inputs: []\n"
+    assert calls["validation"] == {
+        "version": "5.1.0",
+        "payload": {"config": {"pipeline": {"inputs": []}}},
+        "catalog": {"engine": "fluentbit"},
+        "profile": None,
+        "parser_definition": {"builtin": []},
+    }
+
+
+@pytest.mark.asyncio
+async def test_queue_remote_config_offer_uses_config_editor_validation_for_fluentd(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify fluentd config files use embedded config-editor validation when available."""
+    client_id = "42424242424242424242424242424242"
+    _seed_tool_agent_record(
+        client_id=client_id,
+        capabilities=opamp_pb2.AgentCapabilities.AgentCapabilities_AcceptsRemoteConfig,
+    )
+    source_path = tmp_path / "fluentd.conf"
+    source_path.write_text("<source>\n  @type tail\n</source>\n", encoding="utf-8")
+
+    calls: dict[str, object] = {}
+
+    class FakeCatalogService:
+        def get_default_version(self, *, config_type: str) -> str:
+            calls["default_version_config_type"] = config_type
+            return "1.16.0"
+
+        def get_catalog(self, version: str, *, config_type: str) -> dict[str, str]:
+            calls["catalog"] = (version, config_type)
+            return {"engine": "fluentd"}
+
+    class FakeFluentdConfigService:
+        def parse(self, text: str) -> dict[str, object]:
+            calls["fluentd_parse"] = text
+            return {
+                "config": {"pipeline": {"inputs": [{"name": "tail"}]}},
+                "errors": [],
+            }
+
+    class FakeValidationService:
+        def validate(
+            self,
+            *,
+            version: str,
+            payload: dict[str, object],
+            catalog: dict[str, object],
+            profile: str | None,
+            parser_definition: dict[str, object] | None = None,
+        ) -> dict[str, object]:
+            calls["validation"] = {
+                "version": version,
+                "payload": payload,
+                "catalog": catalog,
+                "profile": profile,
+                "parser_definition": parser_definition,
+            }
+            return {"ok": True, "errors": []}
+
+    monkeypatch.setitem(app.extensions, "catalog_service", FakeCatalogService())
+    monkeypatch.setitem(
+        app.extensions,
+        "fluentd_config_service",
+        FakeFluentdConfigService(),
+    )
+    monkeypatch.setitem(app.extensions, "validation_service", FakeValidationService())
+
+    async with app.test_client() as client:
+        resp = await client.post(
+            f"/api/clients/{client_id}/remote-config",
+            json={"files": [str(source_path)]},
+        )
+        assert resp.status_code == 201
+        payload = await resp.get_json()
+
+    assert payload["files"] == [
+        {
+            "source_path": str(source_path.resolve()),
+            "target_name": "fluentd.conf",
+            "content_type": "text/plain",
+            "size_bytes": len(b"<source>\n  @type tail\n</source>\n"),
+        }
+    ]
+    assert payload["validation"] == [
+        {
+            "target_name": "fluentd.conf",
+            "validation_mode": "config_editor",
+        }
+    ]
+    assert calls["default_version_config_type"] == "fluentd"
+    assert calls["catalog"] == ("1.16.0", "fluentd")
+    assert calls["fluentd_parse"] == "<source>\n  @type tail\n</source>\n"
+    assert calls["validation"] == {
+        "version": "1.16.0",
+        "payload": {"config": {"pipeline": {"inputs": [{"name": "tail"}]}}},
+        "catalog": {"engine": "fluentd"},
+        "profile": None,
+        "parser_definition": None,
+    }
+
+
+@pytest.mark.asyncio
+async def test_queue_remote_config_offer_rejects_binary_file(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Verify non-text binary payloads are rejected before queuing."""
+    client_id = "43434343434343434343434343434343"
+    _seed_tool_agent_record(
+        client_id=client_id,
+        capabilities=opamp_pb2.AgentCapabilities.AgentCapabilities_AcceptsRemoteConfig,
+    )
+    source_path = tmp_path / "image.bin"
+    source_path.write_bytes(b"\x89PNG\r\n\x1a\n\x00\xff\x00binary")
+
+    async with app.test_client() as client:
+        resp = await client.post(
+            f"/api/clients/{client_id}/remote-config",
+            json={"files": [str(source_path)]},
+        )
+        assert resp.status_code == 400
+        payload = await resp.get_json()
+
+    assert "not valid UTF-8 text" in payload["error"]
+    assert STORE.get_pending_remote_config(client_id) is None
+
+
+@pytest.mark.asyncio
+async def test_queue_remote_config_offer_queues_large_file_payload(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Verify large remote-config files over 10k characters are queued intact."""
+    client_id = "44444444444444444444444444444444"
+    _seed_tool_agent_record(
+        client_id=client_id,
+        capabilities=opamp_pb2.AgentCapabilities.AgentCapabilities_AcceptsRemoteConfig,
+    )
+    large_body = "message: |\n  " + "\n  ".join(["very large fluent bit config"] * 500)
+    assert len(large_body) > 10000
+    source_path = tmp_path / "large-agent.yaml"
+    source_path.write_text(large_body, encoding="utf-8")
+
+    async with app.test_client() as client:
+        resp = await client.post(
+            f"/api/clients/{client_id}/remote-config",
+            json={"files": [str(source_path)]},
+        )
+        assert resp.status_code == 201
+        payload = await resp.get_json()
+
+        agent_msg = opamp_pb2.AgentToServer(instance_uid=bytes.fromhex(client_id))
+        resp = await client.post(
+            "/v1/opamp",
+            data=agent_msg.SerializeToString(),
+            headers={"Content-Type": "application/x-protobuf"},
+        )
+        assert resp.status_code == 200
+        server_msg = opamp_pb2.ServerToAgent()
+        server_msg.ParseFromString(await resp.get_data())
+
+    assert payload["files"] == [
+        {
+            "source_path": str(source_path.resolve()),
+            "target_name": "large-agent.yaml",
+            "content_type": "application/x-yaml",
+            "size_bytes": len(large_body.encode("utf-8")),
+        }
+    ]
+    queued_file = server_msg.remote_config.config.config_map["large-agent.yaml"]
+    assert queued_file.body.decode("utf-8") == large_body
+    assert payload["payload_size_bytes"] > 10000
+
+
+@pytest.mark.asyncio
+async def test_queue_remote_config_offer_rejects_invalid_yml_variant(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Verify invalid `.yml` files are rejected as illegal YAML."""
+    client_id = "45454545454545454545454545454545"
+    _seed_tool_agent_record(
+        client_id=client_id,
+        capabilities=opamp_pb2.AgentCapabilities.AgentCapabilities_AcceptsRemoteConfig,
+    )
+    source_path = tmp_path / "broken-config.yml"
+    source_path.write_text("pipeline:\n  inputs: [\n", encoding="utf-8")
+
+    async with app.test_client() as client:
+        resp = await client.post(
+            f"/api/clients/{client_id}/remote-config",
+            json={"files": [str(source_path)]},
+        )
+        assert resp.status_code == 400
+        payload = await resp.get_json()
+
+    assert "invalid YAML" in payload["error"]
+    assert STORE.get_pending_remote_config(client_id) is None
+
+
+@pytest.mark.asyncio
+async def test_remote_config_offer_auth_static_mode_protects_endpoint(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: pathlib.Path,
+) -> None:
+    """Verify the UI remote-config endpoint uses the shared `/api` bearer-auth gate."""
+    provider_config.set_config(
+        _test_provider_config(
+            ui_use_authorization=provider_config.OPAMP_USE_AUTHORIZATION_CONFIG_TOKEN
+        )
+    )
+    monkeypatch.setenv(provider_auth.ENV_UI_AUTH_STATIC_TOKEN, "local-dev-token")
+    provider_auth.reload_auth_settings()
+
+    client_id = "50505050505050505050505050505050"
+    _seed_tool_agent_record(
+        client_id=client_id,
+        capabilities=opamp_pb2.AgentCapabilities.AgentCapabilities_AcceptsRemoteConfig,
+    )
+    source_path = tmp_path / "agent.yaml"
+    source_path.write_text("enabled: true\n", encoding="utf-8")
+
+    async with app.test_client() as client:
+        unauthorized = await client.post(
+            f"/api/clients/{client_id}/remote-config",
+            json={"files": [str(source_path)]},
+        )
+        authorized = await client.post(
+            f"/api/clients/{client_id}/remote-config",
+            json={"files": [str(source_path)]},
+            headers={"Authorization": "Bearer local-dev-token"},
+        )
+
+    assert unauthorized.status_code == 401
+    assert unauthorized.headers["WWW-Authenticate"] == provider_auth.WWW_AUTHENTICATE_BEARER
+    assert authorized.status_code == 201
+
+
+@pytest.mark.asyncio
+async def test_remote_config_offer_auth_static_mode_logs_rejection_details(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: pathlib.Path,
+    caplog,
+) -> None:
+    """Verify auth failures for the remote-config endpoint log the shared rejection details."""
+    provider_config.set_config(
+        _test_provider_config(
+            ui_use_authorization=provider_config.OPAMP_USE_AUTHORIZATION_CONFIG_TOKEN
+        )
+    )
+    monkeypatch.setenv(provider_auth.ENV_UI_AUTH_STATIC_TOKEN, "local-dev-token")
+    provider_auth.reload_auth_settings()
+    caplog.set_level("WARNING")
+
+    client_id = "60606060606060606060606060606060"
+    source_path = tmp_path / "agent.yaml"
+    source_path.write_text("enabled: true\n", encoding="utf-8")
+
+    async with app.test_client() as client:
+        resp = await client.post(
+            f"/api/clients/{client_id}/remote-config",
+            json={"files": [str(source_path)]},
+            headers={"Authorization": "Bearer wrong-token"},
+        )
+
+    assert resp.status_code == 401
+    assert "authorization rejected" in caplog.text
+    assert "static token mismatch" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_clients_endpoint_includes_remote_config_flags() -> None:
+    """Verify client list payloads expose remote-config UI flags used by the provider console."""
+    client_id = "94949494949494949494949494949494"
+    _seed_tool_agent_record(
+        client_id=client_id,
+        capabilities=opamp_pb2.AgentCapabilities.AgentCapabilities_AcceptsRemoteConfig,
+    )
+
+    async with app.test_client() as client:
+        resp = await client.get("/api/clients")
+        assert resp.status_code == 200
+        payload = await resp.get_json()
+
+    assert payload["total"] == 1
+    assert payload["clients"][0]["client_id"] == client_id
+    assert payload["clients"][0]["remote_config_files_allowed"] is True
+    assert payload["clients"][0]["remote_config_capability_reported"] is True
+
+
+@pytest.mark.asyncio
+async def test_http_endpoint_server_capabilities_drop_remote_config_when_disabled() -> None:
+    """Verify provider capability advertisement hides remote-config support when disabled."""
+    provider_config.set_config(_test_provider_config(allow_remote_config=False))
+    test_uid = b"5656565656565656"
+    agent_msg = opamp_pb2.AgentToServer(instance_uid=test_uid)
+    agent_msg.capabilities = opamp_pb2.AgentCapabilities.AgentCapabilities_ReportsStatus
+
+    async with app.test_client() as client:
+        resp = await client.post(
+            "/v1/opamp",
+            data=agent_msg.SerializeToString(),
+            headers={"Content-Type": "application/x-protobuf"},
+        )
+        assert resp.status_code == 200
+        payload = await resp.get_data()
+
+    server_msg = opamp_pb2.ServerToAgent()
+    server_msg.ParseFromString(payload)
+    assert server_msg.capabilities & int(opamp_pb2.ServerCapabilities.ServerCapabilities_AcceptsStatus)
+    assert (
+        server_msg.capabilities
+        & int(opamp_pb2.ServerCapabilities.ServerCapabilities_OffersRemoteConfig)
+    ) == 0
 
 
 @pytest.mark.asyncio
@@ -1837,6 +2692,9 @@ async def test_web_ui_references_external_javascript_bundle(monkeypatch) -> None
         assert '<script src="/web_ui_functions.js"></script>' in ui_html
         assert '<script src="/web_ui_framework.js"></script>' in ui_html
         assert '<script src="/web_ui_bindings.js"></script>' in ui_html
+        assert 'id="shutdownButton"' not in ui_html
+        assert "Shutdown Server" not in ui_html
+        assert ui_html.index('id="saveConfigBtn"') < ui_html.index('id="remoteConfigEnhancedPanel"')
 
         css_resp = await client.get("/web_ui.css")
         assert css_resp.status_code == 200
@@ -1881,11 +2739,15 @@ async def test_web_ui_references_external_javascript_bundle(monkeypatch) -> None
 
     assert ":root" in css_text
     assert "const state={" in state_js_text or "const state = {" in state_js_text
+    assert "remoteConfigEnhancedPanel" in state_js_text
     assert (
         "async function fetchClients()" in functions_js_text
         or "async function fetchClients(){" in functions_js_text
     )
+    assert "async function sendRemoteConfigFiles()" in functions_js_text
+    assert "openRemoteConfigCatalogPopup" in functions_js_text
     assert "ProviderUiFramework" in framework_js_text
+    assert "handleCatalogSelectionMessage" in bindings_js_text
     assert (
         "init();" in bindings_js_text
         or "ProviderUiFramework.bootstrap" in bindings_js_text

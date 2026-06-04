@@ -235,9 +235,40 @@
           <div style="margin-top: 16px;">
             <label style="font-size: 0.85rem; color: var(--muted);">Requested Configuration</label>
             <textarea id="configInput" placeholder="Paste new configuration here..."></textarea>
+            <div class="tab-actions">
+              <button id="saveConfigBtn" class="save">Save Configuration</button>
+            </div>
           </div>
-          <div class="tab-actions">
-            <button id="saveConfigBtn" class="save">Save Configuration</button>
+          <div id="remoteConfigEnhancedPanel" class="command-config-panel hidden" style="margin-top: 16px;">
+            <div class="command-config-header">
+              <label style="font-size: 0.85rem; color: var(--muted);">
+                Remote Configuration Files
+              </label>
+              <button
+                id="selectRemoteConfigsBtn"
+                class="save hidden remote-config-select-btn"
+                type="button"
+              >Select Configs</button>
+            </div>
+            <p id="remoteConfigCatalogHint" class="remote-config-hint">
+              Catalog-based remote config selection is not available in this deployment.
+            </p>
+            <p id="remoteConfigEmptyState" class="remote-config-empty-state">
+              No remote configuration files selected.
+            </p>
+            <table id="remoteConfigSelectionTable" class="command-config-table hidden">
+              <thead>
+                <tr>
+                  <th>Filename</th>
+                  <th class="remote-config-actions-heading">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="remoteConfigSelectionBody"></tbody>
+            </table>
+            <div class="tab-actions">
+              <button id="sendRemoteConfigFilesBtn" class="save" type="button">Send Remote Config Files</button>
+            </div>
+            <div id="remoteConfigStatus" class="remote-config-status" aria-live="polite"></div>
           </div>
         </div>
         <div id="tab-history" class="tab-panel">
@@ -547,7 +578,6 @@
     </div>
   </div>
 
-  <button id="shutdownButton" class="shutdown-button" type="button">Shutdown Server</button>
   <div id="contextMenu" class="context-menu">
     <button id="removeClientBtn" type="button">Remove Client</button>
     <button id="issueIdBtn" type="button">Issue New Unique ID</button>

@@ -50,6 +50,34 @@ def test_human_in_loop_and_authorization_defaults_are_disabled() -> None:
     assert config.ui_use_authorization == provider_config.DEFAULT_UI_USE_AUTHORIZATION
 
 
+def test_allow_remote_config_defaults_true_when_missing() -> None:
+    """Verify provider remote-config support defaults to enabled when omitted."""
+    root = pathlib.Path(__file__).resolve().parents[2]
+    os.environ[provider_config.ENV_OPAMP_CONFIG_PATH] = str(root / "tests" / "opamp.json")
+    config = provider_config.load_config()
+    assert config.allow_remote_config is True
+
+
+def test_allow_remote_config_loads_false_from_config(tmp_path) -> None:
+    """Verify provider.allow-remote-config is parsed from config."""
+    config_path = tmp_path / "opamp.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "provider": {
+                    "allow-remote-config": False,
+                }
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    os.environ[provider_config.ENV_OPAMP_CONFIG_PATH] = str(config_path)
+
+    config = provider_config.load_config()
+    assert config.allow_remote_config is False
+
+
 def test_latest_docs_url_defaults_when_missing() -> None:
     """Verify latest docs redirect URL falls back to the default when omitted."""
     root = pathlib.Path(__file__).resolve().parents[2]

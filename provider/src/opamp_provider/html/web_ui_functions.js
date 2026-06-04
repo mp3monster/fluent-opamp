@@ -1,3 +1,8 @@
+    const CATALOG_FEATURE_ENTRY_POINT = "catalog_service.opamp_integration:register_catalog_feature";
+    const CONFIG_SERVICE_FEATURE_ENTRY_POINT = "config_service.opamp_integration:register_config_service_feature";
+    const CATALOG_SELECTION_CALLBACK_QUERY = "selection_callback";
+    const CATALOG_SELECTION_APPLIED_MESSAGE_TYPE = "opamp-catalog-selection-applied";
+
     const TABLE_COLUMN_DEFINITIONS = Object.freeze({
       service_instance_id: { label: "Service Instance ID", sortKey: "service_instance_id" },
       instance_uid: { label: "Instance UID", sortKey: "client_id" },
@@ -30,6 +35,8 @@
       host_name: false,
       host_ip: false,
     });
+    let draggingRemoteConfigSelectionClientId = "";
+    let draggingRemoteConfigSelectionIndex = -1;
 
     async function fetchSettings() {
       const resp = await apiFetch("/api/settings/comms");
@@ -351,16 +358,429 @@
       featureMenuSelect.selectedIndex = 0;
     }
 
+    function updateRequestedConfigEditingState() {
+      if (!configInput || !saveConfigBtn) return;
+      const configServiceAvailable = state.configServiceFeatureAvailable === true;
+      configInput.readOnly = configServiceAvailable;
+      configInput.classList.toggle("requested-config-readonly", configServiceAvailable);
+      saveConfigBtn.disabled = configServiceAvailable;
+      saveConfigBtn.title = configServiceAvailable
+        ? "Requested configuration is read-only while Config Editor is available."
+        : "";
+    }
+
     async function fetchUiFeatureMenu() {
       if (!featureMenuGroup || !featureMenuSelect) return;
+      state.catalogFeatureUrl = "";
+      state.configServiceFeatureAvailable = false;
       const resp = await apiFetch("/api/ui/features");
       if (!resp.ok) {
         featureMenuGroup.classList.add("hidden");
+        updateRequestedConfigEditingState();
         return;
       }
       const payload = await resp.json();
       const items = Array.isArray(payload.items) ? payload.items : [];
+      const configServiceItem = items.find(item => {
+        return String(item && item.entry_point ? item.entry_point : "").trim()
+          === CONFIG_SERVICE_FEATURE_ENTRY_POINT;
+      });
+      const catalogItem = items.find(item => {
+        return String(item && item.entry_point ? item.entry_point : "").trim()
+          === CATALOG_FEATURE_ENTRY_POINT;
+      });
+      state.configServiceFeatureAvailable = Boolean(
+        configServiceItem && String(configServiceItem.url || "").trim()
+      );
+      state.catalogFeatureUrl = catalogItem ? String(catalogItem.url || "").trim() : "";
       renderFeatureMenuItems(items);
+      updateRequestedConfigEditingState();
+      if (activeClient && modal.classList.contains("open")) {
+        updateRequestedConfigEditingState();
+        renderRemoteConfigSelectionTable(activeClient);
+      }
+    }
+
+    function basenameForPath(pathValue) {
+      const normalizedPath = String(pathValue || "").trim();
+      if (!normalizedPath) return "";
+      const parts = normalizedPath.split(/[\\/]/);
+      return String(parts[parts.length - 1] || "").trim();
+    }
+
+    function normalizeRemoteConfigSelectionItem(item, index = 0) {
+      if (!item || typeof item !== "object") return null;
+      const sourcePath = String(item.source_path || "").trim();
+      const targetName = String(item.target_name || "").trim();
+      const filename = String(
+        item.filename
+        || basenameForPath(targetName)
+        || basenameForPath(sourcePath)
+        || `selection-${index + 1}`
+      ).trim();
+      if (!sourcePath || !targetName) return null;
+      return {
+        source_path: sourcePath,
+        target_name: targetName,
+        filename,
+      };
+    }
+
+    function normalizeRemoteConfigSelectionItems(files) {
+      const items = Array.isArray(files) ? files : [];
+      const normalized = [];
+      items.forEach((item, index) => {
+        const normalizedItem = normalizeRemoteConfigSelectionItem(item, index);
+        if (normalizedItem) {
+          normalized.push(normalizedItem);
+        }
+      });
+      return normalized;
+    }
+
+    function remoteConfigSelectionsForClient(clientId) {
+      const normalizedClientId = String(clientId || "").trim();
+      if (!normalizedClientId) return [];
+      return normalizeRemoteConfigSelectionItems(
+        state.remoteConfigSelectionsByClient[normalizedClientId]
+      );
+    }
+
+    function setRemoteConfigSelectionsForClient(clientId, files) {
+      const normalizedClientId = String(clientId || "").trim();
+      if (!normalizedClientId) return;
+      state.remoteConfigSelectionsByClient[normalizedClientId] =
+        normalizeRemoteConfigSelectionItems(files);
+    }
+
+    function setRemoteConfigStatus(message, tone = "") {
+      if (!remoteConfigStatus) return;
+      remoteConfigStatus.textContent = String(message || "");
+      remoteConfigStatus.classList.remove("success", "error");
+      if (tone === "success" || tone === "error") {
+        remoteConfigStatus.classList.add(tone);
+      }
+    }
+
+    function clearRemoteConfigStatus() {
+      setRemoteConfigStatus("");
+    }
+
+    function renderRemoteConfigSelectionTable(client) {
+      if (
+        !remoteConfigEnhancedPanel
+        || !remoteConfigCatalogHint
+        || !remoteConfigEmptyState
+        || !remoteConfigSelectionBody
+        || !remoteConfigSelectionTable
+        || !selectRemoteConfigsBtn
+        || !sendRemoteConfigFilesBtn
+      ) {
+        return;
+      }
+
+      const clientAllowsRemoteConfig =
+        client && client.remote_config_files_allowed === true;
+      remoteConfigEnhancedPanel.classList.toggle(
+        "hidden",
+        clientAllowsRemoteConfig !== true
+      );
+      if (clientAllowsRemoteConfig !== true) {
+        remoteConfigSelectionBody.innerHTML = "";
+        remoteConfigSelectionTable.classList.add("hidden");
+        remoteConfigEmptyState.classList.remove("hidden");
+        selectRemoteConfigsBtn.classList.add("hidden");
+        sendRemoteConfigFilesBtn.disabled = true;
+        remoteConfigCatalogHint.textContent =
+          "Remote config file selection is disabled by provider configuration.";
+        clearRemoteConfigStatus();
+        return;
+      }
+
+      const clientId = String(client && client.client_id ? client.client_id : "").trim();
+      const selections = remoteConfigSelectionsForClient(clientId);
+      const catalogAvailable = Boolean(String(state.catalogFeatureUrl || "").trim());
+      const capabilityReported = client && client.remote_config_capability_reported === true;
+
+      selectRemoteConfigsBtn.classList.toggle("hidden", !catalogAvailable);
+      sendRemoteConfigFilesBtn.disabled = selections.length === 0;
+      sendRemoteConfigFilesBtn.title = selections.length === 0
+        ? "Select one or more catalog files before sending remote config"
+        : "Queue the selected remote configuration files for this client";
+
+      if (catalogAvailable) {
+        remoteConfigCatalogHint.textContent = capabilityReported
+          ? "Use Select Configs to choose catalog files, then send them when you are ready."
+          : (
+            "Use Select Configs to choose catalog files. "
+            + "Sending may still be rejected until the client reports remote-config support."
+          );
+      } else {
+        remoteConfigCatalogHint.textContent =
+          "Catalog-based remote config selection is not available in this deployment.";
+      }
+
+      remoteConfigSelectionBody.innerHTML = "";
+      if (selections.length === 0) {
+        remoteConfigSelectionTable.classList.add("hidden");
+        remoteConfigEmptyState.classList.remove("hidden");
+        return;
+      }
+
+      remoteConfigSelectionTable.classList.remove("hidden");
+      remoteConfigEmptyState.classList.add("hidden");
+      selections.forEach((selection, index) => {
+        const row = document.createElement("tr");
+        row.className = "remote-config-row";
+        row.draggable = true;
+        row.dataset.selectionIndex = String(index);
+        row.addEventListener("dragstart", event => {
+          draggingRemoteConfigSelectionClientId = clientId;
+          draggingRemoteConfigSelectionIndex = index;
+          row.classList.add("dragging");
+          if (event.dataTransfer) {
+            event.dataTransfer.effectAllowed = "move";
+            event.dataTransfer.setData("text/plain", `${clientId}:${index}`);
+          }
+        });
+        row.addEventListener("dragover", event => {
+          if (
+            draggingRemoteConfigSelectionClientId !== clientId
+            || draggingRemoteConfigSelectionIndex === index
+          ) {
+            return;
+          }
+          event.preventDefault();
+          const rect = row.getBoundingClientRect();
+          const placeAfter = (event.clientY - rect.top) > (rect.height / 2);
+          row.classList.toggle("drag-over-top", !placeAfter);
+          row.classList.toggle("drag-over-bottom", placeAfter);
+          if (event.dataTransfer) {
+            event.dataTransfer.dropEffect = "move";
+          }
+        });
+        row.addEventListener("dragleave", () => {
+          row.classList.remove("drag-over-top", "drag-over-bottom");
+        });
+        row.addEventListener("drop", event => {
+          if (
+            draggingRemoteConfigSelectionClientId !== clientId
+            || draggingRemoteConfigSelectionIndex < 0
+            || draggingRemoteConfigSelectionIndex === index
+          ) {
+            return;
+          }
+          event.preventDefault();
+          const rect = row.getBoundingClientRect();
+          const placeAfter = (event.clientY - rect.top) > (rect.height / 2);
+          moveRemoteConfigSelectionToIndex(
+            clientId,
+            draggingRemoteConfigSelectionIndex,
+            index,
+            placeAfter
+          );
+        });
+        row.addEventListener("dragend", () => {
+          draggingRemoteConfigSelectionClientId = "";
+          draggingRemoteConfigSelectionIndex = -1;
+          row.classList.remove("dragging", "drag-over-top", "drag-over-bottom");
+          remoteConfigSelectionBody.querySelectorAll(".remote-config-row").forEach(item => {
+            item.classList.remove("dragging", "drag-over-top", "drag-over-bottom");
+          });
+        });
+
+        const filenameCell = document.createElement("td");
+        filenameCell.textContent = selection.filename || selection.target_name;
+        row.appendChild(filenameCell);
+
+        const actionsCell = document.createElement("td");
+        actionsCell.className = "remote-config-actions";
+
+        const dragHandle = document.createElement("span");
+        dragHandle.className = "remote-config-drag-handle";
+        dragHandle.textContent = "⋮⋮";
+        dragHandle.title = "Drag to reorder selected remote config files";
+        actionsCell.appendChild(dragHandle);
+
+        const removeButton = document.createElement("button");
+        removeButton.type = "button";
+        removeButton.textContent = "Remove";
+        removeButton.addEventListener("click", () => {
+          removeRemoteConfigSelection(clientId, index);
+        });
+        actionsCell.appendChild(removeButton);
+
+        row.appendChild(actionsCell);
+        remoteConfigSelectionBody.appendChild(row);
+      });
+    }
+
+    function moveRemoteConfigSelectionToIndex(clientId, fromIndex, targetIndex, placeAfter) {
+      const selections = remoteConfigSelectionsForClient(clientId);
+      const currentIndex = Number(fromIndex);
+      const targetRowIndex = Number(targetIndex);
+      if (
+        currentIndex < 0
+        || currentIndex >= selections.length
+        || targetRowIndex < 0
+        || targetRowIndex >= selections.length
+      ) {
+        return;
+      }
+      const nextSelections = [...selections];
+      const [movedSelection] = nextSelections.splice(currentIndex, 1);
+      let insertIndex = placeAfter === true ? targetRowIndex + 1 : targetRowIndex;
+      if (currentIndex < insertIndex) {
+        insertIndex -= 1;
+      }
+      nextSelections.splice(insertIndex, 0, movedSelection);
+      setRemoteConfigSelectionsForClient(clientId, nextSelections);
+      if (activeClient && activeClient.client_id === clientId) {
+        renderRemoteConfigSelectionTable(activeClient);
+        setRemoteConfigStatus("Updated remote config file order.", "success");
+      }
+    }
+
+    function removeRemoteConfigSelection(clientId, index) {
+      const selections = remoteConfigSelectionsForClient(clientId);
+      const currentIndex = Number(index);
+      if (currentIndex < 0 || currentIndex >= selections.length) {
+        return;
+      }
+      const nextSelections = selections.filter((_item, itemIndex) => itemIndex !== currentIndex);
+      setRemoteConfigSelectionsForClient(clientId, nextSelections);
+      if (activeClient && activeClient.client_id === clientId) {
+        renderRemoteConfigSelectionTable(activeClient);
+        setRemoteConfigStatus(
+          nextSelections.length === 0
+            ? "Removed selected remote config file."
+            : "Updated remote config file selection.",
+          "success"
+        );
+      }
+    }
+
+    function remoteConfigSelectionCallbackUrl(clientId) {
+      const targetUrl = new URL(
+        `/api/clients/${encodeURIComponent(clientId)}/remote-config-selection`,
+        window.location.origin
+      );
+      return targetUrl.toString();
+    }
+
+    function openRemoteConfigCatalogPopup() {
+      if (!activeClient) return;
+      const catalogUrl = String(state.catalogFeatureUrl || "").trim();
+      if (!catalogUrl) {
+        setRemoteConfigStatus(
+          "Catalog-based selection is not available in this deployment.",
+          "error"
+        );
+        return;
+      }
+      const popupUrl = new URL(catalogUrl, window.location.origin);
+      popupUrl.searchParams.set(
+        CATALOG_SELECTION_CALLBACK_QUERY,
+        remoteConfigSelectionCallbackUrl(activeClient.client_id)
+      );
+      window.open(
+        popupUrl.toString(),
+        `catalog-selection-${String(activeClient.client_id || "client").trim()}`,
+        "popup=yes,width=1200,height=900,resizable=yes,scrollbars=yes"
+      );
+    }
+
+    function handleCatalogSelectionMessage(event) {
+      if (!event || event.origin !== window.location.origin) return;
+      const payload = event.data;
+      if (!payload || typeof payload !== "object") return;
+      if (payload.type !== CATALOG_SELECTION_APPLIED_MESSAGE_TYPE) return;
+
+      const clientId = String(payload.client_id || "").trim();
+      if (!clientId) return;
+      const files = normalizeRemoteConfigSelectionItems(payload.files);
+      setRemoteConfigSelectionsForClient(clientId, files);
+      if (activeClient && activeClient.client_id === clientId) {
+        renderRemoteConfigSelectionTable(activeClient);
+        setRemoteConfigStatus(
+          files.length === 1
+            ? "Selected 1 remote config file from the catalog."
+            : `Selected ${files.length} remote config files from the catalog.`,
+          "success"
+        );
+      }
+    }
+
+    async function sendRemoteConfigFiles() {
+      if (!activeClient || !sendRemoteConfigFilesBtn) return;
+      const clientId = String(activeClient.client_id || "").trim();
+      const selections = remoteConfigSelectionsForClient(clientId);
+      if (selections.length === 0) {
+        setRemoteConfigStatus(
+          "Select one or more remote config files before sending.",
+          "error"
+        );
+        return;
+      }
+
+      const originalLabel = sendRemoteConfigFilesBtn.textContent;
+      sendRemoteConfigFilesBtn.disabled = true;
+      sendRemoteConfigFilesBtn.textContent = "Sending...";
+      setRemoteConfigStatus("Queueing remote config files...");
+
+      try {
+        const resp = await apiFetch(`/api/clients/${clientId}/remote-config`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            files: selections.map(selection => ({
+              source_path: selection.source_path,
+              target_name: selection.target_name,
+            })),
+          }),
+        });
+        const payload = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+          const errorMessage = String(
+            payload && payload.error
+              ? payload.error
+              : "Failed to queue remote config files."
+          );
+          setRemoteConfigStatus(errorMessage, "error");
+          return;
+        }
+
+        if (Array.isArray(payload.files)) {
+          setRemoteConfigSelectionsForClient(clientId, payload.files);
+        }
+        const queuedCount = Array.isArray(payload.files) ? payload.files.length : selections.length;
+        const queuedMessage = queuedCount === 1
+          ? "Queued 1 remote config file."
+          : `Queued ${queuedCount} remote config files.`;
+
+        const preservedCustomCommandState = captureCustomCommandState();
+        const healthPanelOpen = !componentHealthPanel.classList.contains("hidden");
+        await fetchClients();
+        const refreshed = state.clients.find(
+          clientEntry => clientEntry.client_id === clientId
+        );
+        if (refreshed) {
+          openModal(refreshed, {
+            preserveTab: true,
+            customCommandState: preservedCustomCommandState,
+            healthPanelOpen: healthPanelOpen,
+          });
+        }
+        setRemoteConfigStatus(queuedMessage, "success");
+      } catch (_error) {
+        setRemoteConfigStatus("Failed to queue remote config files.", "error");
+      } finally {
+        sendRemoteConfigFilesBtn.disabled = false;
+        sendRemoteConfigFilesBtn.textContent = originalLabel;
+        if (activeClient && activeClient.client_id === clientId) {
+          renderRemoteConfigSelectionTable(activeClient);
+        }
+      }
     }
 
     function handleFeatureMenuSelection() {
@@ -1069,6 +1489,10 @@
         ["Last Communication", client.last_communication ? new Date(client.last_communication).toLocaleString() : "--"],
         ["Next Expected", nextExpected ? new Date(nextExpected).toLocaleString() : "--"],
         ["Requested Config", client.requested_config_version ?? "--"],
+        [
+          "Remote Config Files Allowed",
+          client.remote_config_files_allowed === true ? "Yes" : "No",
+        ],
         ["Client Version", client.client_version ?? "--"],
         ["Last Channel", client.last_channel ?? "--"],
         ["Capabilities", renderCapabilitiesList(client.capabilities)],
@@ -1098,7 +1522,10 @@
       });
 
       configInput.value = formatConfigValue(client.requested_config) || "";
+      updateRequestedConfigEditingState();
       currentConfigOutput.textContent = formatConfigValue(client.current_config) || "--";
+      clearRemoteConfigStatus();
+      renderRemoteConfigSelectionTable(client);
       if (preserveHealthPanel && healthInfo.hasComponents) {
         renderComponentHealthMap(healthInfo.componentMap);
         componentHealthPanel.classList.remove("hidden");
@@ -1122,7 +1549,21 @@
       modal.classList.remove("open");
       activeClient = null;
       configInput.value = "";
+      updateRequestedConfigEditingState();
       currentConfigOutput.textContent = "";
+      clearRemoteConfigStatus();
+      if (remoteConfigSelectionBody) {
+        remoteConfigSelectionBody.innerHTML = "";
+      }
+      if (remoteConfigSelectionTable) {
+        remoteConfigSelectionTable.classList.add("hidden");
+      }
+      if (remoteConfigEmptyState) {
+        remoteConfigEmptyState.classList.remove("hidden");
+      }
+      if (remoteConfigEnhancedPanel) {
+        remoteConfigEnhancedPanel.classList.add("hidden");
+      }
       eventsHistoryList.innerHTML = "";
       historyTabBtn.classList.add("hidden");
       componentHealthPanel.classList.add("hidden");
@@ -2089,6 +2530,7 @@
 
     async function saveConfig() {
       if (!activeClient) return;
+      if (configInput.readOnly) return;
       const configValue = configInput.value.trim();
       if (!configValue) {
         closeModal();
@@ -2250,28 +2692,6 @@
       });
     }
 
-    async function requestShutdown() {
-      const ok = window.confirm("Shutdown the OpAMP server? This will stop the process.");
-      if (!ok) return;
-      document.body.classList.add("shutdown-armed");
-      shutdownButton.disabled = true;
-      shutdownButton.textContent = "Shutting down...";
-      try {
-        const resp = await apiFetch("/api/shutdown", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ confirm: true }),
-        });
-        if (resp.ok) return;
-      } catch (_error) {
-        // Fall through to reset UI and show failure prompt.
-      }
-      document.body.classList.remove("shutdown-armed");
-      shutdownButton.disabled = false;
-      shutdownButton.textContent = "Shutdown Server";
-      window.alert("Shutdown request failed.");
-    }
-
     function scheduleRefresh() {
       if (state.timer) clearInterval(state.timer);
       state.timer = setInterval(fetchClients, state.refreshSeconds * 1000);
@@ -2360,6 +2780,7 @@
           setActiveTab,
           setActiveSettingsTab,
           saveConfig,
+          sendRemoteConfigFiles,
           renderCustomCommandConfiguration,
           updateCustomCommandSelectStyle,
           queueCustomCommand,
@@ -2376,10 +2797,11 @@
           setAllPendingApprovals,
           hideHelpPopover,
           closeModal,
+          handleCatalogSelectionMessage,
+          openRemoteConfigCatalogPopup,
           toggleClientData,
           removeClient,
           issueNewId,
-          requestShutdown,
         };
       },
     };

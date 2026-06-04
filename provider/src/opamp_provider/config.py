@@ -28,7 +28,7 @@ ROOT_PATH = pathlib.Path(__file__).resolve().parents[3]  # Repository root used 
 if str(ROOT_PATH) not in sys.path:
     sys.path.insert(0, str(ROOT_PATH))
 
-from shared.opamp_config import UTF8_ENCODING  # noqa: E402 - requires repo-root path adjustment above
+from shared.opamp_config import UTF8_ENCODING  # noqa: E402,I001 - requires repo-root path adjustment above
 
 ENV_OPAMP_CONFIG_PATH = "OPAMP_CONFIG_PATH"  # Environment variable overriding provider config file location.
 CFG_PROVIDER = "provider"  # Top-level JSON section name for provider settings.
@@ -42,6 +42,7 @@ CFG_LOG_LEVEL = "log_level"  # Provider JSON key for logging level override.
 CFG_DEFAULT_HEARTBEAT_FREQUENCY = "default_heartbeat_frequency"  # Provider JSON key for default client heartbeat interval.
 CFG_LATEST_DOCS_URL = "latest_docs_url"  # Provider JSON key for Latest docs redirect URL.
 CFG_HUMAN_IN_LOOP_APPROVAL = "human_in_loop_approval"  # Provider JSON key toggling manual agent approval workflow.
+CFG_ALLOW_REMOTE_CONFIG = "allow-remote-config"  # Provider JSON key toggling enhanced remote-config UI and queueing support.
 CFG_OPAMP_USE_AUTHORIZATION = "opamp-use-authorization"  # Provider JSON key controlling OpAMP transport bearer authorization mode.
 CFG_UI_USE_AUTHORIZATION = "ui-use-authorization"  # Provider JSON key controlling non-OpAMP HTTP/WebSocket bearer authorization mode.
 CFG_TLS = "tls"  # Provider JSON key for shared TLS server settings.
@@ -68,6 +69,7 @@ DEFAULT_LOG_LEVEL = "INFO"  # Default provider log level.
 DEFAULT_DEFAULT_HEARTBEAT_FREQUENCY = 30  # Default heartbeat frequency assigned to new clients.
 DEFAULT_LATEST_DOCS_URL = "https://github.com/mp3monster/fluent-opamp/blob/main/README.md"  # Default redirect target for /doc-set.
 DEFAULT_HUMAN_IN_LOOP_APPROVAL = False  # Default behavior leaves human approval workflow disabled.
+DEFAULT_ALLOW_REMOTE_CONFIG = True  # Default behavior enables remote-config UI and related provider flows.
 OPAMP_USE_AUTHORIZATION_NONE = "none"  # Disable OpAMP endpoint bearer auth checks.
 OPAMP_USE_AUTHORIZATION_CONFIG_TOKEN = (
     "config-token"  # Validate OpAMP bearer token against OPAMP_AUTH_STATIC_TOKEN.
@@ -117,6 +119,7 @@ class ProviderConfig:
     default_heartbeat_frequency: int = DEFAULT_DEFAULT_HEARTBEAT_FREQUENCY
     latest_docs_url: str = DEFAULT_LATEST_DOCS_URL
     human_in_loop_approval: bool = DEFAULT_HUMAN_IN_LOOP_APPROVAL
+    allow_remote_config: bool = DEFAULT_ALLOW_REMOTE_CONFIG
     opamp_use_authorization: str = DEFAULT_OPAMP_USE_AUTHORIZATION
     ui_use_authorization: str = DEFAULT_UI_USE_AUTHORIZATION
     tls: ProviderTLSConfig | None = None
@@ -395,6 +398,13 @@ def load_config() -> ProviderConfig:
             ),
             DEFAULT_HUMAN_IN_LOOP_APPROVAL,
         ),
+        allow_remote_config=_as_bool(
+            provider_raw.get(
+                CFG_ALLOW_REMOTE_CONFIG,
+                DEFAULT_ALLOW_REMOTE_CONFIG,
+            ),
+            DEFAULT_ALLOW_REMOTE_CONFIG,
+        ),
         opamp_use_authorization=_normalize_authorization_mode(
             opamp_use_authorization_raw,
             cfg_key=CFG_OPAMP_USE_AUTHORIZATION,
@@ -469,6 +479,13 @@ def load_config_with_overrides(
                 DEFAULT_HUMAN_IN_LOOP_APPROVAL,
             ),
             DEFAULT_HUMAN_IN_LOOP_APPROVAL,
+        ),
+        allow_remote_config=_as_bool(
+            provider_raw.get(
+                CFG_ALLOW_REMOTE_CONFIG,
+                DEFAULT_ALLOW_REMOTE_CONFIG,
+            ),
+            DEFAULT_ALLOW_REMOTE_CONFIG,
         ),
         opamp_use_authorization=_normalize_authorization_mode(
             opamp_use_authorization_raw,
@@ -588,6 +605,7 @@ def update_comms_thresholds(
         default_heartbeat_frequency=CONFIG.default_heartbeat_frequency,
         latest_docs_url=CONFIG.latest_docs_url,
         human_in_loop_approval=effective_human_in_loop_approval,
+        allow_remote_config=CONFIG.allow_remote_config,
         opamp_use_authorization=CONFIG.opamp_use_authorization,
         ui_use_authorization=CONFIG.ui_use_authorization,
         tls=CONFIG.tls,
@@ -610,6 +628,7 @@ def update_default_heartbeat_frequency(*, default_heartbeat_frequency: int) -> P
         default_heartbeat_frequency=max(1, int(default_heartbeat_frequency)),
         latest_docs_url=CONFIG.latest_docs_url,
         human_in_loop_approval=CONFIG.human_in_loop_approval,
+        allow_remote_config=CONFIG.allow_remote_config,
         opamp_use_authorization=CONFIG.opamp_use_authorization,
         ui_use_authorization=CONFIG.ui_use_authorization,
         tls=CONFIG.tls,
@@ -649,6 +668,7 @@ def persist_provider_config(
     )
     provider_raw[CFG_LATEST_DOCS_URL] = str(effective.latest_docs_url)
     provider_raw[CFG_HUMAN_IN_LOOP_APPROVAL] = bool(effective.human_in_loop_approval)
+    provider_raw[CFG_ALLOW_REMOTE_CONFIG] = bool(effective.allow_remote_config)
     provider_raw[CFG_OPAMP_USE_AUTHORIZATION] = str(effective.opamp_use_authorization)
     provider_raw[CFG_UI_USE_AUTHORIZATION] = str(effective.ui_use_authorization)
     provider_raw[CFG_STATE_PERSISTENCE] = {

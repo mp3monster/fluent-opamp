@@ -141,7 +141,7 @@ def register_mcp_transport(
                 return False
 
     if not app_mappings:
-        logger.info("No MCP transport app was initialised; skipping Quart MCP exposure")
+        logger.info("No MCP transport app was initialized; skipping Quart MCP exposure")
         return False
 
     class _ASGILifespanController:

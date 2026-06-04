@@ -10,6 +10,7 @@
     "default_heartbeat_frequency": 30,
     "latest_docs_url": "https://github.com/mp3monster/fluent-opamp/blob/main/README.md",
     "human_in_loop_approval": false,
+    "allow-remote-config": true,
     "opamp-use-authorization": "none",
     "ui-use-authorization": "none"
   },

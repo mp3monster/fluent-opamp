@@ -103,6 +103,12 @@
       btn.addEventListener("click", () => setActiveSettingsTab(btn.dataset.settingsTab));
     });
     saveConfigBtn.addEventListener("click", saveConfig);
+    if (selectRemoteConfigsBtn) {
+      selectRemoteConfigsBtn.addEventListener("click", openRemoteConfigCatalogPopup);
+    }
+    if (sendRemoteConfigFilesBtn) {
+      sendRemoteConfigFilesBtn.addEventListener("click", sendRemoteConfigFiles);
+    }
     customCommandSelect.addEventListener("change", () => {
       renderCustomCommandConfiguration(customCommandSelect.value);
       updateCustomCommandSelectStyle();
@@ -195,7 +201,6 @@
       setActiveTab(nextTabName);
     });
 
-    shutdownButton.addEventListener("click", requestShutdown);
     toggleDataBtn.addEventListener("click", toggleClientData);
     removeClientBtn.addEventListener("click", removeClient);
     issueIdBtn.addEventListener("click", issueNewId);
@@ -204,6 +209,7 @@
     });
     window.addEventListener("resize", hideContextMenu);
     window.addEventListener("scroll", hideContextMenu);
+    window.addEventListener("message", handleCatalogSelectionMessage);
 
     init();
   }
