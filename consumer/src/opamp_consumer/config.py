@@ -20,8 +20,8 @@ import os
 import pathlib
 import re
 import sys
-from dataclasses import dataclass
-from typing import Any
+from dataclasses import dataclass, field
+from typing import Any, Iterable
 
 ROOT_PATH = pathlib.Path(__file__).resolve().parents[3]
 # Repository root for resolving shared imports and defaults.
@@ -29,6 +29,8 @@ if str(ROOT_PATH) not in sys.path:
     sys.path.insert(0, str(ROOT_PATH))
 
 from shared.opamp_config import (  # noqa: E402 - requires repo-root path adjustment above
+    AGENT_CAPABILITIES_MAP,
+    NAME_UNSPECIFIED_AGENT_CAPABILITY,
     UTF8_ENCODING,
     AgentCapabilities,
     parse_capabilities,
@@ -44,6 +46,8 @@ CFG_AGENT_CONFIG_PATH = "agent_config_path"  # Consumer JSON key for agent confi
 CFG_AGENT_ADDITIONAL_PARAMS = "agent_additional_params"
 # Consumer JSON key for extra agent CLI args.
 CFG_HEARTBEAT_FREQUENCY = "heartbeat_frequency"  # Consumer JSON key for heartbeat interval seconds.
+CFG_AGENT_CAPABILITIES = "agent_capabilities"
+# Consumer JSON key for optional explicit OpAMP capability override.
 CFG_LOG_LEVEL = "log_level"  # Consumer JSON key for logging level override.
 CFG_SERVICE_NAME = "service_name"  # Consumer JSON key for service.name override.
 CFG_SERVICE_NAMESPACE = "service_namespace"  # Consumer JSON key for service.namespace override.
@@ -64,6 +68,8 @@ CFG_LOG_AGENT_API_RESPONSES = "log_agent_api_responses"
 # Consumer JSON key enabling verbose API logging.
 CFG_ALLOW_CUSTOM_CAPABILITIES = "allow_custom_capabilities"
 # Consumer JSON key allowing dynamic custom capabilities.
+CFG_PRESERVE_PREVIOUS_CONFIG = "preserve_previous_config"
+# Consumer JSON key enabling preservation of replaced config files.
 CFG_CLIENT_STATUS_PORT = "client_status_port"  # Consumer JSON key for local status endpoint port.
 CFG_CHAT_OPS_PORT = "chat_ops_port"  # Consumer JSON key for local ChatOps endpoint port.
 CFG_FULL_UPDATE_CONTROLLER = "full_update_controller"
@@ -79,11 +85,12 @@ CFG_PROCESS_TRACKING = "processTracking"
 CFG_PROCESS_DETECTION_REGEX = "processDetectionRegex"
 # Consumer JSON key used by observer mode to detect process by regex.
 
-HARDWIRED_AGENT_CAPABILITY_NAMES = (  # Built-in capabilities always advertised by this consumer.
+MANDATORY_AGENT_CAPABILITY_NAMES = (  # Capabilities always advertised by this consumer.
     "ReportsStatus",
     "AcceptsRestartCommand",
     "ReportsHealth",
 )
+HARDWIRED_AGENT_CAPABILITY_NAMES = MANDATORY_AGENT_CAPABILITY_NAMES
 DEFAULT_LOG_LEVEL = "debug"  # Default consumer log level when unspecified.
 DEFAULT_TLS_VERIFY_SERVER = True  # Default behavior validates provider server certificate.
 DEFAULT_FULL_UPDATE_CONTROLLER: dict[str, int] = {"fullResendAfter": 1}
@@ -106,8 +113,7 @@ DEFAULT_SERVICE_TYPE = SERVICE_TYPE_FLUENTBIT  # Default service type when none 
 PROCESS_TRACKING_SUPERVISOR = "supervisor"
 PROCESS_TRACKING_OBSERVER = "observer"
 DEFAULT_PROCESS_TRACKING = PROCESS_TRACKING_SUPERVISOR
-
-
+DEFAULT_PRESERVE_PREVIOUS_CONFIG = False
 @dataclass
 class ConsumerConfig:
     server_url: str | None = None  # Base URL of the OpAMP provider server.
@@ -124,6 +130,9 @@ class ConsumerConfig:
     agent_capabilities: int | None = (
         None  # Bitmask of advertised OpAMP AgentCapabilities.
     )
+    enabled_agent_capabilities: list[str] = field(
+        default_factory=list
+    )  # Effective capability names enabled after config/support resolution.
     client_status_port: int | None = (
         None  # Local HTTP port used for status/health/version probes.
     )
@@ -181,6 +190,10 @@ class ConsumerConfig:
     )
     allow_custom_capabilities: bool = (
         False  # Allow custom capability discovery/registration.
+    )
+    preserve_previous_config: bool = (
+        DEFAULT_PRESERVE_PREVIOUS_CONFIG
+        # Preserve an existing config file by renaming it before replacement.
     )
     agent_http_port: int | None = None  # Parsed agent internal HTTP endpoint port.
     agent_http_listen: str | None = None  # Parsed agent internal HTTP listen address.
@@ -425,6 +438,111 @@ def _normalize_process_tracking(value: Any) -> str:
     return DEFAULT_PROCESS_TRACKING
 
 
+def _dedupe_capability_names(names: Iterable[str]) -> list[str]:
+    """Return unique capability names preserving first-seen order."""
+    ordered_names: list[str] = []
+    seen: set[str] = set()
+    for raw_name in names:
+        normalized_name = str(raw_name).strip()
+        if not normalized_name or normalized_name in seen:
+            continue
+        ordered_names.append(normalized_name)
+        seen.add(normalized_name)
+    return ordered_names
+
+
+def _capability_names_from_mask(mask: int) -> list[str]:
+    """Decode a capability mask into known enum member names."""
+    capability_names: list[str] = []
+    for capability_name, capability_value in AGENT_CAPABILITIES_MAP.items():
+        if capability_name == NAME_UNSPECIFIED_AGENT_CAPABILITY:
+            continue
+        if mask & int(capability_value):
+            capability_names.append(capability_name)
+    return capability_names
+
+
+def parse_agent_capabilities_override(value: Any) -> list[str]:
+    """Normalize configured capability input into a list of capability names.
+
+    Args:
+        value: Raw configuration value which may be an integer mask, an
+            iterable of OpAMP capability names, or `None`.
+
+    Returns:
+        Ordered capability-name list parsed from the supplied override.
+    """
+    if value is None:
+        return []
+    if isinstance(value, bool):
+        logging.getLogger(__name__).warning(
+            "%s must not be a boolean value; ignoring override",
+            CFG_AGENT_CAPABILITIES,
+        )
+        return []
+    if isinstance(value, int):
+        return _capability_names_from_mask(value)
+    if isinstance(value, str):
+        normalized_value = value.strip()
+        if not normalized_value:
+            return []
+        if normalized_value.isdigit():
+            return _capability_names_from_mask(int(normalized_value))
+        return _dedupe_capability_names(normalized_value.split(","))
+    if isinstance(value, (list, tuple, set)):
+        return _dedupe_capability_names(value)
+
+    logging.getLogger(__name__).warning(
+        "%s override has unsupported type=%s; ignoring value",
+        CFG_AGENT_CAPABILITIES,
+        type(value).__name__,
+    )
+    return []
+
+
+def resolve_agent_capabilities(
+    *,
+    configured_capabilities: Any,
+    supported_capabilities: Iterable[str],
+) -> tuple[int, list[str]]:
+    """Resolve effective agent capabilities from config and client support.
+
+    The result always includes mandatory capabilities that are also supported
+    by the concrete client implementation.
+    """
+    logger = logging.getLogger(__name__)
+    supported_names = _dedupe_capability_names(supported_capabilities)
+    configured_names = parse_agent_capabilities_override(configured_capabilities)
+    desired_names = _dedupe_capability_names(
+        [*MANDATORY_AGENT_CAPABILITY_NAMES, *configured_names]
+    )
+    supported_name_set = set(supported_names)
+
+    for capability_name in configured_names:
+        if capability_name not in supported_name_set:
+            logger.warning(
+                "configured capability cannot be supported capability=%s; ignoring config",
+                capability_name,
+            )
+
+    enabled_capabilities: list[str] = []
+    for capability_name in supported_names:
+        if capability_name in desired_names:
+            enabled_capabilities.append(capability_name)
+            continue
+        logger.info("supported capability not enabled capability=%s", capability_name)
+
+    for capability_name in MANDATORY_AGENT_CAPABILITY_NAMES:
+        if capability_name not in supported_name_set:
+            logger.warning(
+                "mandatory capability is not supported capability=%s",
+                capability_name,
+            )
+
+    capability_mask = parse_capabilities(enabled_capabilities, AgentCapabilities)
+    return capability_mask, enabled_capabilities
+
+
 def _validate_process_detection_regex(value: Any) -> str | None:
     """Validate optional process-detection regex and return normalized value."""
     normalized = _coerce_optional_str(value)
@@ -517,8 +635,6 @@ def load_config() -> ConsumerConfig:
             f"{CFG_CONSUMER}.{CFG_SIMULATOR_RESPONSES_PATH} is required when "
             f"{CFG_CONSUMER}.{CFG_SERVICE_TYPE}={SERVICE_TYPE_SIMULATOR}"
         )
-    mask: int | None = None
-
     log_level = consumer_raw.get(CFG_LOG_LEVEL, DEFAULT_LOG_LEVEL) or DEFAULT_LOG_LEVEL
 
     if not server_url:
@@ -542,7 +658,7 @@ def load_config() -> ConsumerConfig:
             f"{CFG_CONSUMER}.{CFG_HEARTBEAT_FREQUENCY} must be a non-negative integer"
         )
 
-    mask = parse_capabilities(HARDWIRED_AGENT_CAPABILITY_NAMES, AgentCapabilities)
+    configured_agent_capabilities = consumer_raw.get(CFG_AGENT_CAPABILITIES)
     client_status_port = consumer_raw.get(CFG_CLIENT_STATUS_PORT)
     chat_ops_port = consumer_raw.get(CFG_CHAT_OPS_PORT)
     full_update_controller = consumer_raw.get(
@@ -584,6 +700,13 @@ def load_config() -> ConsumerConfig:
         "loaded consumer allow_custom_capabilities: %s",
         allow_custom_capabilities,
     )
+    logger.info(
+        "loaded consumer preserve_previous_config: %s",
+        _coerce_bool(
+            consumer_raw.get(CFG_PRESERVE_PREVIOUS_CONFIG),
+            default=DEFAULT_PRESERVE_PREVIOUS_CONFIG,
+        ),
+    )
     logger.info("loaded consumer service_type: %s", service_type)
     logger.info("loaded consumer process_tracking: %s", process_tracking)
     logger.info(
@@ -601,6 +724,10 @@ def load_config() -> ConsumerConfig:
         "loaded consumer capabilities (hardwired): %s",
         HARDWIRED_AGENT_CAPABILITY_NAMES,
     )
+    logger.info(
+        "loaded consumer capabilities override: %s",
+        configured_agent_capabilities,
+    )
     logger.info("loaded consumer log_level: %s", log_level)
     logger.info("loaded consumer client_status_port: %s", client_status_port)
     logger.info("loaded consumer chat_ops_port: %s", chat_ops_port)
@@ -615,7 +742,8 @@ def load_config() -> ConsumerConfig:
         agent_config_path=agent_config_path,
         agent_additional_params=additional_params,
         heartbeat_frequency=heartbeat_frequency,
-        agent_capabilities=mask,
+        agent_capabilities=configured_agent_capabilities,
+        log_level=str(log_level or DEFAULT_LOG_LEVEL),
         service_name=service_name,
         service_namespace=service_namespace,
         transport=transport,
@@ -630,6 +758,10 @@ def load_config() -> ConsumerConfig:
         idp_grant_type=idp_grant_type,
         log_agent_api_responses=bool(log_agent_api_responses),
         allow_custom_capabilities=allow_custom_capabilities,
+        preserve_previous_config=_coerce_bool(
+            consumer_raw.get(CFG_PRESERVE_PREVIOUS_CONFIG),
+            default=DEFAULT_PRESERVE_PREVIOUS_CONFIG,
+        ),
         service_type=service_type,
         simulator_responses_path=simulator_responses_path,
         process_tracking=process_tracking,
@@ -794,9 +926,7 @@ def load_config_with_overrides(
         agent_config_path=resolved_agent_config_path,
         agent_additional_params=resolved_additional_params,
         heartbeat_frequency=resolved_heartbeat_frequency,
-        agent_capabilities=parse_capabilities(
-            HARDWIRED_AGENT_CAPABILITY_NAMES, AgentCapabilities
-        ),
+        agent_capabilities=consumer_raw.get(CFG_AGENT_CAPABILITIES),
         service_name=consumer_raw.get(CFG_SERVICE_NAME),
         service_namespace=consumer_raw.get(CFG_SERVICE_NAMESPACE),
         transport=consumer_raw.get(CFG_TRANSPORT, DEFAULT_TRANSPORT),
@@ -814,6 +944,10 @@ def load_config_with_overrides(
         ),
         allow_custom_capabilities=bool(
             consumer_raw.get(CFG_ALLOW_CUSTOM_CAPABILITIES, False)
+        ),
+        preserve_previous_config=_coerce_bool(
+            consumer_raw.get(CFG_PRESERVE_PREVIOUS_CONFIG),
+            default=DEFAULT_PRESERVE_PREVIOUS_CONFIG,
         ),
         service_type=resolved_service_type,
         simulator_responses_path=resolved_simulator_responses_path,

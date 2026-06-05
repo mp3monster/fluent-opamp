@@ -11,15 +11,25 @@
 # limitations under the License.
 
 import logging
+from io import BytesIO, TextIOWrapper
 from typing import cast
 
-import opamp_consumer.fluentbit_client as client
 import pytest
+
+import opamp_consumer.fluentbit_client as client
+from opamp_consumer.config import ConsumerConfig
 from opamp_consumer.custom_handlers.handler_interface import (
     CustomMessageHandlerInterface,
 )
 from opamp_consumer.exceptions import AgentException
 from opamp_consumer.proto import opamp_pb2
+
+
+class _RaisingStreamHandler(logging.StreamHandler):
+    """StreamHandler variant that fails tests on emit/encoding errors."""
+
+    def handleError(self, record) -> None:  # noqa: N802
+        raise AssertionError("logging handler failed to emit record")
 
 
 def test_handle_error_response_logs(caplog) -> None:
@@ -144,3 +154,89 @@ def test_populate_agent_to_server_includes_custom_capabilities() -> None:
         "request:org.mp3monster.opamp_provider.chatopcommand",
         "request:org.mp3monster.opamp_provider.command_shutdown_agent",
     ]
+
+
+def test_handle_remote_config_logs_filenames_when_capability_not_enabled(
+    tmp_path,
+    caplog,
+) -> None:
+    """Remote config should be rejected when the capability is not enabled."""
+    config = ConsumerConfig(
+        server_url="http://localhost",
+        agent_config_path="unused",
+        agent_additional_params=[],
+        heartbeat_frequency=30,
+        agent_capabilities=None,
+        log_level="debug",
+        service_name="Fluentbit",
+        service_namespace="FluentBitNS",
+    )
+    instance = client.OpAMPClient("http://localhost", config)
+    caplog.set_level(logging.ERROR)
+    target_path = tmp_path / "remote-disabled.conf"
+    remote_config = opamp_pb2.AgentRemoteConfig()
+    remote_config.config.config_map[str(target_path)].body = b"super-secret-body\n"
+
+    instance.handle_remote_config(remote_config)
+
+    assert str(target_path) in caplog.text
+    assert "super-secret-body" not in caplog.text
+    assert "remote config is not allowed for this client" in caplog.text
+    assert not target_path.exists()
+
+
+def test_validate_reply_instance_uid_logs_cp1252_safe_hex() -> None:
+    """Binary instance UIDs should log as ASCII-safe hex text."""
+    instance = client.OpAMPClient("http://localhost")
+    reply = opamp_pb2.ServerToAgent()
+    reply.instance_uid = b"\x01\xff\xfej\x81\xfdy\x80\xfe\xff8\x81\x82\x01\xff\xfe"
+
+    stream = TextIOWrapper(BytesIO(), encoding="cp1252")
+    handler = _RaisingStreamHandler(stream)
+    logger = logging.getLogger("opamp_consumer.client_server_message_mixin")
+    previous_level = logger.level
+    previous_propagate = logger.propagate
+    logger.handlers = [handler]
+    logger.setLevel(logging.DEBUG)
+    logger.propagate = False
+
+    try:
+        assert instance._validate_reply_instance_uid(reply) is False
+        handler.flush()
+        stream.flush()
+        output = stream.buffer.getvalue().decode("cp1252")
+    finally:
+        logger.handlers = []
+        logger.setLevel(previous_level)
+        logger.propagate = previous_propagate
+        stream.close()
+
+    assert "reply target is 01fffe6a81fd7980feff38818201fffe" in output
+
+
+def test_populate_disconnect_logs_cp1252_safe_hex() -> None:
+    """Disconnect logging should also avoid raw non-text bytes."""
+    instance = client.OpAMPClient("http://localhost")
+    instance.data.uid_instance = b"\xff\xfe\x81\x82"
+    stream = TextIOWrapper(BytesIO(), encoding="cp1252")
+    handler = _RaisingStreamHandler(stream)
+    logger = logging.getLogger("opamp_consumer.client_runtime_mixin")
+    previous_level = logger.level
+    previous_propagate = logger.propagate
+    logger.handlers = [handler]
+    logger.setLevel(logging.WARNING)
+    logger.propagate = False
+
+    try:
+        message = instance._populate_disconnect(opamp_pb2.AgentToServer())
+        handler.flush()
+        stream.flush()
+        output = stream.buffer.getvalue().decode("cp1252")
+    finally:
+        logger.handlers = []
+        logger.setLevel(previous_level)
+        logger.propagate = previous_propagate
+        stream.close()
+
+    assert message.instance_uid == b"\xff\xfe\x81\x82"
+    assert "Set disconnect message instance UID to fffe8182" in output

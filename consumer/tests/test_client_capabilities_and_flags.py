@@ -11,16 +11,23 @@
 # limitations under the License.
 
 import logging
+import pathlib
+
+import pytest
+from shared.opamp_config import AGENT_CAPABILITIES_MAP
 
 import opamp_consumer.fluentbit_client as client
 from opamp_consumer.config import ConsumerConfig
+from opamp_consumer.exceptions import RemoteAgentConfigWriteError
 from opamp_consumer.fluentbit_client import CONFIG_DOCS_URL
 from opamp_consumer.proto import opamp_pb2
 
-from shared.opamp_config import AGENT_CAPABILITIES_MAP
 
-
-def _set_config(agent_capabilities) -> None:
+def _set_config(
+    agent_capabilities,
+    *,
+    preserve_previous_config: bool = False,
+) -> None:
     """Install a test config with the requested agent capabilities."""
     config = ConsumerConfig(
         server_url="http://localhost",
@@ -28,6 +35,7 @@ def _set_config(agent_capabilities) -> None:
         agent_additional_params=[],
         heartbeat_frequency=30,
         agent_capabilities=agent_capabilities,
+        preserve_previous_config=preserve_previous_config,
         log_level="debug",
         service_name="Fluentbit",
         service_namespace="FluentBitNS",
@@ -36,9 +44,9 @@ def _set_config(agent_capabilities) -> None:
 
 
 def test_get_agent_capabilities_from_names(caplog) -> None:
-    """Return a bitmask built from the hardwired required capabilities."""
+    """Configured capability names should merge with mandatory capabilities."""
     _set_config(["ReportsStatus", "ReportsHealth", "ReportsHeartbeat"])
-    caplog.set_level(logging.WARNING)
+    caplog.set_level(logging.INFO)
     instance = client.OpAMPClient("http://localhost")
 
     mask = instance.get_agent_capabilities()
@@ -46,15 +54,22 @@ def test_get_agent_capabilities_from_names(caplog) -> None:
         AGENT_CAPABILITIES_MAP["ReportsStatus"]
         | AGENT_CAPABILITIES_MAP["AcceptsRestartCommand"]
         | AGENT_CAPABILITIES_MAP["ReportsHealth"]
+        | AGENT_CAPABILITIES_MAP["ReportsHeartbeat"]
     )
     assert mask == expected
-    assert "unknown agent capability" not in caplog.text
+    assert instance.config.enabled_agent_capabilities == [
+        "ReportsStatus",
+        "AcceptsRestartCommand",
+        "ReportsHealth",
+        "ReportsHeartbeat",
+    ]
+    assert "supported capability not enabled capability=AcceptsRemoteConfig" in caplog.text
 
 
 def test_get_agent_capabilities_warns_unknown(caplog) -> None:
-    """Ignore config capability values and always return the required capability mask."""
+    """Configured unsupported capabilities should be warned and ignored."""
     _set_config(["ReportsStatus", "UnknownCapability"])
-    caplog.set_level(logging.WARNING)
+    caplog.set_level(logging.INFO)
     instance = client.OpAMPClient("http://localhost")
 
     mask = instance.get_agent_capabilities()
@@ -63,7 +78,124 @@ def test_get_agent_capabilities_warns_unknown(caplog) -> None:
         | AGENT_CAPABILITIES_MAP["AcceptsRestartCommand"]
         | AGENT_CAPABILITIES_MAP["ReportsHealth"]
     )
-    assert "unknown agent capability" not in caplog.text
+    assert (
+        "configured capability cannot be supported capability=UnknownCapability; "
+        "ignoring config"
+    ) in caplog.text
+
+
+def test_populate_agent_to_server_uses_configured_capability_override() -> None:
+    """Configured optional capabilities should merge into the outbound mask."""
+    _set_config(["AcceptsRestartCommand", "AcceptsRemoteConfig"])
+    instance = client.OpAMPClient("http://localhost")
+    message = opamp_pb2.AgentToServer()
+
+    populated = instance._populate_agent_to_server(message)
+
+    expected_mask = (
+        AGENT_CAPABILITIES_MAP["ReportsStatus"]
+        | AGENT_CAPABILITIES_MAP["AcceptsRestartCommand"]
+        | AGENT_CAPABILITIES_MAP["ReportsHealth"]
+        | AGENT_CAPABILITIES_MAP["AcceptsRemoteConfig"]
+    )
+    assert populated.capabilities == expected_mask
+    assert instance.config.agent_capabilities == expected_mask
+    assert "AcceptsRemoteConfig" in instance.config.enabled_agent_capabilities
+
+
+def test_get_agent_capabilities_derives_default_mask_when_unset() -> None:
+    """Missing override should derive and cache the mandatory capability mask."""
+    _set_config(None)
+    instance = client.OpAMPClient("http://localhost")
+
+    mask = instance.get_agent_capabilities()
+
+    assert mask == (
+        AGENT_CAPABILITIES_MAP["ReportsStatus"]
+        | AGENT_CAPABILITIES_MAP["AcceptsRestartCommand"]
+        | AGENT_CAPABILITIES_MAP["ReportsHealth"]
+    )
+    assert instance.config.agent_capabilities == mask
+    assert instance.config.enabled_agent_capabilities == [
+        "ReportsStatus",
+        "AcceptsRestartCommand",
+        "ReportsHealth",
+    ]
+
+
+def test_populate_agent_to_server_includes_mandatory_capabilities_when_unset() -> None:
+    """Outbound payload should advertise the built-in three capabilities by default."""
+    _set_config(None)
+    instance = client.OpAMPClient("http://localhost")
+    message = opamp_pb2.AgentToServer()
+
+    populated = instance._populate_agent_to_server(message)
+
+    assert populated.capabilities & AGENT_CAPABILITIES_MAP["ReportsStatus"]
+    assert populated.capabilities & AGENT_CAPABILITIES_MAP["AcceptsRestartCommand"]
+    assert populated.capabilities & AGENT_CAPABILITIES_MAP["ReportsHealth"]
+
+
+def test_get_agent_capabilities_enables_remote_config_when_configured() -> None:
+    """Configured optional remote config should be enabled when supported."""
+    _set_config(["AcceptsRemoteConfig"])
+    instance = client.OpAMPClient("http://localhost")
+
+    mask = instance.get_agent_capabilities()
+
+    assert mask == (
+        AGENT_CAPABILITIES_MAP["ReportsStatus"]
+        | AGENT_CAPABILITIES_MAP["AcceptsRestartCommand"]
+        | AGENT_CAPABILITIES_MAP["ReportsHealth"]
+        | AGENT_CAPABILITIES_MAP["AcceptsRemoteConfig"]
+    )
+    assert instance.is_capability_allowed("AcceptsRemoteConfig") is True
+    assert instance.is_capability_allowed("AcceptsPackages") is False
+
+
+def test_write_config_file_preserves_previous_file_when_enabled(tmp_path) -> None:
+    """A replaced config should be renamed with the required preserved postfix."""
+    _set_config(None, preserve_previous_config=True)
+    instance = client.OpAMPClient("http://localhost")
+    target_path = tmp_path / "agent.conf"
+    target_path.write_text("before=true\n", encoding="utf-8")
+
+    instance.write_config_file(str(target_path), b"after=true\n")
+
+    preserved_paths = list(tmp_path.glob("agent.conf.replaced_*"))
+    assert target_path.read_text(encoding="utf-8") == "after=true\n"
+    assert len(preserved_paths) == 1
+    assert preserved_paths[0].read_text(encoding="utf-8") == "before=true\n"
+
+
+def test_write_config_file_restores_original_when_write_fails(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An I/O failure after preservation should raise a controlled write error."""
+    _set_config(None, preserve_previous_config=True)
+    instance = client.OpAMPClient("http://localhost")
+    target_path = tmp_path / "agent.conf"
+    target_path.write_text("before=true\n", encoding="utf-8")
+    original_write_text = pathlib.Path.write_text
+
+    def _failing_write_text(
+        self: pathlib.Path,
+        data: str,
+        *args,
+        **kwargs,
+    ) -> int:
+        if self == target_path:
+            raise OSError("disk full")
+        return original_write_text(self, data, *args, **kwargs)
+
+    monkeypatch.setattr(pathlib.Path, "write_text", _failing_write_text)
+
+    with pytest.raises(RemoteAgentConfigWriteError, match="disk full"):
+        instance.write_config_file(str(target_path), b"after=true\n")
+
+    assert target_path.read_text(encoding="utf-8") == "before=true\n"
+    assert list(tmp_path.glob("agent.conf.replaced_*")) == []
 
 
 def test_get_config_parameters_includes_docs_url() -> None:

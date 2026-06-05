@@ -26,6 +26,7 @@ import tracemalloc
 from dataclasses import dataclass
 from typing import Any, Callable
 
+from opamp_consumer import config as consumer_config
 from opamp_consumer.abstract_client import (
     KEY_HEALTH,
     KEY_SERVICE_INSTANCE_ID,
@@ -304,6 +305,11 @@ class SimulatorOpAMPClient(AbstractOpAMPClient):
     _runtime_config_flag = "-c"
     _heartbeat_paths = ("/simulator/health",)
     _value_agent_type = "Simulator"
+    SUPPORTED_AGENT_CAPABILITY_NAMES = (
+        *consumer_config.MANDATORY_AGENT_CAPABILITY_NAMES,
+        "AcceptsRemoteConfig",
+        "ReportsHeartbeat",
+    )
 
     def __init__(self, base_url: str, config: ConsumerConfig | None = None) -> None:
         """Create simulator client and load scripted response plan."""

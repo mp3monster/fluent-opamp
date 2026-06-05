@@ -69,6 +69,10 @@ class OpAMPClientInterface(ABC):
         """Handle remote configuration payloads sent by the server."""
 
     @abstractmethod
+    def write_config_file(self, filename: str, body: bytes) -> None:
+        """Persist one remote config file to local disk."""
+
+    @abstractmethod
     def poll_local_status_with_codes(
         self, port: int
     ) -> tuple[dict[str, str], dict[str, str]]:
@@ -87,6 +91,10 @@ class OpAMPClientInterface(ABC):
     @abstractmethod
     def get_agent_capabilities(self) -> int:
         """Build and return agent capability bitmask for outbound OpAMP payloads."""
+
+    @abstractmethod
+    def is_capability_allowed(self, capability_name: str) -> bool:
+        """Return whether the named capability is enabled for this client."""
 
     @abstractmethod
     def finalize(self) -> None:

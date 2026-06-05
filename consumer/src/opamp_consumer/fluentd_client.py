@@ -538,6 +538,11 @@ class FluentdOpAMPClient(AbstractOpAMPClient):
     _runtime_agent_command = FLUENTD_CMD
     _runtime_config_flag = FLUENTD_CONFIG_FLAG
     _heartbeat_paths = (FLUENTD_PLUGINS_API_PATH,)
+    SUPPORTED_AGENT_CAPABILITY_NAMES = (
+        *consumer_config.MANDATORY_AGENT_CAPABILITY_NAMES,
+        "AcceptsRemoteConfig",
+        "ReportsHeartbeat",
+    )
 
     def __init__(self, base_url: str, config: ConsumerConfig | None = None) -> None:
         """Initialize Fluentd-specific runtime state and metadata defaults."""

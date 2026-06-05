@@ -23,9 +23,11 @@ import threading
 import uuid  # noqa: F401 - retained as stable monkeypatch seam in unit tests
 from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass, field
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 import httpx  # noqa: F401 - legacy monkeypatch seam for auth token tests
+from shared.uuid_utils import generate_uuid7_bytes
 
 from opamp_consumer import config as consumer_config
 from opamp_consumer.client_bootstrap import (
@@ -39,12 +41,26 @@ from opamp_consumer.client_message_builder import (
     populate_agent_to_server_health,
 )
 from opamp_consumer.client_mixins import ClientRuntimeMixin, ServerMessageHandlingMixin
+from opamp_consumer.client_transport import (  # noqa: F401 - legacy monkeypatch seam
+    send_http_message,
+    send_websocket_message,
+)
 from opamp_consumer.client_transport_auth_mixin import (
     AUTH_RETRY_STATUS_CODES as _AUTH_RETRY_STATUS_CODES,
+)
+from opamp_consumer.client_transport_auth_mixin import (
     ENV_OPAMP_TOKEN as _ENV_OPAMP_TOKEN,
+)
+from opamp_consumer.client_transport_auth_mixin import (
     HEADER_AUTHORIZATION as _HEADER_AUTHORIZATION,
+)
+from opamp_consumer.client_transport_auth_mixin import (
     TRANSPORT_HTTP as _TRANSPORT_HTTP,
+)
+from opamp_consumer.client_transport_auth_mixin import (
     TRANSPORT_WEBSOCKET as _TRANSPORT_WEBSOCKET,
+)
+from opamp_consumer.client_transport_auth_mixin import (
     ClientTransportAuthorizationMixin,
 )
 from opamp_consumer.component_version import component_version_text
@@ -58,16 +74,10 @@ from opamp_consumer.full_update_controller import (
 )
 from opamp_consumer.opamp_client_interface import OpAMPClientInterface
 from opamp_consumer.proto import anyvalue_pb2, opamp_pb2
+from opamp_consumer.remote_agent_config_write_error import (
+    RemoteAgentConfigWriteError,
+)
 from opamp_consumer.reporting_flag import ReportingFlag
-from opamp_consumer.client_transport import (  # noqa: F401 - legacy monkeypatch seam
-    send_http_message,
-    send_websocket_message,
-)
-from shared.opamp_config import (
-    AgentCapabilities,
-    parse_capabilities,
-)
-from shared.uuid_utils import generate_uuid7_bytes
 
 if TYPE_CHECKING:
     from opamp_consumer.custom_handlers.handler_interface import (
@@ -99,6 +109,9 @@ HOST_META_KEY_MAC_ADDRESS = "mac_address"  # Host metadata key for client MAC ad
 CONFIG_DOCS_URL = (
     "https://github.com/mp3monster/fluent-opamp"  # Reference docs for consumer config.
 )
+REPLACED_CONFIG_TIMESTAMP_FORMAT = "%Y-%m-%d--%H-%M-%S"
+REPLACED_CONFIG_POSTFIX_PREFIX = "replaced_"
+
 
 def _config_parameters_payload(config: ConsumerConfig) -> dict[str, object]:
     """Build config parameters payload with documentation URL.
@@ -160,7 +173,10 @@ class AbstractOpAMPClient(
     This class provides the full `OpAMPClientInterface` behavior and leaves
     environment-specific custom-handler discovery to concrete subclasses.
     """
-    _custom_handler_lookup: dict[str, type["CustomMessageHandlerInterface"]]
+    _custom_handler_lookup: dict[str, type[CustomMessageHandlerInterface]]
+    SUPPORTED_AGENT_CAPABILITY_NAMES: tuple[str, ...] = tuple(
+        consumer_config.MANDATORY_AGENT_CAPABILITY_NAMES
+    )
 
     def __init__(self, base_url: str, config: ConsumerConfig | None = None) -> None:
         """Create a client bound to a base URL."""
@@ -220,6 +236,77 @@ class AbstractOpAMPClient(
             )
         controller.configure(self.config.full_update_controller)
         return controller
+
+    def write_config_file(self, filename: str, body: bytes) -> None:
+        """Write a remote config file to disk using UTF-8 text semantics.
+
+        The remote-config handler is responsible for validation and rollback.
+        This base implementation focuses on the local write behavior shared by
+        the concrete consumer clients.
+        """
+        target_path = pathlib.Path(filename)
+        renamed_previous_path: pathlib.Path | None = None
+        try:
+            target_path.parent.mkdir(parents=True, exist_ok=True)
+            if bool(self.config.preserve_previous_config):
+                renamed_previous_path = self._preserve_previous_config_file(target_path)
+            text_body = body.decode("utf-8")
+            target_path.write_text(text_body, encoding="utf-8")
+        except OSError as io_error:
+            restore_error = self._restore_preserved_config_file(
+                target_path=target_path,
+                renamed_previous_path=renamed_previous_path,
+            )
+            error_message = f"failed to persist remote config file '{filename}': {io_error}"
+            if restore_error is not None:
+                error_message = (
+                    f"{error_message}; failed to restore preserved config: {restore_error}"
+                )
+            raise RemoteAgentConfigWriteError(
+                error_message
+            ) from io_error
+
+    def _preserve_previous_config_file(self, target_path: pathlib.Path) -> pathlib.Path | None:
+        """Rename an existing config file so the previous version is retained.
+
+        Args:
+            target_path: Config file path about to be replaced.
+
+        Returns:
+            The renamed preserved-file path when a file was moved, otherwise `None`.
+        """
+        if not target_path.exists():
+            return None
+        timestamp_text = datetime.now().strftime(REPLACED_CONFIG_TIMESTAMP_FORMAT)
+        preserved_name = (
+            f"{target_path.name}."
+            f"{REPLACED_CONFIG_POSTFIX_PREFIX}{timestamp_text}"
+        )
+        preserved_path = target_path.with_name(preserved_name)
+        target_path.rename(preserved_path)
+        return preserved_path
+
+    def _restore_preserved_config_file(
+        self,
+        *,
+        target_path: pathlib.Path,
+        renamed_previous_path: pathlib.Path | None,
+    ) -> OSError | None:
+        """Restore a preserved config file after a failed replacement write.
+
+        Args:
+            target_path: Intended destination for the new config content.
+            renamed_previous_path: Renamed prior config file, if one exists.
+        """
+        if renamed_previous_path is None or not renamed_previous_path.exists():
+            return None
+        try:
+            if target_path.exists():
+                target_path.unlink()
+            renamed_previous_path.rename(target_path)
+        except OSError as restore_error:
+            return restore_error
+        return None
 
     @property
     # Mixin bases define `config` as an abstract protocol-style property.
@@ -413,20 +500,35 @@ class AbstractOpAMPClient(
     def get_agent_capabilities(self) -> int:
         """Implements `OpAMPClientInterface.get_agent_capabilities`.
 
-        Return the required agent capability bitmask.
+        Return the effective configured+supported agent capability bitmask.
+        """
+        resolved_mask, enabled_capabilities = consumer_config.resolve_agent_capabilities(
+            configured_capabilities=self.config.agent_capabilities,
+            supported_capabilities=self.get_supported_capabilities(),
+        )
+        self.config.agent_capabilities = resolved_mask
+        self.config.enabled_agent_capabilities = enabled_capabilities
+        return resolved_mask
+
+    def get_supported_capabilities(self) -> list[str]:
+        """Return capability names supported by this concrete client."""
+        return list(self.SUPPORTED_AGENT_CAPABILITY_NAMES)
+
+    def supports_remote_config(self) -> bool:
+        """Return whether this client type supports file-based remote config.
 
         Returns:
-            Bitmask built from the hardwired required capability names.
+            `True` when the concrete configured consumer implementation can
+            apply file-oriented remote config payloads through the shared
+            config-file writer behavior.
         """
-        required_agent_capabilities = (
-            "ReportsStatus",
-            "AcceptsRestartCommand",
-            "ReportsHealth",
-        )
-        return parse_capabilities(
-            required_agent_capabilities,
-            AgentCapabilities,
-        )
+        return "AcceptsRemoteConfig" in self.get_supported_capabilities()
+
+    def is_capability_allowed(self, capability_name: str) -> bool:
+        """Return whether the named capability is enabled for this client."""
+        if not self.config.enabled_agent_capabilities:
+            self.get_agent_capabilities()
+        return str(capability_name).strip() in self.config.enabled_agent_capabilities
 
     def get_custom_capabilities_payload(self) -> opamp_pb2.CustomCapabilities:
         """Build CustomCapabilities from the custom handler registry."""

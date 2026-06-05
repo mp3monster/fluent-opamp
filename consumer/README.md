@@ -10,12 +10,13 @@ This document consolidates all consumer configuration options and their CLI over
   - [Override Precedence](#override-precedence)
   - [Quick Start Minimal Config](#quick-start-minimal-config)
   - [Run Scripts](#run-scripts)
+  - [Process Tracking Modes](#process-tracking-modes)
   - [Semaphore Shutdown File](#semaphore-shutdown-file)
   - [Custom Handlers](#custom-handlers)
   - [Update Controllers](#update-controllers)
   - [Example `opamp.json`](#example-opampjson)
   - [Consumer Config Keys](#consumer-config-keys)
-  - [Hardwired Capabilities](#hardwired-capabilities)
+  - [Default Capabilities](#default-capabilities)
   - [Connection Settings](#connection-settings)
   - [Fluent Bit Comment Metadata](#fluent-bit-comment-metadata)
   - [CLI Example](#cli-example)
@@ -132,7 +133,7 @@ Operational guidance:
 
 Custom capability handlers are documented here:
 
-- `docs/consumer_custom_handlers.md`
+- `../docs/dev/consumer_custom_handlers.md`
 
 That guide includes:
 
@@ -142,13 +143,13 @@ That guide includes:
 
 Shared provider+consumer custom action implementation/deployment guide:
 
-- `../docs/adding_your_own_custom_action.md`
+- `../docs/dev/adding_your_own_custom_action.md`
 
 ## Update Controllers
 
 Update-controller behavior and extension guidance are documented here:
 
-- `docs/consumer_update_controllers.md`
+- `../docs/dev/consumer_update_controllers.md`
 
 That guide includes:
 
@@ -188,6 +189,12 @@ That guide includes:
     },
     "full_update_controller_type": "SentCount",
     "allow_custom_capabilities": true,
+    "agent_capabilities": [
+      "ReportsStatus",
+      "ReportsHealth",
+      "AcceptsRemoteConfig",
+      "ReportsHeartbeat"
+    ],
     "log_level": "debug",
     "service_name": "Fluentbit",
     "service_namespace": "FluentBitNS"
@@ -225,6 +232,8 @@ That guide includes:
 | `consumer.idp-grant-type` | string | No | OAuth grant type for `idp` mode. Default `client_credentials`. | `"client_credentials"` |
 | `consumer.log_agent_api_responses` | boolean | No | Enables verbose logging of local API responses. | `false` |
 | `consumer.allow_custom_capabilities` | boolean | No | Enables publishing/discovery of custom capabilities. | `true` |
+| `consumer.agent_capabilities` | integer, string, or array[string] | No | Optional additional capability selection. Configured values are merged with the mandatory capabilities, then intersected with the concrete client's supported-capability list. Unsupported configured values are warned and ignored. | `["ReportsHealth","AcceptsRemoteConfig","ReportsHeartbeat"]` |
+| `consumer.preserve_previous_config` | boolean | No | When `true`, an existing remote-config target file is renamed to `.replaced_yyyy-mm-dd--hh-mm-ss` before the new content is written. | `false` |
 | `consumer.service_name` | string | No | Reported service name in agent description. | `"Fluentbit"` |
 | `consumer.service_namespace` | string | No | Reported service namespace in agent description. | `"FluentBitNS"` |
 | `consumer.client_status_port` | integer | No | Local status polling port. If unset, parsed from agent config `http_port`. | `2020` |
@@ -244,12 +253,18 @@ TLS transport behavior:
   - `http://...` -> `ws://...`
   - `https://...` -> `wss://...`
 
-## Hardwired Capabilities
+## Default Capabilities
 
-`agent_capabilities` is not read from config. The consumer hardwires:
+When `consumer.agent_capabilities` is not set, the consumer advertises these mandatory capabilities:
 - `ReportsStatus`
 - `AcceptsRestartCommand`
 - `ReportsHealth`
+
+If the selected `consumer.service_type` supports additional capabilities, you can enable them via `consumer.agent_capabilities`, for example:
+- `AcceptsRemoteConfig`
+- `ReportsHeartbeat`
+
+Configured capabilities are merged with the mandatory list above. Any capability supported by the client but not configured is left disabled and logged at `INFO`. Any configured capability not supported by the client is ignored and logged at `WARNING`.
 
 ## Connection Settings
 

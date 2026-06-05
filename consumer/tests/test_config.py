@@ -16,9 +16,8 @@ import sys
 from pathlib import Path
 
 import pytest
-from opamp_consumer import config as consumer_config
 
-from shared.opamp_config import AgentCapabilities
+from opamp_consumer import config as consumer_config
 
 
 def _base_consumer_config() -> dict:
@@ -63,6 +62,48 @@ def test_allow_custom_capabilities_defaults_false_when_missing(
     loaded = consumer_config.load_config()
 
     assert loaded.allow_custom_capabilities is False
+
+
+def test_log_level_loads_from_config_file(tmp_path, monkeypatch) -> None:
+    """Consumer log_level should be preserved when loading file config."""
+    raw = _base_consumer_config()
+    raw["consumer"]["log_level"] = "info"
+    config_path = tmp_path / "opamp.json"
+    config_path.write_text(json.dumps(raw, indent=2), encoding="utf-8")
+    monkeypatch.setenv(consumer_config.ENV_OPAMP_CONFIG_PATH, str(config_path))
+
+    loaded = consumer_config.load_config()
+
+    assert loaded.log_level == "info"
+
+
+def test_preserve_previous_config_defaults_false_when_missing(
+    tmp_path, monkeypatch
+) -> None:
+    """Consumer preserve_previous_config should default to false when omitted."""
+    config_path = tmp_path / "opamp.json"
+    config_path.write_text(
+        json.dumps(_base_consumer_config(), indent=2),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv(consumer_config.ENV_OPAMP_CONFIG_PATH, str(config_path))
+
+    loaded = consumer_config.load_config()
+
+    assert loaded.preserve_previous_config is False
+
+
+def test_preserve_previous_config_loads_when_enabled(tmp_path, monkeypatch) -> None:
+    """Consumer preserve_previous_config should load from config when supplied."""
+    raw = _base_consumer_config()
+    raw["consumer"]["preserve_previous_config"] = True
+    config_path = tmp_path / "opamp.json"
+    config_path.write_text(json.dumps(raw, indent=2), encoding="utf-8")
+    monkeypatch.setenv(consumer_config.ENV_OPAMP_CONFIG_PATH, str(config_path))
+
+    loaded = consumer_config.load_config()
+
+    assert loaded.preserve_previous_config is True
 
 
 def test_service_type_defaults_to_fluentbit_when_missing(tmp_path, monkeypatch) -> None:
@@ -311,10 +352,8 @@ def test_chat_ops_port_and_client_status_port_load_when_configured(
     assert loaded.client_status_port == 2020
 
 
-def test_agent_capabilities_are_hardwired_and_ignore_config_value(
-    tmp_path, monkeypatch
-) -> None:
-    """Verify agent capabilities are hardwired regardless of config content."""
+def test_agent_capabilities_override_loads_from_config(tmp_path, monkeypatch) -> None:
+    """Configured agent capability names should load as the raw override list."""
     raw = _base_consumer_config()
     raw["consumer"]["agent_capabilities"] = ["ReportsHeartbeat"]
     config_path = tmp_path / "opamp.json"
@@ -323,12 +362,7 @@ def test_agent_capabilities_are_hardwired_and_ignore_config_value(
 
     loaded = consumer_config.load_config()
 
-    expected_mask = int(
-        AgentCapabilities.ReportsStatus
-        | AgentCapabilities.AcceptsRestartCommand
-        | AgentCapabilities.ReportsHealth
-    )
-    assert loaded.agent_capabilities == expected_mask
+    assert loaded.agent_capabilities == ["ReportsHeartbeat"]
 
 
 def test_full_update_controller_loads_from_config_object(tmp_path, monkeypatch) -> None:

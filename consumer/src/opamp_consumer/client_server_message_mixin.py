@@ -16,14 +16,9 @@ from __future__ import annotations
 
 import logging
 import sys
-from codecs import decode as byte_value
 from typing import TYPE_CHECKING, cast
 
 from google.protobuf import text_format
-
-from opamp_consumer.custom_handlers import build_factory_lookup, create_handler
-from opamp_consumer.exceptions import AgentException
-from opamp_consumer.proto import opamp_pb2
 from shared.opamp_config import (
     PB_FIELD_AGENT_IDENTIFICATION,
     PB_FIELD_COMMAND,
@@ -36,6 +31,12 @@ from shared.opamp_config import (
     PB_FIELD_RETRY_INFO,
     PB_FLAG_REPORT_FULL_STATE,
 )
+
+from opamp_consumer.common_config_handler import CommonConfigHandler
+from opamp_consumer.custom_handlers import build_factory_lookup, create_handler
+from opamp_consumer.exceptions import AgentException
+from opamp_consumer.logging_utils import format_instance_uid_for_log
+from opamp_consumer.proto import opamp_pb2
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -53,7 +54,7 @@ class ServerMessageHandlingMixin:
 
     data: OpAMPClientData
     _custom_handler_folder: Path
-    _custom_handler_lookup: dict[str, type["CustomMessageHandlerInterface"]]
+    _custom_handler_lookup: dict[str, type[CustomMessageHandlerInterface]]
 
     @property
     def config(self) -> ConsumerConfig:
@@ -64,6 +65,15 @@ class ServerMessageHandlingMixin:
         """Restart the managed agent process.
 
         Concrete implementations are expected to provide this behavior.
+        """
+        raise NotImplementedError
+
+    def is_capability_allowed(self, capability_name: str) -> bool:
+        """Return whether the named capability is enabled for this client.
+
+        Concrete AbstractOpAMPClient implementations provide the actual logic.
+        The mixin defines the method shape so server-message handling can gate
+        capability-specific processing consistently.
         """
         raise NotImplementedError
 
@@ -134,19 +144,19 @@ class ServerMessageHandlingMixin:
         if reply.instance_uid:
             logger.debug(
                 "reply target is %s",
-                byte_value(reply.instance_uid, errors="replace"),
+                format_instance_uid_for_log(reply.instance_uid),
             )
             if reply.instance_uid == self.data.uid_instance:
                 return True
             logger.error(
                 "Message doesn't have an instance uid or doesn't match our "
                 "service instance id %s",
-                byte_value(reply.instance_uid, errors="replace"),
+                format_instance_uid_for_log(reply.instance_uid),
             )
             return False
         logger.error(
             "Server didn't share instance_uid, my instance uid is %s",
-            byte_value(self.data.uid_instance or b"", errors="replace"),
+            format_instance_uid_for_log(self.data.uid_instance),
         )
         return False
 
@@ -172,14 +182,21 @@ class ServerMessageHandlingMixin:
             )
 
     def handle_remote_config(self, remote_config: opamp_pb2.AgentRemoteConfig) -> None:
-        """Log the remote-config payload received from the provider.
+        """Validate and apply the remote-config payload received from the provider.
 
         Args:
             remote_config: Remote configuration payload from ServerToAgent.
         """
-        logging.getLogger(__name__).info(
-            "server remote_config:\n%s", text_format.MessageToString(remote_config)
-        )
+        logger = logging.getLogger(__name__)
+        if not self.is_capability_allowed("AcceptsRemoteConfig"):
+            filenames = sorted(str(filename).strip() for filename in remote_config.config.config_map)
+            logger.error(
+                "remote config payload received but remote config is not allowed for "
+                "this client; filenames=%s",
+                filenames,
+            )
+            return
+        CommonConfigHandler.apply_remote_config(remote_config, cast("OpAMPClientInterface", self))
 
     def handle_connection_settings(
         self, connection_settings: opamp_pb2.ConnectionSettingsOffers

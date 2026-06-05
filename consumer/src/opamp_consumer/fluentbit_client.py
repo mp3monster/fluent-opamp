@@ -133,6 +133,11 @@ class OpAMPClient(AbstractOpAMPClient):
     _json_key_agent = "fluent-bit"
     _json_key_agent_fallback = "fluentbit"
     _value_agent_type = "Fluent Bit"
+    SUPPORTED_AGENT_CAPABILITY_NAMES = (
+        *consumer_config.MANDATORY_AGENT_CAPABILITY_NAMES,
+        "AcceptsRemoteConfig",
+        "ReportsHeartbeat",
+    )
 
     def get_custom_handler_folder(self) -> pathlib.Path:
         """Return the default handler folder used by the Fluent Bit client."""

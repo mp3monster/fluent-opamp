@@ -10,20 +10,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Custom exceptions for the OpAMP consumer."""
+"""Compatibility facade for consumer exception imports."""
 
+from opamp_consumer.agent_exception import AgentException
+from opamp_consumer.command_exception import CommandException
+from opamp_consumer.remote_agent_config_content_type_error import (
+    RemoteAgentConfigContentTypeError,
+)
+from opamp_consumer.remote_agent_config_error import RemoteAgentConfigError
+from opamp_consumer.remote_agent_config_hash_mismatch_error import (
+    RemoteAgentConfigHashMismatchError,
+)
+from opamp_consumer.remote_agent_config_validation_error import (
+    RemoteAgentConfigValidationError,
+)
+from opamp_consumer.remote_agent_config_write_error import (
+    RemoteAgentConfigWriteError,
+)
 
-class AgentException(Exception):
-    """Raised when consumer agent operations fail."""
-
-    def __init__(self, message: str) -> None:
-        """Initialize the exception with a human-readable message."""
-        super().__init__(message)
-
-
-class CommandException(Exception):
-    """Raised when a custom command handler execution fails."""
-
-    def __init__(self, message: str) -> None:
-        """Initialize the exception with a human-readable message."""
-        super().__init__(message)
+__all__ = [
+    "AgentException",
+    "CommandException",
+    "RemoteAgentConfigContentTypeError",
+    "RemoteAgentConfigError",
+    "RemoteAgentConfigHashMismatchError",
+    "RemoteAgentConfigValidationError",
+    "RemoteAgentConfigWriteError",
+]

@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING, cast
 
 import httpx
 
+from opamp_consumer.logging_utils import format_instance_uid_for_log
 from opamp_consumer.proto import opamp_pb2
 from opamp_consumer.reporting_flag import ReportingFlag
 
@@ -185,7 +186,8 @@ class ClientRuntimeMixin:
         if self.data.uid_instance is not None:
             msg.instance_uid = self.data.uid_instance
             logging.getLogger(__name__).warning(
-                "Set disconnect message instance UID to %s", self.data.uid_instance
+                "Set disconnect message instance UID to %s",
+                format_instance_uid_for_log(self.data.uid_instance),
             )
         msg.agent_disconnect.SetInParent()
         return msg

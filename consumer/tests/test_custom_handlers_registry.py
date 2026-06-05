@@ -1,3 +1,4 @@
+# ruff: noqa: S101
 # Copyright 2026 mp3monster.org
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +12,6 @@
 # limitations under the License.
 
 import logging
-from typing import cast
 
 from opamp_consumer.config import ConsumerConfig
 from opamp_consumer.custom_handlers import create_handler, discover_handlers
@@ -79,6 +79,9 @@ class _FakeOpAMPClient(OpAMPClientInterface):
     def handle_remote_config(self, remote_config: opamp_pb2.AgentRemoteConfig) -> None:
         return None
 
+    def write_config_file(self, filename: str, body: bytes) -> None:
+        return None
+
     def poll_local_status_with_codes(
         self, port: int
     ) -> tuple[dict[str, str], dict[str, str]]:
@@ -94,6 +97,9 @@ class _FakeOpAMPClient(OpAMPClientInterface):
 
     def get_agent_capabilities(self) -> int:
         return 0
+
+    def is_capability_allowed(self, capability_name: str) -> bool:
+        return False
 
     def finalize(self) -> None:
         return None
