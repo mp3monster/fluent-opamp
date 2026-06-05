@@ -31,6 +31,9 @@ async function mockSingleClient(page, clientId = "ababababababababababababababab
             last_communication: "2026-06-03T08:05:00Z",
             remote_addr: "127.0.0.1",
             client_version: "1.2.3",
+            health: {
+              healthy: true,
+            },
             commands: [],
             provider_remote_config_enabled: true,
             remote_config_files_allowed: true,
@@ -124,6 +127,126 @@ test("requested configuration stays editable without config-service", async ({ p
 
   await expect(page.locator("#configInput")).toHaveJSProperty("readOnly", false);
   await expect(page.locator("#saveConfigBtn")).toBeEnabled();
+});
+
+test("optional columns include first registered", async ({ page }) => {
+  await mockSingleClient(page);
+  await page.goto("/ui");
+
+  await expect(page.locator("#clientBody tr")).toHaveCount(1);
+  await page.locator("#toggleColumnsBtn").click();
+
+  const firstRegisteredToggle = page.locator('input[data-column-toggle="first_registered"]');
+  await expect(firstRegisteredToggle).toBeVisible();
+  await firstRegisteredToggle.check();
+
+  const expectedFirstRegistered = await page.evaluate(
+    () => new Date("2026-06-03T08:00:00Z").toLocaleString()
+  );
+
+  await expect(page.locator("#clientTableHeaderRow")).toContainText("First Registered");
+  await expect(page.locator("#clientBody tr td")).toContainText([expectedFirstRegistered]);
+});
+
+test("optional columns include health status with summary styling", async ({ page }) => {
+  await mockSingleClient(page);
+  await page.goto("/ui");
+
+  await expect(page.locator("#clientBody tr")).toHaveCount(1);
+  await page.locator("#toggleColumnsBtn").click();
+
+  const healthStatusToggle = page.locator('input[data-column-toggle="health_status"]');
+  await expect(healthStatusToggle).toBeVisible();
+  await healthStatusToggle.check();
+
+  await expect(page.locator('th[data-column-key="health_status"]')).toContainText(/Health\s*Status/);
+  await expect(page.locator('th[data-column-key="health_status"]')).toHaveJSProperty(
+    "innerHTML",
+    "Health<br>Status"
+  );
+  await expect(page.locator("#clientBody .health-text-healthy")).toContainText("healthy");
+
+  await page.locator("#clientBody tr").first().click();
+  await expect(page.locator("#modalFields .health-text-healthy")).toContainText("healthy");
+});
+
+test("provider UI uses connection status labels in table and summary", async ({ page }) => {
+  await mockSingleClient(page);
+  await page.goto("/ui");
+
+  await expect(page.locator('th[data-column-key="status"]')).toContainText(/Connection\s*Status/);
+  await expect(page.locator('th[data-column-key="status"]')).toHaveJSProperty(
+    "innerHTML",
+    "Connection<br>Status"
+  );
+  await expect(page.locator('th[data-column-key="config_version"]')).toContainText(/Config\s*Version/);
+  await expect(page.locator('th[data-column-key="config_version"]')).toHaveJSProperty(
+    "innerHTML",
+    "Config<br>Version"
+  );
+
+  await page.locator("#clientBody tr").first().click();
+  await expect(page.locator("#modalFields")).toContainText("Connection Status");
+});
+
+test("client data panel stays open across UI refresh updates", async ({ page }) => {
+  let clientVersion = "1.2.3";
+
+  await page.context().route(/\/api\/clients(?:\?.*)?$/, async (route) => {
+    if (route.request().method() !== "GET") {
+      await route.continue();
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        clients: [
+          {
+            client_id: "abababababababababababababababab",
+            agent_description: "",
+            capabilities: ["Reports Status", "Accepts Remote Config"],
+            current_config: "service:\n  flush: 1\n",
+            current_config_version: "v1",
+            requested_config: "service:\n  flush: 5\n",
+            requested_config_version: "v2",
+            disconnected: false,
+            events: [],
+            first_seen: "2026-06-03T08:00:00Z",
+            last_channel: "HTTP",
+            last_communication: "2026-06-03T08:05:00Z",
+            remote_addr: "127.0.0.1",
+            client_version: clientVersion,
+            health: {
+              healthy: true,
+            },
+            commands: [],
+            provider_remote_config_enabled: true,
+            remote_config_files_allowed: true,
+            remote_config_capability_reported: true,
+          },
+        ],
+        total: 1,
+        pending_approval_total: 0,
+      }),
+    });
+  });
+
+  await page.goto("/ui");
+  await page.locator("#refreshInput").fill("5");
+  await page.locator("#refreshInput").dispatchEvent("change");
+
+  await page.locator("#clientBody tr").first().click();
+  await page.locator("#toggleDataBtn").click();
+  await expect(page.locator("#clientDataPanel")).toBeVisible();
+  await expect(page.locator("#clientDataYaml")).toContainText("client_version: 1.2.3");
+
+  clientVersion = "9.9.9";
+  await page.waitForTimeout(5500);
+
+  await expect(page.locator("#clientDataPanel")).toBeVisible();
+  await expect(page.locator("#toggleDataBtn")).toBeHidden();
+  await expect(page.locator("#clientDataYaml")).toContainText("client_version: 9.9.9");
 });
 
 test("provider configuration tab collects catalog selections and sends remote config files", async ({ page }, testInfo) => {
