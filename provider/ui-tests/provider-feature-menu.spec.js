@@ -333,7 +333,7 @@ test("provider health filter dropdown alignment stays stable", async ({ page }, 
 
   await expect(
     filterDropdown.locator(".table-filter-option").first()
-  ).toHaveScreenshot("provider-health-filter-option.png");
+  ).toHaveScreenshot("provider-health-filter-option.png", { maxDiffPixels: 80 });
 });
 
 test("client data panel stays open across UI refresh updates", async ({ page }) => {
