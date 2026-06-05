@@ -52,6 +52,8 @@
           aria-expanded="false"
           aria-controls="filterControls"
         >Show Filters</button>
+      </div>
+      <div class="column-controls-shell">
         <button
           id="toggleColumnsBtn"
           class="column-toggle-btn"
@@ -59,6 +61,37 @@
           aria-expanded="false"
           aria-controls="columnControls"
         >Show Columns</button>
+        <div id="columnControls" class="column-controls collapsed" role="group" aria-label="Optional table columns">
+          <span class="column-controls-title">Optional Columns:</span>
+          <label class="column-toggle-option">
+            <input type="checkbox" data-column-toggle="health_status" />
+            Health Status
+          </label>
+          <label class="column-toggle-option">
+            <input type="checkbox" data-column-toggle="first_registered" />
+            First Registered
+          </label>
+          <label class="column-toggle-option">
+            <input type="checkbox" data-column-toggle="client_version" />
+            Client Version
+          </label>
+          <label class="column-toggle-option">
+            <input type="checkbox" data-column-toggle="host_type" />
+            Host Type
+          </label>
+          <label class="column-toggle-option">
+            <input type="checkbox" data-column-toggle="host_version" />
+            Host Version
+          </label>
+          <label class="column-toggle-option">
+            <input type="checkbox" data-column-toggle="host_name" />
+            Host Name
+          </label>
+          <label class="column-toggle-option">
+            <input type="checkbox" data-column-toggle="host_ip" />
+            Host IP
+          </label>
+        </div>
       </div>
       <div id="filterControls" class="filter-controls collapsed" role="group" aria-label="Client filters">
         <input
@@ -96,38 +129,15 @@
           Filters: none
         </span>
       </div>
-      <div id="columnControls" class="column-controls collapsed" role="group" aria-label="Optional table columns">
-        <span class="column-controls-title">Optional Columns:</span>
-        <label class="column-toggle-option">
-          <input type="checkbox" data-column-toggle="client_version" />
-          Client Version
-        </label>
-        <label class="column-toggle-option">
-          <input type="checkbox" data-column-toggle="host_type" />
-          Host Type
-        </label>
-        <label class="column-toggle-option">
-          <input type="checkbox" data-column-toggle="host_version" />
-          Host Version
-        </label>
-        <label class="column-toggle-option">
-          <input type="checkbox" data-column-toggle="host_name" />
-          Host Name
-        </label>
-        <label class="column-toggle-option">
-          <input type="checkbox" data-column-toggle="host_ip" />
-          Host IP
-        </label>
-      </div>
     </div>
     <table class="table fade-in">
       <thead>
         <tr id="clientTableHeaderRow">
           <th data-sort="client_id">Service Instance ID</th>
           <th data-sort="client_id">Instance UID</th>
-          <th data-sort="status">Status</th>
+          <th data-sort="status">Connection<br />Status</th>
           <th data-sort="last_communication">Last Seen</th>
-          <th data-sort="current_config_version">Config Version</th>
+          <th data-sort="current_config_version">Config<br />Version</th>
           <th data-sort="client_version">Client Version</th>
         </tr>
       </thead>

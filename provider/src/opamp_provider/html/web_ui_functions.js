@@ -6,9 +6,23 @@
     const TABLE_COLUMN_DEFINITIONS = Object.freeze({
       service_instance_id: { label: "Service Instance ID", sortKey: "service_instance_id" },
       instance_uid: { label: "Instance UID", sortKey: "client_id" },
-      status: { label: "Status", sortKey: "status" },
+      status: {
+        label: "Connection Status",
+        headerHtml: "Connection<br>Status",
+        sortKey: "status",
+      },
+      health_status: {
+        label: "Health Status",
+        headerHtml: "Health<br>Status",
+        sortKey: "health_status",
+      },
       last_seen: { label: "Last Seen", sortKey: "last_communication" },
-      config_version: { label: "Config Version", sortKey: "current_config_version" },
+      config_version: {
+        label: "Config Version",
+        headerHtml: "Config<br>Version",
+        sortKey: "current_config_version",
+      },
+      first_registered: { label: "First Registered", sortKey: "first_seen" },
       client_version: { label: "Client Version", sortKey: "client_version" },
       host_type: { label: "Host Type", sortKey: "host_type" },
       host_version: { label: "Host Version", sortKey: "host_version" },
@@ -17,6 +31,8 @@
     });
     const TABLE_COLUMN_KEYS = Object.freeze(Object.keys(TABLE_COLUMN_DEFINITIONS));
     const OPTIONAL_TABLE_COLUMNS = Object.freeze([
+      "health_status",
+      "first_registered",
       "client_version",
       "host_type",
       "host_version",
@@ -29,6 +45,8 @@
       status: true,
       last_seen: true,
       config_version: true,
+      health_status: false,
+      first_registered: false,
       client_version: false,
       host_type: false,
       host_version: false,
@@ -769,7 +787,7 @@
         );
         if (refreshed) {
           openModal(refreshed, {
-            preserveTab: true,
+            ...captureOpenModalState(),
             customCommandState: preservedCustomCommandState,
             healthPanelOpen: healthPanelOpen,
           });
@@ -1002,6 +1020,18 @@
           : 0;
         return Number.isNaN(rawDate) ? 0 : rawDate;
       }
+      if (key === "health_status") {
+        const healthInfo = getClientHealthInfo(client);
+        if (healthInfo.summary === "unhealthy") return 2;
+        if (healthInfo.summary === "healthy") return 1;
+        return 0;
+      }
+      if (key === "first_seen") {
+        const rawDate = client && client.first_seen
+          ? new Date(client.first_seen).getTime()
+          : 0;
+        return Number.isNaN(rawDate) ? 0 : rawDate;
+      }
       if (key === "host_type" || key === "host_version" || key === "host_name" || key === "host_ip") {
         const hostMeta = getClientHostMetadata(client);
         if (key === "host_type") return toComparableValue(hostMeta.hostType);
@@ -1037,7 +1067,11 @@
         th.dataset.columnKey = columnKey;
         th.dataset.sort = columnMeta.sortKey;
         th.title = `${columnMeta.label} (click to sort, drag to reorder)`;
-        th.textContent = columnMeta.label;
+        if (columnMeta.headerHtml) {
+          th.innerHTML = columnMeta.headerHtml;
+        } else {
+          th.textContent = columnMeta.label;
+        }
         th.addEventListener("click", () => {
           if (skipSortClickForColumn && skipSortClickForColumn === columnKey) {
             skipSortClickForColumn = "";
@@ -1291,6 +1325,7 @@
     function renderCellForColumn(client, status, columnKey) {
       const td = document.createElement("td");
       const hostMeta = getClientHostMetadata(client);
+      const healthInfo = getClientHealthInfo(client);
       if (columnKey === "service_instance_id") {
         td.textContent = getClientDisplayId(client);
         return td;
@@ -1303,6 +1338,10 @@
         td.innerHTML = `<span class="status-dot ${status.cls}"><span class="dot"></span>${status.label}</span>`;
         return td;
       }
+      if (columnKey === "health_status") {
+        td.innerHTML = `<span class="${healthInfo.textClass}">${healthInfo.summary}</span>`;
+        return td;
+      }
       if (columnKey === "last_seen") {
         td.textContent = client.last_communication
           ? new Date(client.last_communication).toLocaleString()
@@ -1311,6 +1350,12 @@
       }
       if (columnKey === "config_version") {
         td.textContent = String(client.current_config_version ?? "--");
+        return td;
+      }
+      if (columnKey === "first_registered") {
+        td.textContent = client.first_seen
+          ? new Date(client.first_seen).toLocaleString()
+          : "--";
         return td;
       }
       if (columnKey === "client_version") {
@@ -1408,11 +1453,7 @@
         closeModal();
         return;
       }
-      openModal(refreshed, {
-        preserveTab: true,
-        customCommandState: captureCustomCommandState(),
-        healthPanelOpen: !componentHealthPanel.classList.contains("hidden"),
-      });
+      openModal(refreshed, captureOpenModalState());
     }
 
     function openModal(client, options = {}) {
@@ -1420,6 +1461,7 @@
       const desiredTab = preserveTab ? activeTabName() : "summary";
       const customCommandState = options.customCommandState || null;
       const preserveHealthPanel = options.healthPanelOpen === true;
+      const preserveClientDataPanel = options.clientDataOpen === true;
       activeClient = client;
       const status = computeStatus(client);
       modalCard.classList.remove("late-amber", "late-red", "row-disconnected");
@@ -1456,7 +1498,7 @@
 
       const fields = [];
       fields.push([
-        "Status",
+        "Connection Status",
         `<span class="status-dot modal-status ${status.cls}"><span class="dot"></span>${status.label}</span>`,
       ]);
       if (serviceName) {
@@ -1532,6 +1574,11 @@
       if (preserveHealthPanel && healthInfo.hasComponents) {
         renderComponentHealthMap(healthInfo.componentMap);
         componentHealthPanel.classList.remove("hidden");
+      }
+      if (preserveClientDataPanel) {
+        clientDataYaml.textContent = toYaml(normalizeClientData(activeClient));
+        clientDataPanel.classList.remove("hidden");
+        toggleDataBtn.classList.add("hidden");
       }
       renderEventsHistory(client);
       renderCommandButtons(client, customCommandState);
@@ -2327,6 +2374,15 @@
       return { selectedFqdn, values };
     }
 
+    function captureOpenModalState() {
+      return {
+        preserveTab: true,
+        customCommandState: captureCustomCommandState(),
+        healthPanelOpen: !componentHealthPanel.classList.contains("hidden"),
+        clientDataOpen: !clientDataPanel.classList.contains("hidden"),
+      };
+    }
+
     function renderEventsHistory(client) {
       const events = Array.isArray(client.events) ? client.events : [];
       const flattened = [];
@@ -2426,7 +2482,17 @@
       const refreshed = state.clients.find(
         clientEntry => clientEntry.client_id === target.client_id
       );
-      if (refreshed) openModal(refreshed);
+      if (refreshed) {
+        if (
+          activeClient
+          && modal.classList.contains("open")
+          && activeClient.client_id === target.client_id
+        ) {
+          openModal(refreshed, captureOpenModalState());
+        } else {
+          openModal(refreshed);
+        }
+      }
     }
 
     async function queueCustomCommand() {
@@ -2495,7 +2561,7 @@
       );
       if (refreshed) {
         openModal(refreshed, {
-          preserveTab: true,
+          ...captureOpenModalState(),
           customCommandState: preservedCustomCommandState,
         });
       }
@@ -2525,7 +2591,7 @@
       );
       if (refreshed) {
         openModal(refreshed, {
-          preserveTab: true,
+          ...captureOpenModalState(),
           customCommandState: preservedCustomCommandState,
         });
       }
@@ -2674,7 +2740,7 @@
       if (!refreshed) return;
       if (options.preserveTab === true) {
         openModal(refreshed, {
-          preserveTab: true,
+          ...captureOpenModalState(),
           customCommandState: options.customCommandState || null,
         });
         return;
