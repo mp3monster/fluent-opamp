@@ -18,14 +18,15 @@
     },
     "full_update_controller_type": "SentCount",
     "allow_custom_capabilities": true,
-    "allow-remote-config": true,
     "log_level": "debug",
     "service_name": "Fluentbit",
     "service_namespace": "FluentBitNS",
     "agent_capabilities": [
       "ReportsStatus",
       "ReportsHealth",
-      "ReportsHeartbeat"
+      "AcceptsRemoteConfig",
+      "ReportsHeartbeat",
+      "AcceptsRemoteConfig"
     ]
   },
   "provider": {

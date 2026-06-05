@@ -22,6 +22,7 @@ Primary hook script:
 Core behavior:
 
 1. Resolve repo root with `git rev-parse --show-toplevel`.
+1. Acquire a repo-local pre-commit guard so duplicate GUI/legacy hook invocations do not race on the Git index.
 1. Resolve Python runtime (`python3` fallback to `python`).
 1. Run `scripts/update_component_versions.py --quiet`.
 1. Stage all generated version JSON files via `git add`.
@@ -87,6 +88,7 @@ sed -n '1,80p' "$LEGACY"
 - GitKraken commits should execute hooks when repository git hooks are enabled.
 - If hooks do not run, confirm GitKraken preferences are not disabling hooks.
 - Because this repo sets `core.hooksPath=.githooks` and also writes a legacy `.git/hooks/pre-commit` shim, both standard and legacy hook paths are covered.
+- Some GUI clients can invoke both the configured hooks path and the legacy shim; the pre-commit hook now de-duplicates concurrent runs with a guard under the repo git-common-dir to avoid `.git/index.lock` collisions.
 
 ## Manual test flow
 

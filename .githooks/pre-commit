@@ -4,20 +4,27 @@ set -euo pipefail
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 UPDATE_SCRIPT="${REPO_ROOT}/scripts/update_component_versions.py"
 PRECOMMIT_LOG_FILE_NAME="opamp-pre-commit.log"
+PRECOMMIT_GUARD_DIR_NAME="opamp-pre-commit.guard"
 UNAME_TEXT="$(uname -s 2>/dev/null || true)"
 IS_WINDOWS_LIKE_SHELL=0
 if [[ "${UNAME_TEXT}" == MINGW* || "${UNAME_TEXT}" == MSYS* || "${UNAME_TEXT}" == CYGWIN* ]]; then
   IS_WINDOWS_LIKE_SHELL=1
 fi
 
-_append_pre_commit_log() {
-  local git_common_dir log_path timestamp parent_process
+_resolve_git_common_dir() {
+  local git_common_dir
   git_common_dir="$(git rev-parse --git-common-dir 2>/dev/null || true)"
   if [ -z "${git_common_dir}" ]; then
     git_common_dir="${REPO_ROOT}/.git"
   elif [[ "${git_common_dir}" != /* ]]; then
     git_common_dir="${REPO_ROOT}/${git_common_dir}"
   fi
+  printf "%s\n" "${git_common_dir}"
+}
+
+_append_pre_commit_log() {
+  local git_common_dir log_path timestamp parent_process
+  git_common_dir="$(_resolve_git_common_dir)"
   log_path="${git_common_dir}/${PRECOMMIT_LOG_FILE_NAME}"
   timestamp="$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || true)"
   if [ -z "${timestamp}" ]; then
@@ -37,6 +44,48 @@ _append_pre_commit_log() {
 
 if [ "${OPAMP_PRECOMMIT_LOG:-1}" != "0" ]; then
   _append_pre_commit_log
+fi
+
+_release_precommit_guard() {
+  if [ -n "${OPAMP_PRECOMMIT_GUARD_DIR:-}" ] && [ -d "${OPAMP_PRECOMMIT_GUARD_DIR}" ]; then
+    rm -f "${OPAMP_PRECOMMIT_GUARD_DIR}/pid" 2>/dev/null || true
+    rmdir "${OPAMP_PRECOMMIT_GUARD_DIR}" 2>/dev/null || true
+  fi
+}
+
+_acquire_precommit_guard() {
+  local git_common_dir guard_dir guard_pid_file existing_pid
+  git_common_dir="$(_resolve_git_common_dir)"
+  guard_dir="${git_common_dir}/${PRECOMMIT_GUARD_DIR_NAME}"
+  guard_pid_file="${guard_dir}/pid"
+  OPAMP_PRECOMMIT_GUARD_DIR="${guard_dir}"
+
+  if mkdir "${guard_dir}" 2>/dev/null; then
+    printf "%s\n" "$$" > "${guard_pid_file}" 2>/dev/null || true
+    trap _release_precommit_guard EXIT
+    return 0
+  fi
+
+  existing_pid="$(cat "${guard_pid_file}" 2>/dev/null || true)"
+  if [ -n "${existing_pid}" ] && kill -0 "${existing_pid}" 2>/dev/null; then
+    echo "[pre-commit] existing OpAMP pre-commit run detected (pid ${existing_pid}); skipping duplicate invocation." >&2
+    return 1
+  fi
+
+  rm -f "${guard_pid_file}" 2>/dev/null || true
+  rmdir "${guard_dir}" 2>/dev/null || true
+  if mkdir "${guard_dir}" 2>/dev/null; then
+    printf "%s\n" "$$" > "${guard_pid_file}" 2>/dev/null || true
+    trap _release_precommit_guard EXIT
+    return 0
+  fi
+
+  echo "[pre-commit] could not acquire OpAMP pre-commit guard; skipping duplicate invocation." >&2
+  return 1
+}
+
+if ! _acquire_precommit_guard; then
+  exit 0
 fi
 
 _run_update_script() {
