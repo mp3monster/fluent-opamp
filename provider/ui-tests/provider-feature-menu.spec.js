@@ -5,6 +5,13 @@ function basenameForPath(pathValue) {
   return String(segments[segments.length - 1] || "");
 }
 
+function buildAgentDescription(fields = {}) {
+  return Object.entries(fields)
+    .filter(([, value]) => value !== undefined && value !== null && value !== "")
+    .map(([key, value]) => `key: "${key}"\nstring_value: "${value}"`)
+    .join("\n");
+}
+
 async function mockSingleClient(page, clientId = "abababababababababababababababab") {
   await page.context().route(/\/api\/clients(?:\?.*)?$/, async (route) => {
     if (route.request().method() !== "GET") {
@@ -47,6 +54,83 @@ async function mockSingleClient(page, clientId = "ababababababababababababababab
   });
 
   return clientId;
+}
+
+async function mockFilterClients(page) {
+  await page.context().route(/\/api\/clients(?:\?.*)?$/, async (route) => {
+    if (route.request().method() !== "GET") {
+      await route.continue();
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        clients: [
+          {
+            client_id: "11111111111111111111111111111111",
+            agent_description: buildAgentDescription({
+              "service.instance.id": "svc-alpha",
+              os_type: "linux",
+              os_version: "ubuntu-22.04",
+              hostname: "alpha-host",
+              ip_address: "10.0.0.10",
+            }),
+            capabilities: ["Reports Status"],
+            current_config: "service:\n  flush: 1\n",
+            current_config_version: "v1",
+            requested_config: "",
+            requested_config_version: "--",
+            disconnected: false,
+            events: [],
+            first_seen: "2026-06-03T08:00:00Z",
+            last_channel: "HTTP",
+            last_communication: new Date().toISOString(),
+            remote_addr: "10.0.0.10",
+            client_version: "1.2.3",
+            health: {
+              healthy: true,
+            },
+            commands: [],
+            provider_remote_config_enabled: true,
+            remote_config_files_allowed: true,
+            remote_config_capability_reported: true,
+          },
+          {
+            client_id: "22222222222222222222222222222222",
+            agent_description: buildAgentDescription({
+              "service.instance.id": "svc-beta",
+              os_type: "windows",
+              os_version: "server-2022",
+              hostname: "beta-host",
+              ip_address: "10.0.0.20",
+            }),
+            capabilities: ["Reports Status"],
+            current_config: "service:\n  flush: 5\n",
+            current_config_version: "v2",
+            requested_config: "",
+            requested_config_version: "--",
+            disconnected: false,
+            events: [],
+            first_seen: "2026-06-03T09:00:00Z",
+            last_channel: "HTTP",
+            last_communication: new Date().toISOString(),
+            remote_addr: "10.0.0.20",
+            client_version: "2.0.0",
+            health: {
+              healthy: false,
+            },
+            commands: [],
+            provider_remote_config_enabled: true,
+            remote_config_files_allowed: true,
+            remote_config_capability_reported: true,
+          },
+        ],
+        total: 2,
+        pending_approval_total: 0,
+      }),
+    });
+  });
 }
 
 test("feature menu is hidden when no endpoints are configured", async ({ page }, testInfo) => {
@@ -159,8 +243,8 @@ test("optional columns include health status with summary styling", async ({ pag
   await expect(healthStatusToggle).toBeVisible();
   await healthStatusToggle.check();
 
-  await expect(page.locator('th[data-column-key="health_status"]')).toContainText(/Health\s*Status/);
-  await expect(page.locator('th[data-column-key="health_status"]')).toHaveJSProperty(
+  await expect(page.locator('#clientTableHeaderRow th[data-column-key="health_status"]')).toContainText(/Health\s*Status/);
+  await expect(page.locator('#clientTableHeaderRow th[data-column-key="health_status"]')).toHaveJSProperty(
     "innerHTML",
     "Health<br>Status"
   );
@@ -174,19 +258,82 @@ test("provider UI uses connection status labels in table and summary", async ({ 
   await mockSingleClient(page);
   await page.goto("/ui");
 
-  await expect(page.locator('th[data-column-key="status"]')).toContainText(/Connection\s*Status/);
-  await expect(page.locator('th[data-column-key="status"]')).toHaveJSProperty(
+  await expect(page.locator('#clientTableHeaderRow th[data-column-key="status"]')).toContainText(/Connection\s*Status/);
+  await expect(page.locator('#clientTableHeaderRow th[data-column-key="status"]')).toHaveJSProperty(
     "innerHTML",
     "Connection<br>Status"
   );
-  await expect(page.locator('th[data-column-key="config_version"]')).toContainText(/Config\s*Version/);
-  await expect(page.locator('th[data-column-key="config_version"]')).toHaveJSProperty(
+  await expect(page.locator('#clientTableHeaderRow th[data-column-key="config_version"]')).toContainText(/Config\s*Version/);
+  await expect(page.locator('#clientTableHeaderRow th[data-column-key="config_version"]')).toHaveJSProperty(
     "innerHTML",
     "Config<br>Version"
   );
 
   await page.locator("#clientBody tr").first().click();
   await expect(page.locator("#modalFields")).toContainText("Connection Status");
+});
+
+test("provider table filters are inline and update immediately", async ({ page }) => {
+  await mockFilterClients(page);
+  await page.goto("/ui");
+
+  await expect(page.locator("#clientBody tr")).toHaveCount(2);
+  await expect(page.locator("#clientTableFilterRow")).toBeVisible();
+  await expect(page.locator("#toggleFiltersBtn")).toHaveCount(0);
+  await expect(page.locator("#filterApplyBtn")).toHaveCount(0);
+  await expect(page.locator("#filterModeBtn")).toHaveCount(0);
+
+  const serviceInstanceFilter = page.locator('tr#clientTableFilterRow th[data-column-key="service_instance_id"] input');
+  await serviceInstanceFilter.fill("svc-beta");
+  await expect(page.locator("#clientBody tr")).toHaveCount(1);
+  await expect(page.locator("#clientBody")).toContainText("svc-beta");
+
+  await serviceInstanceFilter.fill("");
+  await expect(page.locator("#clientBody tr")).toHaveCount(2);
+
+  const configVersionSummary = page.locator('tr#clientTableFilterRow th[data-column-key="config_version"] summary');
+  await configVersionSummary.click();
+  await page.locator('tr#clientTableFilterRow th[data-column-key="config_version"] input[type="checkbox"][value="v2"]').check();
+  await expect(page.locator("#clientBody tr")).toHaveCount(1);
+  await expect(page.locator("#clientBody")).toContainText("svc-beta");
+
+  await page.locator('tr#clientTableFilterRow th[data-column-key="config_version"] input[type="checkbox"][value="v2"]').uncheck();
+  await expect(page.locator("#clientBody tr")).toHaveCount(2);
+});
+
+test("provider health filter uses multiselect discovered values", async ({ page }) => {
+  await mockFilterClients(page);
+  await page.goto("/ui");
+
+  await page.locator("#toggleColumnsBtn").click();
+  await page.locator('input[data-column-toggle="health_status"]').check();
+
+  const healthSummary = page.locator('tr#clientTableFilterRow th[data-column-key="health_status"] summary');
+  await healthSummary.click();
+  await page.locator('tr#clientTableFilterRow th[data-column-key="health_status"] input[type="checkbox"][value="unhealthy"]').check();
+
+  await expect(page.locator("#clientBody tr")).toHaveCount(1);
+  await expect(page.locator("#clientBody")).toContainText("svc-beta");
+  await expect(page.locator("#clientBody .health-text-unhealthy")).toContainText("unhealthy");
+});
+
+test("provider health filter dropdown alignment stays stable", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "with-endpoints");
+
+  await mockFilterClients(page);
+  await page.goto("/ui");
+
+  await page.locator("#toggleColumnsBtn").click();
+  await page.locator('input[data-column-toggle="health_status"]').check();
+
+  const filterDropdown = page.locator(
+    'tr#clientTableFilterRow th[data-column-key="health_status"] .table-filter-multiselect'
+  );
+  await filterDropdown.locator("summary").click();
+
+  await expect(
+    filterDropdown.locator(".table-filter-option").first()
+  ).toHaveScreenshot("provider-health-filter-option.png");
 });
 
 test("client data panel stays open across UI refresh updates", async ({ page }) => {

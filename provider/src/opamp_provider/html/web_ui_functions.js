@@ -39,6 +39,13 @@
       "host_name",
       "host_ip",
     ]);
+    const MULTI_SELECT_FILTER_COLUMNS = Object.freeze([
+      "status",
+      "health_status",
+      "config_version",
+      "host_type",
+      "host_version",
+    ]);
     const DEFAULT_VISIBLE_COLUMNS = Object.freeze({
       service_instance_id: true,
       instance_uid: true,
@@ -880,7 +887,6 @@
         v: 1,
         columnOrder: sanitizeColumnOrder(state.columnOrder),
         visibleColumns: sanitizeVisibleColumns(state.visibleColumns),
-        filtersCollapsed: state.filters.collapsed === true,
       };
       try {
         writeCookieValue(UI_PREFS_COOKIE_NAME, JSON.stringify(payload));
@@ -893,7 +899,7 @@
       state.columnOrder = defaultColumnOrder();
       state.visibleColumns = defaultVisibleColumns();
       state.columnControlsCollapsed = true;
-      state.filters.collapsed = true;
+      state.columnFilters = {};
 
       try {
         const raw = readCookieValue(UI_PREFS_COOKIE_NAME);
@@ -902,9 +908,6 @@
         if (!payload || typeof payload !== "object") return;
         state.columnOrder = sanitizeColumnOrder(payload.columnOrder);
         state.visibleColumns = sanitizeVisibleColumns(payload.visibleColumns);
-        if (Object.prototype.hasOwnProperty.call(payload, "filtersCollapsed")) {
-          state.filters.collapsed = payload.filtersCollapsed === true;
-        }
       } catch (_error) {
         // Ignore malformed cookie payloads and fall back to defaults.
       }
@@ -950,6 +953,14 @@
         state.visibleColumns[key] = input.checked === true;
       });
       state.visibleColumns = sanitizeVisibleColumns(state.visibleColumns);
+      TABLE_COLUMN_KEYS.forEach(key => {
+        if (state.visibleColumns[key] === true) return;
+        if (MULTI_SELECT_FILTER_COLUMNS.includes(key)) {
+          state.columnFilters[key] = [];
+        } else {
+          state.columnFilters[key] = "";
+        }
+      });
     }
 
     function toggleColumnsPanel() {
@@ -961,6 +972,37 @@
       return sanitizeColumnOrder(state.columnOrder).filter(
         key => state.visibleColumns[key] === true
       );
+    }
+
+    function defaultColumnFilterValue(columnKey) {
+      return MULTI_SELECT_FILTER_COLUMNS.includes(columnKey) ? [] : "";
+    }
+
+    function normalizeColumnFilterValue(columnKey, value) {
+      if (MULTI_SELECT_FILTER_COLUMNS.includes(columnKey)) {
+        const values = Array.isArray(value) ? value : [value];
+        const normalized = [];
+        values.forEach(item => {
+          const candidate = String(item || "").trim();
+          if (!candidate || normalized.includes(candidate)) return;
+          normalized.push(candidate);
+        });
+        return normalized;
+      }
+      return String(value || "").trim();
+    }
+
+    function normalizeColumnFilters(filters) {
+      const next = {};
+      TABLE_COLUMN_KEYS.forEach(columnKey => {
+        next[columnKey] = defaultColumnFilterValue(columnKey);
+      });
+      if (!filters || typeof filters !== "object") return next;
+      TABLE_COLUMN_KEYS.forEach(columnKey => {
+        if (!Object.prototype.hasOwnProperty.call(filters, columnKey)) return;
+        next[columnKey] = normalizeColumnFilterValue(columnKey, filters[columnKey]);
+      });
+      return next;
     }
 
     function moveColumnRelativeToTarget(dragKey, targetKey, placeAfter) {
@@ -994,6 +1036,69 @@
         hostName: String(hostName || "").trim(),
         hostIp: String(reportedIpAddress || sourceIpAddress || "").trim(),
       };
+    }
+
+    function displayFilterValue(value) {
+      const normalized = String(value || "").trim();
+      return normalized || "--";
+    }
+
+    function clientValueForColumn(client, columnKey) {
+      const hostMeta = getClientHostMetadata(client);
+      if (columnKey === "service_instance_id") return getClientDisplayId(client);
+      if (columnKey === "instance_uid") return String(client && client.client_id ? client.client_id : "--");
+      if (columnKey === "status") return computeStatus(client).label;
+      if (columnKey === "health_status") return getClientHealthInfo(client).summary;
+      if (columnKey === "last_seen") {
+        return client && client.last_communication
+          ? new Date(client.last_communication).toLocaleString()
+          : "--";
+      }
+      if (columnKey === "config_version") return String(client && client.current_config_version ? client.current_config_version : "--");
+      if (columnKey === "first_registered") {
+        return client && client.first_seen
+          ? new Date(client.first_seen).toLocaleString()
+          : "--";
+      }
+      if (columnKey === "client_version") return String(client && client.client_version ? client.client_version : "--");
+      if (columnKey === "host_type") return hostMeta.hostType || "--";
+      if (columnKey === "host_version") return hostMeta.hostVersion || "--";
+      if (columnKey === "host_name") return hostMeta.hostName || "--";
+      if (columnKey === "host_ip") return hostMeta.hostIp || "--";
+      return "--";
+    }
+
+    function discoveredValuesForColumn(columnKey) {
+      const values = [];
+      state.clients.forEach(client => {
+        const value = displayFilterValue(clientValueForColumn(client, columnKey));
+        if (!values.includes(value)) {
+          values.push(value);
+        }
+      });
+      if (columnKey === "status") {
+        const order = ["ok", "delayed", "late", "disconnected", "unknown", "--"];
+        return values.sort((a, b) => {
+          const aIndex = order.indexOf(a);
+          const bIndex = order.indexOf(b);
+          const safeA = aIndex >= 0 ? aIndex : order.length;
+          const safeB = bIndex >= 0 ? bIndex : order.length;
+          if (safeA !== safeB) return safeA - safeB;
+          return a.localeCompare(b);
+        });
+      }
+      if (columnKey === "health_status") {
+        const order = ["healthy", "unhealthy", "unknown", "--"];
+        return values.sort((a, b) => {
+          const aIndex = order.indexOf(a);
+          const bIndex = order.indexOf(b);
+          const safeA = aIndex >= 0 ? aIndex : order.length;
+          const safeB = bIndex >= 0 ? bIndex : order.length;
+          if (safeA !== safeB) return safeA - safeB;
+          return a.localeCompare(b);
+        });
+      }
+      return values.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
     }
 
     function toComparableValue(value) {
@@ -1118,153 +1223,83 @@
         });
         clientTableHeaderRow.appendChild(th);
       });
+      renderClientTableFilterRow();
     }
 
-    function normalizeFilterValue(value) {
-      return String(value || "").trim();
-    }
-
-    function setFilterModeButtonState() {
-      const isExclude = state.filters.invertFilter === true;
-      filterModeBtn.textContent = isExclude ? "Exclude" : "Show";
-      filterModeBtn.classList.toggle("exclude", isExclude);
-      filterModeBtn.setAttribute("aria-pressed", isExclude ? "true" : "false");
-    }
-
-    function setFiltersCollapsed(collapsed) {
-      const isCollapsed = collapsed === true;
-      state.filters.collapsed = isCollapsed;
-      filterControls.classList.toggle("collapsed", isCollapsed);
-      toggleFiltersBtn.textContent = isCollapsed ? "Show Filters" : "Hide Filters";
-      toggleFiltersBtn.setAttribute("aria-expanded", isCollapsed ? "false" : "true");
-      toggleFiltersBtn.classList.toggle("closed", isCollapsed);
-      persistUiPreferencesToCookie();
-    }
-
-    function setClientFilterState(filters = {}) {
-      if (Object.prototype.hasOwnProperty.call(filters, "serviceInstanceId")) {
-        state.filters.serviceInstanceId = normalizeFilterValue(filters.serviceInstanceId);
-      }
-      if (Object.prototype.hasOwnProperty.call(filters, "clientVersion")) {
-        state.filters.clientVersion = normalizeFilterValue(filters.clientVersion);
-      }
-      if (Object.prototype.hasOwnProperty.call(filters, "hostName")) {
-        state.filters.hostName = normalizeFilterValue(filters.hostName);
-      }
-      if (Object.prototype.hasOwnProperty.call(filters, "hostIp")) {
-        state.filters.hostIp = normalizeFilterValue(filters.hostIp);
-      }
-      if (Object.prototype.hasOwnProperty.call(filters, "invertFilter")) {
-        state.filters.invertFilter = filters.invertFilter === true;
-      }
-      if (Object.prototype.hasOwnProperty.call(filters, "collapsed")) {
-        state.filters.collapsed = filters.collapsed === true;
-      }
-    }
-
-    function readClientFiltersFromInputs() {
-      return {
-        serviceInstanceId: normalizeFilterValue(filterServiceInstanceInput.value),
-        clientVersion: normalizeFilterValue(filterClientVersionInput.value),
-        hostName: normalizeFilterValue(filterHostNameInput.value),
-        hostIp: normalizeFilterValue(filterHostIpInput.value),
-      };
-    }
-
-    function syncClientFiltersFromInputs() {
-      setClientFilterState(readClientFiltersFromInputs());
-    }
-
-    function writeClientFiltersToInputs() {
-      filterServiceInstanceInput.value = state.filters.serviceInstanceId;
-      filterClientVersionInput.value = state.filters.clientVersion;
-      filterHostNameInput.value = state.filters.hostName;
-      filterHostIpInput.value = state.filters.hostIp;
-      setFilterModeButtonState();
-      setFiltersCollapsed(state.filters.collapsed);
-    }
-
-    function activeClientFilters(includeMode = false) {
-      const active = [];
-      if (state.filters.serviceInstanceId) {
-        active.push(["service_instance_id", state.filters.serviceInstanceId]);
-      }
-      if (state.filters.clientVersion) {
-        active.push(["client_version", state.filters.clientVersion]);
-      }
-      if (state.filters.hostName) {
-        active.push(["host_name", state.filters.hostName]);
-      }
-      if (state.filters.hostIp) {
-        active.push(["host_ip", state.filters.hostIp]);
-      }
-      if (includeMode && state.filters.invertFilter === true && active.length > 0) {
-        active.push(["invertFilter", "true"]);
-      }
-      return active;
-    }
-
-    function activeFilterCount() {
-      return activeClientFilters(false).length;
-    }
-
-    function updateActiveFiltersIndicator() {
-      if (!activeFiltersIndicator) return;
-      const activeCount = activeFilterCount();
-      const mode = state.filters.invertFilter === true ? "exclude" : "show";
-      if (activeCount === 0) {
-        activeFiltersIndicator.textContent = "Filters: none";
-      } else {
-        activeFiltersIndicator.textContent = `Filters active: ${activeCount} (${mode})`;
-      }
-      activeFiltersIndicator.classList.toggle("active", activeCount > 0);
-      if (clearFiltersBtn) {
-        clearFiltersBtn.disabled = activeCount === 0;
-      }
-      toggleFiltersBtn.classList.toggle(
-        "filters-active",
-        state.filters.collapsed === true && activeCount > 0
-      );
-    }
-
-    function buildClientFilterQueryString() {
-      const params = new URLSearchParams();
-      activeClientFilters(true).forEach(([key, value]) => {
-        params.append(key, value);
-      });
-      return params.toString();
-    }
-
-    async function applyClientFilters() {
-      syncClientFiltersFromInputs();
+    function setColumnFilterValue(columnKey, value) {
+      state.columnFilters[columnKey] = normalizeColumnFilterValue(columnKey, value);
       state.page = 1;
-      updateActiveFiltersIndicator();
-      await fetchClients();
+      renderClientTableBody();
     }
 
-    async function clearClientFilters() {
-      setClientFilterState({
-        serviceInstanceId: "",
-        clientVersion: "",
-        hostName: "",
-        hostIp: "",
-        invertFilter: false,
+    function formatMultiSelectFilterSummary(columnKey) {
+      const selected = normalizeColumnFilterValue(columnKey, state.columnFilters[columnKey]);
+      if (selected.length === 0) return "All";
+      if (selected.length === 1) return selected[0];
+      return `${selected.length} selected`;
+    }
+
+    function renderClientTableFilterRow() {
+      if (!clientTableFilterRow) return;
+      const visibleColumns = getVisibleOrderedColumnKeys();
+      clientTableFilterRow.innerHTML = "";
+      visibleColumns.forEach(columnKey => {
+        const th = document.createElement("th");
+        th.dataset.columnKey = columnKey;
+        th.addEventListener("click", event => {
+          event.stopPropagation();
+        });
+        if (MULTI_SELECT_FILTER_COLUMNS.includes(columnKey)) {
+          const details = document.createElement("details");
+          details.className = "table-filter-multiselect";
+          const summary = document.createElement("summary");
+          summary.textContent = formatMultiSelectFilterSummary(columnKey);
+          details.appendChild(summary);
+
+          const menu = document.createElement("div");
+          menu.className = "table-filter-multiselect-menu";
+          discoveredValuesForColumn(columnKey).forEach(value => {
+            const optionLabel = document.createElement("label");
+            optionLabel.className = "table-filter-option";
+            const checkbox = document.createElement("input");
+            const optionText = document.createElement("span");
+            checkbox.type = "checkbox";
+            checkbox.value = value;
+            checkbox.checked = normalizeColumnFilterValue(columnKey, state.columnFilters[columnKey]).includes(value);
+            checkbox.addEventListener("click", event => {
+              event.stopPropagation();
+            });
+            checkbox.addEventListener("change", () => {
+              const selected = Array.from(menu.querySelectorAll('input[type="checkbox"]:checked'))
+                .map(item => String(item.value || "").trim())
+                .filter(Boolean);
+              state.columnFilters[columnKey] = normalizeColumnFilterValue(columnKey, selected);
+              summary.textContent = formatMultiSelectFilterSummary(columnKey);
+              state.page = 1;
+              renderClientTableBody();
+            });
+            optionText.textContent = value;
+            optionLabel.appendChild(checkbox);
+            optionLabel.appendChild(optionText);
+            menu.appendChild(optionLabel);
+          });
+          details.appendChild(menu);
+          th.appendChild(details);
+        } else if (["service_instance_id", "instance_uid", "client_version", "host_name", "host_ip"].includes(columnKey)) {
+          const input = document.createElement("input");
+          input.type = "text";
+          input.placeholder = `Filter ${TABLE_COLUMN_DEFINITIONS[columnKey].label}`;
+          input.value = String(state.columnFilters[columnKey] || "");
+          input.addEventListener("click", event => {
+            event.stopPropagation();
+          });
+          input.addEventListener("input", () => {
+            setColumnFilterValue(columnKey, input.value);
+          });
+          th.appendChild(input);
+        }
+        clientTableFilterRow.appendChild(th);
       });
-      writeClientFiltersToInputs();
-      state.page = 1;
-      updateActiveFiltersIndicator();
-      await fetchClients();
-    }
-
-    function toggleFilterMode() {
-      state.filters.invertFilter = state.filters.invertFilter !== true;
-      setFilterModeButtonState();
-      updateActiveFiltersIndicator();
-    }
-
-    function toggleFiltersPanel() {
-      setFiltersCollapsed(state.filters.collapsed !== true);
-      updateActiveFiltersIndicator();
     }
 
     function applyOptionalColumnSelection() {
@@ -1276,15 +1311,11 @@
     }
 
     async function fetchClients() {
-      const query = buildClientFilterQueryString();
-      const endpoint = query ? `/api/clients?${query}` : "/api/clients";
-      const resp = await apiFetch(endpoint);
+      const resp = await apiFetch("/api/clients");
       if (!resp.ok) return;
       const data = await resp.json();
       state.clients = data.clients || [];
       lastUpdated.textContent = new Date().toLocaleTimeString();
-      const total = Number.isInteger(data.total) ? data.total : state.clients.length;
-      agentCount.textContent = total;
       if (state.humanInLoopApproval === true) {
         updatePendingApprovalCount(data.pending_approval_total ?? state.pendingApprovals.length);
       } else {
@@ -1292,10 +1323,6 @@
       }
       renderTable();
       refreshOpenModal();
-    }
-
-    function totalPages() {
-      return Math.max(1, Math.ceil(state.clients.length / state.pageSize));
     }
 
     function computeStatus(client) {
@@ -1382,15 +1409,37 @@
       return td;
     }
 
-    function renderTable() {
-      renderClientTableHeader();
-      updateColumnsButtonState();
-      const sorted = [...state.clients].sort((a, b) => {
+    function clientMatchesColumnFilters(client) {
+      return TABLE_COLUMN_KEYS.every(columnKey => {
+        const activeFilter = state.columnFilters[columnKey];
+        if (MULTI_SELECT_FILTER_COLUMNS.includes(columnKey)) {
+          const selected = normalizeColumnFilterValue(columnKey, activeFilter);
+          if (selected.length === 0) return true;
+          return selected.includes(displayFilterValue(clientValueForColumn(client, columnKey)));
+        }
+        const needle = String(activeFilter || "").trim().toLowerCase();
+        if (!needle) return true;
+        return displayFilterValue(clientValueForColumn(client, columnKey)).toLowerCase().includes(needle);
+      });
+    }
+
+    function sortedFilteredClients() {
+      const filtered = state.clients.filter(clientMatchesColumnFilters);
+      return [...filtered].sort((a, b) => {
         const dir = state.sortDir === "asc" ? 1 : -1;
         const av = getSortValue(a, state.sortKey);
         const bv = getSortValue(b, state.sortKey);
         return av > bv ? dir : av < bv ? -dir : 0;
       });
+    }
+
+    function totalPages() {
+      return Math.max(1, Math.ceil(sortedFilteredClients().length / state.pageSize));
+    }
+
+    function renderClientTableBody() {
+      const sorted = sortedFilteredClients();
+      agentCount.textContent = String(sorted.length);
 
       const total = totalPages();
       const pagination = document.querySelector(".pagination");
@@ -1437,6 +1486,12 @@
       pageNum.textContent = state.page;
       pageTotal.textContent = total;
       pageJump.value = state.page;
+    }
+
+    function renderTable() {
+      renderClientTableHeader();
+      updateColumnsButtonState();
+      renderClientTableBody();
     }
 
     function activeTabName() {
@@ -2814,11 +2869,9 @@
     async function init() {
       initializeAuthToken();
       loadUiPreferencesFromCookie();
-      setClientFilterState(state.filters);
-      writeClientFiltersToInputs();
+      state.columnFilters = normalizeColumnFilters(state.columnFilters);
       writeColumnControlsToInputs();
       renderClientTableHeader();
-      updateActiveFiltersIndicator();
       await fetchUiFeatureMenu();
       await fetchGlobalSettingsHelp();
       await fetchSettings();
@@ -2838,12 +2891,8 @@
           renderTable,
           totalPages,
           scheduleRefresh,
-          applyClientFilters,
-          toggleFilterMode,
-          toggleFiltersPanel,
           toggleColumnsPanel,
           applyOptionalColumnSelection,
-          clearClientFilters,
           updateStatePersistenceUsageDisplay,
           setAuthToken,
           setActiveTab,

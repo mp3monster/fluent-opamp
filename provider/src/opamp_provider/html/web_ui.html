@@ -44,15 +44,6 @@
         <input id="pageSizeInput" class="short-input" type="number" min="5" value="20" />
       </label>
       <span style="color: var(--muted);">Click headers to sort. Drag headers to reorder.</span>
-      <div class="controls-toggle-actions">
-        <button
-          id="toggleFiltersBtn"
-          class="filter-toggle-btn"
-          type="button"
-          aria-expanded="false"
-          aria-controls="filterControls"
-        >Show Filters</button>
-      </div>
       <div class="column-controls-shell">
         <button
           id="toggleColumnsBtn"
@@ -93,42 +84,6 @@
           </label>
         </div>
       </div>
-      <div id="filterControls" class="filter-controls collapsed" role="group" aria-label="Client filters">
-        <input
-          id="filterServiceInstanceInput"
-          type="text"
-          placeholder="Service Instance ID"
-          autocomplete="off"
-          aria-label="Filter by Service Instance ID"
-        />
-        <input
-          id="filterClientVersionInput"
-          type="text"
-          placeholder="Client Version"
-          autocomplete="off"
-          aria-label="Filter by Client Version"
-        />
-        <input
-          id="filterHostNameInput"
-          type="text"
-          placeholder="Host Name"
-          autocomplete="off"
-          aria-label="Filter by Host Name"
-        />
-        <input
-          id="filterHostIpInput"
-          type="text"
-          placeholder="IP Address"
-          autocomplete="off"
-          aria-label="Filter by IP Address"
-        />
-        <button id="filterModeBtn" class="filter-mode-btn" type="button" aria-pressed="false">Show</button>
-        <button id="filterApplyBtn" class="filter-action-btn" type="button">Apply Filters</button>
-        <button id="clearFiltersBtn" class="filter-clear-btn" type="button">Clear Filters</button>
-        <span id="activeFiltersIndicator" class="filters-indicator" aria-live="polite">
-          Filters: none
-        </span>
-      </div>
     </div>
     <table class="table fade-in">
       <thead>
@@ -140,6 +95,7 @@
           <th data-sort="current_config_version">Config<br />Version</th>
           <th data-sort="client_version">Client Version</th>
         </tr>
+        <tr id="clientTableFilterRow" class="column-filter-row"></tr>
       </thead>
       <tbody id="clientBody"></tbody>
     </table>

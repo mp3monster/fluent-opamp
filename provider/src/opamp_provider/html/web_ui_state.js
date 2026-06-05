@@ -28,14 +28,7 @@
       catalogFeatureUrl: "",
       configServiceFeatureAvailable: false,
       remoteConfigSelectionsByClient: {},
-      filters: {
-        serviceInstanceId: "",
-        clientVersion: "",
-        hostName: "",
-        hostIp: "",
-        invertFilter: false,
-        collapsed: true,
-      },
+      columnFilters: {},
       columnOrder: [],
       visibleColumns: {},
       columnControlsCollapsed: true,
@@ -55,26 +48,13 @@
     const pageJump = document.getElementById("pageJump");
     const refreshInput = document.getElementById("refreshInput");
     const pageSizeInput = document.getElementById("pageSizeInput");
-    const toggleFiltersBtn = document.getElementById("toggleFiltersBtn");
     const toggleColumnsBtn = document.getElementById("toggleColumnsBtn");
-    const filterControls = document.getElementById("filterControls");
     const columnControls = document.getElementById("columnControls");
     const columnToggleInputs = Array.from(
       document.querySelectorAll("input[data-column-toggle]")
     );
     const clientTableHeaderRow = document.getElementById("clientTableHeaderRow");
-    const filterServiceInstanceInput = document.getElementById(
-      "filterServiceInstanceInput"
-    );
-    const filterClientVersionInput = document.getElementById(
-      "filterClientVersionInput"
-    );
-    const filterHostNameInput = document.getElementById("filterHostNameInput");
-    const filterHostIpInput = document.getElementById("filterHostIpInput");
-    const filterModeBtn = document.getElementById("filterModeBtn");
-    const filterApplyBtn = document.getElementById("filterApplyBtn");
-    const clearFiltersBtn = document.getElementById("clearFiltersBtn");
-    const activeFiltersIndicator = document.getElementById("activeFiltersIndicator");
+    const clientTableFilterRow = document.getElementById("clientTableFilterRow");
     const authTokenInput = document.getElementById("authTokenInput");
     const applyAuthTokenBtn = document.getElementById("applyAuthTokenBtn");
     const clearAuthTokenBtn = document.getElementById("clearAuthTokenBtn");
@@ -317,20 +297,11 @@
             pageJump,
             refreshInput,
             pageSizeInput,
-            toggleFiltersBtn,
             toggleColumnsBtn,
-            filterControls,
             columnControls,
             columnToggleInputs,
             clientTableHeaderRow,
-            filterServiceInstanceInput,
-            filterClientVersionInput,
-            filterHostNameInput,
-            filterHostIpInput,
-            filterModeBtn,
-            filterApplyBtn,
-            clearFiltersBtn,
-            activeFiltersIndicator,
+            clientTableFilterRow,
             authTokenInput,
             applyAuthTokenBtn,
             clearAuthTokenBtn,

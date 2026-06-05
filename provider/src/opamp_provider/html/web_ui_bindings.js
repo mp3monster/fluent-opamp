@@ -48,36 +48,12 @@
         renderTable();
       }
     });
-    filterApplyBtn.addEventListener("click", () => {
-      void applyClientFilters();
-    });
-    filterModeBtn.addEventListener("click", () => {
-      toggleFilterMode();
-    });
-    toggleFiltersBtn.addEventListener("click", () => {
-      toggleFiltersPanel();
-    });
     toggleColumnsBtn.addEventListener("click", () => {
       toggleColumnsPanel();
     });
     columnToggleInputs.forEach(input => {
       input.addEventListener("change", () => {
         applyOptionalColumnSelection();
-      });
-    });
-    clearFiltersBtn.addEventListener("click", () => {
-      void clearClientFilters();
-    });
-    [
-      filterServiceInstanceInput,
-      filterClientVersionInput,
-      filterHostNameInput,
-      filterHostIpInput,
-    ].forEach(input => {
-      input.addEventListener("keydown", event => {
-        if (event.key !== "Enter") return;
-        event.preventDefault();
-        void applyClientFilters();
       });
     });
     retentionCountInput.addEventListener("input", () => {
