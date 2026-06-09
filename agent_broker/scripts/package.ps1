@@ -14,11 +14,29 @@ if (Test-Path $ZipPath) {
 
 $RepoRoot = Split-Path -Parent $RootDir
 $VersionScript = Join-Path $RepoRoot "scripts\update_component_versions.py"
-$CliWarningScript = Join-Path $RepoRoot "scripts\warn_if_cli_missing.py"
 Write-Host "Refreshing component version metadata from git HEAD..."
 python $VersionScript --repo-root $RepoRoot
 
-Write-Host "Checking whether the CLI is available..."
-python $CliWarningScript --repo-root $RepoRoot --component-label "broker deployment package"
+Write-Host "Checking whether the standalone CLI is available..."
+$WarningScript = @"
+from pathlib import Path
+import sys
+
+repo_root = Path(sys.argv[1]).resolve()
+if str(repo_root) not in sys.path:
+    sys.path.insert(0, str(repo_root))
+
+try:
+    from shared.packaging_warnings import warn_if_cli_missing
+except ModuleNotFoundError:
+    raise SystemExit(0)
+
+warn_if_cli_missing(
+    component_label="broker zip build",
+    repo_root=repo_root,
+)
+"@
+python -c $WarningScript $RepoRoot
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Compress-Archive -Path $PackageDir -DestinationPath $ZipPath -Force
