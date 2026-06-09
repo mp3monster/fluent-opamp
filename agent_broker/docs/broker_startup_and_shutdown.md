@@ -25,7 +25,7 @@ Important API key mapping note:
 
 Optional runtime/config values:
 
-- `BROKER_CONFIG_PATH` (defaults to `./opamp_broker/config/broker.ui_responses.json` when using `start_broker` scripts)
+- `BROKER_CONFIG_PATH` (defaults to `./opamp_broker/config/broker.ui_responses.json` in the `opamp-cli` broker start action)
 
 Use the helper setup script if needed:
 
@@ -104,14 +104,21 @@ Recommended minimum values to set explicitly:
 2. `social_collaboration.implementation`
 3. `planner.provider`, `planner.base_url`, and `planner.api_key_env_var` if you are not using default AI service settings
 
+Bundled baseline example
+
+The bundled file `opamp_broker/config/broker.ui_responses.json` is the versioned
+baseline overlay that ships with the broker. The example below mirrors the
+current bundled file contents so operators can see exactly which keys are
+present out of the box.
+
 Example `broker.json`:
 
 ```json
 {
   "broker": {
     "name": "opamp-conversation-broker",
-    "log_level": "INFO",
-    "idle_timeout_seconds": 1200,
+    "log_level": "DEBUG",
+    "idle_timeout_seconds": 240,
     "sweeper_interval_seconds": 30,
     "send_idle_goodbye": true,
     "send_shutdown_goodbye": true
@@ -129,6 +136,7 @@ Example `broker.json`:
     "shutdown_goodbye": "I'm going to bed now, so I'm clearing my working context for this thread. When I wake up, please remind me what you want to do.",
     "restart_notice": "I'm awake again, but I don't have my earlier working context for this thread. Tell me what you want to check.",
     "server_offline": "The OpAMP server is currently offline. Please try again shortly.",
+    "immediate_ack_messages": ["ok", "let me think", "hmmmm", "ack", "working on it"],
     "slack_error_reply": "sorry, I stumbled, you might want to try that again",
     "ai_mode_off_ack_text": "Affirmative, Dave. I read you.",
     "help": "Try `/opamp help`, `/opamp tools`, `/opamp opstate`, or mention me with a question."
@@ -150,14 +158,16 @@ Example `broker.json`:
   "planner": {
     "mode": "rule-first",
     "llm_enabled": true,
+    "AIState": "on",
     "provider": "openai",
-    "model": "gpt-5.2",
+    "model": "gpt-5.3",
     "request_timeout_seconds": 30,
     "temperature": 0.0,
     "api_key_env_var": "OPENAI_API_KEY",
     "base_url": "https://api.openai.com/v1",
     "max_completion_tokens": 1024,
     "verify_max_completion_tokens_attempts": [64, 512],
+    "max_execution_steps": 4,
     "prompts_config_path": "planner_prompts.json"
   }
 }
@@ -182,62 +192,195 @@ Field reference:
 7. `planner`
    AI planner behavior (provider, model, timeout, temperature, token limits, API key env var, base URL, and prompts file path).
 
+### Bundled `broker.ui_responses.json` field coverage
+
+This section documents every field currently present in the bundled
+`opamp_broker/config/broker.ui_responses.json` file.
+
+#### `broker`
+
+- `broker.name`
+  Human-readable broker label bundled with the config. It is currently informational and not a primary runtime selector.
+- `broker.log_level`
+  Fallback log level used when no external logging config file overrides logging behavior.
+- `broker.idle_timeout_seconds`
+  Number of idle seconds before a thread-scoped session is expired.
+- `broker.sweeper_interval_seconds`
+  Interval between idle-session sweeper passes.
+- `broker.send_idle_goodbye`
+  Controls whether the broker posts the configured idle sign-off when a session expires.
+- `broker.send_shutdown_goodbye`
+  Controls whether the broker posts shutdown sign-off messages during graceful process termination.
+
+#### `slack`
+
+- `slack.command_name`
+  Slash command name registered for the Slack app integration.
+- `slack.app_mention_enabled`
+  Enables handling for app-mention events.
+- `slack.dm_enabled`
+  Enables handling for direct-message conversations with the Slack app.
+
+#### `social_collaboration`
+
+- `social_collaboration.implementation`
+  Social adapter selected at startup. Current supported value is `slack`.
+
+#### `messages`
+
+- `messages.idle_goodbye`
+  Text posted when a session is expired for inactivity and `broker.send_idle_goodbye=true`.
+- `messages.shutdown_goodbye`
+  Text posted to active threads during graceful broker shutdown when `broker.send_shutdown_goodbye=true`.
+- `messages.restart_notice`
+  Bundled restart-era text. It is currently retained in config but is not emitted by the current runtime path.
+- `messages.server_offline`
+  Fallback user-facing message when the provider MCP server is unavailable during planning or execution.
+- `messages.immediate_ack_messages`
+  List of short phrases used to build randomized immediate acknowledgements while the broker continues processing a request.
+- `messages.slack_error_reply`
+  Retained for config compatibility. Unhandled exceptions still resolve to one fixed fallback sentence rather than variable per-config wording.
+- `messages.ai_mode_off_ack_text`
+  Reply used when a user issues the exact `AI Off` command and per-client AI mode switching is allowed.
+- `messages.help`
+  Default help text returned for help-oriented interactions.
+
+#### `paths`
+
+- `paths.opamp_project_root`
+  Bundled project-root hint retained in config for operator context. It is not currently used by the runtime loader for route derivation.
+- `paths.opamp_config_path`
+  Primary OpAMP config file path used to derive provider routes such as the broker MCP endpoint.
+
+#### `mcp`
+
+- `mcp.request_timeout_seconds`
+  Timeout applied to MCP HTTP operations.
+- `mcp.connection_mode`
+  Transport parsing strategy: `auto`, `json`, or `sse`.
+- `mcp.protocol_version_attempts`
+  Ordered MCP protocol versions attempted during client initialization.
+- `mcp.startup_discovery_max_attempts`
+  Maximum discovery retries during startup tool refresh.
+- `mcp.startup_discovery_initial_backoff_seconds`
+  Initial retry delay for startup discovery backoff.
+- `mcp.startup_discovery_max_backoff_seconds`
+  Maximum retry delay cap for startup discovery backoff.
+- `mcp.startup_discovery_backoff_multiplier`
+  Exponential multiplier applied between retry attempts.
+- `mcp.startup_discovery_jitter_seconds`
+  Random jitter added to discovery retry delays.
+
+#### `planner`
+
+- `planner.mode`
+  Bundled planner mode label. It is currently descriptive only; active planner selection is driven by `planner.llm_enabled`, provider config validity, and API key availability.
+- `planner.llm_enabled`
+  Enables AI-backed planning when configuration is complete; otherwise runtime falls back to deterministic rule-first planning.
+- `planner.AIState`
+  Initial per-client AI mode. Supported semantics are `on`, `off`, and `disabled`, where `disabled` locks the UI toggle off entirely.
+- `planner.provider`
+  AI provider selector. Current runtime supports OpenAI-compatible behavior via the provider factory.
+- `planner.model`
+  Model name sent to the configured AI provider.
+- `planner.request_timeout_seconds`
+  Timeout for planner/provider requests.
+- `planner.temperature`
+  Sampling temperature for AI-backed planner requests.
+- `planner.api_key_env_var`
+  Environment variable name that holds the provider API key.
+- `planner.base_url`
+  Base URL for the provider API.
+- `planner.max_completion_tokens`
+  Response token budget for planner/model requests.
+- `planner.verify_max_completion_tokens_attempts`
+  Token budgets used for verification retries during startup AI-service checks.
+- `planner.max_execution_steps`
+  Upper bound for bounded multi-step planner/tool iteration in the runtime graph.
+- `planner.prompts_config_path`
+  Path to the external prompts JSON file. Relative paths resolve from the folder containing the broker config file being loaded.
+
 ### 4. Start the broker
 
 Recommended startup commands:
 
-- Linux/macOS foreground: `./scripts/start_broker.sh`
-- Linux/macOS background service: `./scripts/start_broker.sh --service`
-- Windows PowerShell foreground: `.\scripts\start_broker.ps1`
-- Windows PowerShell background service: `.\scripts\start_broker.ps1 -Service`
+- Preferred: `opamp-cli start broker`
+- Stop: `opamp-cli stop broker`
+- Status/log discovery: `opamp-cli status`
+- Generate a reusable launcher script: `opamp-cli script broker-launch python -m opamp_broker.broker_app --config-path ./opamp_broker/config/broker.ui_responses.json`
 
-These scripts set:
+If `opamp-cli` is not installed yet, you can run it from the repo:
 
-- `PYTHONUNBUFFERED=1`
-- `BROKER_CONFIG_PATH` (if not already set)
+- `PYTHONPATH=cli/src python3 -m opamp_cli start broker`
+- `PYTHONPATH=cli/src python3 -m opamp_cli stop broker`
+- `PYTHONPATH=cli/src python3 -m opamp_cli script broker-launch python -m opamp_broker.broker_app --config-path ./opamp_broker/config/broker.ui_responses.json`
 
-They also ensure dependencies are installed before launch by:
-
-1. Creating/using `.venv`
-2. Running `pip install -r requirements.txt`
-3. Launching the broker runtime
-
-They then start the broker directly:
+The guided CLI starts the broker directly with:
 
 - `python -m opamp_broker.broker_app`
 
-Startup scripts pass through additional broker CLI arguments. Examples:
+The CLI-managed broker action sets:
 
-- Linux/macOS help: `./scripts/start_broker.sh -h`
-- Windows PowerShell help: `.\scripts\start_broker.ps1 -h`
-- Linux/macOS version: `./scripts/start_broker.sh --version`
-- Windows PowerShell version: `.\scripts\start_broker.ps1 --version`
+- `PYTHONUNBUFFERED=1`
+- `BROKER_CONFIG_PATH` (if not already set by the environment)
 
-### Service mode and stop scripts
+Runtime artifacts for CLI-managed broker runs live under `cli/runtime/`:
 
-If you run startup in service mode, use these stop scripts for graceful shutdown:
+1. Process state: `cli/runtime/managed_processes.json`
+2. Logs: `cli/runtime/logs/`
 
-- Linux/macOS stop (graceful): `./scripts/stop_broker_service.sh`
-- Windows stop: `.\scripts\stop_broker_service.ps1`
+### 4a. Implementing custom script or OS-managed startup
 
-Runtime artifact defaults:
+If you want to run the broker under your own shell script, Windows service wrapper, `systemd` unit, Task Scheduler job, or similar OS-native launcher, build it around the broker module entrypoint instead of the retired repo-local wrapper scripts.
 
-1. PID file: `agent_broker/.broker/broker.pid`
-2. Log file: `agent_broker/.broker/broker.log`
-3. Windows stderr log file (PowerShell service start): `agent_broker/.broker/broker.log.err`
+Required launch command:
 
-Optional environment overrides:
+- `python -m opamp_broker.broker_app`
 
-1. `BROKER_RUNTIME_DIR`
-2. `BROKER_PID_FILE`
-3. `BROKER_LOG_FILE`
-4. `BROKER_ERR_LOG_FILE` (PowerShell service start only)
-5. `BROKER_SHUTDOWN_TIMEOUT_SECONDS`
+Typical wrapper responsibilities:
 
-Shutdown behavior:
+1. Set the working directory to `agent_broker/` so relative paths resolve consistently.
+2. Set `PYTHONUNBUFFERED=1` so logs flush promptly.
+3. Set `BROKER_CONFIG_PATH` when you want a specific runtime config file.
+4. Ensure required environment values are present:
+   - `SLACK_BOT_TOKEN`
+   - `SLACK_SIGNING_SECRET`
+   - `SLACK_APP_TOKEN`
+   - the API key env var named by `planner.api_key_env_var` (default `OPENAI_API_KEY`)
+5. Ensure Python dependencies are already installed before launch.
+6. Capture stdout/stderr into your chosen OS log destination.
+7. Persist the process identifier or service handle if your platform needs it for later stop operations.
 
-1. Linux/macOS stop script sends `SIGTERM` to allow graceful broker cleanup.
-2. PowerShell stop script performs a best-effort graceful close first, then falls back to process stop if needed.
+Recommended launch example:
+
+- `python -m opamp_broker.broker_app --config-path ./opamp_broker/config/broker.ui_responses.json`
+
+You can generate a starter script with the CLI and adapt it for your platform:
+
+- `opamp-cli script broker-launch python -m opamp_broker.broker_app --config-path ./opamp_broker/config/broker.ui_responses.json`
+
+### 4b. Implementing custom script or OS-managed shutdown
+
+The broker does not expose a separate shutdown subcommand. Custom wrappers must stop the running broker process through the operating system or service manager.
+
+Required shutdown behavior:
+
+1. Send a graceful termination signal to the broker process.
+2. Allow enough time for broker cleanup and Slack shutdown messaging.
+3. Escalate to force termination only if graceful shutdown fails and your platform policy requires it.
+
+Preferred shutdown mechanisms:
+
+- Linux/macOS: send `SIGTERM` or `SIGINT`
+- Windows service wrapper: request a normal process stop through the service manager first
+- CLI-managed broker runs: `opamp-cli stop broker`
+
+When designing your own stop script or service definition, make sure it can:
+
+1. Find the running broker process or service instance reliably.
+2. Wait for termination completion before reporting success.
+3. Clean up any wrapper-owned PID/state files if you create them.
+4. Preserve access to broker logs for post-stop troubleshooting.
 
 ### Deployment packaging note
 
@@ -245,9 +388,11 @@ Broker deployment packaging also checks whether the separate `opamp-cli` compone
 If the CLI is not detected in the workspace or installed Python environment, the package scripts print
 a warning so the deployment operator can decide whether the CLI should be installed alongside the broker.
 
-Windows note:
+Direct broker entrypoint examples:
 
-- If `.venv` was previously created from WSL/Linux (for example contains `bin/python` instead of `Scripts/python.exe`), `start_broker.ps1` will fall back to `python` on PATH instead of failing.
+- Help: `python -m opamp_broker.broker_app -h`
+- Version: `python -m opamp_broker.broker_app --version`
+- Explicit adapter: `python -m opamp_broker.broker_app --social-collaboration slack`
 
 ### 5. Broker CLI options
 
@@ -323,6 +468,11 @@ The broker planner processes user requests using an LLM and is constrained to
 the MCP tools currently discovered from the provider.
 
 Planner config fields (in broker config JSON):
+
+The default values listed below are loader fallback defaults. The effective
+runtime values may differ when you load the bundled
+`opamp_broker/config/broker.ui_responses.json` overlay or your own override
+file.
 
 - `planner.llm_enabled` (default: `true`)
 - `planner.provider` (default: `openai`)
@@ -400,6 +550,9 @@ The broker uses provider MCP JSON-RPC calls in this sequence:
 
 Supported MCP config fields:
 
+As with planner settings, these defaults describe loader fallback values before
+any bundled or operator-supplied config overlay is merged.
+
 - `mcp.request_timeout_seconds` (default: `30`)
 - `mcp.connection_mode` (default: `auto`, supported: `auto`, `json`, `sse`)
 - `mcp.protocol_version_attempts` (default: `["2025-06-18", "2025-03-26"]`)
@@ -427,8 +580,7 @@ Use graceful termination so in-memory session cleanup and Slack shutdown messagi
 
 - Press `Ctrl+C` in the terminal (sends `SIGINT`)
 - Or send `SIGTERM` to the process
-- Or use convenience stop script on Linux/macOS: `./scripts/stop_broker_service.sh`
-- Or use convenience stop script on Windows PowerShell: `.\scripts\stop_broker_service.ps1`
+- Or use `opamp-cli stop broker`
 
 ### Avoid
 

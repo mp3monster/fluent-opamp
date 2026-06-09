@@ -40,37 +40,7 @@ Slack workspace app creation and token issuance require Slack admin/user actions
 5. Put those values in `agent_broker/.env`.
    - Easiest: rerun `configure_slack` script with token arguments.
 6. Start broker:
-   - Linux/macOS: `./scripts/start_broker.sh` (ensures dependencies are installed)
-   - Windows: `.\scripts\start_broker.ps1` (ensures dependencies are installed)
+   - Preferred: `opamp-cli start broker`
+   - If `opamp-cli` is not installed yet: `PYTHONPATH=cli/src python3 -m opamp_cli start broker`
    - Optional explicit selection: `python -m opamp_broker.broker_app --social-collaboration slack`
    - Optional connection check only: `python -m opamp_broker.broker_app --verify-startup social`
-
-## Implementation Selection Notes
-
-The broker selects the social collaboration implementation in this order:
-
-1. `--social-collaboration` command-line parameter
-2. `social_collaboration.implementation` in broker config
-3. Default `slack`
-
-For full broker CLI option details (`--config-path`, `--social-collaboration`,
-`--verify-startup`), see:
-- [Broker Startup and Shutdown](./broker_startup_and_shutdown.md)
-
-For details on when to use `.env` versus `broker.json`, see:
-- [Broker Startup and Shutdown](./broker_startup_and_shutdown.md)
-
-## Supporting References
-
-- Slack app manifests:
-  https://api.slack.com/reference/manifests
-- Slack app management:
-  https://api.slack.com/apps
-- Slack token types:
-  https://api.slack.com/authentication/token-types
-- Slack Socket Mode:
-  https://api.slack.com/apis/connections/socket
-- Slack slash commands:
-  https://api.slack.com/interactivity/slash-commands
-- Project-specific baseline:
-  [README.md](../README.md)

@@ -17,7 +17,7 @@ flowchart LR
 
     subgraph Collaboration["Social Collaboration"]
         SocialBase["social_collaboration/base.py"]
-        SocialSlack["social_collaboration/slack.py"]
+        SocialSlack["social_collaboration/adapters/slack.py"]
         SlackClient["slack/client.py"]
         SlackHandlers["slack/handlers.py"]
     end
@@ -70,7 +70,10 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    Start["python -m opamp_broker.broker_app"] --> LoadEnv["load_dotenv()"]
+    CliStart["opamp-cli start broker"] --> Start["python -m opamp_broker.broker_app"]
+    DirectStart["direct module launch"] --> Start
+    CustomStart["custom script / OS service"] --> Start
+    Start --> LoadEnv["load_dotenv()"]
     LoadEnv --> LoadConfig["load_runtime_config()"]
     LoadConfig --> ConfigureLogging["configure_logging()"]
     ConfigureLogging --> ResolveAdapter["resolve social collaboration impl"]

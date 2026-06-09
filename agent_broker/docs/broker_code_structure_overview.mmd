@@ -9,7 +9,7 @@ flowchart LR
 
     subgraph Collaboration["Social Collaboration"]
         SocialBase["social_collaboration/base.py"]
-        SocialSlack["social_collaboration/slack.py"]
+        SocialSlack["social_collaboration/adapters/slack.py"]
         SlackClient["slack/client.py"]
         SlackHandlers["slack/handlers.py"]
     end
