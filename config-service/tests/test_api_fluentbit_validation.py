@@ -19,7 +19,6 @@ Test-case reference: config-service/docs/TEST_CASES.md
 from __future__ import annotations
 
 import json
-import logging
 import sys
 from pathlib import Path
 
@@ -28,13 +27,170 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from config_service.app import create_app
-from config_service.runtime_config import (
-    ENV_CONFIG_TOOL_CONFIG_PATH,
-    resolve_log_level_name,
-    resolve_read_only,
-    resolve_ui_base_css_path,
-    resolve_web_port,
-)
+from config_service.runtime_config import ENV_CONFIG_TOOL_CONFIG_PATH
+
+
+def _valid_fluentbit_payload() -> dict[str, object]:
+    return {
+        "config": {
+            "pipeline": {
+                "inputs": [
+                    {
+                        "name": "forward",
+                        "buffer_chunk_size": 1024,
+                        "buffer_max_size": 2048,
+                        "port": 24224,
+                    }
+                ],
+                "filters": [],
+                "outputs": [{"name": "null", "match": "*"}],
+            }
+        },
+        "profile": "strict",
+    }
+
+
+def _write_catalog_config(config_path: Path, source_folder: str = "catalog") -> None:
+    config_path.write_text(
+        json.dumps(
+            {
+                "opamp": {
+                    "config_catalog": {
+                        "enabled": True,
+                        "sources": [
+                            {
+                                "folder": source_folder,
+                                "extensions": [".json", ".yaml", ".yml", ".conf"],
+                            }
+                        ],
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
+@pytest.mark.asyncio
+async def test_validate_can_save_valid_catalog_file(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    config_path = tmp_path / "config-service.json"
+    _write_catalog_config(config_path)
+    source_dir = tmp_path / "catalog"
+    source_dir.mkdir()
+    target_path = source_dir / "sample.yaml"
+    target_path.write_text("pipeline:\n  inputs: []\n", encoding="utf-8")
+    monkeypatch.setenv(ENV_CONFIG_TOOL_CONFIG_PATH, str(config_path))
+
+    app = create_app(mode="standalone")
+    client = app.test_client()
+    payload = {
+        **_valid_fluentbit_payload(),
+        "save_on_success": True,
+        "save_source_path": str(target_path),
+        "header_comments": "Managed by tests",
+        "include_config_header": True,
+    }
+
+    response = await client.post(
+        "/config-service/api/v1/validate/5.0.4?config_type=fluentbit",
+        json=payload,
+    )
+
+    assert response.status_code == 200
+    body = await response.get_json()
+    assert body["ok"] is True
+    assert body["saved"] is True
+    assert body["save_path"] == str(target_path.resolve())
+    saved_text = target_path.read_text(encoding="utf-8")
+    assert "# Managed by tests" in saved_text
+    assert "# config-service: config_type=fluentbit" in saved_text
+    assert "pipeline:" in saved_text
+    assert "outputs:" in saved_text
+
+
+@pytest.mark.asyncio
+async def test_validate_declines_save_when_validation_fails(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    config_path = tmp_path / "config-service.json"
+    _write_catalog_config(config_path)
+    source_dir = tmp_path / "catalog"
+    source_dir.mkdir()
+    target_path = source_dir / "broken.yaml"
+    original_text = "unchanged: true\n"
+    target_path.write_text(original_text, encoding="utf-8")
+    monkeypatch.setenv(ENV_CONFIG_TOOL_CONFIG_PATH, str(config_path))
+
+    app = create_app(mode="standalone")
+    client = app.test_client()
+    payload = {
+        "config": {
+            "pipeline": {
+                "inputs": [
+                    {
+                        "name": "forward",
+                        "buffer_chunk_size": 1024,
+                        "buffer_max_size": 2048,
+                        "port": "${BAD PORT}",
+                    }
+                ],
+                "filters": [],
+                "outputs": [{"name": "null", "match": "*"}],
+            }
+        },
+        "profile": "strict",
+        "save_on_success": True,
+        "save_source_path": str(target_path),
+    }
+
+    response = await client.post(
+        "/config-service/api/v1/validate/5.0.4?config_type=fluentbit",
+        json=payload,
+    )
+
+    assert response.status_code == 400
+    body = await response.get_json()
+    assert body["ok"] is False
+    assert body["save_declined"] is True
+    assert body["save_message"] == "Validation failed; file was not saved."
+    assert target_path.read_text(encoding="utf-8") == original_text
+
+
+@pytest.mark.asyncio
+async def test_validate_rejects_save_outside_catalog_source(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    config_path = tmp_path / "config-service.json"
+    _write_catalog_config(config_path)
+    (tmp_path / "catalog").mkdir()
+    target_path = tmp_path / "outside.yaml"
+    target_path.write_text("unchanged: true\n", encoding="utf-8")
+    monkeypatch.setenv(ENV_CONFIG_TOOL_CONFIG_PATH, str(config_path))
+
+    app = create_app(mode="standalone")
+    client = app.test_client()
+    payload = {
+        **_valid_fluentbit_payload(),
+        "save_on_success": True,
+        "save_source_path": str(target_path),
+    }
+
+    response = await client.post(
+        "/config-service/api/v1/validate/5.0.4?config_type=fluentbit",
+        json=payload,
+    )
+
+    assert response.status_code == 403
+    body = await response.get_json()
+    assert body["ok"] is False
+    assert body["save_declined"] is True
+    assert body["errors"][0]["code"] == "server_save_not_allowed"
+    assert target_path.read_text(encoding="utf-8") == "unchanged: true\n"
 
 @pytest.mark.asyncio
 async def test_validate_accepts_builtin_and_custom_parser_references() -> None:

@@ -13,6 +13,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import sys
@@ -22,6 +23,7 @@ from typing import Any
 
 from pydantic import ValidationError
 from quart import Blueprint, current_app, jsonify, request
+from shared.opamp_config import load_json_config
 
 from config_service.agent_validation.exceptions import AgentNotSupportedError
 from config_service.models.contracts import (
@@ -33,6 +35,7 @@ from config_service.models.contracts import (
     UiPrepareFileRequest,
     ValidateRequest,
 )
+from config_service.runtime_config import get_effective_config_path
 
 APP_ENABLE_DEV_FEATURES_ENV = "APP_ENABLE_DEV_FEATURES"
 LOGGER = logging.getLogger(__name__)
@@ -103,6 +106,10 @@ KEY_DETAIL_TYPE = "detail_type"
 KEY_PYDANTIC_LOC = "loc"
 KEY_PYDANTIC_MSG = "msg"
 KEY_PYDANTIC_TYPE = "type"
+KEY_SAVE_DECLINED = "save_declined"
+KEY_SAVE_MESSAGE = "save_message"
+KEY_SAVE_PATH = "save_path"
+KEY_SAVED = "saved"
 
 VALUE_ERROR = "error"
 VALUE_SCHEMA = "schema"
@@ -116,11 +123,14 @@ VALUE_VALIDATION_ERROR = "validation_error"
 VALUE_EMPTY_INPUT_FILE = "empty_input_file"
 VALUE_FLUENTD_PARSE_ERROR = "fluentd_parse_error"
 VALUE_FLUENTBIT_YAML_PARSE_ERROR = "fluentbit_yaml_parse_error"
+VALUE_SERVER_SAVE_NOT_ALLOWED = "server_save_not_allowed"
+VALUE_SERVER_SAVE_FAILED = "server_save_failed"
 
 HEADER_REFERER = "Referer"
 HEADER_USER_AGENT = "User-Agent"
 ENCODING_UTF8 = "utf-8"
 COMMENT_PREFIX_HASH = "#"
+COMMENT_PREFIX_SLASH = "//"
 
 
 def _app_enable_dev_features_enabled() -> bool:
@@ -182,10 +192,195 @@ def _request_config_type(default: str | None = None) -> str | None:
     return str(raw_value or default or "").strip().lower()
 
 
+def _repo_root() -> Path:
+    """Return the repository root used by component-relative catalog sources."""
+    return Path(__file__).resolve().parents[4]
+
+
+def _config_service_root() -> Path:
+    """Return the config-service package root for bundled component config."""
+    return Path(__file__).resolve().parents[3]
+
+
+def _normalize_source_extensions(raw: Any) -> set[str]:
+    """Normalize one catalog source extension list for path allow-listing."""
+    if isinstance(raw, str):
+        raw = [item.strip() for item in raw.split(",") if item.strip()]
+    if not isinstance(raw, list):
+        return set()
+    normalized: set[str] = set()
+    for item in raw:
+        text = str(item or "").strip().lower()
+        if not text:
+            continue
+        if not text.startswith("."):
+            text = "." + text
+        normalized.add(text)
+    return normalized
+
+
+def _catalog_sources_from_runtime_config() -> list[tuple[str, set[str]]]:
+    """Return configured catalog source folders and extensions from runtime config."""
+    try:
+        payload = load_json_config(get_effective_config_path())
+    except (OSError, ValueError, TypeError):
+        return []
+    opamp_raw = payload.get("opamp", {}) if isinstance(payload, dict) else {}
+    catalog_raw = opamp_raw.get("config_catalog", {}) if isinstance(opamp_raw, dict) else {}
+    sources_raw = catalog_raw.get("sources", []) if isinstance(catalog_raw, dict) else []
+    if not isinstance(sources_raw, list):
+        return []
+    sources: list[tuple[str, set[str]]] = []
+    for item in sources_raw:
+        if not isinstance(item, dict):
+            continue
+        folder = str(item.get("folder") or "").strip()
+        extensions = _normalize_source_extensions(item.get("extensions", []))
+        if folder and extensions:
+            sources.append((folder, extensions))
+    return sources
+
+
+def _catalog_base_path(config_path: Path, source_folders: list[str]) -> Path:
+    """Resolve the base directory for catalog source folders."""
+    component_config_dir = (_config_service_root() / "config").resolve()
+    repo_root = _repo_root().resolve()
+    config_parent = config_path.parent.resolve()
+    if config_parent == component_config_dir:
+        return repo_root
+    for candidate in (config_parent, repo_root):
+        if any((candidate / folder).exists() for folder in source_folders):
+            return candidate
+    return config_parent
+
+
+def _allowed_catalog_save_target(raw_path: str | None) -> Path | None:
+    """Resolve a requested save path only when it belongs to a configured catalog source."""
+    target_text = str(raw_path or "").strip()
+    if not target_text:
+        return None
+    try:
+        target = Path(target_text).expanduser().resolve(strict=True)
+    except (OSError, RuntimeError):
+        return None
+    if target.is_file() is not True:
+        return None
+
+    sources = _catalog_sources_from_runtime_config()
+    if not sources:
+        return None
+    config_path = get_effective_config_path().resolve()
+    base_path = _catalog_base_path(config_path, [folder for folder, _extensions in sources])
+    for folder, extensions in sources:
+        if target.suffix.lower() not in extensions:
+            continue
+        source_root = (base_path / folder).resolve()
+        if source_root.exists() is not True or source_root.is_dir() is not True:
+            continue
+        try:
+            target.relative_to(source_root)
+        except ValueError:
+            continue
+        return target
+    return None
+
+
+def _validation_save_error(message: str, status: HTTPStatus) -> tuple[Any, HTTPStatus]:
+    """Build a response for a declined validate-and-save request."""
+    return (
+        jsonify(
+            {
+                KEY_OK: False,
+                KEY_SAVE_DECLINED: True,
+                KEY_SAVE_MESSAGE: message,
+                KEY_ERRORS: [
+                    {
+                        KEY_ORDER: 1,
+                        KEY_CODE: VALUE_SERVER_SAVE_NOT_ALLOWED,
+                        KEY_PATH: ROOT_PATH,
+                        KEY_MESSAGE: message,
+                        KEY_SEVERITY: VALUE_ERROR,
+                        KEY_SOURCE: VALUE_SCHEMA,
+                        KEY_DETAIL_TYPE: VALUE_SERVER_SAVE_NOT_ALLOWED,
+                    }
+                ],
+            }
+        ),
+        status,
+    )
+
+
+def _render_validated_save_text(
+    *,
+    req: ValidateRequest,
+    version: str,
+    config_type: str,
+    target_path: Path,
+) -> str:
+    """Render a validated config payload to the target file's native text format."""
+    ui_document_service = current_app.extensions[EXT_UI_DOCUMENT_SERVICE]
+    suffix = target_path.suffix.lower()
+    if suffix == ".json":
+        document = {
+            KEY_VERSION: version,
+            "configType": config_type,
+            KEY_CONFIG: req.config,
+            KEY_ANNOTATIONS: req.annotations,
+        }
+        if req.included_documents:
+            document[KEY_INCLUDED_DOCUMENTS] = req.included_documents
+        rendered = json.dumps(document, indent=2) + "\n"
+        return ui_document_service.compose_render_output(
+            main_rendered=rendered,
+            include_loaded_files=False,
+            included_files=[],
+            header_comments=req.header_comments,
+            include_config_header=req.include_config_header,
+            config_type=config_type,
+            version=version,
+            comment_prefix=COMMENT_PREFIX_SLASH,
+        )
+
+    if _is_fluentd_config_type(config_type) or suffix == ".conf":
+        fluentd_config_service = current_app.extensions[EXT_FLUENTD_CONFIG_SERVICE]
+        rendered = fluentd_config_service.render(req.config)
+        return ui_document_service.compose_render_output(
+            main_rendered=rendered,
+            include_loaded_files=False,
+            included_files=[],
+            header_comments=req.header_comments,
+            include_config_header=req.include_config_header,
+            config_type=CONFIG_TYPE_FLUENTD,
+            version=version,
+            comment_prefix=COMMENT_PREFIX_HASH,
+        )
+
+    yaml_render_service = current_app.extensions[EXT_YAML_RENDER_SERVICE]
+    rendered = yaml_render_service.render(
+        payload={KEY_CONFIG: req.config, KEY_ANNOTATIONS: req.annotations},
+        include_comments=True,
+    )
+    return ui_document_service.compose_render_output(
+        main_rendered=rendered,
+        include_loaded_files=False,
+        included_files=[],
+        header_comments=req.header_comments,
+        include_config_header=req.include_config_header,
+        config_type=DEFAULT_CONFIG_TYPE_FLUENTBIT,
+        version=version,
+        comment_prefix=COMMENT_PREFIX_HASH,
+    )
+
+
 def _is_fluentbit_config_type(config_type: str | None) -> bool:
     """Return whether the supplied config type should use Fluent Bit handling."""
     normalized = str(config_type or DEFAULT_CONFIG_TYPE_FLUENTBIT).strip().lower()
     return normalized in {DEFAULT_CONFIG_TYPE_FLUENTBIT, CONFIG_TYPE_FLUENT_BIT_ALIAS}
+
+
+def _is_fluentd_config_type(config_type: str | None) -> bool:
+    """Return whether the supplied config type should use Fluentd handling."""
+    return str(config_type or "").strip().lower() == CONFIG_TYPE_FLUENTD
 
 
 def create_api_blueprint() -> Blueprint:
@@ -511,7 +706,11 @@ def create_api_blueprint() -> Blueprint:
                 version,
                 config_type=DEFAULT_CONFIG_TYPE_FLUENTBIT,
             )
-        payload = req.model_dump()
+        payload = {
+            KEY_CONFIG: req.config,
+            KEY_ANNOTATIONS: req.annotations,
+            KEY_INCLUDED_DOCUMENTS: req.included_documents,
+        }
         if req.merge_includes_for_validation:
             current_app.logger.info(
                 "config validation merging include documents version=%s config_type=%s include_count=%s",
@@ -530,6 +729,39 @@ def create_api_blueprint() -> Blueprint:
             profile=req.profile,
             parser_definition=parser_definition,
         )
+        if req.save_on_success and result.get(KEY_OK) is not True:
+            result[KEY_SAVE_DECLINED] = True
+            result[KEY_SAVE_MESSAGE] = "Validation failed; file was not saved."
+        if req.save_on_success and result.get(KEY_OK) is True:
+            target_path = _allowed_catalog_save_target(req.save_source_path)
+            if target_path is None:
+                return _validation_save_error(
+                    "Save target is not a configured catalog file.",
+                    HTTPStatus.FORBIDDEN,
+                )
+            try:
+                rendered_text = _render_validated_save_text(
+                    req=req,
+                    version=version,
+                    config_type=config_type or DEFAULT_CONFIG_TYPE_FLUENTBIT,
+                    target_path=target_path,
+                )
+                target_path.write_text(rendered_text, encoding=ENCODING_UTF8)
+            except OSError as exc:
+                current_app.logger.warning(
+                    "validated config save failed version=%s config_type=%s path=%s error=%s",
+                    version,
+                    config_type,
+                    target_path,
+                    exc,
+                )
+                return _validation_save_error(
+                    "Validated configuration could not be saved by the server.",
+                    HTTPStatus.INTERNAL_SERVER_ERROR,
+                )
+            result[KEY_SAVED] = True
+            result[KEY_SAVE_PATH] = str(target_path)
+            result[KEY_SAVE_MESSAGE] = f"Saved validated configuration to {target_path.name}."
         current_app.logger.info(
             "config validation completed version=%s config_type=%s ok=%s",
             version,

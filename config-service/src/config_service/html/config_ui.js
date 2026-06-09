@@ -66,6 +66,7 @@
     pluginName: "",
     catalogLoaded: false,
     currentFileName: "",
+    currentSourcePath: "",
     validationStatus: "neutral",
     issueCodeMap: {},
     pendingFocusFieldKey: "",
@@ -89,6 +90,7 @@
     preserveSourceLineMapOnce: false,
     includedDocuments: [],
     mergeIncludesForValidation: false,
+    saveOnValidate: false,
     renderIncludesForRender: false,
     metadataPanelCollapsed: false,
     headerCommentsPanelCollapsed: true,
@@ -173,6 +175,7 @@
     browseFile: document.getElementById("browse-file"),
     saveConfig: document.getElementById("save-config"),
     saveAsConfig: document.getElementById("save-as-config"),
+    viewRawConfig: document.getElementById("view-raw-config"),
     newConfig: document.getElementById("new-config"),
     versionSelect: document.getElementById("version-select"),
     configTypeSelect: document.getElementById("config-type-select"),
@@ -250,6 +253,7 @@
     validationHeader: document.getElementById("validation-header"),
     validationCard: document.getElementById("validation-card"),
     validationIncludeToggle: document.getElementById("validation-include-toggle"),
+    validationSaveToggle: document.getElementById("validation-save-toggle"),
     validationToggle: document.getElementById("validation-toggle"),
     validationBody: document.getElementById("validation-body"),
     validationSummary: document.getElementById("validation-summary"),
@@ -259,6 +263,9 @@
     yamlBody: document.getElementById("yaml-body"),
     yamlOutput: document.getElementById("yaml-output"),
     renderCard: document.getElementById("render-card"),
+    rawConfigDialog: document.getElementById("raw-config-dialog"),
+    rawConfigText: document.getElementById("raw-config-text"),
+    rawConfigClose: document.getElementById("raw-config-close"),
   };
 
   function fetchJson(url, options) {
@@ -506,6 +513,7 @@
       el.openFile.value = "";
     }
     state.currentFileDisplay = "";
+    state.currentSourcePath = "";
     if (el.openFileDisplay) {
       el.openFileDisplay.value = "";
     }
@@ -667,6 +675,9 @@
     }
     if (el.validationIncludeToggle) {
       el.validationIncludeToggle.disabled = false;
+    }
+    if (el.validationSaveToggle) {
+      el.validationSaveToggle.disabled = readOnly;
     }
     if (el.renderIncludeToggle) {
       el.renderIncludeToggle.disabled = false;
@@ -1592,6 +1603,38 @@
     });
   }
 
+  function openRawConfigDialog(text) {
+    if (!el.rawConfigDialog || !el.rawConfigText || !el.rawConfigClose) {
+      return;
+    }
+    el.rawConfigText.value = String(text || "");
+    el.rawConfigDialog.classList.remove("hidden");
+    el.rawConfigClose.focus();
+  }
+
+  function closeRawConfigDialog() {
+    if (!el.rawConfigDialog || !el.rawConfigText) {
+      return;
+    }
+    el.rawConfigDialog.classList.add("hidden");
+    el.rawConfigText.value = "";
+  }
+
+  function triggerRawConfigView() {
+    if (!state.doc) {
+      setStatusMessage("Load or create a configuration before viewing raw text.");
+      return;
+    }
+    buildSaveBlob()
+      .then(function (result) {
+        openRawConfigDialog(String((result && result.text) || ""));
+      })
+      .catch(function (err) {
+        setStatusMessage("Raw configuration view failed.");
+        setValidationText(String(err));
+      });
+  }
+
   function currentApiQuery() {
     var configType = normalizeConfigType(state.configType, "fluentbit");
     return "?config_type=" + encodeURIComponent(configType);
@@ -1701,7 +1744,8 @@
       .then(function (payload) {
         var fileName = String(payload.file_name || "").trim();
         var text = String(payload.text || "");
-        return loadConfigurationTextFromSource(text, fileName, fileName);
+        var resolvedSourcePath = String(payload.source_path || sourcePath || "").trim();
+        return loadConfigurationTextFromSource(text, fileName, fileName, resolvedSourcePath);
       })
       .then(function () {
         current.searchParams.delete("source_path");
@@ -1715,9 +1759,10 @@
       });
   }
 
-  function loadConfigurationTextFromSource(text, fileName, selectedDisplay) {
+  function loadConfigurationTextFromSource(text, fileName, selectedDisplay, sourcePath) {
     var normalizedName = String(fileName || "").trim() || "config";
     var normalizedDisplay = String(selectedDisplay || "").trim() || normalizedName;
+    state.currentSourcePath = String(sourcePath || "").trim();
     return prepareFileForLoad(text, normalizedName, state.configType).then(function (preparedFile) {
       state.headerComments = normalizedHeaderComments(preparedFile.header_comments || "");
       if (/\.json$/i.test(normalizedName)) {
@@ -3420,8 +3465,12 @@ function renderPlugins() {
       state.headerComments = "";
       state.includedDocuments = [];
       state.mergeIncludesForValidation = false;
+      state.saveOnValidate = false;
       if (el.validationIncludeToggle) {
         el.validationIncludeToggle.checked = false;
+      }
+      if (el.validationSaveToggle) {
+        el.validationSaveToggle.checked = false;
       }
       state.currentFileName = "";
       state.saveFileHandle = null;
@@ -3444,6 +3493,16 @@ function renderPlugins() {
     el.saveAsConfig.addEventListener("click", function () {
       triggerConfigDownload(true);
     });
+
+    if (el.viewRawConfig) {
+      el.viewRawConfig.addEventListener("click", function () {
+        triggerRawConfigView();
+      });
+    }
+
+    if (el.rawConfigClose) {
+      el.rawConfigClose.addEventListener("click", closeRawConfigDialog);
+    }
 
     el.validationToggle.addEventListener("click", function () {
       state.validationCollapsed = !state.validationCollapsed;
@@ -3824,6 +3883,12 @@ function renderPlugins() {
       });
     }
 
+    if (el.validationSaveToggle) {
+      el.validationSaveToggle.addEventListener("change", function () {
+        state.saveOnValidate = Boolean(el.validationSaveToggle.checked);
+      });
+    }
+
     if (el.renderIncludeToggle) {
       el.renderIncludeToggle.addEventListener("change", function () {
         state.renderIncludesForRender = Boolean(el.renderIncludeToggle.checked);
@@ -3837,11 +3902,19 @@ function renderPlugins() {
       if (state.mergeIncludesForValidation && (!Array.isArray(state.includedDocuments) || state.includedDocuments.length === 0)) {
         setStatusMessage("Validation include merge is enabled, but no included files are loaded in memory.");
       }
+      if (state.saveOnValidate && !state.currentSourcePath) {
+        window.alert("Save if valid is only available for files opened from the server catalog.");
+        return;
+      }
       var payload = {
         config: state.doc.config,
         annotations: state.doc.annotations || {},
         included_documents: Array.isArray(state.includedDocuments) ? state.includedDocuments : [],
         merge_includes_for_validation: Boolean(state.mergeIncludesForValidation),
+        save_on_success: Boolean(state.saveOnValidate),
+        save_source_path: state.currentSourcePath || "",
+        header_comments: normalizedHeaderComments(state.headerComments || ""),
+        include_config_header: true,
         profile: "strict",
       };
       fetchJson(API_BASE + "/validate/" + encodeURIComponent(state.doc.version) + currentApiQuery(), {
@@ -3851,9 +3924,25 @@ function renderPlugins() {
       })
         .then(function (result) {
           renderValidationState(result);
+          if (result && result.saved) {
+            setStatusMessage(result.save_message || "Saved validated configuration.");
+          }
+          if (result && result.save_declined) {
+            window.alert(result.save_message || "Validation failed; file was not saved.");
+          }
         })
         .catch(function (err) {
-          setValidationText(String(err));
+          if (err && err.payload && Array.isArray(err.payload.errors)) {
+            renderValidationState({ ok: false, errors: err.payload.errors });
+          } else {
+            setValidationText(String(err));
+          }
+          if (state.saveOnValidate) {
+            var message = err && err.payload && err.payload.save_message
+              ? String(err.payload.save_message)
+              : "Validation failed; file was not saved.";
+            window.alert(message);
+          }
         });
     });
 

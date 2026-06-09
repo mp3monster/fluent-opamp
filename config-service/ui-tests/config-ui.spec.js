@@ -177,6 +177,26 @@ test("header comments are written first when saving with environment variables",
   expect(saved.indexOf("// Owned by Team A")).toBeLessThan(saved.indexOf('"ENV_NAME": "prod"'));
 });
 
+test("view raw opens a read-only resizable text dialog", async ({ page }) => {
+  await page.getByRole("button", { name: "New Configuration" }).click();
+
+  await page.getByRole("button", { name: "View Raw" }).click();
+
+  const dialog = page.locator("#raw-config-dialog");
+  const rawText = page.locator("#raw-config-text");
+  await expect(dialog).toBeVisible();
+  await expect(rawText).toHaveValue(/\/\/ config-service: config_type=fluentbit/);
+  await expect(rawText).toHaveValue(/"configType": "fluentbit"/);
+  await expect(rawText).toHaveAttribute("readonly", "");
+  await expect(dialog.getByRole("button")).toHaveCount(1);
+  await expect(dialog.getByRole("button")).toHaveText("Close");
+  await expect(page.locator(".raw-config-modal")).toHaveCSS("resize", "both");
+  await expect(rawText).toHaveCSS("overflow-x", "auto");
+
+  await page.getByRole("button", { name: "Close" }).click();
+  await expect(dialog).toBeHidden();
+});
+
 test("header comments are prepended to rendered configuration output", async ({ page }) => {
   await page.getByRole("button", { name: "New Configuration" }).click();
   await page.locator("#header-comments-toggle").click();

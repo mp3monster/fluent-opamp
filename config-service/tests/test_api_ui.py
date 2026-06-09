@@ -142,6 +142,32 @@ async def test_upstream_servers_section_is_present_in_ui() -> None:
     assert 'id="add-upstream-server-group"' in html
 
 @pytest.mark.asyncio
+async def test_raw_config_view_dialog_is_present_in_ui() -> None:
+    app = create_app(mode="standalone")
+    client = app.test_client()
+    ui = await client.get("/config-service/ui")
+    assert ui.status_code == 200
+    html = (await ui.get_data()).decode("utf-8")
+    assert 'id="view-raw-config"' in html
+    assert ">View Raw</button>" in html
+    assert 'id="raw-config-dialog"' in html
+    assert 'aria-modal="true"' in html
+    assert 'id="raw-config-text"' in html
+    assert "readonly" in html
+    assert 'id="raw-config-close"' in html
+    assert ">Close</button>" in html
+
+@pytest.mark.asyncio
+async def test_validate_save_toggle_is_present_in_ui() -> None:
+    app = create_app(mode="standalone")
+    client = app.test_client()
+    ui = await client.get("/config-service/ui")
+    assert ui.status_code == 200
+    html = (await ui.get_data()).decode("utf-8")
+    assert 'id="validation-save-toggle"' in html
+    assert "Save if valid" in html
+
+@pytest.mark.asyncio
 async def test_config_service_help_page_served() -> None:
     app = create_app(mode="standalone")
     client = app.test_client()
@@ -162,7 +188,7 @@ async def test_metadata_env_help_page_served() -> None:
     response = await client.get("/config-service/ui/docs/metadata-env")
     assert response.status_code == 200
     html = (await response.get_data()).decode("utf-8")
-    assert "Metadata as Environment Variables" in html
+    assert "Additional Metadata" in html
     assert "Preset Metadata Options" in html
     assert 'id="header-comments"' in html
 

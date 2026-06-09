@@ -38,6 +38,7 @@ Use these docs:
 Common fields from the default `config/opamp.json` that are covered there include:
 
 - `consumer.server_url`
+- `consumer.log_level`
 - `consumer.transport`
 - `consumer.tls`
 - `consumer.server-authorization`
@@ -46,6 +47,9 @@ Common fields from the default `config/opamp.json` that are covered there includ
 - `consumer.heartbeat_frequency`
 - `consumer.full_update_controller`
 - `consumer.full_update_controller_type`
+- `consumer.allow_custom_capabilities`
+- `consumer.agent_capabilities`
+- `consumer.preserve_previous_config`
 
 ## `provider`
 
@@ -68,10 +72,15 @@ Common fields from the default `config/opamp.json` that are covered there includ
 
 - `provider.webui_port`
 - `provider.default_heartbeat_frequency`
+- `provider.latest_docs_url`
 - `provider.human_in_loop_approval`
+- `provider.allow-remote-config`
 - `provider.opamp-use-authorization`
 - `provider.ui-use-authorization`
 - `provider.state_persistence`
+
+`provider.latest_docs_url` controls the redirect target behind `GET /doc-set`, which is the route used by
+the UI `Latest docs` links.
 
 ## `component-entry-points`
 
@@ -87,6 +96,12 @@ Use these docs:
 The current default `config/opamp.json` uses this section for:
 
 - `component-entry-points.quart`
+- `component-entry-points.quart[*].label`
+- `component-entry-points.quart[*].url`
+
+When a feature entry is enabled and the target page is hosted inside the provider, the embedded page
+shows `Server Console` and `Back` buttons in its header. In standalone deployments those buttons stay
+hidden.
 
 ## `opamp.config_catalog`
 

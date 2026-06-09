@@ -11,6 +11,7 @@ Welcome to the Fluent Bit & Fluentd OpAMP implementation docs. This page links t
 - [Server_(provider) diagrams (as images)](provider_server_diagrams.md) — rendered provider/server diagrams plus links to auth, endpoints, and command docs.
 - [Authentication](authentication.md) — bearer token auth modes, static-token setup, Keycloak/JWT setup, and MCP token usage.
 - [Web Endpoints](endpoints.md) — provider endpoint inventory, including UI/API/tool/MCP routes and `/doc-set`.
+- The provider-hosted `Latest docs` entry point is `http://localhost:8080/doc-set`, which redirects to the URL configured in `provider.latest_docs_url`.
 - [OpAMP JSON reference map](opamp_json_reference.md) — guide to which docs explain each top-level section of `config/opamp.json`.
 - [Provider config reference](provider_config_reference.md) — dedicated reference for `provider.*` values, defaults, and UI editability.
 - [OpAMP Config Catalog UI](opamp_config_catalog_ui.md) — configuration-driven catalog index page and help route details.

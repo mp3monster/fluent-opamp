@@ -17,6 +17,7 @@ This document consolidates all consumer configuration options and their CLI over
   - [Example `opamp.json`](#example-opampjson)
   - [Consumer Config Keys](#consumer-config-keys)
   - [Default Capabilities](#default-capabilities)
+  - [Agent Capability Reference](#agent-capability-reference)
   - [Connection Settings](#connection-settings)
   - [Fluent Bit Comment Metadata](#fluent-bit-comment-metadata)
   - [CLI Example](#cli-example)
@@ -190,8 +191,6 @@ That guide includes:
     "full_update_controller_type": "SentCount",
     "allow_custom_capabilities": true,
     "agent_capabilities": [
-      "ReportsStatus",
-      "ReportsHealth",
       "AcceptsRemoteConfig",
       "ReportsHeartbeat"
     ],
@@ -232,7 +231,7 @@ That guide includes:
 | `consumer.idp-grant-type` | string | No | OAuth grant type for `idp` mode. Default `client_credentials`. | `"client_credentials"` |
 | `consumer.log_agent_api_responses` | boolean | No | Enables verbose logging of local API responses. | `false` |
 | `consumer.allow_custom_capabilities` | boolean | No | Enables publishing/discovery of custom capabilities. | `true` |
-| `consumer.agent_capabilities` | integer, string, or array[string] | No | Optional additional capability selection. Configured values are merged with the mandatory capabilities, then intersected with the concrete client's supported-capability list. Unsupported configured values are warned and ignored. | `["ReportsHealth","AcceptsRemoteConfig","ReportsHeartbeat"]` |
+| `consumer.agent_capabilities` | integer, string, or array[string] | No | Optional capability enable list or mask. Configured values are merged with the mandatory capabilities, deduplicated, then intersected with the concrete client's supported-capability list. Unsupported configured values are warned and ignored. | `["AcceptsRemoteConfig","ReportsHeartbeat"]` |
 | `consumer.preserve_previous_config` | boolean | No | When `true`, an existing remote-config target file is renamed to `.replaced_yyyy-mm-dd--hh-mm-ss` before the new content is written. | `false` |
 | `consumer.service_name` | string | No | Reported service name in agent description. | `"Fluentbit"` |
 | `consumer.service_namespace` | string | No | Reported service namespace in agent description. | `"FluentBitNS"` |
@@ -265,6 +264,41 @@ If the selected `consumer.service_type` supports additional capabilities, you ca
 - `ReportsHeartbeat`
 
 Configured capabilities are merged with the mandatory list above. Any capability supported by the client but not configured is left disabled and logged at `INFO`. Any configured capability not supported by the client is ignored and logged at `WARNING`.
+
+Notes:
+
+- `consumer.agent_capabilities` accepts an integer mask, a comma-separated string, or an array of capability names.
+- Mandatory capabilities do not need to be repeated in config; they are added automatically.
+- Duplicate configured capability names are ignored after normalization.
+
+## Agent Capability Reference
+
+The `consumer.agent_capabilities` setting accepts any `AgentCapabilities` name from the shared OpAMP enum.
+
+Current built-in consumer support:
+
+- All built-in consumer types support `ReportsStatus`, `AcceptsRestartCommand`, and `ReportsHealth`.
+- Current built-in consumer types (`fluentbit`, `fluentd`, and `simulator`) also support `AcceptsRemoteConfig` and `ReportsHeartbeat`.
+- Other names in the table below are valid OpAMP capability names, but current built-in consumer clients do not enable them because they are not in their supported-capability lists.
+
+| Capability | Mask | Meaning | Current built-in consumer support |
+|---|---:|---|---|
+| `ReportsStatus` | `0x00000001` | Agent sends normal status-bearing `AgentToServer` updates. | Yes |
+| `AcceptsRemoteConfig` | `0x00000002` | Agent can receive and apply server-provided remote configuration. | Yes |
+| `ReportsEffectiveConfig` | `0x00000004` | Agent reports the effective configuration currently running after processing config inputs. | No |
+| `AcceptsPackages` | `0x00000008` | Agent can receive package installation or upgrade offers from the server. | No |
+| `ReportsPackageStatuses` | `0x00000010` | Agent reports package download/install state back to the server. | No |
+| `ReportsOwnTraces` | `0x00000020` | Agent can report connection settings or status for its own trace export pipeline. | No |
+| `ReportsOwnMetrics` | `0x00000040` | Agent can report connection settings or status for its own metrics export pipeline. | No |
+| `ReportsOwnLogs` | `0x00000080` | Agent can report connection settings or status for its own logs export pipeline. | No |
+| `AcceptsOpAMPConnectionSettings` | `0x00000100` | Agent accepts server-driven changes to the OpAMP transport connection settings. | No |
+| `AcceptsOtherConnectionSettings` | `0x00000200` | Agent accepts server-driven changes to non-OpAMP connection settings. | No |
+| `AcceptsRestartCommand` | `0x00000400` | Agent accepts a server-issued restart command. | Yes |
+| `ReportsHealth` | `0x00000800` | Agent reports health state for itself and optionally sub-components. | Yes |
+| `ReportsRemoteConfig` | `0x00001000` | Agent reports status for the last remote-config application attempt. | No |
+| `ReportsHeartbeat` | `0x00002000` | Agent reports heartbeat-related runtime information through the consumer heartbeat path. | Yes |
+| `ReportsAvailableComponents` | `0x00004000` | Agent can report a component inventory / component map. | No |
+| `ReportsConnectionSettingsStatus` | `0x00008000` | Agent reports status for previously offered connection settings. | No |
 
 ## Connection Settings
 

@@ -11,6 +11,10 @@ Use this page as the documentation landing page for understanding:
 - how the components relate at runtime
 - where to find the deeper component-specific guides
 
+When the provider is running, the UI `Latest docs` links use `http://localhost:8080/doc-set`.
+That route redirects to the URL configured in `provider.latest_docs_url`, which defaults to the
+published landing-page preview for this documentation set.
+
 ## Minimum required stack
 
 There are two useful definitions of "required":

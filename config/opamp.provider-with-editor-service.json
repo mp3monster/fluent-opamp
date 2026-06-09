@@ -8,7 +8,7 @@
     "client_event_history_size": 50,
     "log_level": "DEBUG",
     "default_heartbeat_frequency": 30,
-    "latest_docs_url": "https://github.com/mp3monster/fluent-opamp/blob/main/README.md",
+    "latest_docs_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/mp3monster/fluent-opamp/main/github-landingpage/index.html",
     "human_in_loop_approval": false,
     "opamp-use-authorization": "none",
     "ui-use-authorization": "none",
@@ -37,6 +37,7 @@
       "route_path": "/catalog",
       "help_path": "/catalog/help",
       "ui_base_css_path": "/config-service/ui/assets/config_ui.css",
+      "ui_refresh_seconds": 120,
       "sources": [
         {
           "folder": "config-service/json-definitions",

@@ -19,7 +19,7 @@ Bearer protection is controlled by provider config plus environment-backed secre
 | GET | `/` | Redirect to the web UI (`/ui`). |
 | GET | `/ui` | Main web UI page. |
 | GET | `/help` | Help page. |
-| GET | `/doc-set` | Redirect to latest docs URL configured in `provider.latest_docs_url`. |
+| GET | `/doc-set` | Redirect to the latest docs URL configured in `provider.latest_docs_url`. The provider, config-service, and catalog-service UI `Latest docs` links use this route. |
 | GET | `/create.ico` | UI favicon. |
 
 ## Tool Endpoints

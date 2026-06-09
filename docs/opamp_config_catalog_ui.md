@@ -10,6 +10,13 @@ The provider can host a **Config Catalog** page that indexes configuration files
 
 The page is added to the provider feature menu when enabled.
 
+When the catalog is hosted inside the provider, the header also includes:
+
+- `Server Console` to return directly to `/ui`
+- `Back` to trigger browser-history navigation when a previous page exists
+
+Those buttons stay hidden in standalone catalog deployments.
+
 ## Configuration
 
 Configure in `opamp.json` under top-level `opamp.config_catalog`:

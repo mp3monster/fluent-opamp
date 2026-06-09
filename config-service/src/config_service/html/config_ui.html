@@ -78,6 +78,7 @@ limitations under the License.
           <button id="new-config" type="button">New Configuration</button>
           <button id="save-config" type="button">Save</button>
           <button id="save-as-config" type="button">Save As</button>
+          <button id="view-raw-config" type="button">View Raw</button>
         </div>
 
         <div class="row">
@@ -127,6 +128,59 @@ limitations under the License.
           <span id="status-time" class="status-time"></span>
           <span id="status-message"></span>
         </p>
+      </section>
+
+      <section id="metadata-env-panel" class="panel">
+        <div class="section-head">
+          <div>
+            <h2>Additional Metadata</h2>
+            <p>Manage <code>_metadata.</code> values separately from normal <code>env</code> entries - this is a safe means to add helpful metadata without breaking configuration.</p>
+          </div>
+          <div class="plugin-actions">
+            <button
+              id="metadata-env-help-toggle"
+              type="button"
+              class="icon-help"
+              aria-label="Open metadata environment variable help in a new tab"
+            >?</button>
+            <button id="metadata-env-toggle" type="button">Collapse</button>
+          </div>
+        </div>
+        <div id="metadata-env-body" class="service-editor">
+          <div class="service-configured">
+            <h3>Configured Metadata Variables</h3>
+            <div id="metadata-env-list"></div>
+          </div>
+          <div class="service-option-frame">
+            <div class="row">
+              <label>
+                Metadata Key (Select or create)
+                <input
+                  id="metadata-env-key-input"
+                  type="text"
+                  list="metadata-env-key-options"
+                  placeholder="config_version"
+                />
+                <datalist id="metadata-env-key-options">
+                  <option value="fluent_bit_version">Fluent Bit Version</option>
+                  <option value="configuration_date">Configuration Date</option>
+                  <option value="config_version">Configuration Version</option>
+                </datalist>
+              </label>
+              <label>
+                Value
+                <input
+                  id="metadata-env-value-input"
+                  type="text"
+                  list="metadata-env-value-options"
+                  placeholder="5.0.4"
+                />
+                <datalist id="metadata-env-value-options"></datalist>
+              </label>
+              <button id="add-metadata-env-field" type="button">Add Metadata Variable</button>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section id="service-panel" class="panel">
@@ -190,59 +244,6 @@ limitations under the License.
                 <input id="env-value-input" type="text" placeholder="1" />
               </label>
               <button id="add-env-field" type="button">Add Environment Variable</button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section id="metadata-env-panel" class="panel">
-        <div class="section-head">
-          <div>
-            <h2>Metadata as Environment Variables</h2>
-            <p>Manage <code>_metadata.</code> values separately from normal <code>env</code> entries - this is a safe means to add helpful metadata without breaking configuration.</p>
-          </div>
-          <div class="plugin-actions">
-            <button
-              id="metadata-env-help-toggle"
-              type="button"
-              class="icon-help"
-              aria-label="Open metadata environment variable help in a new tab"
-            >?</button>
-            <button id="metadata-env-toggle" type="button">Collapse</button>
-          </div>
-        </div>
-        <div id="metadata-env-body" class="service-editor">
-          <div class="service-configured">
-            <h3>Configured Metadata Variables</h3>
-            <div id="metadata-env-list"></div>
-          </div>
-          <div class="service-option-frame">
-            <div class="row">
-              <label>
-                Metadata Key (Select or create)
-                <input
-                  id="metadata-env-key-input"
-                  type="text"
-                  list="metadata-env-key-options"
-                  placeholder="config_version"
-                />
-                <datalist id="metadata-env-key-options">
-                  <option value="fluent_bit_version">Fluent Bit Version</option>
-                  <option value="configuration_date">Configuration Date</option>
-                  <option value="config_version">Configuration Version</option>
-                </datalist>
-              </label>
-              <label>
-                Value
-                <input
-                  id="metadata-env-value-input"
-                  type="text"
-                  list="metadata-env-value-options"
-                  placeholder="5.0.4"
-                />
-                <datalist id="metadata-env-value-options"></datalist>
-              </label>
-              <button id="add-metadata-env-field" type="button">Add Metadata Variable</button>
             </div>
           </div>
         </div>
@@ -387,6 +388,10 @@ limitations under the License.
                 <input id="validation-include-toggle" type="checkbox" />
                 Use Included files
               </label>
+              <label class="inline-toggle" title="When enabled, successful validation saves back to the server-loaded catalog file.">
+                <input id="validation-save-toggle" type="checkbox" />
+                Save if valid
+              </label>
               <button id="dry-run-btn" type="button" class="hidden">Dry Run</button>
               <button id="validate-btn" type="button">Validate</button>
               <button id="validation-toggle" type="button">Collapse</button>
@@ -416,9 +421,32 @@ limitations under the License.
       </section>
     </main>
 
+    <div
+      id="raw-config-dialog"
+      class="modal-backdrop hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="raw-config-title"
+    >
+      <div class="raw-config-modal">
+        <h2 id="raw-config-title">Raw Configuration</h2>
+        <textarea
+          id="raw-config-text"
+          class="raw-config-text"
+          readonly
+          spellcheck="false"
+          wrap="off"
+          aria-label="Read-only raw configuration text"
+        ></textarea>
+        <div class="modal-actions">
+          <button id="raw-config-close" type="button">Close</button>
+        </div>
+      </div>
+    </div>
+
     <footer class="footer">
       <div>Licensed under Apache 2.0 • Attribution: <a href="https://mp3monster.org" target="_blank" rel="noopener noreferrer">mp3monster.org</a></div>
-      <div><a href="https://opentelemetry.io/docs/specs/opamp/" target="_blank" rel="noopener noreferrer">OpAMP Specification</a> • <a href="https://htmlpreview.github.io/?https://raw.githubusercontent.com/mp3monster/fluent-opamp/main/github-landingpage/index.html">Latest docs</a></div>
+      <div><a href="https://opentelemetry.io/docs/specs/opamp/" target="_blank" rel="noopener noreferrer">OpAMP Specification</a> • <a href="http://localhost:8080/doc-set">Latest docs</a></div>
     </footer>
 
     <script>

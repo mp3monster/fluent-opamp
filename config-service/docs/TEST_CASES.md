@@ -19,7 +19,7 @@ Each test module should reference this file so the documented scenarios evolve w
 ## UI and Editor Tests
 
 ### `config-service/tests/test_api_ui.py`
-- Covers client error logging, UI route toggles, CSS overrides, collapsed-section injection, help pages, dev-mode cache behavior, UI file preparation, and server-side source-file loading.
+- Covers client error logging, UI route toggles, CSS overrides, collapsed-section injection, raw-view dialog presence, help pages, dev-mode cache behavior, UI file preparation, and server-side source-file loading.
 
 ### `config-service/ui-tests/config-ui.spec.js`
 - Playwright request prompts for this spec should follow `tests/playwright-test-prompt-template.md`.
@@ -30,6 +30,7 @@ Each test module should reference this file so the documented scenarios evolve w
   - browser client-error reporting
   - tooltip/help text quality expectations
   - partial YAML load warnings
+  - raw read-only configuration viewing
   - metadata and header-comment editing/rendering behavior
 
 ## Fluent Bit Parsing, Validation, and Rendering Tests

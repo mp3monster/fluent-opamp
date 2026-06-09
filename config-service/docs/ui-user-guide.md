@@ -10,9 +10,18 @@ On load, the UI will:
 2. Create new configuration
 3. Save the current configuration
 4. Save the current configuration to a new file via `Save As`
-5. Open the top-level `Help` page in a separate browser tab
-6. Choose configuration type
-7. Choose configuration version
+5. View the current configuration as raw read-only text via `View Raw`
+6. Open the top-level `Help` page in a separate browser tab
+7. Choose configuration type
+8. Choose configuration version
+
+## Embedded navigation
+When the editor is hosted inside the OpAMP provider:
+1. A `Server Console` button is shown in the header and returns to the provider UI.
+2. A `Back` button is shown beside it only when the browser has a usable history entry.
+3. The feature dropdown remains available so you can move between embedded tools such as `Config Editor` and `Config Catalog`.
+
+When the editor runs standalone, those provider-navigation buttons are hidden.
 
 ## Built-in help
 1. The top-right `Help` button opens a bundled in-application guide.
@@ -28,6 +37,7 @@ On load, the UI will:
    2. configuration version
 5. When a saved file is reopened, the UI reads those header comments first and updates type/version selection before loading the rest of the document.
 6. If the saved version is no longer available, the UI selects the next supported mapped version after that value. If there is no later mapped version, it uses the highest available version.
+7. `View Raw` opens the same text representation the editor would save in a read-only, resizable dialog with scroll bars for large files.
 
 ## File loading behavior
 1. Fluent Bit files are loaded from YAML (`.yaml` / `.yml`).
@@ -113,6 +123,9 @@ Each plugin card supports:
 5. Section reassignment (`inputs`, `filters`, `outputs`)
 
 ## Service section support
+The `Additional Metadata` panel appears immediately before `Service Section` and manages safe
+`_metadata.` entries separately from normal environment variables.
+
 The UI includes a `Service Section` panel to manage top-level service settings:
 1. Select from common Fluent Bit service options (not only `flush`)
 2. Edit existing fields

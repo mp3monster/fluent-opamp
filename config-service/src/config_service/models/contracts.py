@@ -30,6 +30,10 @@ class ValidateRequest(BaseModel):
     included_documents: list[dict[str, Any]] = Field(default_factory=list)
     merge_includes_for_validation: bool = False
     profile: str | None = None
+    save_on_success: bool = False
+    save_source_path: str | None = None
+    header_comments: str = ""
+    include_config_header: bool = True
 
 
 class RenderYamlRequest(BaseModel):
