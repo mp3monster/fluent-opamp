@@ -55,6 +55,8 @@ def test_status_command_reports_runtime_paths() -> None:
     completed = _run_cli("status")
 
     assert completed.returncode == 0
+    assert "OpAMP config file:" in completed.stdout
+    assert "OpAMP config loaded:" in completed.stdout
     assert "State file:" in completed.stdout
     assert "Log directory:" in completed.stdout
     assert "CLI log file:" in completed.stdout

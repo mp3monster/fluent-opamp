@@ -136,6 +136,72 @@ def test_main_writes_component_lifecycle_log(tmp_path: Path, monkeypatch) -> Non
     assert "CLI main completed command" in log_text
 
 
+def test_status_command_reports_default_opamp_config_path(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    runtime_dir = tmp_path / "runtime"
+    repo_root = tmp_path / "repo"
+    config_path = repo_root / "config" / "opamp.json"
+    config_path.parent.mkdir(parents=True)
+    config_path.write_text('{"opamp": {}}\n', encoding="utf-8")
+    monkeypatch.setattr(cli_main, "_cli_runtime_dir", lambda: runtime_dir)
+    monkeypatch.setattr(cli_main, "_repo_root", lambda: repo_root)
+    monkeypatch.delenv("OPAMP_CONFIG_PATH", raising=False)
+
+    exit_code = cli_main.main(["status"])
+    output = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert f"OpAMP config file: {config_path.resolve()} (default)" in output
+    assert "OpAMP config loaded: yes" in output
+
+
+def test_status_command_reports_env_opamp_config_path(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    runtime_dir = tmp_path / "runtime"
+    repo_root = tmp_path / "repo"
+    config_path = repo_root / "config" / "custom-opamp.json"
+    config_path.parent.mkdir(parents=True)
+    config_path.write_text('{"opamp": {}}\n', encoding="utf-8")
+    monkeypatch.setattr(cli_main, "_cli_runtime_dir", lambda: runtime_dir)
+    monkeypatch.setattr(cli_main, "_repo_root", lambda: repo_root)
+    monkeypatch.setenv("OPAMP_CONFIG_PATH", "config/custom-opamp.json")
+
+    exit_code = cli_main.main(["status"])
+    output = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert f"OpAMP config file: {config_path.resolve()} (OPAMP_CONFIG_PATH)" in output
+    assert "OpAMP config loaded: yes" in output
+
+
+def test_status_command_reports_invalid_opamp_config(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    runtime_dir = tmp_path / "runtime"
+    repo_root = tmp_path / "repo"
+    config_path = repo_root / "config" / "opamp.json"
+    config_path.parent.mkdir(parents=True)
+    config_path.write_text("{not-json", encoding="utf-8")
+    monkeypatch.setattr(cli_main, "_cli_runtime_dir", lambda: runtime_dir)
+    monkeypatch.setattr(cli_main, "_repo_root", lambda: repo_root)
+    monkeypatch.delenv("OPAMP_CONFIG_PATH", raising=False)
+
+    exit_code = cli_main.main(["status"])
+    output = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert f"OpAMP config file: {config_path.resolve()} (default)" in output
+    assert "OpAMP config loaded: no (invalid JSON:" in output
+
+
 def test_is_process_running_uses_tasklist_on_windows(monkeypatch) -> None:
     captured_commands: list[list[str]] = []
 
@@ -267,6 +333,32 @@ def test_start_and_stop_action_orders_are_stable(monkeypatch) -> None:
         "All managed processes",
     ]
     assert restart_labels == start_labels
+
+
+def test_broker_stop_action_uses_cli_managed_process_records() -> None:
+    stop_action = cli_main._resolve_guided_action("stop", "broker")  # type: ignore[attr-defined]
+
+    assert stop_action is not None
+    assert stop_action["kind"] == "stop_recorded"
+    assert stop_action["record_names"] == ["Broker"]
+
+
+def test_script_mode_generates_broker_launcher_script(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+
+    exit_code = cli_main._handle_command(  # type: ignore[attr-defined]
+        "script broker-launch python -m opamp_broker.broker_app "
+        "--config-path ./opamp_broker/config/broker.ui_responses.json"
+    )
+
+    suffix = ".cmd" if cli_main._is_windows() else ".sh"  # type: ignore[attr-defined]
+    script_path = tmp_path / "scripts" / f"broker-launch{suffix}"
+
+    assert exit_code == 0
+    assert script_path.exists()
+    script_text = script_path.read_text(encoding="utf-8")
+    assert "python -m opamp_broker.broker_app" in script_text
+    assert "--config-path ./opamp_broker/config/broker.ui_responses.json" in script_text
 
 
 def test_list_command_prints_hierarchy(monkeypatch, capsys) -> None:

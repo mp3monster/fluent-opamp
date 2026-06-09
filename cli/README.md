@@ -87,7 +87,8 @@ Both shortcuts run the compatibility entrypoint:
   - `stop all` stops all CLI-managed recorded processes.
   - Type `restart` in interactive mode, then choose what to restart.
   - You can also run guided actions directly on one line, for example `start server`, `stop config service`, or `restart server`.
-  - Type `status` in interactive mode to list managed processes, PID liveness, and log paths.
+  - Type `status` in interactive mode to list the effective OpAMP config file,
+    config load status, managed processes, PID liveness, and log paths.
   - Type `list` in interactive mode to display the current command hierarchy and guided options (including flag-gated options).
   - Type `enable-process-tail` to open a separate tail shell for each future managed start log.
   - Type `disable-process-tail` to turn that behavior off again.
