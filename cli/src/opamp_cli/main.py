@@ -1152,16 +1152,45 @@ def _remove_cli_process_records(names: Iterable[str]) -> None:
     _save_cli_process_state({"processes": kept})
 
 
+def _effective_opamp_config_path() -> tuple[Path, str]:
+    """Return the effective OpAMP config path and where it was selected from."""
+    configured_path = str(os.environ.get("OPAMP_CONFIG_PATH") or "").strip()
+    if configured_path:
+        path = Path(configured_path).expanduser()
+        if not path.is_absolute():
+            path = (_repo_root() / path).resolve()
+        else:
+            path = path.resolve()
+        return path, "OPAMP_CONFIG_PATH"
+    return (_repo_root() / "config" / "opamp.json").resolve(), "default"
+
+
+def _opamp_config_load_status(path: Path) -> str:
+    """Return a human-readable load status for an OpAMP JSON config file."""
+    if not path.is_file():
+        return "no (missing)"
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError) as exc:
+        return f"no (invalid JSON: {exc})"
+    if not isinstance(payload, dict):
+        return "no (config root is not an object)"
+    return "yes"
+
+
 def _print_status() -> int:
     """Print a summary of managed processes and current PID liveness."""
     settings_path = _cli_settings_path()
     state_path = _cli_process_state_path()
     log_dir = _cli_log_dir()
     cli_log_path = _cli_component_log_path()
+    opamp_config_path, opamp_config_source = _effective_opamp_config_path()
     payload = _load_cli_process_state()
     processes = payload.get("processes", [])
 
     print(f"Settings file: {settings_path}")
+    print(f"OpAMP config file: {opamp_config_path} ({opamp_config_source})")
+    print(f"OpAMP config loaded: {_opamp_config_load_status(opamp_config_path)}")
     print(f"State file: {state_path}")
     print(f"Log directory: {log_dir}")
     print(f"CLI log file: {cli_log_path}")
@@ -1456,28 +1485,6 @@ def _python_script_command(
     for arg in args or []:
         parts.append(_shell_quote(arg))
     return _shell_command(command_text=" ".join(parts), env=env, cwd=cwd)
-
-
-def _broker_stop_command(pid_file: Path) -> str:
-    """Build a direct cross-platform broker stop command using the PID file."""
-    code = (
-        "import os, pathlib, signal, sys; "
-        "pid_file = pathlib.Path(sys.argv[1]); "
-        "runtime_pid = pid_file.read_text(encoding='utf-8').strip() if pid_file.exists() else ''; "
-        "print(f'Broker PID file not found: {pid_file}') if not pid_file.exists() else None; "
-        "sys.exit(0) if not pid_file.exists() else None; "
-        "pid = int(runtime_pid) if runtime_pid else 0; "
-        "pid_file.unlink(missing_ok=True) if not runtime_pid else None; "
-        "sys.exit(0) if not runtime_pid else None; "
-        "os.kill(pid, signal.SIGTERM); "
-        "print(f'Requested broker shutdown for pid={pid}')"
-    )
-    return _shell_command(
-        command_text=(
-            f"{_shell_quote(sys.executable)} -c {_shell_quote(code)} "
-            f"{_shell_quote(str(pid_file.resolve()))}"
-        ),
-    )
 
 
 def _background_start_action(  # noqa: PLR0913
@@ -1829,13 +1836,11 @@ def _stop_actions() -> list[tuple[str, dict[str, Any]]]:
         "command_text": server_stop_cmd,
     }
 
-    broker_stop_cmd = _broker_stop_command(repo_root / "agent_broker" / ".broker" / "broker.pid")
-    action_map[ACTION_ID_BROKER] = {
-        "id": ACTION_ID_BROKER,
-        "kind": ACTION_KIND_SHELL,
-        "label": LABEL_BROKER,
-        "command_text": broker_stop_cmd,
-    }
+    action_map[ACTION_ID_BROKER] = _stop_recorded_action(
+        action_id=ACTION_ID_BROKER,
+        label=LABEL_BROKER,
+        record_names=[LABEL_BROKER],
+    )
 
     action_map[ACTION_ID_CATALOG_UI] = _stop_recorded_action(
         action_id=ACTION_ID_CATALOG_UI,

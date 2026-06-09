@@ -20,12 +20,22 @@ Test modules should reference this file so the implementation and the documented
   - Verifies process-tail settings are persisted and reloaded correctly.
 - `test_main_writes_component_lifecycle_log`
   - Verifies the CLI component lifecycle log is created during execution.
+- `test_status_command_reports_default_opamp_config_path`
+  - Verifies `status` reports the default `config/opamp.json` path and successful load state.
+- `test_status_command_reports_env_opamp_config_path`
+  - Verifies `status` reports an `OPAMP_CONFIG_PATH` override and successful load state.
+- `test_status_command_reports_invalid_opamp_config`
+  - Verifies `status` reports invalid JSON instead of treating an unreadable config as loaded.
 - `test_rejected_guided_action_is_logged`
   - Verifies invalid guided actions are rejected and logged.
 - `test_resolve_guided_action_matches_aliases`
   - Verifies guided-action alias resolution maps common aliases to the correct action.
 - `test_start_and_stop_action_orders_are_stable`
   - Verifies the ordered `start` and `stop` action lists remain stable.
+- `test_broker_stop_action_uses_cli_managed_process_records`
+  - Verifies broker shutdown uses CLI-managed process records instead of the retired broker PID-file wrapper flow.
+- `test_script_mode_generates_broker_launcher_script`
+  - Verifies `opamp-cli script ...` can generate a broker launcher script with the expected module command and config path.
 
 ## End-to-End Tests
 
@@ -33,7 +43,7 @@ Test modules should reference this file so the implementation and the documented
 - `test_help_command_prints_usage`
   - Verifies `help` output is available from the CLI entrypoint.
 - `test_status_command_reports_runtime_paths`
-  - Verifies `status` reports the managed-process state path, log path, and CLI log path.
+  - Verifies `status` reports the effective OpAMP config path, managed-process state path, log path, and CLI log path.
 - `test_direct_execution_runs_python_command`
   - Verifies direct command execution works through the CLI entrypoint.
 - `test_script_generation_writes_os_native_script`
