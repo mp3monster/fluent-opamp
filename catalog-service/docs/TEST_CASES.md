@@ -8,6 +8,8 @@ It covers unit tests, route-level tests, runtime-config tests, and the freestand
 ### `catalog-service/tests/test_catalog_service.py`
 - `test_catalog_service_scans_configured_folders_and_header_metadata`
   - Verifies catalog scanning discovers files and extracts header metadata when present.
+- `test_catalog_service_refreshes_metadata_when_file_changes`
+  - Verifies cached catalog metadata is rebuilt when a watched file's size or modification time changes.
 - `test_catalog_service_ignores_non_matching_extensions`
   - Verifies only configured file extensions are included in the catalog.
 - `test_catalog_service_reads_only_allowed_files`
@@ -15,7 +17,7 @@ It covers unit tests, route-level tests, runtime-config tests, and the freestand
 
 ### `catalog-service/tests/test_catalog_routes.py`
 - `test_catalog_routes_render_ui_help_and_api`
-  - Verifies the main UI route, help route, and API route are served.
+  - Verifies the main UI route, help route, API route, and configured UI refresh interval are served.
 - `test_catalog_routes_require_auth_when_standalone_auth_rejects`
   - Verifies standalone auth rejection blocks access.
 - `test_catalog_routes_skip_embedded_auth_gate`
@@ -28,6 +30,10 @@ It covers unit tests, route-level tests, runtime-config tests, and the freestand
 ### `catalog-service/tests/test_runtime_config.py`
 - `test_catalog_component_entry_is_generated_when_enabled`
   - Verifies a component entry is synthesized when catalog config is enabled.
+- `test_catalog_config_defaults_ui_refresh_to_120_seconds`
+  - Verifies the catalog UI refresh interval defaults to 120 seconds.
+- `test_catalog_config_uses_configured_ui_refresh_seconds`
+  - Verifies the catalog UI refresh interval can be configured.
 - `test_catalog_service_config_loads_sources_and_defaults`
   - Verifies freestanding catalog config loading preserves source definitions and defaults.
 - `test_resolve_component_entry_points_reads_payload`
@@ -51,6 +57,8 @@ It covers unit tests, route-level tests, runtime-config tests, and the freestand
   - Verifies row clicks fall back to the readonly viewer when config-service is not available.
 - `selection checkbox click marks a row without opening the viewer`
   - Verifies checkbox interaction does not trigger the row-level navigation/view action.
+- `auto refresh pauses while catalog entries are selected`
+  - Verifies automatic UI row refresh runs on the configured timer but skips refreshes while selected rows exist.
 - `selection filter isolates selected and unselected rows`
   - Verifies the fixed selection column supports direct selected/unselected filtering.
 - `selection column remains fixed while other columns reorder`

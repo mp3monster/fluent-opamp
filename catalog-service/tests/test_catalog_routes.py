@@ -45,6 +45,7 @@ async def test_catalog_routes_render_ui_help_and_api(tmp_path: Path) -> None:
         help_path="/catalog/help",
         ui_base_css_path="/config-service/ui/assets/config_ui.css",
         web_port=8090,
+        ui_refresh_seconds=45,
         sources=(CatalogSource(folder="catalog", extensions=(".yaml",)),),
         raw_payload={},
     )
@@ -74,12 +75,14 @@ async def test_catalog_routes_render_ui_help_and_api(tmp_path: Path) -> None:
         assert 'data-history-back-button="true"' in ui_html
         assert 'hidden' in ui_html
         assert 'href="/ui" >Server Console</a>' in ui_html
+        assert "const CONFIGURED_UI_REFRESH_SECONDS = parseInt('45', 10);" in ui_html
 
         help_resp = await client.get("/catalog/help")
         assert help_resp.status_code == 200
         help_html = (await help_resp.get_data()).decode("utf-8")
         assert "How Metadata Columns Are Built" in help_html
         assert "Selection Checkbox Direction" in help_html
+        assert "File Change Refresh" in help_html
         assert "selected and unselected rows available for direct filtering" in help_html
         assert "Apply button appears when a callback URL is provided" in help_html
 

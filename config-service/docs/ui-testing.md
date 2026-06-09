@@ -90,7 +90,9 @@ Current test catalog (`config-service/ui-tests/config-ui.spec.js`):
     - Verifies metadata add/edit/save path and key normalization.
 12. `header comments are written first when saving with environment variables`
     - Verifies save output includes header comments before config body.
-13. `header comments are prepended to rendered configuration output`
+13. `view raw opens a read-only resizable text dialog`
+    - Verifies raw save text opens in a read-only dialog with a single close action and resizable, scrollable layout.
+14. `header comments are prepended to rendered configuration output`
     - Verifies rendered output in UI includes header comments at top.
 
 Quick listing command:

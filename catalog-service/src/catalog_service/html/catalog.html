@@ -140,7 +140,7 @@ limitations under the License.
 
     <footer class="footer">
       <div>Licensed under Apache 2.0 • Attribution: <a href="https://mp3monster.org" target="_blank" rel="noopener noreferrer">mp3monster.org</a></div>
-      <div><a href="https://opentelemetry.io/docs/specs/opamp/" target="_blank" rel="noopener noreferrer">OpAMP Specification</a> • <a href="https://htmlpreview.github.io/?https://raw.githubusercontent.com/mp3monster/fluent-opamp/main/github-landingpage/index.html">Latest docs</a></div>
+      <div><a href="https://opentelemetry.io/docs/specs/opamp/" target="_blank" rel="noopener noreferrer">OpAMP Specification</a> • <a href="http://localhost:8080/doc-set">Latest docs</a></div>
     </footer>
 
     <script>
@@ -165,6 +165,11 @@ limitations under the License.
 
         const CATALOG_UI_COLUMN_ORDER_STORAGE_KEY = 'catalog_ui_column_order';
         const CLIENT_ERRORS_ENDPOINT = '__CATALOG_CLIENT_ERRORS_ENDPOINT__';
+        const DEFAULT_UI_REFRESH_SECONDS = 120;
+        const CONFIGURED_UI_REFRESH_SECONDS = parseInt('__CATALOG_UI_REFRESH_SECONDS__', 10);
+        const UI_REFRESH_SECONDS = Number.isNaN(CONFIGURED_UI_REFRESH_SECONDS) || CONFIGURED_UI_REFRESH_SECONDS <= 0
+          ? DEFAULT_UI_REFRESH_SECONDS
+          : CONFIGURED_UI_REFRESH_SECONDS;
         const CATALOG_SELECTION_CALLBACK_QUERY = 'selection_callback';
         const CATALOG_SELECTION_APPLIED_MESSAGE_TYPE = 'opamp-catalog-selection-applied';
         const SELECTION_COLUMN_KEY = 'selected';
@@ -196,6 +201,8 @@ limitations under the License.
         let lastUiErrorFingerprint = '';
         let lastUiErrorAt = 0;
         let isReportingUiError = false;
+        let isLoadingRows = false;
+        let refreshTimer = null;
         const filterInput = document.getElementById('catalogFilter');
         const pageSizeInput = document.getElementById('catalogPageSize');
         const summary = document.getElementById('catalogSummary');
@@ -971,23 +978,47 @@ limitations under the License.
           syncSelectionActions();
         }
 
-        async function loadRows() {
-          const resp = await fetch('__CATALOG_ROUTE_PATH__/api/files');
-          if (!resp.ok) {
+        async function loadRows(options = {}) {
+          if (isLoadingRows) return;
+          isLoadingRows = true;
+          try {
+            const resp = await fetch('__CATALOG_ROUTE_PATH__/api/files');
+            if (!resp.ok) {
+              summary.textContent = 'Failed to load catalog data';
+              return;
+            }
+            const payload = await resp.json();
+            if (options.autoRefresh === true && state.selectedPaths.length > 0) {
+              return;
+            }
+            const availableColumns = normalizeColumns(payload.columns);
+            state.columns = sanitizeColumnOrder(
+              readStoredColumnOrder(availableColumns),
+              availableColumns
+            );
+            state.columnFilters = normalizeColumnFilters(state.columnFilters, state.columns);
+            state.rows = Array.isArray(payload.rows) ? payload.rows : [];
+            reconcileSelectedPaths(state.rows);
+            renderHeader();
+            renderBody();
+          } catch (err) {
             summary.textContent = 'Failed to load catalog data';
-            return;
+            if (window.console && typeof window.console.warn === 'function') {
+              window.console.warn('Failed to load catalog rows', err);
+            }
+          } finally {
+            isLoadingRows = false;
           }
-          const payload = await resp.json();
-          const availableColumns = normalizeColumns(payload.columns);
-          state.columns = sanitizeColumnOrder(
-            readStoredColumnOrder(availableColumns),
-            availableColumns
-          );
-          state.columnFilters = normalizeColumnFilters(state.columnFilters, state.columns);
-          state.rows = Array.isArray(payload.rows) ? payload.rows : [];
-          reconcileSelectedPaths(state.rows);
-          renderHeader();
-          renderBody();
+        }
+
+        function startCatalogRefreshTimer() {
+          if (refreshTimer || UI_REFRESH_SECONDS <= 0) return;
+          refreshTimer = window.setInterval(() => {
+            if (state.selectedPaths.length > 0) {
+              return;
+            }
+            void loadRows({ autoRefresh: true });
+          }, UI_REFRESH_SECONDS * 1000);
         }
 
         filterInput.addEventListener('input', () => {
@@ -1037,7 +1068,7 @@ limitations under the License.
         });
         installGlobalUiErrorHandlers();
         syncSelectionActions();
-        loadUiFeatures().then(loadRows);
+        loadUiFeatures().then(() => loadRows()).then(startCatalogRefreshTimer);
       })();
     </script>
   </body>

@@ -53,6 +53,19 @@ limitations under the License.
       </section>
 
       <section class="panel">
+        <h2>File Change Refresh</h2>
+        <p>
+          The catalog detects source file changes from file paths, sizes, and modification timestamps.
+          The browser refreshes rows on the configured interval, defaulting to 120 seconds.
+        </p>
+        <ul>
+          <li>Updated files are re-indexed so metadata columns reflect the latest file headers.</li>
+          <li>Automatic refresh pauses while any selection checkbox is active, preserving ordered selections.</li>
+          <li>Reloading the page always fetches the latest catalog rows immediately.</li>
+        </ul>
+      </section>
+
+      <section class="panel">
         <h2>Callback Apply Mode</h2>
         <p>
           Apply button appears when a callback URL is provided in the catalog page query string.
@@ -66,7 +79,7 @@ limitations under the License.
     </main>
     <footer class="footer">
       <div>Licensed under Apache 2.0 • Attribution: <a href="https://mp3monster.org" target="_blank" rel="noopener noreferrer">mp3monster.org</a></div>
-      <div><a href="https://opentelemetry.io/docs/specs/opamp/" target="_blank" rel="noopener noreferrer">OpAMP Specification</a> • <a href="https://htmlpreview.github.io/?https://raw.githubusercontent.com/mp3monster/fluent-opamp/main/github-landingpage/index.html">Latest docs</a></div>
+      <div><a href="https://opentelemetry.io/docs/specs/opamp/" target="_blank" rel="noopener noreferrer">OpAMP Specification</a> • <a href="http://localhost:8080/doc-set">Latest docs</a></div>
     </footer>
   </body>
 </html>

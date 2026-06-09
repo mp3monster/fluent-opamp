@@ -39,6 +39,9 @@ PYTHONPATH=config-service/src python3 -m config_service --config-path config-ser
 - Backend: `http://localhost:8080/config-service/api/v1/health`
 - UI: `http://localhost:8080/config-service/ui`
 
+If the editor is mounted inside the provider instead of launched standalone, the same UI route gains
+provider navigation controls (`Server Console`, conditional `Back`, and the shared feature dropdown).
+
 ## Run browser UI behavior tests
 From repository root:
 

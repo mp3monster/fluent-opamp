@@ -11,6 +11,9 @@ This component ships:
 Catalog row behavior is configuration-driven:
 - when a configured component endpoint advertises the config-service feature, clicking a row opens the config editor
 - otherwise, clicking a row opens the built-in readonly file viewer
+- when the catalog is embedded into the provider, the header shows `Server Console` plus a conditional `Back` button; standalone mode hides those provider-navigation controls
+- catalog file metadata is cached and refreshed when source file paths, sizes, or modification times change
+- the browser refreshes catalog rows every `ui_refresh_seconds` seconds, defaulting to 120, unless one or more selection checkboxes are active
 
 Documented catalog direction:
 - the selection checkbox workflow stays available during normal catalog use
@@ -85,6 +88,10 @@ python3 catalog-service/scripts/start_catalog_service.py --config-path /path/to/
 The configured source folders are resolved relative to the config file location when they exist there,
 which makes the example suitable for a copied freestanding workspace.
 
+`opamp.config_catalog.ui_refresh_seconds` controls the catalog UI polling interval. If omitted or invalid,
+the UI refreshes every 120 seconds. Automatic refresh pauses while the user has selected catalog entries so
+ordered selections are not disturbed by file-system changes.
+
 ## UI Test Coverage
 
 Standalone browser coverage for the catalog UI lives in `ui-tests/`.
@@ -97,5 +104,6 @@ The current Playwright scenarios cover:
 - row-click navigation into the config editor
 - row-click fallback into the readonly file viewer
 - selection checkbox filtering and fixed-column behavior
+- auto-refresh pause while catalog rows are selected
 - prompt guidance for new browser tests in `ui-tests/README.md`
 - scenario coverage details in `docs/TEST_CASES.md`

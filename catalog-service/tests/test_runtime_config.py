@@ -20,7 +20,11 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from catalog_service.config import catalog_component_entry_from_payload, load_catalog_service_config
+from catalog_service.config import (
+    catalog_component_entry_from_payload,
+    load_catalog_service_config,
+    load_catalog_service_config_from_payload,
+)
 from catalog_service.runtime_config import (
     ENV_CATALOG_SERVICE_CONFIG_PATH,
     resolve_component_entries,
@@ -47,6 +51,37 @@ def test_catalog_component_entry_is_generated_when_enabled() -> None:
     assert entry.entry_point == "catalog_service.opamp_integration:register_catalog_feature"
     assert entry.label == "Catalog"
     assert entry.url == "/catalog"
+
+
+def test_catalog_config_defaults_ui_refresh_to_120_seconds() -> None:
+    config = load_catalog_service_config_from_payload(
+        {
+            "opamp": {
+                "config_catalog": {
+                    "enabled": True,
+                    "sources": [{"folder": "configs", "extensions": [".yaml"]}],
+                }
+            }
+        }
+    )
+
+    assert config.ui_refresh_seconds == 120
+
+
+def test_catalog_config_uses_configured_ui_refresh_seconds() -> None:
+    config = load_catalog_service_config_from_payload(
+        {
+            "opamp": {
+                "config_catalog": {
+                    "enabled": True,
+                    "ui_refresh_seconds": 30,
+                    "sources": [{"folder": "configs", "extensions": [".yaml"]}],
+                }
+            }
+        }
+    )
+
+    assert config.ui_refresh_seconds == 30
 
 
 def test_runtime_config_uses_component_defaults_when_component_entry_points_missing(

@@ -28,6 +28,7 @@ CFG_ROUTE_PATH = "route_path"
 CFG_HELP_PATH = "help_path"
 CFG_UI_BASE_CSS_PATH = "ui_base_css_path"
 CFG_WEB_PORT = "web_port"
+CFG_UI_REFRESH_SECONDS = "ui_refresh_seconds"
 CFG_SOURCES = "sources"
 CFG_FOLDER = "folder"
 CFG_EXTENSIONS = "extensions"
@@ -38,6 +39,7 @@ DEFAULT_ROUTE_PATH = "/catalog"
 DEFAULT_HELP_PATH = "/catalog/help"
 DEFAULT_UI_BASE_CSS_PATH = "/config-service/ui/assets/config_ui.css"
 DEFAULT_WEB_PORT = 8090
+DEFAULT_UI_REFRESH_SECONDS = 120
 
 
 @dataclass(frozen=True)
@@ -60,6 +62,7 @@ class CatalogServiceConfig:
     web_port: int
     sources: tuple[CatalogSource, ...]
     raw_payload: dict[str, Any]
+    ui_refresh_seconds: int = DEFAULT_UI_REFRESH_SECONDS
 
 
 def _coerce_bool(value: Any, default: bool = False) -> bool:
@@ -118,6 +121,14 @@ def _normalize_sources(raw: Any) -> tuple[CatalogSource, ...]:
     return tuple(normalized)
 
 
+def _coerce_positive_int(value: Any, default: int) -> int:
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        return default
+    return number if number > 0 else default
+
+
 def _catalog_payload(payload: dict[str, Any] | None) -> dict[str, Any]:
     raw = payload if isinstance(payload, dict) else {}
     opamp_raw = raw.get(CFG_OPAMP, {}) if isinstance(raw, dict) else {}
@@ -137,7 +148,11 @@ def load_catalog_service_config_from_payload(payload: dict[str, Any] | None) -> 
     route_path = _normalized_path(str(catalog_raw.get(CFG_ROUTE_PATH) or ""), DEFAULT_ROUTE_PATH)
     help_path = _normalized_path(str(catalog_raw.get(CFG_HELP_PATH) or ""), DEFAULT_HELP_PATH)
     ui_base_css_path = str(catalog_raw.get(CFG_UI_BASE_CSS_PATH) or DEFAULT_UI_BASE_CSS_PATH).strip() or DEFAULT_UI_BASE_CSS_PATH
-    web_port = int(catalog_raw.get(CFG_WEB_PORT) or DEFAULT_WEB_PORT)
+    web_port = _coerce_positive_int(catalog_raw.get(CFG_WEB_PORT), DEFAULT_WEB_PORT)
+    ui_refresh_seconds = _coerce_positive_int(
+        catalog_raw.get(CFG_UI_REFRESH_SECONDS),
+        DEFAULT_UI_REFRESH_SECONDS,
+    )
     sources = _normalize_sources(catalog_raw.get(CFG_SOURCES, []))
 
     if enabled and not sources:
@@ -150,6 +165,7 @@ def load_catalog_service_config_from_payload(payload: dict[str, Any] | None) -> 
         help_path=help_path,
         ui_base_css_path=ui_base_css_path,
         web_port=web_port,
+        ui_refresh_seconds=ui_refresh_seconds,
         sources=sources,
         raw_payload=raw_payload,
     )

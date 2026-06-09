@@ -19,6 +19,7 @@ import io
 import logging
 import pathlib
 import re
+import threading
 from dataclasses import dataclass
 
 from catalog_service.config import CatalogServiceConfig, CatalogSource
@@ -38,6 +39,7 @@ ROW_KEY_ROWS = "rows"
 ROW_KEY_TOTAL = "total"
 ROW_KEY_TEXT = "text"
 COLUMN_ORDER_BASE = (ROW_KEY_FOLDER, ROW_KEY_FILENAME, ROW_KEY_LAST_EDITED)
+FileSignature = tuple[int, int]
 
 
 @dataclass(frozen=True)
@@ -58,9 +60,24 @@ class CatalogFileIndexService:
         self.repo_root = pathlib.Path(repo_root).resolve()
         self.config = config
         self.classifier = CompositeConfigClassifier()
+        self._lock = threading.RLock()
+        self._file_signatures: dict[str, FileSignature] = {}
+        self._cached_payload: dict[str, object] | None = None
 
     def scan(self) -> dict[str, object]:
-        """Scan configured sources and return table-ready payload."""
+        """Return table-ready payload, refreshing cached metadata when source files change."""
+        with self._lock:
+            current_signatures = self._source_file_signatures()
+            if self._cached_payload is not None and current_signatures == self._file_signatures:
+                return self._cached_payload
+
+            payload = self._build_payload()
+            self._file_signatures = current_signatures
+            self._cached_payload = payload
+            return payload
+
+    def _build_payload(self) -> dict[str, object]:
+        """Scan configured sources and build the table-ready payload."""
         rows: list[CatalogRow] = []
         metadata_keys: set[str] = set()
         for source in self.config.sources:
@@ -82,6 +99,26 @@ class CatalogFileIndexService:
             ROW_KEY_ROWS: payload_rows,
             ROW_KEY_TOTAL: len(payload_rows),
         }
+
+    def _source_file_signatures(self) -> dict[str, FileSignature]:
+        """Return watched source file signatures keyed by resolved path."""
+        signatures: dict[str, FileSignature] = {}
+        for source in self.config.sources:
+            base_dir = (self.repo_root / source.folder).resolve()
+            if not base_dir.exists() or not base_dir.is_dir():
+                continue
+            allowed_ext = {ext.lower() for ext in source.extensions}
+            for path in sorted(base_dir.rglob("*")):
+                if not path.is_file():
+                    continue
+                if path.suffix.lower() not in allowed_ext:
+                    continue
+                try:
+                    stat_result = path.stat()
+                except OSError:
+                    continue
+                signatures[str(path.resolve())] = (int(stat_result.st_mtime_ns), int(stat_result.st_size))
+        return signatures
 
     def read_file_text(self, full_path: str) -> dict[str, str]:
         """Return readonly file content for one catalog-managed file path."""

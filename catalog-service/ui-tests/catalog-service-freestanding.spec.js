@@ -125,6 +125,34 @@ test("selection checkbox click marks the row without opening the readonly viewer
   await expect(page).toHaveURL(/\/catalog$/);
 });
 
+test("auto refresh pauses while catalog entries are selected", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== WITHOUT_CONFIG_SERVICE);
+  await page.addInitScript(() => {
+    const originalSetInterval = window.setInterval;
+    window.setInterval = (callback, delay, ...args) => {
+      if (delay === 120000) {
+        return originalSetInterval(callback, 150, ...args);
+      }
+      return originalSetInterval(callback, delay, ...args);
+    };
+  });
+  let fileRequestCount = 0;
+  await page.route("**/catalog/api/files", async (route) => {
+    fileRequestCount += 1;
+    await route.continue();
+  });
+
+  await openCatalog(page);
+  await expect.poll(() => fileRequestCount).toBeGreaterThan(1);
+
+  const row = page.locator("#catalogBody tr", { hasText: "freestanding-fluentbit.yaml" }).first();
+  await row.locator('input[type="checkbox"]').first().click();
+  const requestCountAfterSelection = fileRequestCount;
+
+  await page.waitForTimeout(450);
+  expect(fileRequestCount).toBe(requestCountAfterSelection);
+});
+
 test("selection filter shows selected and unselected rows independently", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== WITH_CONFIG_SERVICE);
   await openCatalog(page);

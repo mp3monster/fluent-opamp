@@ -25,7 +25,6 @@ if str(ROOT_PATH) not in sys.path:
 from shared.opamp_config import CFG_COMPONENT_ENTRY_POINTS_QUART, ComponentEntryPoint, resolve_component_entry_points_from_payload
 
 from catalog_service.config import (
-    CATALOG_COMPONENT_ENTRY_POINT,
     catalog_component_entry_from_payload,
     load_catalog_service_config,
 )

@@ -99,6 +99,58 @@ def test_catalog_service_scans_configured_folders_and_header_metadata(tmp_path: 
     }
 
 
+def test_catalog_service_refreshes_metadata_when_file_changes(tmp_path: Path) -> None:
+    source_dir = tmp_path / "catalog-src"
+    source_dir.mkdir(parents=True, exist_ok=True)
+    config_file = source_dir / "agent-a.yaml"
+    config_file.write_text(
+        "\n".join(
+            [
+                "# config-service: config_type=fluentbit",
+                "# config-service: config_version=release-27",
+                "service:",
+                "  flush: 1",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    config = CatalogServiceConfig(
+        enabled=True,
+        menu_label="Catalog",
+        route_path="/catalog",
+        help_path="/catalog/help",
+        ui_base_css_path="/config-service/ui/assets/config_ui.css",
+        web_port=8090,
+        sources=(CatalogSource(folder="catalog-src", extensions=(".yaml",)),),
+        raw_payload={},
+    )
+    service = CatalogFileIndexService(repo_root=tmp_path, config=config)
+
+    first_payload = service.scan()
+    cached_payload = service.scan()
+    assert cached_payload is first_payload
+    first_row = first_payload["rows"][0]
+    assert first_row["metadata"]["config_version"] == "release-27"
+
+    config_file.write_text(
+        "\n".join(
+            [
+                "# config-service: config_type=fluentbit",
+                "# config-service: config_version=release-28-extra",
+                "service:",
+                "  flush: 5",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    refreshed_payload = service.scan()
+    refreshed_row = refreshed_payload["rows"][0]
+    assert refreshed_payload is not first_payload
+    assert refreshed_row["metadata"]["config_version"] == "release-28-extra"
+
+
 def test_catalog_service_readonly_file_view_is_limited_to_configured_sources(tmp_path: Path) -> None:
     source_dir = tmp_path / "catalog-src"
     source_dir.mkdir(parents=True, exist_ok=True)

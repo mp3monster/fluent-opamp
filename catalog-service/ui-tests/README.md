@@ -77,6 +77,7 @@ Deliverables:
 - standalone Server Console link visibility rules
 - discovered-value dropdown column filters (`config_type`, `engine`, `version`)
 - selection checkbox behavior and selected/unselected filtering
+- auto-refresh pause while catalog entries are selected
 - column drag-and-drop reordering persistence
 - standalone client error reporting endpoint wiring
 

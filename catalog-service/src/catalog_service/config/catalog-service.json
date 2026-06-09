@@ -17,6 +17,7 @@
       "help_path": "/catalog/help",
       "ui_base_css_path": "/config-service/ui/assets/config_ui.css",
       "web_port": 8090,
+      "ui_refresh_seconds": 120,
       "sources": [
         {
           "folder": "config-service/json-definitions",
