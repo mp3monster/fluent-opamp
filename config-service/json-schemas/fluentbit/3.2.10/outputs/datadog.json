@@ -1,0 +1,192 @@
+{
+  "type": "object",
+  "title": "Datadog",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "datadog",
+      "title": "Plugin"
+    },
+    "host": {
+      "type": "string",
+      "description": "Required - The Datadog server where you are sending your logs.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/datadog#configuration-parameters",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "http-intake.logs.datadoghq.com"
+    },
+    "tls": {
+      "type": "string",
+      "description": "Required - End-to-end security communications security protocol.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/datadog#configuration-parameters",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "off"
+    },
+    "compress": {
+      "type": "string",
+      "description": "Recommended - compresses the payload in GZIP format, Datadog supports and recommends setting this to gzip.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/datadog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "apikey": {
+      "type": "string",
+      "description": "Required - Your [Datadog API key](https://app.datadoghq.com/account/settings#api).",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/datadog#configuration-parameters",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "proxy": {
+      "type": "string",
+      "description": "Optional - Specify an HTTP Proxy.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/datadog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "provider": {
+      "type": "string",
+      "description": "To activate the remapping, specify configuration flag provider with value ecs.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/datadog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "json_date_key": {
+      "type": "string",
+      "description": "Date key name for output.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/datadog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "timestamp"
+    },
+    "include_tag_key": {
+      "type": "boolean",
+      "description": "If enabled, a tag is appended to output.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/datadog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "tag_key": {
+      "type": "string",
+      "description": "The key name of tag.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/datadog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "tagkey"
+    },
+    "dd_service": {
+      "type": "string",
+      "description": "Recommended - The human readable name for your service generating the logs (e.g.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/datadog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "dd_source": {
+      "type": "string",
+      "description": "Recommended - A human readable name for the underlying technology of your service (e.g.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/datadog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "dd_tags": {
+      "type": "string",
+      "description": "Optional - The [tags](https://docs.datadoghq.com/tagging/) you want to assign to your logs in Datadog.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/datadog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "dd_message_key": {
+      "type": "string",
+      "description": "By default, the plugin searches for the key 'log' and remap the value to the key 'message'.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/datadog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "dd_hostname": {
+      "type": "string",
+      "description": "The host the emitted logs should be associated with.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/datadog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "workers": {
+      "type": "integer",
+      "description": "The number of [workers](/manual/3.2/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/datadog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 0
+    },
+    "header": {
+      "type": "string",
+      "description": "Add additional arbitrary HTTP header key/value pair.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/datadog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match_regex": {
+      "type": "string",
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "processors": {
+      "$ref": "../processors.json"
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name",
+    "host",
+    "tls",
+    "apikey"
+  ],
+  "additionalProperties": false
+}

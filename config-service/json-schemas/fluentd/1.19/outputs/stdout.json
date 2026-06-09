@@ -1,0 +1,241 @@
+{
+  "type": "object",
+  "title": "stdout",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "stdout",
+      "title": "Plugin"
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag pattern selecting events for this output.",
+      "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "directive_arg": {
+      "type": "string",
+      "description": "Tag pattern selecting events for this output.",
+      "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "@id": {
+      "type": "string",
+      "description": "Unique identifier for the plugin instance.",
+      "x-doc-reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "@log_level": {
+      "type": "string",
+      "description": "Plugin-specific log level that overrides the global system log level.",
+      "x-doc-reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "enum",
+      "x-references-parser": false,
+      "enum": [
+        "trace",
+        "debug",
+        "info",
+        "warn",
+        "error",
+        "fatal"
+      ],
+      "default": "info"
+    },
+    "children": {
+      "type": "object",
+      "properties": {
+        "inject": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "hostname_key": {
+                "type": "string",
+                "description": "Record field used to inject the local hostname.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/inject-section",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "worker_id_key": {
+                "type": "string",
+                "description": "Record field used to inject the Fluentd worker id.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/inject-section",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "tag_key": {
+                "type": "string",
+                "description": "Record field used to inject the event tag.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/inject-section",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "time_key": {
+                "type": "string",
+                "description": "Record field used to inject the formatted event time.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/inject-section",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "time_type": {
+                "type": "string",
+                "description": "How injected time values should be formatted.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/inject-section",
+                "x-doc-required": false,
+                "x-config-data-type": "enum",
+                "x-references-parser": false,
+                "enum": [
+                  "float",
+                  "unixtime",
+                  "string"
+                ],
+                "default": "float"
+              },
+              "time_format": {
+                "type": "string",
+                "description": "Time format used when time_type is string.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/inject-section",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [],
+            "additionalProperties": false
+          }
+        },
+        "includes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "path"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "_meta": {
+          "type": "object",
+          "properties": {
+            "comment_lines": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "field_comment_lines": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "anyOf": [
+        {
+          "required": [
+            "match"
+          ]
+        },
+        {
+          "required": [
+            "directive_arg"
+          ]
+        }
+      ]
+    }
+  ]
+}

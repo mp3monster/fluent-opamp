@@ -1,0 +1,327 @@
+{
+  "type": "object",
+  "title": "forward",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "forward",
+      "title": "Plugin"
+    },
+    "@id": {
+      "type": "string",
+      "description": "Unique identifier for the plugin instance.",
+      "x-doc-reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "@log_level": {
+      "type": "string",
+      "description": "Plugin-specific log level that overrides the global system log level.",
+      "x-doc-reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "enum",
+      "x-references-parser": false,
+      "enum": [
+        "trace",
+        "debug",
+        "info",
+        "warn",
+        "error",
+        "fatal"
+      ],
+      "default": "info"
+    },
+    "@label": {
+      "type": "string",
+      "description": "Routes emitted events to a named label.",
+      "x-doc-reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "port": {
+      "type": "integer",
+      "description": "TCP port used for forward input.",
+      "x-doc-reference": "https://docs.fluentd.org/input/forward",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 24224
+    },
+    "bind": {
+      "type": "string",
+      "description": "Bind address for the forward listener.",
+      "x-doc-reference": "https://docs.fluentd.org/input/forward",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "0.0.0.0"
+    },
+    "source_hostname_key": {
+      "type": "string",
+      "description": "Record key used to inject the remote sender hostname.",
+      "x-doc-reference": "https://docs.fluentd.org/input/forward",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "source_address_key": {
+      "type": "string",
+      "description": "Record key used to inject the remote sender IP address.",
+      "x-doc-reference": "https://docs.fluentd.org/input/forward",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "skip_invalid_event": {
+      "type": "boolean",
+      "description": "Drop invalid incoming forward events rather than raising an error.",
+      "x-doc-reference": "https://docs.fluentd.org/input/forward",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "children": {
+      "type": "object",
+      "properties": {
+        "transport": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "protocol": {
+                "type": "string",
+                "description": "Transport protocol specified by the <transport ARG> directive.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                "x-doc-required": true,
+                "x-config-data-type": "enum",
+                "x-references-parser": false
+              },
+              "directive_arg": {
+                "type": "string",
+                "description": "Transport protocol specified by the <transport ARG> directive.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                "x-doc-required": true,
+                "x-config-data-type": "enum",
+                "x-references-parser": false
+              },
+              "linger_timeout": {
+                "type": "integer",
+                "description": "SO_LINGER timeout in seconds.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                "x-doc-required": false,
+                "x-config-data-type": "integer",
+                "x-references-parser": false,
+                "default": 0
+              },
+              "version": {
+                "type": "string",
+                "description": "Fixed TLS protocol version.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                "x-doc-required": false,
+                "x-config-data-type": "enum",
+                "x-references-parser": false,
+                "enum": [
+                  "TLS1_1",
+                  "TLS1_2",
+                  "TLS1_3"
+                ]
+              },
+              "min_version": {
+                "type": "string",
+                "description": "Minimum TLS protocol version.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                "x-doc-required": false,
+                "x-config-data-type": "enum",
+                "x-references-parser": false,
+                "enum": [
+                  "TLS1_1",
+                  "TLS1_2",
+                  "TLS1_3"
+                ]
+              },
+              "max_version": {
+                "type": "string",
+                "description": "Maximum TLS protocol version.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                "x-doc-required": false,
+                "x-config-data-type": "enum",
+                "x-references-parser": false,
+                "enum": [
+                  "TLS1_1",
+                  "TLS1_2",
+                  "TLS1_3"
+                ]
+              },
+              "insecure": {
+                "type": "boolean",
+                "description": "Disable certificate verification for TLS.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                "x-doc-required": false,
+                "x-config-data-type": "boolean",
+                "x-references-parser": false,
+                "default": false
+              },
+              "cert_path": {
+                "type": "string",
+                "description": "Path to the TLS certificate file.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "private_key_path": {
+                "type": "string",
+                "description": "Path to the TLS private key file.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "private_key_passphrase": {
+                "type": "string",
+                "description": "Passphrase for the TLS private key.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "ca_path": {
+                "type": "string",
+                "description": "Path to the trusted CA certificate file.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [],
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "anyOf": [
+                  {
+                    "required": [
+                      "protocol"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "directive_arg"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "includes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "path"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "_meta": {
+          "type": "object",
+          "properties": {
+            "comment_lines": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "field_comment_lines": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}

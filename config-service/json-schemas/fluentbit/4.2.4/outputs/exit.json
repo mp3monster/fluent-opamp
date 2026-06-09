@@ -1,0 +1,82 @@
+{
+  "type": "object",
+  "title": "Exit",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "exit",
+      "title": "Plugin"
+    },
+    "flush_count": {
+      "type": "integer",
+      "description": "Number of flushes to wait for before exiting.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/exit#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": -1
+    },
+    "record_count": {
+      "type": "integer",
+      "description": "Number of records to wait for before exiting.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/exit#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": -1
+    },
+    "time_count": {
+      "type": "integer",
+      "description": "Number of seconds to wait for before exiting.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/exit#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": -1
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match_regex": {
+      "type": "string",
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "processors": {
+      "$ref": "../processors.json"
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}

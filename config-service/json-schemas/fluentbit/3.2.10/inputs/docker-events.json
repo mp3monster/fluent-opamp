@@ -1,0 +1,110 @@
+{
+  "type": "object",
+  "title": "Docker Events",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "docker-events",
+      "title": "Plugin"
+    },
+    "unix_path": {
+      "type": "string",
+      "description": "The docker socket unix path",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-events#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "/var/run/docker.sock"
+    },
+    "buffer_size": {
+      "type": "integer",
+      "description": "The size of the buffer used to read docker events (in bytes)",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-events#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 8192
+    },
+    "parser": {
+      "type": "string",
+      "description": "Specify the name of a parser to interpret the entry as a structured message.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-events#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": true
+    },
+    "key": {
+      "type": "string",
+      "description": "When a message is unstructured (no parser applied), it's appended as a string under the key name message.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-events#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "message"
+    },
+    "reconnect.retry_limits": {
+      "type": "integer",
+      "description": "The maximum number of retries allowed.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-events#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 5
+    },
+    "reconnect.retry_interval": {
+      "type": "integer",
+      "description": "The retrying interval.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-events#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 1
+    },
+    "threaded": {
+      "type": "boolean",
+      "description": "Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs).",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-events#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "tag": {
+      "type": "string",
+      "description": "Tag assigned to records emitted by this input plugin.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "processors": {
+      "$ref": "../processors.json"
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name",
+    "tag"
+  ],
+  "additionalProperties": false
+}

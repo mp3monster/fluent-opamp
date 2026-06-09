@@ -1,0 +1,1264 @@
+{
+  "type": "object",
+  "title": "Windows exporter metrics",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "windows-exporter-metrics",
+      "title": "Plugin"
+    },
+    "scrape_interval": {
+      "type": "integer",
+      "description": "The rate in seconds at which metrics are collected from the Windows host.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 1
+    },
+    "enable_collector": {
+      "type": "boolean",
+      "description": "Enable one collector by name.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false
+    },
+    "we.logical_disk.allow_disk_regex": {
+      "type": "string",
+      "description": "Specify the regular expression for logical disk metrics to allow collection of.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "\"/.+/\"` (all)"
+    },
+    "we.logical_disk.deny_disk_regex": {
+      "type": "string",
+      "description": "Specify the regular expression for logical disk metrics to prevent collection of or ignore.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "NULL` (all)"
+    },
+    "we.net.allow_nic_regex": {
+      "type": "string",
+      "description": "Specify the regular expression for network metrics captured by the name of the NIC.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "\"/.+/\"` (all)"
+    },
+    "we.service.where": {
+      "type": "string",
+      "description": "Specify the WHERE clause for retrieving service metrics.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "NULL"
+    },
+    "we.service.include": {
+      "type": "array",
+      "description": "Specify the key value pairs for the include condition for the WHERE clause of service metrics.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "list",
+      "x-references-parser": false,
+      "default": "NULL"
+    },
+    "we.service.exclude": {
+      "type": "array",
+      "description": "Specify the key value pairs for the exclude condition for the WHERE clause of service metrics.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "list",
+      "x-references-parser": false,
+      "default": "NULL"
+    },
+    "we.process.allow_process_regex": {
+      "type": "string",
+      "description": "Specify the regular expression covering the process metrics to collect.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "\"/.+/\"` (all)"
+    },
+    "we.process.deny_process_regex": {
+      "type": "string",
+      "description": "Specify the regular expression for process metrics to prevent collection of or ignore.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "NULL` (all)"
+    },
+    "collector.cpu.scrape_interval": {
+      "type": "integer",
+      "description": "The rate in seconds at which cpu metrics are collected.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 0
+    },
+    "collector.net.scrape_interval": {
+      "type": "integer",
+      "description": "The rate in seconds at which net metrics are collected.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 0
+    },
+    "collector.logical_disk.scrape_interval": {
+      "type": "integer",
+      "description": "The rate in seconds at which logical_disk metrics are collected.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 0
+    },
+    "collector.cs.scrape_interval": {
+      "type": "integer",
+      "description": "The rate in seconds at which cs metrics are collected.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 0
+    },
+    "collector.os.scrape_interval": {
+      "type": "integer",
+      "description": "The rate in seconds at which os metrics are collected.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 0
+    },
+    "collector.thermalzone.scrape_interval": {
+      "type": "integer",
+      "description": "The rate in seconds at which thermalzone metrics are collected.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 0
+    },
+    "collector.cpu_info.scrape_interval": {
+      "type": "integer",
+      "description": "The rate in seconds at which cpu_info metrics are collected.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 0
+    },
+    "collector.logon.scrape_interval": {
+      "type": "integer",
+      "description": "The rate in seconds at which logon metrics are collected.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 0
+    },
+    "collector.system.scrape_interval": {
+      "type": "integer",
+      "description": "The rate in seconds at which system metrics are collected.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 0
+    },
+    "collector.service.scrape_interval": {
+      "type": "integer",
+      "description": "The rate in seconds at which service metrics are collected.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 0
+    },
+    "collector.memory.scrape_interval": {
+      "type": "integer",
+      "description": "The rate in seconds at which memory metrics are collected.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 0
+    },
+    "collector.paging_file.scrape_interval": {
+      "type": "integer",
+      "description": "The rate in seconds at which paging_file metrics are collected.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 0
+    },
+    "collector.process.scrape_interval": {
+      "type": "integer",
+      "description": "The rate in seconds at which process metrics are collected.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 0
+    },
+    "collector.tcp.scrape_interval": {
+      "type": "integer",
+      "description": "The rate in seconds at which tcp metrics are collected.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 0
+    },
+    "collector.cache.scrape_interval": {
+      "type": "integer",
+      "description": "The rate in seconds at which cache metrics are collected.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 0
+    },
+    "metrics": {
+      "type": "string",
+      "description": "Specify which metrics are collected.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "\"cpu,cpu_info,os,net,logical_disk,cs,cache,thermalzone,logon,system,service,tcp\""
+    },
+    "tag": {
+      "type": "string",
+      "description": "Tag assigned to records emitted by this input plugin.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "processors": {
+      "$ref": "../processors.json"
+    },
+    "route": {
+      "type": "object",
+      "properties": {
+        "per_record_routing": {
+          "type": "boolean",
+          "description": "When true, Fluent Bit evaluates route conditions for each record.",
+          "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+          "x-doc-required": false,
+          "x-config-data-type": "boolean",
+          "x-references-parser": false,
+          "default": true
+        },
+        "logs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "A unique identifier for the route.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+                "x-doc-required": true,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "condition": {
+                "type": "object",
+                "properties": {
+                  "default": {
+                    "type": "boolean",
+                    "description": "Match records that did not match any earlier route.",
+                    "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+                    "x-doc-required": false,
+                    "x-config-data-type": "boolean",
+                    "x-references-parser": false
+                  },
+                  "op": {
+                    "type": "string",
+                    "description": "Logical operator for combining route rules.",
+                    "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+                    "x-doc-required": false,
+                    "x-config-data-type": "enum",
+                    "x-references-parser": false,
+                    "enum": [
+                      "and",
+                      "or"
+                    ]
+                  },
+                  "rules": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "context": {
+                          "type": "string",
+                          "description": "Location of the field used for route evaluation.",
+                          "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+                          "x-doc-required": false,
+                          "x-config-data-type": "enum",
+                          "x-references-parser": false,
+                          "enum": [
+                            "body",
+                            "group_attributes",
+                            "group_metadata",
+                            "metadata",
+                            "otel_resource_attributes",
+                            "otel_scope_attributes",
+                            "otel_scope_metadata"
+                          ]
+                        },
+                        "field": {
+                          "type": "string",
+                          "description": "Field to evaluate, using Fluent Bit record accessor syntax.",
+                          "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+                          "x-doc-required": true,
+                          "x-config-data-type": "string",
+                          "x-references-parser": false
+                        },
+                        "op": {
+                          "type": "string",
+                          "description": "Comparison operator applied to the selected field.",
+                          "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+                          "x-doc-required": true,
+                          "x-config-data-type": "enum",
+                          "x-references-parser": false,
+                          "enum": [
+                            "eq",
+                            "gt",
+                            "gte",
+                            "in",
+                            "lt",
+                            "lte",
+                            "neq",
+                            "not_in",
+                            "not_regex",
+                            "regex"
+                          ]
+                        },
+                        "value": {
+                          "description": "Value compared against the selected field. Arrays are valid for in and not_in.",
+                          "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+                          "x-doc-required": true,
+                          "x-config-data-type": "string",
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "integer"
+                            },
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "array"
+                            },
+                            {
+                              "type": "object"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "_meta": {
+                          "type": "object",
+                          "properties": {
+                            "comment_lines": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "field_comment_lines": {
+                              "type": "object",
+                              "additionalProperties": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              }
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "field",
+                        "op",
+                        "value"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Routing rules to evaluate for this route."
+                  },
+                  "_meta": {
+                    "type": "object",
+                    "properties": {
+                      "comment_lines": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "field_comment_lines": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "additionalProperties": false
+              },
+              "to": {
+                "type": "object",
+                "properties": {
+                  "outputs": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "_meta": {
+                    "type": "object",
+                    "properties": {
+                      "comment_lines": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "field_comment_lines": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "outputs"
+                ],
+                "additionalProperties": false
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name",
+              "condition",
+              "to"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Routes log records."
+        },
+        "metrics": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "A unique identifier for the route.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+                "x-doc-required": true,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "condition": {
+                "type": "object",
+                "properties": {
+                  "default": {
+                    "type": "boolean",
+                    "description": "Match records that did not match any earlier route.",
+                    "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+                    "x-doc-required": false,
+                    "x-config-data-type": "boolean",
+                    "x-references-parser": false
+                  },
+                  "op": {
+                    "type": "string",
+                    "description": "Logical operator for combining route rules.",
+                    "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+                    "x-doc-required": false,
+                    "x-config-data-type": "enum",
+                    "x-references-parser": false,
+                    "enum": [
+                      "and",
+                      "or"
+                    ]
+                  },
+                  "rules": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "context": {
+                          "type": "string",
+                          "description": "Location of the field used for route evaluation.",
+                          "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+                          "x-doc-required": false,
+                          "x-config-data-type": "enum",
+                          "x-references-parser": false,
+                          "enum": [
+                            "body",
+                            "group_attributes",
+                            "group_metadata",
+                            "metadata",
+                            "otel_resource_attributes",
+                            "otel_scope_attributes",
+                            "otel_scope_metadata"
+                          ]
+                        },
+                        "field": {
+                          "type": "string",
+                          "description": "Field to evaluate, using Fluent Bit record accessor syntax.",
+                          "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+                          "x-doc-required": true,
+                          "x-config-data-type": "string",
+                          "x-references-parser": false
+                        },
+                        "op": {
+                          "type": "string",
+                          "description": "Comparison operator applied to the selected field.",
+                          "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+                          "x-doc-required": true,
+                          "x-config-data-type": "enum",
+                          "x-references-parser": false,
+                          "enum": [
+                            "eq",
+                            "gt",
+                            "gte",
+                            "in",
+                            "lt",
+                            "lte",
+                            "neq",
+                            "not_in",
+                            "not_regex",
+                            "regex"
+                          ]
+                        },
+                        "value": {
+                          "description": "Value compared against the selected field. Arrays are valid for in and not_in.",
+                          "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+                          "x-doc-required": true,
+                          "x-config-data-type": "string",
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "integer"
+                            },
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "array"
+                            },
+                            {
+                              "type": "object"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "_meta": {
+                          "type": "object",
+                          "properties": {
+                            "comment_lines": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "field_comment_lines": {
+                              "type": "object",
+                              "additionalProperties": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              }
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "field",
+                        "op",
+                        "value"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Routing rules to evaluate for this route."
+                  },
+                  "_meta": {
+                    "type": "object",
+                    "properties": {
+                      "comment_lines": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "field_comment_lines": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "additionalProperties": false
+              },
+              "to": {
+                "type": "object",
+                "properties": {
+                  "outputs": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "_meta": {
+                    "type": "object",
+                    "properties": {
+                      "comment_lines": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "field_comment_lines": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "outputs"
+                ],
+                "additionalProperties": false
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name",
+              "condition",
+              "to"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Routes metric records. Fluent Bit currently parses these routes but does not evaluate them."
+        },
+        "traces": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "A unique identifier for the route.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+                "x-doc-required": true,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "condition": {
+                "type": "object",
+                "properties": {
+                  "default": {
+                    "type": "boolean",
+                    "description": "Match records that did not match any earlier route.",
+                    "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+                    "x-doc-required": false,
+                    "x-config-data-type": "boolean",
+                    "x-references-parser": false
+                  },
+                  "op": {
+                    "type": "string",
+                    "description": "Logical operator for combining route rules.",
+                    "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+                    "x-doc-required": false,
+                    "x-config-data-type": "enum",
+                    "x-references-parser": false,
+                    "enum": [
+                      "and",
+                      "or"
+                    ]
+                  },
+                  "rules": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "context": {
+                          "type": "string",
+                          "description": "Location of the field used for route evaluation.",
+                          "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+                          "x-doc-required": false,
+                          "x-config-data-type": "enum",
+                          "x-references-parser": false,
+                          "enum": [
+                            "body",
+                            "group_attributes",
+                            "group_metadata",
+                            "metadata",
+                            "otel_resource_attributes",
+                            "otel_scope_attributes",
+                            "otel_scope_metadata"
+                          ]
+                        },
+                        "field": {
+                          "type": "string",
+                          "description": "Field to evaluate, using Fluent Bit record accessor syntax.",
+                          "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+                          "x-doc-required": true,
+                          "x-config-data-type": "string",
+                          "x-references-parser": false
+                        },
+                        "op": {
+                          "type": "string",
+                          "description": "Comparison operator applied to the selected field.",
+                          "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+                          "x-doc-required": true,
+                          "x-config-data-type": "enum",
+                          "x-references-parser": false,
+                          "enum": [
+                            "eq",
+                            "gt",
+                            "gte",
+                            "in",
+                            "lt",
+                            "lte",
+                            "neq",
+                            "not_in",
+                            "not_regex",
+                            "regex"
+                          ]
+                        },
+                        "value": {
+                          "description": "Value compared against the selected field. Arrays are valid for in and not_in.",
+                          "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+                          "x-doc-required": true,
+                          "x-config-data-type": "string",
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "integer"
+                            },
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "array"
+                            },
+                            {
+                              "type": "object"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "_meta": {
+                          "type": "object",
+                          "properties": {
+                            "comment_lines": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "field_comment_lines": {
+                              "type": "object",
+                              "additionalProperties": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              }
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "field",
+                        "op",
+                        "value"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Routing rules to evaluate for this route."
+                  },
+                  "_meta": {
+                    "type": "object",
+                    "properties": {
+                      "comment_lines": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "field_comment_lines": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "additionalProperties": false
+              },
+              "to": {
+                "type": "object",
+                "properties": {
+                  "outputs": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "_meta": {
+                    "type": "object",
+                    "properties": {
+                      "comment_lines": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "field_comment_lines": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "outputs"
+                ],
+                "additionalProperties": false
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name",
+              "condition",
+              "to"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Routes trace records. Fluent Bit currently parses these routes but does not evaluate them."
+        },
+        "any": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "A unique identifier for the route.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+                "x-doc-required": true,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "condition": {
+                "type": "object",
+                "properties": {
+                  "default": {
+                    "type": "boolean",
+                    "description": "Match records that did not match any earlier route.",
+                    "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+                    "x-doc-required": false,
+                    "x-config-data-type": "boolean",
+                    "x-references-parser": false
+                  },
+                  "op": {
+                    "type": "string",
+                    "description": "Logical operator for combining route rules.",
+                    "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+                    "x-doc-required": false,
+                    "x-config-data-type": "enum",
+                    "x-references-parser": false,
+                    "enum": [
+                      "and",
+                      "or"
+                    ]
+                  },
+                  "rules": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "context": {
+                          "type": "string",
+                          "description": "Location of the field used for route evaluation.",
+                          "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+                          "x-doc-required": false,
+                          "x-config-data-type": "enum",
+                          "x-references-parser": false,
+                          "enum": [
+                            "body",
+                            "group_attributes",
+                            "group_metadata",
+                            "metadata",
+                            "otel_resource_attributes",
+                            "otel_scope_attributes",
+                            "otel_scope_metadata"
+                          ]
+                        },
+                        "field": {
+                          "type": "string",
+                          "description": "Field to evaluate, using Fluent Bit record accessor syntax.",
+                          "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+                          "x-doc-required": true,
+                          "x-config-data-type": "string",
+                          "x-references-parser": false
+                        },
+                        "op": {
+                          "type": "string",
+                          "description": "Comparison operator applied to the selected field.",
+                          "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+                          "x-doc-required": true,
+                          "x-config-data-type": "enum",
+                          "x-references-parser": false,
+                          "enum": [
+                            "eq",
+                            "gt",
+                            "gte",
+                            "in",
+                            "lt",
+                            "lte",
+                            "neq",
+                            "not_in",
+                            "not_regex",
+                            "regex"
+                          ]
+                        },
+                        "value": {
+                          "description": "Value compared against the selected field. Arrays are valid for in and not_in.",
+                          "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
+                          "x-doc-required": true,
+                          "x-config-data-type": "string",
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "integer"
+                            },
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "array"
+                            },
+                            {
+                              "type": "object"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "_meta": {
+                          "type": "object",
+                          "properties": {
+                            "comment_lines": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "field_comment_lines": {
+                              "type": "object",
+                              "additionalProperties": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              }
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "field",
+                        "op",
+                        "value"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Routing rules to evaluate for this route."
+                  },
+                  "_meta": {
+                    "type": "object",
+                    "properties": {
+                      "comment_lines": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "field_comment_lines": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "additionalProperties": false
+              },
+              "to": {
+                "type": "object",
+                "properties": {
+                  "outputs": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "_meta": {
+                    "type": "object",
+                    "properties": {
+                      "comment_lines": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "field_comment_lines": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "outputs"
+                ],
+                "additionalProperties": false
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name",
+              "condition",
+              "to"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Routes all signal types. Fluent Bit currently evaluates logs only."
+        },
+        "_meta": {
+          "type": "object",
+          "properties": {
+            "comment_lines": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "field_comment_lines": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}

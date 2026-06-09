@@ -1,0 +1,166 @@
+{
+  "type": "object",
+  "title": "Kafka",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "kafka",
+      "title": "Plugin"
+    },
+    "format": {
+      "type": "string",
+      "description": "Specify data format, options available: json, msgpack, raw.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kafka#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "json"
+    },
+    "message_key": {
+      "type": "string",
+      "description": "Optional key to store the message",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kafka#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "message_key_field": {
+      "type": "string",
+      "description": "If set, the value of Message_Key_Field in the record will indicate the message key.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kafka#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "timestamp_key": {
+      "type": "string",
+      "description": "Set the key to store the record timestamp",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kafka#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "@timestamp"
+    },
+    "timestamp_format": {
+      "type": "string",
+      "description": "Specify timestamp format, should be 'double', '[iso8601](https://en.wikipedia.org/wiki/ISO_8601)' (seconds precision) or 'iso8601_ns' (fractional seconds precision)",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kafka#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "duration",
+      "x-references-parser": false,
+      "default": "double"
+    },
+    "brokers": {
+      "type": "array",
+      "description": "Single or multiple list of Kafka Brokers, e.g: 192.168.1.3:9092, 192.168.1.4:9092.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kafka#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "list",
+      "x-references-parser": false
+    },
+    "topics": {
+      "type": "array",
+      "description": "Single entry or list of topics separated by comma (,) that Fluent Bit will use to send messages to Kafka.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kafka#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "list",
+      "x-references-parser": false,
+      "default": "fluent-bit"
+    },
+    "topic_key": {
+      "type": "string",
+      "description": "If multiple Topics exists, the value of Topic_Key in the record will indicate the topic to use.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kafka#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "dynamic_topic": {
+      "type": "string",
+      "description": "adds unknown topics (found in Topic_Key) to Topics.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kafka#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "Off"
+    },
+    "queue_full_retries": {
+      "type": "integer",
+      "description": "Fluent Bit queues data into rdkafka library, if for some reason the underlying library cannot flush the records the queue might fills up blocking new addition of records.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kafka#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 10
+    },
+    "rdkafka.{property}": {
+      "type": "string",
+      "description": "{property} can be any [librdkafka properties](https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kafka#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "raw_log_key": {
+      "type": "string",
+      "description": "When using the raw format and set, the value of raw_log_key in the record will be send to kafka as the payload.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kafka#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "workers": {
+      "type": "integer",
+      "description": "The number of [workers](/manual/3.2/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kafka#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 0
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match_regex": {
+      "type": "string",
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "processors": {
+      "$ref": "../processors.json"
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,97 @@
+{
+  "type": "object",
+  "title": "Treasure Data",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "treasure-data",
+      "title": "Plugin"
+    },
+    "api": {
+      "type": "string",
+      "description": "The Treasure Data API key.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/treasure-data#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "database": {
+      "type": "string",
+      "description": "Specify the name of your target database.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/treasure-data#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "region": {
+      "type": "string",
+      "description": "Set the service region.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/treasure-data#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "US"
+    },
+    "table": {
+      "type": "string",
+      "description": "Specify the name of your target table where the records will be stored.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/treasure-data#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "workers": {
+      "type": "integer",
+      "description": "The number of [workers](/manual/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/treasure-data#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 0
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match_regex": {
+      "type": "string",
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "processors": {
+      "$ref": "../processors.json"
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,92 @@
+{
+  "type": "object",
+  "title": "Sysinfo",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "sysinfo",
+      "title": "Plugin"
+    },
+    "fluentbit_version_key": {
+      "type": "string",
+      "description": "Specify the key name for fluent-bit version.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/sysinfo#configuration-prameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "os_name_key": {
+      "type": "string",
+      "description": "Specify the key name for os name.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/sysinfo#configuration-prameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "hostname_key": {
+      "type": "string",
+      "description": "Specify the key name for hostname.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/sysinfo#configuration-prameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "os_version_key": {
+      "type": "string",
+      "description": "Specify the key name for os version.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/sysinfo#configuration-prameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "kernel_version_key": {
+      "type": "string",
+      "description": "Specify the key name for kernel version.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/sysinfo#configuration-prameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match_regex": {
+      "type": "string",
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}

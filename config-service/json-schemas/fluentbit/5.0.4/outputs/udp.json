@@ -1,0 +1,117 @@
+{
+  "type": "object",
+  "title": "UDP",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "udp",
+      "title": "Plugin"
+    },
+    "format": {
+      "type": "string",
+      "description": "Specify the data format to be printed.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/udp#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "json_lines"
+    },
+    "host": {
+      "type": "string",
+      "description": "Target host where the UDP server is listening.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/udp#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "127.0.0.1"
+    },
+    "json_date_format": {
+      "type": "string",
+      "description": "Specify the format of the date.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/udp#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "double"
+    },
+    "json_date_key": {
+      "type": "string",
+      "description": "Specify the name of the time key in the output record.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/udp#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "date"
+    },
+    "port": {
+      "type": "integer",
+      "description": "UDP port of the target service.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/udp#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 5170
+    },
+    "raw_message_key": {
+      "type": "string",
+      "description": "Use a raw message key for the message.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/udp#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "workers": {
+      "type": "integer",
+      "description": "The number of [workers](/manual/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/udp#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 2
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match_regex": {
+      "type": "string",
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "processors": {
+      "$ref": "../processors.json"
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}

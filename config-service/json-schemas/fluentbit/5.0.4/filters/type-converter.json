@@ -1,0 +1,84 @@
+{
+  "type": "object",
+  "title": "Type converter",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "type-converter",
+      "title": "Plugin"
+    },
+    "float_key": {
+      "type": "string",
+      "description": "This parameter is for a float source.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/type-converter#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "int_key": {
+      "type": "string",
+      "description": "This parameter is for an integer source.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/type-converter#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "str_key": {
+      "type": "string",
+      "description": "This parameter is for a string source.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/type-converter#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "uint_key": {
+      "type": "string",
+      "description": "This parameter is for an unsigned integer source.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/type-converter#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match_regex": {
+      "type": "string",
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}

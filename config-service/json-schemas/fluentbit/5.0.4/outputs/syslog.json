@@ -1,0 +1,234 @@
+{
+  "type": "object",
+  "title": "Syslog",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "syslog",
+      "title": "Plugin"
+    },
+    "allow_longer_sd_id": {
+      "type": "boolean",
+      "description": "If true, Fluent Bit allows SD-ID values longer than 32 characters.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/syslog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "host": {
+      "type": "string",
+      "description": "Domain or IP address of the remote Syslog server.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/syslog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "127.0.0.1"
+    },
+    "mode": {
+      "type": "string",
+      "description": "Desired transport type.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/syslog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "udp"
+    },
+    "port": {
+      "type": "integer",
+      "description": "TCP or UDP port of the remote Syslog server.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/syslog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 514
+    },
+    "syslog_appname_key": {
+      "type": "string",
+      "description": "Optional.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/syslog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "syslog_appname_preset": {
+      "type": "string",
+      "description": "Optional.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/syslog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "syslog_facility_key": {
+      "type": "string",
+      "description": "Optional.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/syslog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "syslog_facility_preset": {
+      "type": "integer",
+      "description": "Optional.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/syslog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 1
+    },
+    "syslog_format": {
+      "type": "string",
+      "description": "The Syslog protocol format to use.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/syslog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "rfc5424"
+    },
+    "syslog_hostname_key": {
+      "type": "string",
+      "description": "Optional.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/syslog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "syslog_hostname_preset": {
+      "type": "string",
+      "description": "Optional.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/syslog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "syslog_maxsize": {
+      "type": "integer",
+      "description": "The maximum size allowed per message.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/syslog#configuration-parameters",
+      "x-doc-required": true,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 0
+    },
+    "syslog_message_key": {
+      "type": "string",
+      "description": "Required.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/syslog#configuration-parameters",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "syslog_msgid_key": {
+      "type": "string",
+      "description": "Optional.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/syslog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "syslog_msgid_preset": {
+      "type": "string",
+      "description": "Optional.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/syslog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "syslog_procid_key": {
+      "type": "string",
+      "description": "Optional.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/syslog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "syslog_procid_preset": {
+      "type": "string",
+      "description": "Optional.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/syslog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "syslog_sd_key": {
+      "type": "string",
+      "description": "Optional.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/syslog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "syslog_severity_key": {
+      "type": "string",
+      "description": "Optional.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/syslog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "syslog_severity_preset": {
+      "type": "integer",
+      "description": "Optional.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/syslog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 6
+    },
+    "workers": {
+      "type": "integer",
+      "description": "The number of [workers](/manual/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/syslog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 0
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match_regex": {
+      "type": "string",
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "processors": {
+      "$ref": "../processors.json"
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name",
+    "syslog_maxsize",
+    "syslog_message_key"
+  ],
+  "additionalProperties": false
+}

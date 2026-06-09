@@ -1,0 +1,238 @@
+{
+  "artifact_manifest": {
+    "format": "config-service.composite-json/v1",
+    "base": "outputs.base.json",
+    "parts": [
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/azure.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/azure_blob.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/azure_kusto.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/azure_logs_ingestion.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/bigquery.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/chronicle.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/cloudwatch.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/counter.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/dash0.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/datadog.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/dynatrace.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/elasticsearch.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/file.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/firehose.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/flowcounter.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/forward.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/gelf.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/http.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/influxdb.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/kafka.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/kafka-rest-proxy.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/kinesis.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/logdna.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/loki.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/nats.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/new-relic.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/null.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/observe.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/oci-logging-analytics.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/openobserve.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/opensearch.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/opentelemetry.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/postgresql.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/prometheus-exporter.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/prometheus-remote-write.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/s3.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/skywalking.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/slack.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/splunk.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/stackdriver.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/standard-output.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/syslog.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/tcp-and-tls.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/treasure-data.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/vivo-exporter.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/websocket.json",
+        "operation": "append"
+      }
+    ]
+  }
+}

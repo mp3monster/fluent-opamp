@@ -1,0 +1,223 @@
+{
+  "artifact_manifest": {
+    "format": "config-service.composite-json/v1",
+    "base": "inputs.base.json",
+    "parts": [
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/collectd.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/cpu-metrics.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/disk-io-metrics.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/docker-events.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/docker-metrics.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/dummy.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/ebpf.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/elasticsearch.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/exec.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/exec-wasi.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/fluentbit-metrics.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/forward.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/head.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/health.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/http.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/kafka.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/kernel-logs.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/kubernetes-events.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/memory-metrics.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/mqtt.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/network-io-metrics.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/nginx.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/node-exporter-metrics.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/opentelemetry.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/podman-metrics.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/process.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/process-exporter-metrics.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/prometheus-remote-write.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/prometheus-scrape-metrics.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/random.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/serial-interface.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/splunk.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/standard-input.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/statsd.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/syslog.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/systemd.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/tail.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/tcp.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/thermal.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/udp.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/windows-event-log.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/windows-event-log-winevtlog.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/windows-exporter-metrics.json",
+        "operation": "append"
+      }
+    ]
+  }
+}

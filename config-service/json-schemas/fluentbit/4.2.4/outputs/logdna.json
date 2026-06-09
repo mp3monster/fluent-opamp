@@ -1,0 +1,149 @@
+{
+  "type": "object",
+  "title": "LogDNA",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "logdna",
+      "title": "Plugin"
+    },
+    "api_key": {
+      "type": "string",
+      "description": "Required.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/logdna#configuration-parameters",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "app": {
+      "type": "string",
+      "description": "Name of the application.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/logdna#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "Fluent Bit"
+    },
+    "file": {
+      "type": "string",
+      "description": "Optional name of a file being monitored.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/logdna#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "hostname": {
+      "type": "string",
+      "description": "Name of the local machine or device where Fluent Bit is running.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/logdna#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "ip": {
+      "type": "string",
+      "description": "The IP address of the local hostname.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/logdna#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "logdna_endpoint": {
+      "type": "string",
+      "description": "The LogDNA ingestion endpoint.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/logdna#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "/logs/ingest"
+    },
+    "logdna_host": {
+      "type": "string",
+      "description": "The LogDNA API host address.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/logdna#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "logs.logdna.com"
+    },
+    "logdna_port": {
+      "type": "integer",
+      "description": "The LogDNA TCP port.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/logdna#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 443
+    },
+    "mac": {
+      "type": "string",
+      "description": "The MAC address.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/logdna#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "tags": {
+      "type": "array",
+      "description": "A list of comma-separated strings to group records in LogDNA and simplify the query with filters.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/logdna#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "list",
+      "x-references-parser": false
+    },
+    "workers": {
+      "type": "integer",
+      "description": "The number of [workers](/manual/4.2/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/logdna#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 0
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match_regex": {
+      "type": "string",
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "processors": {
+      "$ref": "../processors.json"
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name",
+    "api_key"
+  ],
+  "additionalProperties": false
+}

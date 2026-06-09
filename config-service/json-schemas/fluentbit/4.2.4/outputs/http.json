@@ -1,0 +1,459 @@
+{
+  "type": "object",
+  "title": "HTTP",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "http",
+      "title": "Plugin"
+    },
+    "allow_duplicated_headers": {
+      "type": "boolean",
+      "description": "Specify if duplicated headers are allowed.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": true
+    },
+    "aws_auth": {
+      "type": "boolean",
+      "description": "Enable AWS SigV4 authentication.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "aws_external_id": {
+      "type": "string",
+      "description": "External ID for the AWS IAM Role specified with aws_role_arn, used by SigV4 authentication.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "aws_profile": {
+      "type": "string",
+      "description": "AWS Profile name.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "aws_region": {
+      "type": "string",
+      "description": "Specify the AWS region of your service, used by SigV4 authentication.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "aws_role_arn": {
+      "type": "string",
+      "description": "AWS IAM Role to assume, used by SigV4 authentication.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "aws_service": {
+      "type": "string",
+      "description": "Specify the AWS service code of your service, used by SigV4 authentication (for example, es, xray).",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "aws_sts_endpoint": {
+      "type": "string",
+      "description": "Specify the custom STS endpoint to be used by STS API.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "body_key": {
+      "type": "string",
+      "description": "Specify the key to use as the body of the request (must prefix with $).",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "compress": {
+      "type": "string",
+      "description": "Set payload compression mechanism.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "format": {
+      "type": "string",
+      "description": "Specify the data format to be used in the HTTP request body.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "json"
+    },
+    "gelf_full_message_key": {
+      "type": "string",
+      "description": "Specify the key to use for the full message in gelf format.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "gelf_host_key": {
+      "type": "string",
+      "description": "Specify the key to use for the host in gelf format.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "gelf_level_key": {
+      "type": "string",
+      "description": "Specify the key to use for the level in gelf format.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "gelf_short_message_key": {
+      "type": "string",
+      "description": "Specify the key to use as the short message in gelf format.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "gelf_timestamp_key": {
+      "type": "string",
+      "description": "Specify the key to use for timestamp in gelf format.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "header": {
+      "type": "string",
+      "description": "Add a HTTP header key/value pair.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "header_tag": {
+      "type": "string",
+      "description": "Specify an optional HTTP header field for the original message tag.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "headers_key": {
+      "type": "string",
+      "description": "Specify the key to use as the headers of the request (must prefix with $).",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "host": {
+      "type": "string",
+      "description": "IP address or hostname of the target HTTP Server.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "127.0.0.1"
+    },
+    "http.read_idle_timeout": {
+      "type": "string",
+      "description": "Set maximum allowed time between two consecutive reads.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "duration",
+      "x-references-parser": false,
+      "default": "0s"
+    },
+    "http.response_timeout": {
+      "type": "string",
+      "description": "Set maximum time to wait for a server response.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "duration",
+      "x-references-parser": false,
+      "default": "60s"
+    },
+    "http_method": {
+      "type": "string",
+      "description": "Specify POST versus PUT HTTP method.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "POST"
+    },
+    "http_passwd": {
+      "type": "string",
+      "description": "Basic Auth password.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "http_user": {
+      "type": "string",
+      "description": "Basic Auth username.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "json_date_format": {
+      "type": "string",
+      "description": "Specify the format of the date.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "json_date_key": {
+      "type": "string",
+      "description": "Specify the name of the time key in the output record.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "date"
+    },
+    "log_response_payload": {
+      "type": "boolean",
+      "description": "Specify if the response payload should be logged or not.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": true
+    },
+    "oauth2.audience": {
+      "type": "string",
+      "description": "Optional OAuth 2.0 audience parameter.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "oauth2.auth_method": {
+      "type": "string",
+      "description": "OAuth 2.0 client authentication method.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "basic"
+    },
+    "oauth2.client_id": {
+      "type": "string",
+      "description": "OAuth 2.0 client ID.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "oauth2.client_secret": {
+      "type": "string",
+      "description": "OAuth 2.0 client secret.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "oauth2.connect_timeout": {
+      "type": "string",
+      "description": "Connect timeout for OAuth 2.0 token requests.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "duration",
+      "x-references-parser": false,
+      "default": "0s"
+    },
+    "oauth2.enable": {
+      "type": "boolean",
+      "description": "Enable OAuth 2.0 client credentials for outgoing requests.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "oauth2.jwt_aud": {
+      "type": "string",
+      "description": "Audience for private_key_jwt JSON Web Token (JWT) assertion.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "oauth2.jwt_cert_file": {
+      "type": "string",
+      "description": "Path to certificate file used by private_key_jwt.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "oauth2.jwt_header": {
+      "type": "string",
+      "description": "JWT header claim name for private_key_jwt thumbprint.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "kid"
+    },
+    "oauth2.jwt_key_file": {
+      "type": "string",
+      "description": "Path to PEM private key file used by private_key_jwt.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "oauth2.jwt_ttl_seconds": {
+      "type": "integer",
+      "description": "Lifetime in seconds for private_key_jwt JWT client assertions.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 300
+    },
+    "oauth2.refresh_skew_seconds": {
+      "type": "integer",
+      "description": "Seconds before expiry at which to refresh the access token.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 60
+    },
+    "oauth2.resource": {
+      "type": "string",
+      "description": "Optional OAuth 2.0 resource parameter.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "oauth2.scope": {
+      "type": "string",
+      "description": "Optional OAuth 2.0 scope.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "oauth2.timeout": {
+      "type": "string",
+      "description": "Timeout for OAuth 2.0 token requests.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "duration",
+      "x-references-parser": false,
+      "default": "0s"
+    },
+    "oauth2.token_url": {
+      "type": "string",
+      "description": "OAuth 2.0 token endpoint URL.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "port": {
+      "type": "integer",
+      "description": "TCP port of the target HTTP Server.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 80
+    },
+    "proxy": {
+      "type": "string",
+      "description": "Specify an HTTP Proxy.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "uri": {
+      "type": "string",
+      "description": "Specify an optional HTTP URI for the target web server.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "workers": {
+      "type": "integer",
+      "description": "The number of [workers](/manual/4.2/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/http#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 2
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match_regex": {
+      "type": "string",
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "processors": {
+      "$ref": "../processors.json"
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name",
+    "body_key",
+    "headers_key"
+  ],
+  "additionalProperties": false
+}

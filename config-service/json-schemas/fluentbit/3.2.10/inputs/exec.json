@@ -1,0 +1,120 @@
+{
+  "type": "object",
+  "title": "Exec",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "exec",
+      "title": "Plugin"
+    },
+    "command": {
+      "type": "string",
+      "description": "The command to execute, passed to [popen(...)](https://man7.org/linux/man-pages/man3/popen.3.html) without any additional escaping or processing.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "parser": {
+      "type": "string",
+      "description": "Specify the name of a parser to interpret the entry as a structured message.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": true
+    },
+    "interval_sec": {
+      "type": "string",
+      "description": "Polling interval (seconds).",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "duration",
+      "x-references-parser": false
+    },
+    "interval_nsec": {
+      "type": "string",
+      "description": "Polling interval (nanosecond).",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "duration",
+      "x-references-parser": false
+    },
+    "buf_size": {
+      "type": "string",
+      "description": "Size of the buffer (check [unit sizes](/manual/3.2/administration/configuring-fluent-bit/unit-sizes.md) for allowed values)",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "size",
+      "x-references-parser": false
+    },
+    "oneshot": {
+      "type": "string",
+      "description": "Only run once at startup.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "exit_after_oneshot": {
+      "type": "string",
+      "description": "Exit as soon as the one-shot command exits.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "propagate_exit_code": {
+      "type": "string",
+      "description": "When exiting due to Exit_After_Oneshot, cause fluent-bit to exit with the exit code of the command exited by this plugin.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "threaded": {
+      "type": "string",
+      "description": "Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs).",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "tag": {
+      "type": "string",
+      "description": "Tag assigned to records emitted by this input plugin.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "processors": {
+      "$ref": "../processors.json"
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name",
+    "tag"
+  ],
+  "additionalProperties": false
+}

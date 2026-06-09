@@ -1,0 +1,241 @@
+{
+  "type": "object",
+  "title": "Loki",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "loki",
+      "title": "Plugin"
+    },
+    "host": {
+      "type": "string",
+      "description": "Loki base hostname or IP address.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "127.0.0.1"
+    },
+    "uri": {
+      "type": "string",
+      "description": "Specify a custom HTTP URI.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "/loki/api/v1/push"
+    },
+    "port": {
+      "type": "integer",
+      "description": "The Loki TCP port.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 3100
+    },
+    "tls": {
+      "type": "string",
+      "description": "Use TLS authentication.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "off"
+    },
+    "http_user": {
+      "type": "string",
+      "description": "Set HTTP basic authentication user name.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "http_passwd": {
+      "type": "string",
+      "description": "Set HTTP basic authentication password.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "bearer_token": {
+      "type": "string",
+      "description": "Set bearer token authentication token value.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "header": {
+      "type": "string",
+      "description": "Add additional arbitrary HTTP header key/value pair.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "tenant_id": {
+      "type": "string",
+      "description": "Tenant ID used by default to push logs to Loki.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "labels": {
+      "type": "string",
+      "description": "Stream labels for API request.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "job=fluent-bit"
+    },
+    "label_keys": {
+      "type": "array",
+      "description": "(Optional.) List of record keys that will be placed as stream labels.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "list",
+      "x-references-parser": false
+    },
+    "label_map_path": {
+      "type": "string",
+      "description": "Specify the label map path.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "structured_metadata": {
+      "type": "array",
+      "description": "(Optional.) Comma-separated list of key=value strings specifying structured metadata for the log line.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "list",
+      "x-references-parser": false
+    },
+    "structured_metadata_map_keys": {
+      "type": "array",
+      "description": "(Optional.) Comma-separated list of record key strings specifying record values of type map, used to dynamically populate structured metadata for the log line.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "list",
+      "x-references-parser": false
+    },
+    "remove_keys": {
+      "type": "array",
+      "description": "(Optional.) List of keys to remove.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "list",
+      "x-references-parser": false
+    },
+    "drop_single_key": {
+      "type": "string",
+      "description": "When set to true and after extracting labels only a single key remains, the log line sent to Loki will be the value of that key in line_format.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "line_format": {
+      "type": "string",
+      "description": "Format to use when flattening the record to a log line.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "json"
+    },
+    "auto_kubernetes_labels": {
+      "type": "boolean",
+      "description": "If set to true, adds all Kubernetes labels to the stream labels.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "tenant_id_key": {
+      "type": "string",
+      "description": "Specify the name of the key from the original record that contains the Tenant ID.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "buffer_size": {
+      "type": "string",
+      "description": "Maximum HTTP response buffer size.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "size",
+      "x-references-parser": false,
+      "default": "512KB"
+    },
+    "compress": {
+      "type": "string",
+      "description": "Set payload compression mechanism.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "workers": {
+      "type": "integer",
+      "description": "The number of [workers](/manual/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 0
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match_regex": {
+      "type": "string",
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "processors": {
+      "$ref": "../processors.json"
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name",
+    "uri"
+  ],
+  "additionalProperties": false
+}

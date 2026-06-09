@@ -1,0 +1,179 @@
+{
+  "type": "object",
+  "title": "AWS metadata",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "aws-metadata",
+      "title": "Plugin"
+    },
+    "account_id": {
+      "type": "boolean",
+      "description": "The account ID for the current EC2 instance.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/aws-metadata#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "ami_id": {
+      "type": "boolean",
+      "description": "The EC2 instance image ID.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/aws-metadata#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "az": {
+      "type": "boolean",
+      "description": "The [availability zone](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html), such as us-east-1a.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/aws-metadata#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": true
+    },
+    "ec2_instance_id": {
+      "type": "boolean",
+      "description": "The EC2 instance ID.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/aws-metadata#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": true
+    },
+    "ec2_instance_type": {
+      "type": "boolean",
+      "description": "The EC2 instance type.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/aws-metadata#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "enable_entity": {
+      "type": "boolean",
+      "description": "Enables entity prefix for fields used for constructing entity.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/aws-metadata#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "hostname": {
+      "type": "boolean",
+      "description": "The hostname for the current EC2 instance.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/aws-metadata#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "imds_version": {
+      "type": "string",
+      "description": "Specify which version of the instance metadata service to use.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/aws-metadata#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "v2"
+    },
+    "private_ip": {
+      "type": "boolean",
+      "description": "The EC2 instance private IP.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/aws-metadata#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "retry_interval_s": {
+      "type": "integer",
+      "description": "Defines minimum duration in seconds between retries for fetching EC2 instance tags.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/aws-metadata#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 300
+    },
+    "tags_enabled": {
+      "type": "boolean",
+      "description": "Specifies whether to attach EC2 instance tags.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/aws-metadata#configuration-parameters",
+      "x-doc-required": true,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "tags_exclude": {
+      "type": "array",
+      "description": "Defines a list of specific EC2 tag keys not to inject into the logs.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/aws-metadata#configuration-parameters",
+      "x-doc-required": true,
+      "x-config-data-type": "list",
+      "x-references-parser": false
+    },
+    "tags_include": {
+      "type": "array",
+      "description": "Defines a list of specific EC2 tag keys to inject into the logs.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/aws-metadata#configuration-parameters",
+      "x-doc-required": true,
+      "x-config-data-type": "list",
+      "x-references-parser": false
+    },
+    "vpc_id": {
+      "type": "boolean",
+      "description": "The VPC ID for the current EC2 instance.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/aws-metadata#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match_regex": {
+      "type": "string",
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name",
+    "tags_enabled",
+    "tags_exclude",
+    "tags_include"
+  ],
+  "additionalProperties": false
+}

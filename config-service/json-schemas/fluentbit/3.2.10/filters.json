@@ -1,0 +1,118 @@
+{
+  "artifact_manifest": {
+    "format": "config-service.composite-json/v1",
+    "base": "filters.base.json",
+    "parts": [
+      {
+        "pointer": "/items/oneOf",
+        "file": "filters/aws-metadata.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "filters/checklist.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "filters/ecs-metadata.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "filters/expect.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "filters/geoip2-filter.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "filters/grep.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "filters/kubernetes.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "filters/log_to_metrics.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "filters/lua.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "filters/modify.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "filters/multiline-stacktrace.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "filters/nest.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "filters/nightfall.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "filters/parser.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "filters/record-modifier.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "filters/rewrite-tag.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "filters/standard-output.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "filters/sysinfo.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "filters/tensorflow.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "filters/throttle.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "filters/type-converter.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "filters/wasm.json",
+        "operation": "append"
+      }
+    ]
+  }
+}

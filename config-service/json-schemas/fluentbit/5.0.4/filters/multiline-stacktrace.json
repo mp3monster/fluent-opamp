@@ -1,0 +1,124 @@
+{
+  "type": "object",
+  "title": "Multiline",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "multiline-stacktrace",
+      "title": "Plugin"
+    },
+    "buffer": {
+      "type": "boolean",
+      "description": "Enable buffered mode.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/multiline-stacktrace#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false
+    },
+    "debug_flush": {
+      "type": "boolean",
+      "description": "Enable debug logging for flush operations.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/multiline-stacktrace#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false
+    },
+    "emitter_mem_buf_limit": {
+      "type": "string",
+      "description": "Set a limit on the amount of memory the emitter can consume if the outputs provide backpressure.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/multiline-stacktrace#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "size",
+      "x-references-parser": false
+    },
+    "emitter_name": {
+      "type": "string",
+      "description": "Name for the emitter input instance which re-emits the completed records at the beginning of the pipeline.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/multiline-stacktrace#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "emitter_storage.type": {
+      "type": "string",
+      "description": "The storage type for the emitter input instance.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/multiline-stacktrace#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "flush_ms": {
+      "type": "string",
+      "description": "Flush time for pending multiline records.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/multiline-stacktrace#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "mode": {
+      "type": "string",
+      "description": "Mode can be parser for regular expression concatenation, or partial_message to concatenate split Docker logs.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/multiline-stacktrace#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "multiline.key_content": {
+      "type": "string",
+      "description": "Key name that holds the content to process.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/multiline-stacktrace#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "multiline.parser": {
+      "type": "string",
+      "description": "Specify one or multiple [Multiline Parser definitions](/manual/data-pipeline/parsers/multiline-parsing.md) to apply to the content.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/multiline-stacktrace#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match_regex": {
+      "type": "string",
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}

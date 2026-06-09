@@ -1,0 +1,112 @@
+{
+  "type": "object",
+  "title": "Health",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "health",
+      "title": "Plugin"
+    },
+    "host": {
+      "type": "string",
+      "description": "Name of the target host or IP address to check.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/health#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "port": {
+      "type": "integer",
+      "description": "TCP port where to perform the connection check.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/health#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false
+    },
+    "interval_sec": {
+      "type": "string",
+      "description": "Interval in seconds between the service checks.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/health#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "duration",
+      "x-references-parser": false
+    },
+    "internal_nsec": {
+      "type": "string",
+      "description": "Specify a nanoseconds interval for service checks, it works in conjunction with the Interval_Sec configuration key.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/health#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "duration",
+      "x-references-parser": false
+    },
+    "alert": {
+      "type": "boolean",
+      "description": "If enabled, it will only generate messages if the target TCP service is down.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/health#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false
+    },
+    "add_host": {
+      "type": "boolean",
+      "description": "If enabled, hostname is appended to each records.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/health#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false
+    },
+    "add_port": {
+      "type": "boolean",
+      "description": "If enabled, port number is appended to each records.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/health#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false
+    },
+    "threaded": {
+      "type": "string",
+      "description": "Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs).",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/health#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "tag": {
+      "type": "string",
+      "description": "Tag assigned to records emitted by this input plugin.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "processors": {
+      "$ref": "../processors.json"
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name",
+    "tag"
+  ],
+  "additionalProperties": false
+}

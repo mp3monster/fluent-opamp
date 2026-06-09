@@ -1,0 +1,91 @@
+{
+  "type": "object",
+  "title": "Docker Log Based Metrics",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "docker-metrics",
+      "title": "Plugin"
+    },
+    "interval_sec": {
+      "type": "integer",
+      "description": "Polling interval in seconds",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-metrics#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 1
+    },
+    "include": {
+      "type": "array",
+      "description": "A space-separated list of containers to include",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-metrics#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "list",
+      "x-references-parser": false
+    },
+    "exclude": {
+      "type": "array",
+      "description": "A space-separated list of containers to exclude",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-metrics#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "list",
+      "x-references-parser": false
+    },
+    "threaded": {
+      "type": "boolean",
+      "description": "Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs).",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-metrics#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "path.containers": {
+      "type": "string",
+      "description": "Used to specify the container directory if Docker is configured with a custom \"data-root\" directory.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-metrics#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "/var/lib/docker/containers"
+    },
+    "tag": {
+      "type": "string",
+      "description": "Tag assigned to records emitted by this input plugin.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "processors": {
+      "$ref": "../processors.json"
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name",
+    "tag"
+  ],
+  "additionalProperties": false
+}

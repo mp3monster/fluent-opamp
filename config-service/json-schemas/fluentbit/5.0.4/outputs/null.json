@@ -1,0 +1,91 @@
+{
+  "type": "object",
+  "title": "Null",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "null",
+      "title": "Plugin"
+    },
+    "format": {
+      "type": "string",
+      "description": "Specify the data format.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/null#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "msgpack"
+    },
+    "json_date_format": {
+      "type": "string",
+      "description": "Specify the format of the date.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/null#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "double"
+    },
+    "json_date_key": {
+      "type": "string",
+      "description": "Specify the name of the time key in the output record.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/null#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "date"
+    },
+    "workers": {
+      "type": "integer",
+      "description": "The number of [workers](/manual/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/null#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 1
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match_regex": {
+      "type": "string",
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "processors": {
+      "$ref": "../processors.json"
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}

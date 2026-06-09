@@ -1,0 +1,145 @@
+{
+  "type": "object",
+  "title": "Azure Logs Ingestion API",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "azure_logs_ingestion",
+      "title": "Plugin"
+    },
+    "tenant_id": {
+      "type": "string",
+      "description": "Required - The tenant ID of the AAD application.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/azure_logs_ingestion#configuration-parameters",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "client_id": {
+      "type": "string",
+      "description": "Required - The client ID of the AAD application.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/azure_logs_ingestion#configuration-parameters",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "client_secret": {
+      "type": "string",
+      "description": "Required - The client secret of the AAD application ([App Secret](https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal#option-2-create-a-new-application-secret)).",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/azure_logs_ingestion#configuration-parameters",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "dce_url": {
+      "type": "string",
+      "description": "Required - Data Collection Endpoint(DCE) URL.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/azure_logs_ingestion#configuration-parameters",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "dcr_id": {
+      "type": "string",
+      "description": "Required - Data Collection Rule (DCR) immutable ID (see [this document](https://learn.microsoft.com/en-us/azure/azure-monitor/logs/tutorial-logs-ingestion-portal#collect-information-from-the-dcr) to collect the immutable id)",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/azure_logs_ingestion#configuration-parameters",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "table_name": {
+      "type": "string",
+      "description": "Required - The name of the custom log table (include the _CL suffix as well if applicable)",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/azure_logs_ingestion#configuration-parameters",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "time_key": {
+      "type": "string",
+      "description": "Optional - Specify the key name where the timestamp will be stored.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/azure_logs_ingestion#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "@timestamp"
+    },
+    "time_generated": {
+      "type": "boolean",
+      "description": "Optional - If enabled, will generate a timestamp and append it to JSON.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/azure_logs_ingestion#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": true
+    },
+    "compress": {
+      "type": "boolean",
+      "description": "Optional - Enable HTTP payload gzip compression.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/azure_logs_ingestion#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": true
+    },
+    "workers": {
+      "type": "integer",
+      "description": "The number of [workers](/manual/3.2/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/azure_logs_ingestion#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 0
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match_regex": {
+      "type": "string",
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "processors": {
+      "$ref": "../processors.json"
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name",
+    "tenant_id",
+    "client_id",
+    "client_secret",
+    "dce_url",
+    "dcr_id",
+    "table_name"
+  ],
+  "additionalProperties": false
+}

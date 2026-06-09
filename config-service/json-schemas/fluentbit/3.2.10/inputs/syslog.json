@@ -1,0 +1,142 @@
+{
+  "type": "object",
+  "title": "Syslog",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "syslog",
+      "title": "Plugin"
+    },
+    "mode": {
+      "type": "string",
+      "description": "Defines transport protocol mode: unix_udp (UDP over Unix socket), unix_tcp (TCP over Unix socket), tcp or udp",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/syslog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "unix\\_udp"
+    },
+    "listen": {
+      "type": "string",
+      "description": "If Mode is set to tcp or udp, specify the network interface to bind.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/syslog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "0.0.0.0"
+    },
+    "port": {
+      "type": "integer",
+      "description": "If Mode is set to tcp or udp, specify the TCP port to listen for incoming connections.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/syslog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 5140
+    },
+    "path": {
+      "type": "string",
+      "description": "If Mode is set to unix_tcp or unix_udp, set the absolute path to the Unix socket file.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/syslog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "unix_perm": {
+      "type": "integer",
+      "description": "If Mode is set to unix_tcp or unix_udp, set the permission of the Unix socket file.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/syslog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 644
+    },
+    "parser": {
+      "type": "string",
+      "description": "Specify an alternative parser for the message.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/syslog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": true
+    },
+    "buffer_chunk_size": {
+      "type": "string",
+      "description": "By default the buffer to store the incoming Syslog messages, do not allocate the maximum memory allowed, instead it allocate memory when is required.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/syslog#configuration-parameters",
+      "x-doc-required": true,
+      "x-config-data-type": "size",
+      "x-references-parser": false
+    },
+    "buffer_max_size": {
+      "type": "integer",
+      "description": "Specify the maximum buffer size to receive a Syslog message.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/syslog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false
+    },
+    "receive_buffer_size": {
+      "type": "string",
+      "description": "Specify the maximum socket receive buffer size.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/syslog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "size",
+      "x-references-parser": false
+    },
+    "source_address_key": {
+      "type": "string",
+      "description": "Specify the key where the source address will be injected.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/syslog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "threaded": {
+      "type": "boolean",
+      "description": "Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs).",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/syslog#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "tag": {
+      "type": "string",
+      "description": "Tag assigned to records emitted by this input plugin.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "processors": {
+      "$ref": "../processors.json"
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name",
+    "buffer_chunk_size",
+    "tag"
+  ],
+  "additionalProperties": false
+}

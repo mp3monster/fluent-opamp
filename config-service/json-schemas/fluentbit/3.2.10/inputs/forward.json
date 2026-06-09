@@ -1,0 +1,151 @@
+{
+  "type": "object",
+  "title": "Forward",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "forward",
+      "title": "Plugin"
+    },
+    "listen": {
+      "type": "string",
+      "description": "Listener network interface.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/forward#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "0.0.0.0"
+    },
+    "port": {
+      "type": "integer",
+      "description": "TCP port to listen for incoming connections.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/forward#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 24224
+    },
+    "unix_path": {
+      "type": "string",
+      "description": "Specify the path to unix socket to receive a Forward message.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/forward#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "unix_perm": {
+      "type": "string",
+      "description": "Set the permission of the unix socket file.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/forward#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "buffer_max_size": {
+      "type": "integer",
+      "description": "Specify the maximum buffer memory size used to receive a Forward message.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/forward#configuration-parameters",
+      "x-doc-required": true,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 6144000
+    },
+    "buffer_chunk_size": {
+      "type": "integer",
+      "description": "By default the buffer to store the incoming Forward messages, do not allocate the maximum memory allowed, instead it allocate memory when is required.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/forward#configuration-parameters",
+      "x-doc-required": true,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 1024000
+    },
+    "tag_prefix": {
+      "type": "string",
+      "description": "Prefix incoming tag with the defined value.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/forward#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "tag": {
+      "type": "string",
+      "description": "Override the tag of the forwarded events with the defined value.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "shared_key": {
+      "type": "string",
+      "description": "Shared key for secure forward authentication.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/forward#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "empty_shared_key": {
+      "type": "boolean",
+      "description": "Use this option to connect to Fluentd with a zero-length shared key.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/forward#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "self_hostname": {
+      "type": "string",
+      "description": "Hostname for secure forward authentication.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/forward#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "security.users": {
+      "type": "array",
+      "description": "Specify the username and password pairs for secure forward authentication.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/forward#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "list",
+      "x-references-parser": false
+    },
+    "threaded": {
+      "type": "boolean",
+      "description": "Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs).",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/forward#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "processors": {
+      "$ref": "../processors.json"
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name",
+    "buffer_max_size",
+    "buffer_chunk_size"
+  ],
+  "additionalProperties": false
+}

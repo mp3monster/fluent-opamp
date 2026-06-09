@@ -1,0 +1,104 @@
+{
+  "type": "object",
+  "title": "CheckList",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "checklist",
+      "title": "Plugin"
+    },
+    "file": {
+      "type": "string",
+      "description": "The single value file that Fluent Bit will use as a lookup table to determine if the specified lookup_key exists.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/checklist#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "ignore_case": {
+      "type": "boolean",
+      "description": "Compare strings by ignoring case.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/checklist#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "lookup_key": {
+      "type": "string",
+      "description": "The specific key to look up and determine if it exists.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/checklist#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "log"
+    },
+    "mode": {
+      "type": "string",
+      "description": "Set the check mode.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/checklist#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "exact"
+    },
+    "print_query_time": {
+      "type": "boolean",
+      "description": "Print to stdout the elapsed query time for every matched record.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/checklist#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "record": {
+      "type": "string",
+      "description": "The record to add if the lookup_key is found in the specified file.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/checklist#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match_regex": {
+      "type": "string",
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,136 @@
+{
+  "type": "object",
+  "title": "Splunk",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "splunk",
+      "title": "Plugin"
+    },
+    "listen": {
+      "type": "string",
+      "description": "The address to listen on",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/splunk#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "0.0.0.0"
+    },
+    "port": {
+      "type": "integer",
+      "description": "The port for Fluent Bit to listen on",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/splunk#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 9880
+    },
+    "tag_key": {
+      "type": "string",
+      "description": "Specify the key name to overwrite a tag.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/splunk#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "buffer_max_size": {
+      "type": "integer",
+      "description": "Specify the maximum buffer size in KB to receive a JSON message.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/splunk#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": "4M"
+    },
+    "buffer_chunk_size": {
+      "type": "string",
+      "description": "This sets the chunk size for incoming incoming JSON messages.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/splunk#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "size",
+      "x-references-parser": false,
+      "default": "512K"
+    },
+    "successful_response_code": {
+      "type": "integer",
+      "description": "It allows to set successful response code.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/splunk#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 201
+    },
+    "splunk_token": {
+      "type": "string",
+      "description": "Specify a Splunk token for HTTP HEC authentication.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/splunk#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "store_token_in_metadata": {
+      "type": "boolean",
+      "description": "Store Splunk HEC tokens in the Fluent Bit metadata.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/splunk#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": true
+    },
+    "splunk_token_key": {
+      "type": "string",
+      "description": "Use the specified key for storing the Splunk token for HTTP HEC.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/splunk#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "@splunk\\_token"
+    },
+    "threaded": {
+      "type": "boolean",
+      "description": "Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs).",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/splunk#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "tag": {
+      "type": "string",
+      "description": "Tag assigned to records emitted by this input plugin.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "processors": {
+      "$ref": "../processors.json"
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name",
+    "tag"
+  ],
+  "additionalProperties": false
+}
