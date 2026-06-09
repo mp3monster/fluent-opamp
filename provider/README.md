@@ -99,7 +99,7 @@ Example `opamp.json`:
     "client_event_history_size": 50,
     "log_level": "INFO",
     "default_heartbeat_frequency": 30,
-    "latest_docs_url": "https://github.com/mp3monster/fluent-opamp/blob/main/README.md",
+    "latest_docs_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/mp3monster/fluent-opamp/main/github-landingpage/index.html",
     "human_in_loop_approval": false,
     "opamp-use-authorization": "none",
     "ui-use-authorization": "none",
@@ -140,7 +140,7 @@ Example `opamp.json`:
   Level names are resolved via Python `logging`.
 - `provider.default_heartbeat_frequency` (integer, optional, default `30`)
   Default heartbeat interval assigned to clients.
-- `provider.latest_docs_url` (string, optional, default project README URL)
+- `provider.latest_docs_url` (string, optional, default landing-page preview URL)
   Redirect target URL for `GET /doc-set`.
 - `provider.human_in_loop_approval` (boolean, optional, default `false`)
   Requires unknown agents to be reviewed in the Pending Approval workflow before they are accepted.
@@ -277,7 +277,8 @@ For the shared provider+consumer guide on implementing and deploying custom acti
 - Optional catalog UI (when enabled): `http://localhost:8080/catalog`
 - Optional catalog help page (when enabled): `http://localhost:8080/catalog/help`
 - The help page includes the server component version generated from git commit/date metadata.
-- Latest docs redirect: `http://localhost:8080/doc-set`
+- Footer `Latest docs` links in the HTML pages go via `http://localhost:8080/doc-set`.
+- By default, that provider redirect points at the published landing page preview URL from `provider.latest_docs_url`.
 - JavaScript asset mode is controlled by `APP_ENABLE_DEV_FEATURES`:
   - truthy (`1`, `true`, `yes`, `on`): prefer readable source files
   - otherwise: prefer compacted files
@@ -292,6 +293,12 @@ For the shared provider+consumer guide on implementing and deploying custom acti
 - Provider feature dropdown entries are configuration-driven from top-level `component-entry-points.quart` entries that provide `label` and `url` values.
 - Provider can embed additional Quart components at startup via `component-entry-points.quart` entrypoints (for example config-service integration).
 - Provider catalog feature is configured under top-level `opamp.config_catalog` and scans configured folders/extensions for metadata columns derived from top comment lines (`config-service: key=value`).
+- Embedded feature pages such as Config Editor and Config Catalog show `Server Console` and `Back` buttons in their headers; standalone deployments hide those buttons.
+- The main client table renders column filters directly beneath the headings.
+- Text filters update immediately for free-text columns such as service instance ID and host fields.
+- Connection status, health status, config version, host type, and host version use multi-select dropdown filters populated from the currently loaded table data.
+- `Show Columns` / `Hide Columns` controls optional columns including `Health Status` and `First Registered`.
+- The summary dialog uses `Connection Status` and `Health Status` labels consistently with the main table.
 
 The UI includes a shutdown button that prompts for confirmation and calls the shutdown API.
 
