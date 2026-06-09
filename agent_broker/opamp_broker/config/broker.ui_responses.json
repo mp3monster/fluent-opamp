@@ -50,7 +50,7 @@
     "llm_enabled": true,
     "AIState": "on",
     "provider": "openai",
-    "model": "gpt-5.2",
+    "model": "gpt-5.3",
     "request_timeout_seconds": 30,
     "temperature": 0.0,
     "api_key_env_var": "OPENAI_API_KEY",
