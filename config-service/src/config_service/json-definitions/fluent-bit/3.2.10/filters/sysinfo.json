@@ -1,0 +1,72 @@
+{
+  "title": "Sysinfo",
+  "doc_url": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/sysinfo",
+  "fields": [
+    {
+      "name": "fluentbit_version_key",
+      "required": false,
+      "description": "Specify the key name for fluent-bit version.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/sysinfo#configuration-prameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "os_name_key",
+      "required": false,
+      "description": "Specify the key name for os name.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/sysinfo#configuration-prameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "hostname_key",
+      "required": false,
+      "description": "Specify the key name for hostname.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/sysinfo#configuration-prameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "os_version_key",
+      "required": false,
+      "description": "Specify the key name for os version.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/sysinfo#configuration-prameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "kernel_version_key",
+      "required": false,
+      "description": "Specify the key name for kernel version.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/sysinfo#configuration-prameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "match",
+      "required": false,
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "match_regex",
+      "required": false,
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/sysinfo#configuration-prameters",
+    "table_header": [
+      "Key",
+      "Description",
+      "Supported platform"
+    ]
+  },
+  "description": "The Sysinfo Filter plugin allows to append system information like fluent-bit version or hostname."
+}

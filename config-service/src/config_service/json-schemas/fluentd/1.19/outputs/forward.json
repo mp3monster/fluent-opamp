@@ -1,0 +1,783 @@
+{
+  "type": "object",
+  "title": "forward",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "forward",
+      "title": "Plugin"
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag pattern selecting events for this output.",
+      "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "directive_arg": {
+      "type": "string",
+      "description": "Tag pattern selecting events for this output.",
+      "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "@id": {
+      "type": "string",
+      "description": "Unique identifier for the plugin instance.",
+      "x-doc-reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "@log_level": {
+      "type": "string",
+      "description": "Plugin-specific log level that overrides the global system log level.",
+      "x-doc-reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "enum",
+      "x-references-parser": false,
+      "enum": [
+        "trace",
+        "debug",
+        "info",
+        "warn",
+        "error",
+        "fatal"
+      ],
+      "default": "info"
+    },
+    "send_timeout": {
+      "type": "string",
+      "description": "Write timeout for outgoing connections.",
+      "x-doc-reference": "https://docs.fluentd.org/output/forward",
+      "x-doc-required": false,
+      "x-config-data-type": "time",
+      "x-references-parser": false,
+      "default": "60s"
+    },
+    "recover_wait": {
+      "type": "string",
+      "description": "Delay before reconnecting to a recovered node.",
+      "x-doc-reference": "https://docs.fluentd.org/output/forward",
+      "x-doc-required": false,
+      "x-config-data-type": "time",
+      "x-references-parser": false,
+      "default": "10s"
+    },
+    "heartbeat_type": {
+      "type": "string",
+      "description": "Heartbeat transport used for node health checks.",
+      "x-doc-reference": "https://docs.fluentd.org/output/forward",
+      "x-doc-required": false,
+      "x-config-data-type": "enum",
+      "x-references-parser": false,
+      "enum": [
+        "transport",
+        "udp",
+        "tcp",
+        "none"
+      ],
+      "default": "transport"
+    },
+    "heartbeat_interval": {
+      "type": "string",
+      "description": "Interval between heartbeats.",
+      "x-doc-reference": "https://docs.fluentd.org/output/forward",
+      "x-doc-required": false,
+      "x-config-data-type": "time",
+      "x-references-parser": false,
+      "default": "1s"
+    },
+    "require_ack_response": {
+      "type": "boolean",
+      "description": "Wait for acknowledgements from the downstream node.",
+      "x-doc-reference": "https://docs.fluentd.org/output/forward",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "children": {
+      "type": "object",
+      "properties": {
+        "buffer": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "object",
+                "title": "file",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "const": "file",
+                    "title": "Plugin"
+                  },
+                  "@id": {
+                    "type": "string",
+                    "description": "Unique identifier for the plugin instance.",
+                    "x-doc-reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+                    "x-doc-required": false,
+                    "x-config-data-type": "string",
+                    "x-references-parser": false
+                  },
+                  "@log_level": {
+                    "type": "string",
+                    "description": "Plugin-specific log level that overrides the global system log level.",
+                    "x-doc-reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+                    "x-doc-required": false,
+                    "x-config-data-type": "enum",
+                    "x-references-parser": false,
+                    "enum": [
+                      "trace",
+                      "debug",
+                      "info",
+                      "warn",
+                      "error",
+                      "fatal"
+                    ],
+                    "default": "info"
+                  },
+                  "path": {
+                    "type": "string",
+                    "description": "Directory or file prefix used for buffer chunks.",
+                    "x-doc-reference": "https://docs.fluentd.org/configuration/buffer-section",
+                    "x-doc-required": false,
+                    "x-config-data-type": "string",
+                    "x-references-parser": false
+                  },
+                  "chunk_keys": {
+                    "type": "array",
+                    "description": "Chunk keys rendered into the <buffer ARG> directive argument.",
+                    "x-doc-reference": "https://docs.fluentd.org/configuration/buffer-section",
+                    "x-doc-required": false,
+                    "x-config-data-type": "list",
+                    "x-references-parser": false
+                  },
+                  "chunk_limit_size": {
+                    "type": "string",
+                    "description": "Maximum chunk size before flush.",
+                    "x-doc-reference": "https://docs.fluentd.org/configuration/buffer-section",
+                    "x-doc-required": false,
+                    "x-config-data-type": "size",
+                    "x-references-parser": false,
+                    "default": "8m"
+                  },
+                  "total_limit_size": {
+                    "type": "string",
+                    "description": "Maximum total size across staged and queued chunks.",
+                    "x-doc-reference": "https://docs.fluentd.org/configuration/buffer-section",
+                    "x-doc-required": false,
+                    "x-config-data-type": "size",
+                    "x-references-parser": false,
+                    "default": "512m"
+                  },
+                  "flush_interval": {
+                    "type": "string",
+                    "description": "Interval between flush operations.",
+                    "x-doc-reference": "https://docs.fluentd.org/configuration/buffer-section",
+                    "x-doc-required": false,
+                    "x-config-data-type": "time",
+                    "x-references-parser": false,
+                    "default": "60s"
+                  },
+                  "retry_timeout": {
+                    "type": "string",
+                    "description": "Overall retry timeout before the chunk is discarded or handed to secondary output.",
+                    "x-doc-reference": "https://docs.fluentd.org/configuration/buffer-section",
+                    "x-doc-required": false,
+                    "x-config-data-type": "time",
+                    "x-references-parser": false,
+                    "default": "72h"
+                  },
+                  "overflow_action": {
+                    "type": "string",
+                    "description": "Behavior when the buffer queue is full.",
+                    "x-doc-reference": "https://docs.fluentd.org/configuration/buffer-section",
+                    "x-doc-required": false,
+                    "x-config-data-type": "enum",
+                    "x-references-parser": false,
+                    "enum": [
+                      "throw_exception",
+                      "block",
+                      "drop_oldest_chunk"
+                    ],
+                    "default": "throw_exception"
+                  },
+                  "_meta": {
+                    "type": "object",
+                    "properties": {
+                      "comment_lines": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "field_comment_lines": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "title": "memory",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "const": "memory",
+                    "title": "Plugin"
+                  },
+                  "@id": {
+                    "type": "string",
+                    "description": "Unique identifier for the plugin instance.",
+                    "x-doc-reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+                    "x-doc-required": false,
+                    "x-config-data-type": "string",
+                    "x-references-parser": false
+                  },
+                  "@log_level": {
+                    "type": "string",
+                    "description": "Plugin-specific log level that overrides the global system log level.",
+                    "x-doc-reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+                    "x-doc-required": false,
+                    "x-config-data-type": "enum",
+                    "x-references-parser": false,
+                    "enum": [
+                      "trace",
+                      "debug",
+                      "info",
+                      "warn",
+                      "error",
+                      "fatal"
+                    ],
+                    "default": "info"
+                  },
+                  "chunk_keys": {
+                    "type": "array",
+                    "description": "Chunk keys rendered into the <buffer ARG> directive argument.",
+                    "x-doc-reference": "https://docs.fluentd.org/configuration/buffer-section",
+                    "x-doc-required": false,
+                    "x-config-data-type": "list",
+                    "x-references-parser": false
+                  },
+                  "chunk_limit_size": {
+                    "type": "string",
+                    "description": "Maximum chunk size before flush.",
+                    "x-doc-reference": "https://docs.fluentd.org/configuration/buffer-section",
+                    "x-doc-required": false,
+                    "x-config-data-type": "size",
+                    "x-references-parser": false,
+                    "default": "8m"
+                  },
+                  "total_limit_size": {
+                    "type": "string",
+                    "description": "Maximum total in-memory buffer size.",
+                    "x-doc-reference": "https://docs.fluentd.org/configuration/buffer-section",
+                    "x-doc-required": false,
+                    "x-config-data-type": "size",
+                    "x-references-parser": false,
+                    "default": "512m"
+                  },
+                  "flush_interval": {
+                    "type": "string",
+                    "description": "Interval between flush operations.",
+                    "x-doc-reference": "https://docs.fluentd.org/configuration/buffer-section",
+                    "x-doc-required": false,
+                    "x-config-data-type": "time",
+                    "x-references-parser": false,
+                    "default": "60s"
+                  },
+                  "_meta": {
+                    "type": "object",
+                    "properties": {
+                      "comment_lines": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "field_comment_lines": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "secondary": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "service_discovery": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "object",
+                "title": "file",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "const": "file",
+                    "title": "Plugin"
+                  },
+                  "path": {
+                    "type": "string",
+                    "description": "Path to the discovery file.",
+                    "x-doc-reference": "https://docs.fluentd.org/configuration/service_discovery-section",
+                    "x-doc-required": true,
+                    "x-config-data-type": "string",
+                    "x-references-parser": false
+                  },
+                  "_meta": {
+                    "type": "object",
+                    "properties": {
+                      "comment_lines": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "field_comment_lines": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "name",
+                  "path"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "title": "static",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "const": "static",
+                    "title": "Plugin"
+                  },
+                  "services": {
+                    "type": "array",
+                    "description": "List of static service definitions.",
+                    "x-doc-reference": "https://docs.fluentd.org/configuration/service_discovery-section",
+                    "x-doc-required": false,
+                    "x-config-data-type": "list",
+                    "x-references-parser": false
+                  },
+                  "_meta": {
+                    "type": "object",
+                    "properties": {
+                      "comment_lines": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "field_comment_lines": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "title": "srv",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "const": "srv",
+                    "title": "Plugin"
+                  },
+                  "service": {
+                    "type": "string",
+                    "description": "Service label used in the SRV lookup.",
+                    "x-doc-reference": "https://docs.fluentd.org/configuration/service_discovery-section",
+                    "x-doc-required": true,
+                    "x-config-data-type": "string",
+                    "x-references-parser": false
+                  },
+                  "hostname": {
+                    "type": "string",
+                    "description": "Hostname portion used in the SRV lookup.",
+                    "x-doc-reference": "https://docs.fluentd.org/configuration/service_discovery-section",
+                    "x-doc-required": true,
+                    "x-config-data-type": "string",
+                    "x-references-parser": false
+                  },
+                  "_meta": {
+                    "type": "object",
+                    "properties": {
+                      "comment_lines": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "field_comment_lines": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "name",
+                  "service",
+                  "hostname"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "transport": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "protocol": {
+                "type": "string",
+                "description": "Transport protocol specified by the <transport ARG> directive.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                "x-doc-required": true,
+                "x-config-data-type": "enum",
+                "x-references-parser": false
+              },
+              "directive_arg": {
+                "type": "string",
+                "description": "Transport protocol specified by the <transport ARG> directive.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                "x-doc-required": true,
+                "x-config-data-type": "enum",
+                "x-references-parser": false
+              },
+              "linger_timeout": {
+                "type": "integer",
+                "description": "SO_LINGER timeout in seconds.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                "x-doc-required": false,
+                "x-config-data-type": "integer",
+                "x-references-parser": false,
+                "default": 0
+              },
+              "receive_buffer_size": {
+                "type": "integer",
+                "description": "Maximum socket receive buffer size for TCP, UDP, and TLS transports.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                "x-doc-required": false,
+                "x-config-data-type": "integer",
+                "x-references-parser": false
+              },
+              "version": {
+                "type": "string",
+                "description": "Fixed TLS protocol version.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                "x-doc-required": false,
+                "x-config-data-type": "enum",
+                "x-references-parser": false,
+                "enum": [
+                  "TLS1_1",
+                  "TLS1_2",
+                  "TLS1_3"
+                ]
+              },
+              "min_version": {
+                "type": "string",
+                "description": "Minimum TLS protocol version.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                "x-doc-required": false,
+                "x-config-data-type": "enum",
+                "x-references-parser": false,
+                "enum": [
+                  "TLS1_1",
+                  "TLS1_2",
+                  "TLS1_3"
+                ]
+              },
+              "max_version": {
+                "type": "string",
+                "description": "Maximum TLS protocol version.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                "x-doc-required": false,
+                "x-config-data-type": "enum",
+                "x-references-parser": false,
+                "enum": [
+                  "TLS1_1",
+                  "TLS1_2",
+                  "TLS1_3"
+                ]
+              },
+              "insecure": {
+                "type": "boolean",
+                "description": "Disable certificate verification for TLS.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                "x-doc-required": false,
+                "x-config-data-type": "boolean",
+                "x-references-parser": false,
+                "default": false
+              },
+              "cert_path": {
+                "type": "string",
+                "description": "Path to the TLS certificate file.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "private_key_path": {
+                "type": "string",
+                "description": "Path to the TLS private key file.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "private_key_passphrase": {
+                "type": "string",
+                "description": "Passphrase for the TLS private key.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "ca_path": {
+                "type": "string",
+                "description": "Path to the trusted CA certificate file.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [],
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "anyOf": [
+                  {
+                    "required": [
+                      "protocol"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "directive_arg"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "includes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "path"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "_meta": {
+          "type": "object",
+          "properties": {
+            "comment_lines": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "field_comment_lines": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "anyOf": [
+        {
+          "required": [
+            "match"
+          ]
+        },
+        {
+          "required": [
+            "directive_arg"
+          ]
+        }
+      ]
+    }
+  ]
+}

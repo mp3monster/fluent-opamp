@@ -1,0 +1,128 @@
+{
+  "title": "Splunk",
+  "doc_url": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/splunk",
+  "fields": [
+    {
+      "name": "listen",
+      "required": false,
+      "description": "The address to listen on",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/splunk#configuration-parameters",
+      "default": "0.0.0.0",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "port",
+      "required": false,
+      "description": "The port for Fluent Bit to listen on",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/splunk#configuration-parameters",
+      "default": 9880,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 65535
+      }
+    },
+    {
+      "name": "tag_key",
+      "required": false,
+      "description": "Specify the key name to overwrite a tag.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/splunk#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "buffer_max_size",
+      "required": false,
+      "description": "Specify the maximum buffer size in KB to receive a JSON message.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/splunk#configuration-parameters",
+      "default": "4M",
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "integer"
+      }
+    },
+    {
+      "name": "buffer_chunk_size",
+      "required": false,
+      "description": "This sets the chunk size for incoming incoming JSON messages.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/splunk#configuration-parameters",
+      "default": "512K",
+      "data_type": "size",
+      "validation_rule": {
+        "kind": "regex",
+        "pattern": "^\\\\d+([KMGTP]i?[Bb]?|[KMGTP])?$"
+      }
+    },
+    {
+      "name": "successful_response_code",
+      "required": false,
+      "description": "It allows to set successful response code.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/splunk#configuration-parameters",
+      "default": 201,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "splunk_token",
+      "required": false,
+      "description": "Specify a Splunk token for HTTP HEC authentication.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/splunk#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "store_token_in_metadata",
+      "required": false,
+      "description": "Store Splunk HEC tokens in the Fluent Bit metadata.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/splunk#configuration-parameters",
+      "default": true,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "splunk_token_key",
+      "required": false,
+      "description": "Use the specified key for storing the Splunk token for HTTP HEC.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/splunk#configuration-parameters",
+      "default": "@splunk\\_token",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "threaded",
+      "required": false,
+      "description": "Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs).",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/splunk#configuration-parameters",
+      "default": false,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "tag",
+      "required": true,
+      "description": "Tag assigned to records emitted by this input plugin.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/splunk#configuration-parameters",
+    "table_header": [
+      "**Key**",
+      "Description",
+      "default"
+    ]
+  },
+  "description": "The splunk input plugin handles Splunk HTTP HEC requests."
+}

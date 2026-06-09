@@ -1,0 +1,60 @@
+{
+  "title": "Plot",
+  "doc_url": "https://docs.fluentbit.io/manual/data-pipeline/outputs/plot",
+  "fields": [
+    {
+      "name": "file",
+      "required": false,
+      "description": "Set filename to store the records.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/plot#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "key",
+      "required": true,
+      "description": "Specify the key name from the record to extract as the value.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/plot#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "workers",
+      "required": false,
+      "description": "The number of [workers](/manual/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/plot#configuration-parameters",
+      "default": 0,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "match",
+      "required": false,
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "match_regex",
+      "required": false,
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/plot#configuration-parameters",
+    "table_header": [
+      "Key",
+      "Description",
+      "Default"
+    ]
+  },
+  "description": "The Plot output plugin generates data files in a format compatible with GNU Plot (gnuplot), a command-line graphing tool."
+}

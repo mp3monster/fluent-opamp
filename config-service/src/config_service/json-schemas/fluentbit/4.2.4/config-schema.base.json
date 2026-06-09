@@ -1,0 +1,243 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "config": {
+      "type": "object",
+      "properties": {
+        "service": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "_meta": {
+              "type": "object",
+              "properties": {
+                "comment_lines": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "field_comment_lines": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "parsers": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "upstream_servers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Upstream group identifier.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/administration/configuring-fluent-bit/yaml/upstream-servers-section"
+              },
+              "nodes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "description": "Node identifier.",
+                      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/administration/configuring-fluent-bit/yaml/upstream-servers-section"
+                    },
+                    "host": {
+                      "type": "string",
+                      "description": "Host/IP address for the upstream node.",
+                      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/administration/configuring-fluent-bit/yaml/upstream-servers-section"
+                    },
+                    "port": {
+                      "type": "integer",
+                      "description": "TCP port for the upstream node endpoint.",
+                      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/administration/configuring-fluent-bit/yaml/upstream-servers-section"
+                    },
+                    "tls": {
+                      "type": "boolean",
+                      "description": "Enable TLS for this node connection.",
+                      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/administration/configuring-fluent-bit/yaml/upstream-servers-section"
+                    },
+                    "tls_verify": {
+                      "type": "boolean",
+                      "description": "Verify TLS peer certificate when TLS is enabled.",
+                      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/administration/configuring-fluent-bit/yaml/upstream-servers-section"
+                    },
+                    "shared_key": {
+                      "type": "string",
+                      "description": "Shared key for secured upstream communication.",
+                      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/administration/configuring-fluent-bit/yaml/upstream-servers-section"
+                    },
+                    "_meta": {
+                      "type": "object",
+                      "properties": {
+                        "comment_lines": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "field_comment_lines": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "host",
+                    "port"
+                  ],
+                  "additionalProperties": false
+                },
+                "description": "List of upstream nodes used for round-robin routing.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/administration/configuring-fluent-bit/yaml/upstream-servers-section"
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name",
+              "nodes"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Root-level upstream server groups for output plugin load-balancing.",
+          "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/administration/configuring-fluent-bit/yaml/upstream-servers-section"
+        },
+        "pipeline": {
+          "type": "object",
+          "properties": {
+            "inputs": {},
+            "filters": {},
+            "outputs": {},
+            "_meta": {
+              "type": "object",
+              "properties": {
+                "comment_lines": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "field_comment_lines": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "inputs",
+            "outputs"
+          ],
+          "additionalProperties": false
+        },
+        "_meta": {
+          "type": "object",
+          "properties": {
+            "comment_lines": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "field_comment_lines": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "pipeline"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "maxLength": 500
+      }
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "config"
+  ],
+  "additionalProperties": false
+}

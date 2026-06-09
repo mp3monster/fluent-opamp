@@ -17,6 +17,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from config_service.json_artifacts import load_json_artifact
+
 KEY_CATALOGS_BY_TYPE = "catalogs_by_type"
 KEY_DEFAULT_VERSIONS = "default_versions"
 KEY_ENGINE = "engine"
@@ -97,7 +99,7 @@ class CatalogService:
             loaded[config_type] = {}
             for version, catalog_ref in version_map.items():
                 path = self._resolve_catalog_path(catalog_ref)
-                payload = json.loads(path.read_text(encoding="utf-8"))
+                payload = load_json_artifact(path)
                 self.validate_catalog_payload(version, payload, source=str(path))
                 loaded[config_type][version] = payload
         self._catalogs_by_type = loaded

@@ -1,0 +1,113 @@
+{
+  "type": "object",
+  "title": "monitor_agent",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "monitor_agent",
+      "title": "Plugin"
+    },
+    "@id": {
+      "type": "string",
+      "description": "Unique identifier for the plugin instance.",
+      "x-doc-reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "@log_level": {
+      "type": "string",
+      "description": "Plugin-specific log level that overrides the global system log level.",
+      "x-doc-reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "enum",
+      "x-references-parser": false,
+      "enum": [
+        "trace",
+        "debug",
+        "info",
+        "warn",
+        "error",
+        "fatal"
+      ],
+      "default": "info"
+    },
+    "@label": {
+      "type": "string",
+      "description": "Routes emitted events to a named label.",
+      "x-doc-reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "bind": {
+      "type": "string",
+      "description": "Bind address for the monitor endpoint.",
+      "x-doc-reference": "https://docs.fluentd.org/input/monitor_agent",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "0.0.0.0"
+    },
+    "port": {
+      "type": "integer",
+      "description": "Port used by the monitor endpoint.",
+      "x-doc-reference": "https://docs.fluentd.org/input/monitor_agent",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 24220
+    },
+    "tag": {
+      "type": "string",
+      "description": "Optional tag used when monitor data is emitted as an event.",
+      "x-doc-reference": "https://docs.fluentd.org/input/monitor_agent",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "include_config": {
+      "type": "boolean",
+      "description": "Include full plugin config in monitor responses.",
+      "x-doc-reference": "https://docs.fluentd.org/input/monitor_agent",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "include_retry": {
+      "type": "boolean",
+      "description": "Include retry state in monitor responses.",
+      "x-doc-reference": "https://docs.fluentd.org/input/monitor_agent",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}

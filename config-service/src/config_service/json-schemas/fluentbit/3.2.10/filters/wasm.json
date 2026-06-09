@@ -1,0 +1,100 @@
+{
+  "type": "object",
+  "title": "Wasm",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "wasm",
+      "title": "Plugin"
+    },
+    "wasm_path": {
+      "type": "string",
+      "description": "Path to the built Wasm program that will be used.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/wasm#configuration-parameters-a-hrefconfig-idconfiga",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "event_format": {
+      "type": "string",
+      "description": "Define event format to interact with Wasm programs: msgpack or json.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/wasm#configuration-parameters-a-hrefconfig-idconfiga",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "function_name": {
+      "type": "string",
+      "description": "Wasm function name that will be triggered to do filtering.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/wasm#configuration-parameters-a-hrefconfig-idconfiga",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "accessible_paths": {
+      "type": "array",
+      "description": "Specify the whitelist of paths to be able to access paths from WASM programs.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/wasm#configuration-parameters-a-hrefconfig-idconfiga",
+      "x-doc-required": false,
+      "x-config-data-type": "list",
+      "x-references-parser": false
+    },
+    "wasm_heap_size": {
+      "type": "string",
+      "description": "Size of the heap size of Wasm execution.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/wasm#configuration-parameters-a-hrefconfig-idconfiga",
+      "x-doc-required": false,
+      "x-config-data-type": "size",
+      "x-references-parser": false
+    },
+    "wasm_stack_size": {
+      "type": "string",
+      "description": "Size of the stack size of Wasm execution.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/wasm#configuration-parameters-a-hrefconfig-idconfiga",
+      "x-doc-required": false,
+      "x-config-data-type": "size",
+      "x-references-parser": false
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match_regex": {
+      "type": "string",
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}

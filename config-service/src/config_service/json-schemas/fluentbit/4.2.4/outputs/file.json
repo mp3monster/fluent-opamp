@@ -1,0 +1,97 @@
+{
+  "type": "object",
+  "title": "File",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "file",
+      "title": "Plugin"
+    },
+    "file": {
+      "type": "string",
+      "description": "Set filename to store the records.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/file#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "format": {
+      "type": "string",
+      "description": "The [format](#format) of the file content.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/file#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "mkdir": {
+      "type": "boolean",
+      "description": "Recursively create output directory if it doesn't exist.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/file#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "path": {
+      "type": "string",
+      "description": "Directory path to store files.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/file#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "workers": {
+      "type": "integer",
+      "description": "The number of [workers](/manual/4.2/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/file#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 1
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match_regex": {
+      "type": "string",
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "processors": {
+      "$ref": "../processors.json"
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}

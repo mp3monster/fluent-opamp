@@ -1,0 +1,103 @@
+{
+  "title": "Health",
+  "doc_url": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/health",
+  "fields": [
+    {
+      "name": "host",
+      "required": false,
+      "description": "Name of the target host or IP address to check.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/health#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "port",
+      "required": false,
+      "description": "TCP port where to perform the connection check.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/health#configuration-parameters",
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 65535
+      }
+    },
+    {
+      "name": "interval_sec",
+      "required": false,
+      "description": "Interval in seconds between the service checks.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/health#configuration-parameters",
+      "data_type": "duration",
+      "validation_rule": {
+        "kind": "regex",
+        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+      }
+    },
+    {
+      "name": "internal_nsec",
+      "required": false,
+      "description": "Specify a nanoseconds interval for service checks, it works in conjunction with the Interval_Sec configuration key.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/health#configuration-parameters",
+      "data_type": "duration",
+      "validation_rule": {
+        "kind": "regex",
+        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+      }
+    },
+    {
+      "name": "alert",
+      "required": false,
+      "description": "If enabled, it will only generate messages if the target TCP service is down.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/health#configuration-parameters",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "add_host",
+      "required": false,
+      "description": "If enabled, hostname is appended to each records.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/health#configuration-parameters",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "add_port",
+      "required": false,
+      "description": "If enabled, port number is appended to each records.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/health#configuration-parameters",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "threaded",
+      "required": false,
+      "description": "Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs).",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/health#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "tag",
+      "required": true,
+      "description": "Tag assigned to records emitted by this input plugin.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/health#configuration-parameters",
+    "table_header": [
+      "Key",
+      "Description"
+    ]
+  },
+  "description": "Health input plugin allows you to check how healthy a TCP server is."
+}

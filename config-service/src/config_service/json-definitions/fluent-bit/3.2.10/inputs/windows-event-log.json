@@ -1,0 +1,66 @@
+{
+  "title": "Windows Event Log",
+  "doc_url": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log",
+  "fields": [
+    {
+      "name": "channels",
+      "required": false,
+      "description": "A comma-separated list of channels to read from.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log#configuration-parameters-a-hrefconfig-idconfiga",
+      "data_type": "list",
+      "validation_rule": {
+        "kind": "list",
+        "delimiter": ","
+      }
+    },
+    {
+      "name": "interval_sec",
+      "required": false,
+      "description": "Set the polling interval for each channel.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log#configuration-parameters-a-hrefconfig-idconfiga",
+      "default": 1,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "db",
+      "required": false,
+      "description": "Set the path to save the read offsets.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log#configuration-parameters-a-hrefconfig-idconfiga",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "threaded",
+      "required": false,
+      "description": "Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs).",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log#configuration-parameters-a-hrefconfig-idconfiga",
+      "default": false,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "tag",
+      "required": true,
+      "description": "Tag assigned to records emitted by this input plugin.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log#configuration-parameters-a-hrefconfig-idconfiga",
+    "table_header": [
+      "Key",
+      "Description",
+      "Default"
+    ]
+  },
+  "description": "The winlog input plugin allows you to read Windows Event Log."
+}

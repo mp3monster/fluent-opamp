@@ -1,0 +1,557 @@
+{
+  "title": "Kubernetes",
+  "doc_url": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes",
+  "fields": [
+    {
+      "name": "annotations",
+      "required": false,
+      "description": "Include Kubernetes pod resource annotations in the extra metadata.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": "On",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "aws_pod_association_endpoint",
+      "required": false,
+      "description": "Endpoint path for pod-to-service name association.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": "/kubernetes/pod-to-service-env-map",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "aws_pod_association_host",
+      "required": false,
+      "description": "Host to connect with when performing pod-to-service name association.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": "cloudwatch-agent.amazon-cloudwatch",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "aws_pod_association_host_client_cert_file",
+      "required": false,
+      "description": "Client certificate path for enabling mTLS on calls to the agent server.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": "/etc/amazon-cloudwatch-observability-agent-client-cert/client.crt",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "aws_pod_association_host_client_key_file",
+      "required": false,
+      "description": "Client certificate key path for enabling mTLS on calls to the agent server.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": "/etc/amazon-cloudwatch-observability-agent-client-cert/client.key",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "aws_pod_association_host_server_ca_file",
+      "required": false,
+      "description": "TLS CA certificate path for communication with the agent server.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": "/etc/amazon-cloudwatch-observability-agent-server-cert/tls-ca.crt",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "aws_pod_association_host_tls_debug",
+      "required": false,
+      "description": "TLS debug level for agent server connection: 0 (no debug), 1 (error), 2 (state change), 3 (info), 4 (verbose).",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": 0,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "aws_pod_association_host_tls_verify",
+      "required": false,
+      "description": "Enable or disable verification of TLS peer certificate for agent server connection.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": "On",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "aws_pod_association_port",
+      "required": false,
+      "description": "Port to connect with for pod-to-service name association.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": 4311,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 65535
+      }
+    },
+    {
+      "name": "aws_pod_service_map_refresh_interval",
+      "required": false,
+      "description": "Refresh interval in seconds for the pod-to-service map.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": 60,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "aws_pod_service_map_ttl",
+      "required": false,
+      "description": "Time-To-Live (TTL) for pod-to-service map cache entries.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": 0,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "aws_pod_service_preload_cache_dir",
+      "required": false,
+      "description": "Directory containing pod-to-service map files for pre-loading cache.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "aws_use_pod_association",
+      "required": true,
+      "description": "Enable custom endpoint to get pod-to-service name mapping.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": "Off",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "buffer_size",
+      "required": true,
+      "description": "Set the buffer size for HTTP client when reading responses from Kubernetes API server.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": "32k",
+      "data_type": "size",
+      "validation_rule": {
+        "kind": "regex",
+        "pattern": "^\\\\d+([KMGTP]i?[Bb]?|[KMGTP])?$"
+      }
+    },
+    {
+      "name": "cache_use_docker_id",
+      "required": false,
+      "description": "When enabled, metadata will be fetched from Kubernetes when docker_id is changed.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": "Off",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "dns_retries",
+      "required": false,
+      "description": "Number of DNS lookup retries until the network starts working.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": 6,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "dns_wait_time",
+      "required": false,
+      "description": "DNS lookup interval between network status checks.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": 30,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "dummy_meta",
+      "required": false,
+      "description": "If set, use dummy-meta data (for test/dev purposes).",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": "Off",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "k8s-logging.exclude",
+      "required": false,
+      "description": "Allow Kubernetes pods to exclude their logs from the log processor.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": "Off",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "k8s-logging.parser",
+      "required": false,
+      "description": "Allow Kubernetes pods to suggest a pre-defined parser.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": "Off",
+      "data_type": "string",
+      "validation_rule": null,
+      "references_parser": true
+    },
+    {
+      "name": "keep_log",
+      "required": false,
+      "description": "When keep_log is disabled and merge_log enabled, the log field is removed from the incoming message once it has been successfully merged.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": "On",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "kube_ca_file",
+      "required": false,
+      "description": "CA certificate file",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "kube_ca_path",
+      "required": false,
+      "description": "Absolute path to scan for certificate files",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "kube_meta_cache_ttl",
+      "required": false,
+      "description": "Configurable time-to-live for Kubernetes cached pod metadata.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": 0,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "kube_meta_namespace_cache_ttl",
+      "required": false,
+      "description": "Configurable time-to-live for Kubernetes cached namespace metadata.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": "900` (seconds)",
+      "data_type": "duration",
+      "validation_rule": {
+        "kind": "regex",
+        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+      }
+    },
+    {
+      "name": "kube_meta_preload_cache_dir",
+      "required": false,
+      "description": "If set, Kubernetes metadata can be cached or pre-loaded from files in JSON format in this directory, named namespace-pod.meta.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "kube_tag_prefix",
+      "required": false,
+      "description": "When the source records come from the tail input plugin, this option specifies the prefix used in tail configuration.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": "kube.var.log.containers.",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "kube_token_command",
+      "required": false,
+      "description": "Command to get Kubernetes authorization token.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": "NULL",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "kube_token_file",
+      "required": false,
+      "description": "Token file",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": "/var/run/secrets/kubernetes.io/serviceaccount/token",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "kube_token_ttl",
+      "required": false,
+      "description": "Configurable time-to-live for the Kubernetes token.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": 600,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "kube_url",
+      "required": false,
+      "description": "API Server endpoint",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": "https://kubernetes.default.svc:443",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "kubelet_host",
+      "required": false,
+      "description": "Kubelet host to use for HTTP requests.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": "127.0.0.1",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "kubelet_port",
+      "required": false,
+      "description": "Kubelet port to use for HTTP requests.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": 10250,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 65535
+      }
+    },
+    {
+      "name": "labels",
+      "required": false,
+      "description": "Include Kubernetes pod resource labels in the extra metadata.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": "On",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "merge_log",
+      "required": false,
+      "description": "When enabled, check if the log field content is a JSON string map.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": "Off",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "merge_log_key",
+      "required": false,
+      "description": "When merge_log is enabled, the filter assumes the log field from the incoming message is a JSON string message and attempts to create a structured representation of it at the same level of the log field in the map.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "merge_log_trim",
+      "required": false,
+      "description": "When merge_log is enabled, trim (remove possible \\n or \\r\\) field values.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": "On",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "merge_parser",
+      "required": false,
+      "description": "Optional parser name to specify how to parse the data contained in the log key.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null,
+      "references_parser": true
+    },
+    {
+      "name": "namespace_annotations",
+      "required": false,
+      "description": "Include Kubernetes namespace resource annotations in the extra metadata.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": "Off",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "namespace_labels",
+      "required": false,
+      "description": "Include Kubernetes namespace resource labels in the extra metadata.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": "Off",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "namespace_metadata_only",
+      "required": false,
+      "description": "Include Kubernetes namespace metadata and no pod metadata.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": "Off",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "owner_references",
+      "required": false,
+      "description": "Include Kubernetes owner references in the extra metadata.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": "Off",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "regex_parser",
+      "required": true,
+      "description": "Set an alternative Parser to process record tags and extract pod_name, namespace_name, container_name, and docker_id.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": {
+        "kind": "regex_string"
+      },
+      "references_parser": true
+    },
+    {
+      "name": "set_platform",
+      "required": false,
+      "description": "Manually set the Kubernetes platform type.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": "Auto-detected",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "tls.debug",
+      "required": false,
+      "description": "Debug level between 0 (no information) and 4 (all details).",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": -1,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "integer"
+      }
+    },
+    {
+      "name": "tls.verify",
+      "required": false,
+      "description": "When enabled, turns on certificate validation when connecting to the Kubernetes API server.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": "On",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "tls.verify_hostname",
+      "required": false,
+      "description": "When enabled, turns on hostname validation for certificates.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": "Off",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "tls.vhost",
+      "required": false,
+      "description": "Set an optional TLS virtual host for the Kubernetes API server connection.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "use_journal",
+      "required": false,
+      "description": "When enabled, the filter reads logs in Journald format.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": "Off",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "use_kubelet",
+      "required": false,
+      "description": "Optional feature flag to get metadata information from Kubelet instead of calling Kube Server API to enhance the log.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": "Off",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "use_pod_association",
+      "required": false,
+      "description": "Deprecated alias for aws_use_pod_association.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": "Off",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "use_tag_for_meta",
+      "required": false,
+      "description": "When enabled, Kubernetes metadata (for example, pod_name, container_name, and namespace_name) will be extracted from the tag itself.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+      "default": "Off",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "match",
+      "required": false,
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "match_regex",
+      "required": false,
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/kubernetes#configuration-parameters",
+    "table_header": [
+      "Key",
+      "Description",
+      "Default"
+    ]
+  },
+  "description": "Fluent Bit filter plugin: Kubernetes."
+}

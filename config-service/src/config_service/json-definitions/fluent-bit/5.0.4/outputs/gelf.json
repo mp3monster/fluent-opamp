@@ -1,0 +1,146 @@
+{
+  "title": "Graylog Extended Log Format (GELF)",
+  "doc_url": "https://docs.fluentbit.io/manual/data-pipeline/outputs/gelf",
+  "fields": [
+    {
+      "name": "compress",
+      "required": false,
+      "description": "If transport protocol is udp, set this to compress UDP packets.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/gelf#configuration-parameters",
+      "default": true,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "gelf_full_message_key",
+      "required": false,
+      "description": "Key to use as the long message that can, for example, contain a backtrace.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/gelf#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "gelf_host_key",
+      "required": true,
+      "description": "Key whose value is used as the name of the host, source, or application that sent this message.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/gelf#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "gelf_level_key",
+      "required": true,
+      "description": "Key to be used as the log level.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/gelf#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "gelf_short_message_key",
+      "required": true,
+      "description": "A short descriptive message.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/gelf#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "gelf_tag_key",
+      "required": false,
+      "description": "Key to be used for tag.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/gelf#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "gelf_timestamp_key",
+      "required": false,
+      "description": "Your log timestamp.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/gelf#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "host",
+      "required": false,
+      "description": "IP address or hostname of the target Graylog server.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/gelf#configuration-parameters",
+      "default": "127.0.0.1",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "match",
+      "required": false,
+      "description": "Pattern to match which tags of logs to be sent by this plugin.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/gelf#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "mode",
+      "required": false,
+      "description": "The protocol to use.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/gelf#configuration-parameters",
+      "default": "udp",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "packet_size",
+      "required": false,
+      "description": "If transport protocol is udp, you can set the size of packets to be sent.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/gelf#configuration-parameters",
+      "default": 1420,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "port",
+      "required": false,
+      "description": "The port that your Graylog GELF input is listening on.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/gelf#configuration-parameters",
+      "default": 12201,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 65535
+      }
+    },
+    {
+      "name": "workers",
+      "required": false,
+      "description": "The number of [workers](/manual/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/gelf#configuration-parameters",
+      "default": 0,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "match_regex",
+      "required": false,
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/gelf#configuration-parameters",
+    "table_header": [
+      "Key",
+      "Description",
+      "Default"
+    ]
+  },
+  "description": "The Graylog Extended Log Format (GELF) output plugin lets you send logs in GELF format directly to a Graylog input using TLS, TCP, or UDP protocols."
+}

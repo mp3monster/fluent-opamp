@@ -17,6 +17,7 @@ from pathlib import Path
 
 from quart import Quart
 
+from config_service.agent_validation.service import ExternalAgentValidationService
 from config_service.app import register_api_component, register_ui_component
 from config_service.services.catalog_service import CatalogService
 from config_service.services.fluentbit_yaml_config_service import FluentBitYamlConfigService
@@ -56,6 +57,7 @@ def register_config_service_feature(opamp_app: Quart) -> None:
         fluentbit_yaml_config_service=fluentbit_yaml_config_service,
         fluentd_config_service=fluentd_config_service,
     )
+    external_agent_validation_service = ExternalAgentValidationService.from_runtime_config()
 
     opamp_app.extensions["config_service:catalog_service"] = catalog_service
     opamp_app.extensions["config_service:rules_registry_service"] = rules_registry_service
@@ -70,6 +72,9 @@ def register_config_service_feature(opamp_app: Quart) -> None:
     opamp_app.extensions["config_service:fluentbit_yaml_config_service"] = fluentbit_yaml_config_service
     opamp_app.extensions["config_service:fluentd_config_service"] = fluentd_config_service
     opamp_app.extensions["config_service:include_document_service"] = include_document_service
+    opamp_app.extensions["config_service:external_agent_validation_service"] = (
+        external_agent_validation_service
+    )
 
     # Also expose under un-prefixed keys for route handlers that run in this app context.
     opamp_app.extensions["catalog_service"] = catalog_service
@@ -85,6 +90,7 @@ def register_config_service_feature(opamp_app: Quart) -> None:
     opamp_app.extensions["fluentbit_yaml_config_service"] = fluentbit_yaml_config_service
     opamp_app.extensions["fluentd_config_service"] = fluentd_config_service
     opamp_app.extensions["include_document_service"] = include_document_service
+    opamp_app.extensions["external_agent_validation_service"] = external_agent_validation_service
     opamp_app.config["CONFIG_SERVICE_MODE"] = "embedded"
 
     register_api_component(opamp_app)

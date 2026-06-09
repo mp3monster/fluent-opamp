@@ -1,0 +1,171 @@
+{
+  "title": "Datadog",
+  "doc_url": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/datadog",
+  "fields": [
+    {
+      "name": "host",
+      "required": true,
+      "description": "Required - The Datadog server where you are sending your logs.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/datadog#configuration-parameters",
+      "default": "http-intake.logs.datadoghq.com",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "tls",
+      "required": true,
+      "description": "Required - End-to-end security communications security protocol.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/datadog#configuration-parameters",
+      "default": "off",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "compress",
+      "required": false,
+      "description": "Recommended - compresses the payload in GZIP format, Datadog supports and recommends setting this to gzip.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/datadog#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "apikey",
+      "required": true,
+      "description": "Required - Your [Datadog API key](https://app.datadoghq.com/account/settings#api).",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/datadog#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "proxy",
+      "required": false,
+      "description": "Optional - Specify an HTTP Proxy.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/datadog#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "provider",
+      "required": false,
+      "description": "To activate the remapping, specify configuration flag provider with value ecs.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/datadog#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "json_date_key",
+      "required": false,
+      "description": "Date key name for output.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/datadog#configuration-parameters",
+      "default": "timestamp",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "include_tag_key",
+      "required": false,
+      "description": "If enabled, a tag is appended to output.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/datadog#configuration-parameters",
+      "default": false,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "tag_key",
+      "required": false,
+      "description": "The key name of tag.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/datadog#configuration-parameters",
+      "default": "tagkey",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "dd_service",
+      "required": false,
+      "description": "Recommended - The human readable name for your service generating the logs (e.g.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/datadog#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "dd_source",
+      "required": false,
+      "description": "Recommended - A human readable name for the underlying technology of your service (e.g.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/datadog#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "dd_tags",
+      "required": false,
+      "description": "Optional - The [tags](https://docs.datadoghq.com/tagging/) you want to assign to your logs in Datadog.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/datadog#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "dd_message_key",
+      "required": false,
+      "description": "By default, the plugin searches for the key 'log' and remap the value to the key 'message'.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/datadog#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "dd_hostname",
+      "required": false,
+      "description": "The host the emitted logs should be associated with.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/datadog#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "workers",
+      "required": false,
+      "description": "The number of [workers](/manual/3.2/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/datadog#configuration-parameters",
+      "default": 0,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "header",
+      "required": false,
+      "description": "Add additional arbitrary HTTP header key/value pair.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/datadog#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "match",
+      "required": false,
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "match_regex",
+      "required": false,
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/datadog#configuration-parameters",
+    "table_header": [
+      "Key",
+      "Description",
+      "Default"
+    ]
+  },
+  "description": "The Datadog output plugin allows to ingest your logs into Datadog."
+}

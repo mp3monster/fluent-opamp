@@ -1,0 +1,3214 @@
+{
+  "type": "object",
+  "properties": {
+    "logs": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "title": "content_modifier",
+            "properties": {
+              "name": {
+                "type": "string",
+                "const": "content_modifier"
+              },
+              "action": {
+                "type": "string",
+                "description": "Content modifier action to perform.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/processors/content-modifier",
+                "x-doc-required": true,
+                "x-config-data-type": "enum",
+                "x-references-parser": false,
+                "enum": [
+                  "convert",
+                  "delete",
+                  "extract",
+                  "hash",
+                  "insert",
+                  "rename",
+                  "upsert"
+                ]
+              },
+              "context": {
+                "type": "string",
+                "description": "Context where the modification is applied.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/processors/content-modifier",
+                "x-doc-required": true,
+                "x-config-data-type": "enum",
+                "x-references-parser": false,
+                "enum": [
+                  "attributes",
+                  "body",
+                  "otel_resource_attributes",
+                  "otel_scope_name",
+                  "otel_scope_version",
+                  "otel_scope_attributes",
+                  "otel_log_attributes"
+                ]
+              },
+              "key": {
+                "type": "string",
+                "description": "Key targeted by the action.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/processors/content-modifier",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "value": {
+                "type": "string",
+                "description": "Value used by the action.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/processors/content-modifier",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "pattern": {
+                "type": "string",
+                "description": "Regular expression used by the extract action.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/processors/content-modifier",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "converted_type": {
+                "type": "string",
+                "description": "Target type used by the convert action.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/processors/content-modifier",
+                "x-doc-required": false,
+                "x-config-data-type": "enum",
+                "x-references-parser": false,
+                "enum": [
+                  "string",
+                  "boolean",
+                  "int",
+                  "double"
+                ]
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name",
+              "action",
+              "context"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "title": "opentelemetry_envelope",
+            "properties": {
+              "name": {
+                "type": "string",
+                "const": "opentelemetry_envelope"
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "title": "sql",
+            "properties": {
+              "name": {
+                "type": "string",
+                "const": "sql"
+              },
+              "query": {
+                "type": "string",
+                "description": "SQL statement executed against STREAM and ending with a semicolon.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/processors/sql",
+                "x-doc-required": true,
+                "x-config-data-type": "code",
+                "x-references-parser": false
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name",
+              "query"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "title": "AWS Metadata",
+            "properties": {
+              "name": {
+                "type": "string",
+                "const": "aws-metadata"
+              },
+              "imds_version": {
+                "type": "string",
+                "description": "Specify which version of the instance metadata service to use.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/aws-metadata#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false,
+                "default": "v2"
+              },
+              "az": {
+                "type": "boolean",
+                "description": "The [availability zone](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html); for example, \"us-east-1a\".",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/aws-metadata#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "boolean",
+                "x-references-parser": false,
+                "default": true
+              },
+              "ec2_instance_id": {
+                "type": "boolean",
+                "description": "The EC2 instance ID.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/aws-metadata#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "boolean",
+                "x-references-parser": false,
+                "default": true
+              },
+              "ec2_instance_type": {
+                "type": "boolean",
+                "description": "The EC2 instance type.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/aws-metadata#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "boolean",
+                "x-references-parser": false,
+                "default": false
+              },
+              "private_ip": {
+                "type": "boolean",
+                "description": "The EC2 instance private ip.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/aws-metadata#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "boolean",
+                "x-references-parser": false,
+                "default": false
+              },
+              "ami_id": {
+                "type": "boolean",
+                "description": "The EC2 instance image id.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/aws-metadata#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "boolean",
+                "x-references-parser": false,
+                "default": false
+              },
+              "account_id": {
+                "type": "boolean",
+                "description": "The account ID for current EC2 instance.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/aws-metadata#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "boolean",
+                "x-references-parser": false,
+                "default": false
+              },
+              "hostname": {
+                "type": "boolean",
+                "description": "The hostname for current EC2 instance.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/aws-metadata#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "boolean",
+                "x-references-parser": false,
+                "default": false
+              },
+              "vpc_id": {
+                "type": "boolean",
+                "description": "The VPC ID for current EC2 instance.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/aws-metadata#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "boolean",
+                "x-references-parser": false,
+                "default": false
+              },
+              "tags_enabled": {
+                "type": "boolean",
+                "description": "Specifies if should attach EC2 instance tags.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/aws-metadata#configuration-parameters",
+                "x-doc-required": true,
+                "x-config-data-type": "boolean",
+                "x-references-parser": false,
+                "default": false
+              },
+              "tags_include": {
+                "type": "array",
+                "description": "Defines list of specific EC2 tag keys to inject into the logs.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/aws-metadata#configuration-parameters",
+                "x-doc-required": true,
+                "x-config-data-type": "list",
+                "x-references-parser": false
+              },
+              "tags_exclude": {
+                "type": "array",
+                "description": "Defines list of specific EC2 tag keys not to inject into the logs.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/aws-metadata#configuration-parameters",
+                "x-doc-required": true,
+                "x-config-data-type": "list",
+                "x-references-parser": false
+              },
+              "retry_interval_s": {
+                "type": "integer",
+                "description": "Defines minimum duration between retries for fetching EC2 instance tags.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/aws-metadata#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "integer",
+                "x-references-parser": false,
+                "default": 300
+              },
+              "match": {
+                "type": "string",
+                "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "match_regex": {
+                "type": "string",
+                "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name",
+              "tags_enabled",
+              "tags_include",
+              "tags_exclude"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "title": "CheckList",
+            "properties": {
+              "name": {
+                "type": "string",
+                "const": "checklist"
+              },
+              "file": {
+                "type": "string",
+                "description": "The single value file that Fluent Bit will use as a lookup table to determine if the specified lookup_key exists",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/checklist#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "lookup_key": {
+                "type": "string",
+                "description": "The specific key to look up and determine if it exists, supports record accessor",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/checklist#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "record": {
+                "type": "string",
+                "description": "The record to add if the lookup_key is found in the specified file.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/checklist#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "mode": {
+                "type": "string",
+                "description": "Set the check mode.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/checklist#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "print_query_time": {
+                "type": "string",
+                "description": "Print to stdout the elapseed query time for every matched record.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/checklist#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "ignore_case": {
+                "type": "string",
+                "description": "Compare strings by ignoring case.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/checklist#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "match": {
+                "type": "string",
+                "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "match_regex": {
+                "type": "string",
+                "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "title": "ECS Metadata",
+            "properties": {
+              "name": {
+                "type": "string",
+                "const": "ecs-metadata"
+              },
+              "add": {
+                "type": "string",
+                "description": "This parameter is similar to the ADD option in the [modify filter](https://docs.fluentbit.io/manual/pipeline/filters/modify).",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/ecs-metadata#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false,
+                "default": "No default"
+              },
+              "ecs_tag_prefix": {
+                "type": "string",
+                "description": "This parameter is similar to the Kube_Tag_Prefix option in the [Kubernetes filter](https://docs.fluentbit.io/manual/pipeline/filters/kubernetes) and performs the same function.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/ecs-metadata#configuration-parameters",
+                "x-doc-required": true,
+                "x-config-data-type": "string",
+                "x-references-parser": false,
+                "default": "emptry string"
+              },
+              "cluster_metadata_only": {
+                "type": "boolean",
+                "description": "When enabled, the plugin will only attempt to attach cluster metadata values.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/ecs-metadata#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "boolean",
+                "x-references-parser": false,
+                "default": "Off"
+              },
+              "ecs_meta_cache_ttl": {
+                "type": "string",
+                "description": "The filter builds a hash table in memory mapping each unique container short ID to its metadata.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/ecs-metadata#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "duration",
+                "x-references-parser": false,
+                "default": "1h (1 hour)"
+              },
+              "match": {
+                "type": "string",
+                "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "match_regex": {
+                "type": "string",
+                "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name",
+              "ecs_tag_prefix"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "title": "Expect",
+            "properties": {
+              "name": {
+                "type": "string",
+                "const": "expect"
+              },
+              "key_exists": {
+                "type": "string",
+                "description": "Check if a key with a given name exists in the record.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/expect#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "key_not_exists": {
+                "type": "string",
+                "description": "Check if a key does not exist in the record.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/expect#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "key_val_is_null": {
+                "type": "string",
+                "description": "check that the value of the key is NULL.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/expect#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "key_val_is_not_null": {
+                "type": "string",
+                "description": "check that the value of the key is NOT NULL.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/expect#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "key_val_eq": {
+                "type": "string",
+                "description": "check that the value of the key equals the given value in the configuration.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/expect#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "action": {
+                "type": "string",
+                "description": "action to take when a rule does not match.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/expect#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "result_key": {
+                "type": "string",
+                "description": "specify a key name of matching result.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/expect#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "match": {
+                "type": "string",
+                "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "match_regex": {
+                "type": "string",
+                "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "title": "GeoIP2 Filter",
+            "properties": {
+              "name": {
+                "type": "string",
+                "const": "geoip2-filter"
+              },
+              "database": {
+                "type": "string",
+                "description": "Path to the GeoIP2 database.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/geoip2-filter#configuration-parameters-a-hrefconfig-idconfiga",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "lookup_key": {
+                "type": "string",
+                "description": "Field name to process",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/geoip2-filter#configuration-parameters-a-hrefconfig-idconfiga",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "record": {
+                "type": "string",
+                "description": "Defines the KEY LOOKUP_KEY VALUE triplet.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/geoip2-filter#configuration-parameters-a-hrefconfig-idconfiga",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "match": {
+                "type": "string",
+                "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "match_regex": {
+                "type": "string",
+                "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "title": "Grep",
+            "properties": {
+              "name": {
+                "type": "string",
+                "const": "grep"
+              },
+              "regex": {
+                "type": "string",
+                "description": "Keep records where the content of KEY matches the regular expression.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/grep#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "exclude": {
+                "type": "string",
+                "description": "Exclude records where the content of KEY matches the regular expression.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/grep#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "logical_op": {
+                "type": "string",
+                "description": "Specify a logical operator: AND, OR or legacy (default).",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/grep#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "match": {
+                "type": "string",
+                "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "match_regex": {
+                "type": "string",
+                "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "title": "Kubernetes",
+            "properties": {
+              "name": {
+                "type": "string",
+                "const": "kubernetes"
+              },
+              "buffer_size": {
+                "type": "string",
+                "description": "Set the buffer size for HTTP client when reading responses from Kubernetes API server.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
+                "x-doc-required": true,
+                "x-config-data-type": "size",
+                "x-references-parser": false,
+                "default": "32k"
+              },
+              "kube_url": {
+                "type": "string",
+                "description": "API Server end-point",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false,
+                "default": "<https://kubernetes.default.svc:443>"
+              },
+              "kube_ca_file": {
+                "type": "string",
+                "description": "CA certificate file",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false,
+                "default": "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+              },
+              "kube_ca_path": {
+                "type": "string",
+                "description": "Absolute path to scan for certificate files",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "kube_token_file": {
+                "type": "string",
+                "description": "Token file",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false,
+                "default": "/var/run/secrets/kubernetes.io/serviceaccount/token"
+              },
+              "kube_tag_prefix": {
+                "type": "string",
+                "description": "When the source records comes from Tail input plugin, this option allows to specify what's the prefix used in Tail configuration.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false,
+                "default": "kube.var.log.containers."
+              },
+              "merge_log": {
+                "type": "boolean",
+                "description": "When enabled, it checks if the log field content is a JSON string map, if so, it append the map fields as part of the log structure.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "boolean",
+                "x-references-parser": false,
+                "default": "Off"
+              },
+              "merge_log_key": {
+                "type": "boolean",
+                "description": "When Merge_Log is enabled, the filter tries to assume the log field from the incoming message is a JSON string message and make a structured representation of it at the same level of the log field in the map.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "boolean",
+                "x-references-parser": false
+              },
+              "merge_log_trim": {
+                "type": "boolean",
+                "description": "When Merge_Log is enabled, trim (remove possible \\n or \\r) field values.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "boolean",
+                "x-references-parser": false,
+                "default": "On"
+              },
+              "merge_parser": {
+                "type": "string",
+                "description": "Optional parser name to specify how to parse the data contained in the log key.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": true
+              },
+              "keep_log": {
+                "type": "boolean",
+                "description": "When Keep_Log is disabled, the log field is removed from the incoming message once it has been successfully merged (Merge_Log must be enabled as well).",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
+                "x-doc-required": true,
+                "x-config-data-type": "boolean",
+                "x-references-parser": false,
+                "default": "On"
+              },
+              "tls.debug": {
+                "type": "integer",
+                "description": "Debug level between 0 (nothing) and 4 (every detail).",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "integer",
+                "x-references-parser": false,
+                "default": -1
+              },
+              "tls.verify": {
+                "type": "boolean",
+                "description": "When enabled, turns on certificate validation when connecting to the Kubernetes API server.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "boolean",
+                "x-references-parser": false,
+                "default": "On"
+              },
+              "tls.verify_hostname": {
+                "type": "boolean",
+                "description": "When enabled, turns on hostname validation for certificates",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "boolean",
+                "x-references-parser": false,
+                "default": "Off"
+              },
+              "use_journal": {
+                "type": "boolean",
+                "description": "When enabled, the filter reads logs coming in Journald format.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "boolean",
+                "x-references-parser": false,
+                "default": "Off"
+              },
+              "cache_use_docker_id": {
+                "type": "boolean",
+                "description": "When enabled, metadata will be fetched from K8s when docker_id is changed.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "boolean",
+                "x-references-parser": false,
+                "default": "Off"
+              },
+              "regex_parser": {
+                "type": "string",
+                "description": "Set an alternative Parser to process record Tag and extract pod_name, namespace_name, container_name and docker_id.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
+                "x-doc-required": true,
+                "x-config-data-type": "string",
+                "x-references-parser": true
+              },
+              "k8s-logging.parser": {
+                "type": "string",
+                "description": "Allow Kubernetes Pods to suggest a pre-defined Parser (read more about it in Kubernetes Annotations section)",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": true,
+                "default": "Off"
+              },
+              "k8s-logging.exclude": {
+                "type": "string",
+                "description": "Allow Kubernetes Pods to exclude their logs from the log processor (read more about it in Kubernetes Annotations section).",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false,
+                "default": "Off"
+              },
+              "labels": {
+                "type": "string",
+                "description": "Include Kubernetes pod resource labels in the extra metadata.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false,
+                "default": "On"
+              },
+              "annotations": {
+                "type": "string",
+                "description": "Include Kubernetes pod resource annotations in the extra metadata.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false,
+                "default": "On"
+              },
+              "kube_meta_preload_cache_dir": {
+                "type": "string",
+                "description": "If set, Kubernetes meta-data can be cached/pre-loaded from files in JSON format in this directory, named as namespace-pod.meta",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "dummy_meta": {
+                "type": "string",
+                "description": "If set, use dummy-meta data (for test/dev purposes)",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false,
+                "default": "Off"
+              },
+              "dns_retries": {
+                "type": "integer",
+                "description": "DNS lookup retries N times until the network start working",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "integer",
+                "x-references-parser": false,
+                "default": 6
+              },
+              "dns_wait_time": {
+                "type": "integer",
+                "description": "DNS lookup interval between network status checks",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "integer",
+                "x-references-parser": false,
+                "default": 30
+              },
+              "use_kubelet": {
+                "type": "string",
+                "description": "this is an optional feature flag to get metadata information from kubelet instead of calling Kube Server API to enhance the log.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false,
+                "default": "Off"
+              },
+              "use_tag_for_meta": {
+                "type": "boolean",
+                "description": "When enabled, Kubernetes metadata (e.g., pod_name, container_name, namespace_name etc) will be extracted from the tag itself.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "boolean",
+                "x-references-parser": false,
+                "default": "Off"
+              },
+              "kubelet_port": {
+                "type": "integer",
+                "description": "kubelet port using for HTTP request, this only works when Use_Kubelet set to On.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "integer",
+                "x-references-parser": false,
+                "default": 10250
+              },
+              "kubelet_host": {
+                "type": "string",
+                "description": "kubelet host using for HTTP request, this only works when Use_Kubelet set to On.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false,
+                "default": "127.0.0.1"
+              },
+              "kube_meta_cache_ttl": {
+                "type": "integer",
+                "description": "configurable TTL for K8s cached pod metadata.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "integer",
+                "x-references-parser": false,
+                "default": 0
+              },
+              "kube_token_ttl": {
+                "type": "integer",
+                "description": "configurable 'time to live' for the K8s token.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "integer",
+                "x-references-parser": false,
+                "default": 600
+              },
+              "kube_token_command": {
+                "type": "string",
+                "description": "Command to get Kubernetes authorization token.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "kube_meta_namespace_cache_ttl": {
+                "type": "integer",
+                "description": "configurable TTL for K8s cached namespace metadata.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "integer",
+                "x-references-parser": false,
+                "default": 900
+              },
+              "namespace_labels": {
+                "type": "string",
+                "description": "Include Kubernetes namespace resource labels in the extra metadata.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false,
+                "default": "Off"
+              },
+              "namespace_annotations": {
+                "type": "string",
+                "description": "Include Kubernetes namespace resource annotations in the extra metadata.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false,
+                "default": "Off"
+              },
+              "namespace_metadata_only": {
+                "type": "string",
+                "description": "Include Kubernetes namespace metadata only and no pod metadata.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false,
+                "default": "Off"
+              },
+              "owner_references": {
+                "type": "string",
+                "description": "Include Kubernetes owner references in the extra metadata",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/kubernetes#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false,
+                "default": "Off"
+              },
+              "match": {
+                "type": "string",
+                "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "match_regex": {
+                "type": "string",
+                "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name",
+              "buffer_size",
+              "keep_log",
+              "regex_parser"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "title": "Log to Metrics",
+            "properties": {
+              "name": {
+                "type": "string",
+                "const": "log_to_metrics"
+              },
+              "tag": {
+                "type": "string",
+                "description": "Defines the tag for the generated metrics record",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/log_to_metrics#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "metric_mode": {
+                "type": "string",
+                "description": "Defines the mode for the metric.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/log_to_metrics#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "metric_name": {
+                "type": "string",
+                "description": "Sets the name of the metric.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/log_to_metrics#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "metric_description": {
+                "type": "string",
+                "description": "Sets a help text for the metric.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/log_to_metrics#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "bucket": {
+                "type": "string",
+                "description": "Defines a bucket for histogram",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/log_to_metrics#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "add_label": {
+                "type": "string",
+                "description": "Add a custom label NAME and set the value to the value of KEY",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/log_to_metrics#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "label_field": {
+                "type": "string",
+                "description": "Includes a record field as label dimension in the metric.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/log_to_metrics#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "value_field": {
+                "type": "string",
+                "description": "Specify the record field that holds a numerical value",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/log_to_metrics#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "kubernetes_mode": {
+                "type": "boolean",
+                "description": "If enabled, it will automatically put pod_id, pod_name, namespace_name, docker_id and container_name into the metric as labels.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/log_to_metrics#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "boolean",
+                "x-references-parser": false
+              },
+              "regex": {
+                "type": "string",
+                "description": "Include records in which the content of KEY matches the regular expression.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/log_to_metrics#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "exclude": {
+                "type": "string",
+                "description": "Exclude records in which the content of KEY matches the regular expression.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/log_to_metrics#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "flush_interval_sec": {
+                "type": "string",
+                "description": "The interval for metrics emission, in seconds.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/log_to_metrics#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "duration",
+                "x-references-parser": false
+              },
+              "flush_interval_nsec": {
+                "type": "string",
+                "description": "The interval for metrics emission, in nanoseconds.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/log_to_metrics#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "duration",
+                "x-references-parser": false
+              },
+              "match": {
+                "type": "string",
+                "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "match_regex": {
+                "type": "string",
+                "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "title": "Lua",
+            "properties": {
+              "name": {
+                "type": "string",
+                "const": "lua"
+              },
+              "script": {
+                "type": "string",
+                "description": "Path to the Lua script that will be used.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/lua#configuration-parameters-a-hrefconfig-idconfiga",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "call": {
+                "type": "string",
+                "description": "Lua function name that will be triggered to do filtering.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/lua#configuration-parameters-a-hrefconfig-idconfiga",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "type_int_key": {
+                "type": "string",
+                "description": "If these keys are matched, the fields are converted to integer.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/lua#configuration-parameters-a-hrefconfig-idconfiga",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "type_array_key": {
+                "type": "string",
+                "description": "If these keys are matched, the fields are handled as array.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/lua#configuration-parameters-a-hrefconfig-idconfiga",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "protected_mode": {
+                "type": "boolean",
+                "description": "If enabled, Lua script will be executed in protected mode.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/lua#configuration-parameters-a-hrefconfig-idconfiga",
+                "x-doc-required": false,
+                "x-config-data-type": "boolean",
+                "x-references-parser": false
+              },
+              "time_as_table": {
+                "type": "string",
+                "description": "By default when the Lua script is invoked, the record timestamp is passed as a floating number which might lead to precision loss when it is converted back.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/lua#configuration-parameters-a-hrefconfig-idconfiga",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "code": {
+                "type": "string",
+                "description": "Inline LUA code instead of loading from a path via script.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/lua#configuration-parameters-a-hrefconfig-idconfiga",
+                "x-doc-required": false,
+                "x-config-data-type": "code",
+                "x-references-parser": false
+              },
+              "enable_flb_null": {
+                "type": "boolean",
+                "description": "If enabled, null will be converted to flb_null in Lua.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/lua#configuration-parameters-a-hrefconfig-idconfiga",
+                "x-doc-required": false,
+                "x-config-data-type": "boolean",
+                "x-references-parser": false
+              },
+              "match": {
+                "type": "string",
+                "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "match_regex": {
+                "type": "string",
+                "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "title": "Modify",
+            "properties": {
+              "name": {
+                "type": "string",
+                "const": "modify"
+              },
+              "set": {
+                "type": "string",
+                "description": "Add a key/value pair with key KEY and value VALUE.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/modify#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "add": {
+                "type": "string",
+                "description": "Add a key/value pair with key KEY and value VALUE if KEY does not exist",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/modify#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "remove": {
+                "type": "string",
+                "description": "Remove a key/value pair with key KEY if it exists",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/modify#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "remove_wildcard": {
+                "type": "array",
+                "description": "Remove all key/value pairs with key matching wildcard KEY",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/modify#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "list",
+                "x-references-parser": false
+              },
+              "remove_regex": {
+                "type": "array",
+                "description": "Remove all key/value pairs with key matching regexp KEY",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/modify#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "list",
+                "x-references-parser": false
+              },
+              "rename": {
+                "type": "string",
+                "description": "Rename a key/value pair with key KEY to RENAMED_KEY if KEY exists AND RENAMED_KEY does not exist",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/modify#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "hard_rename": {
+                "type": "string",
+                "description": "Rename a key/value pair with key KEY to RENAMED_KEY if KEY exists.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/modify#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "copy": {
+                "type": "string",
+                "description": "Copy a key/value pair with key KEY to COPIED_KEY if KEY exists AND COPIED_KEY does not exist",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/modify#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "hard_copy": {
+                "type": "string",
+                "description": "Copy a key/value pair with key KEY to COPIED_KEY if KEY exists.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/modify#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "move_to_start": {
+                "type": "array",
+                "description": "Move key/value pairs with keys matching KEY to the start of the message",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/modify#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "list",
+                "x-references-parser": false
+              },
+              "move_to_end": {
+                "type": "array",
+                "description": "Move key/value pairs with keys matching KEY to the end of the message",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/modify#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "list",
+                "x-references-parser": false
+              },
+              "match": {
+                "type": "string",
+                "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "match_regex": {
+                "type": "string",
+                "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "title": "Multiline",
+            "properties": {
+              "name": {
+                "type": "string",
+                "const": "multiline-stacktrace"
+              },
+              "multiline.parser": {
+                "type": "string",
+                "description": "Specify one or multiple [Multiline Parser definitions](/manual/3.2/administration/configuring-fluent-bit/multiline-parsing.md) to apply to the content.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/multiline-stacktrace#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "multiline.key_content": {
+                "type": "string",
+                "description": "Key name that holds the content to process.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/multiline-stacktrace#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "mode": {
+                "type": "string",
+                "description": "Mode can be parser for regex concat, or partial_message to concat split docker logs.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/multiline-stacktrace#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "buffer": {
+                "type": "boolean",
+                "description": "Enable buffered mode.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/multiline-stacktrace#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "boolean",
+                "x-references-parser": false
+              },
+              "flush_ms": {
+                "type": "string",
+                "description": "Flush time for pending multiline records.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/multiline-stacktrace#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "emitter_name": {
+                "type": "string",
+                "description": "Name for the emitter input instance which re-emits the completed records at the beginning of the pipeline.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/multiline-stacktrace#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "emitter_storage.type": {
+                "type": "string",
+                "description": "The storage type for the emitter input instance.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/multiline-stacktrace#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "emitter_mem_buf_limit": {
+                "type": "string",
+                "description": "Set a limit on the amount of memory the emitter can consume if the outputs provide backpressure.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/multiline-stacktrace#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "size",
+                "x-references-parser": false
+              },
+              "match": {
+                "type": "string",
+                "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "match_regex": {
+                "type": "string",
+                "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "title": "Nest",
+            "properties": {
+              "name": {
+                "type": "string",
+                "const": "nest"
+              },
+              "operation": {
+                "type": "string",
+                "description": "Select the operation nest or lift",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/nest#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "wildcard": {
+                "type": "string",
+                "description": "Nest records which field matches the wildcard",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/nest#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "nest_under": {
+                "type": "string",
+                "description": "Nest records matching the Wildcard under this key",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/nest#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "nested_under": {
+                "type": "string",
+                "description": "Lift records nested under the Nested_under key",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/nest#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "add_prefix": {
+                "type": "string",
+                "description": "Prefix affected keys with this string",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/nest#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "remove_prefix": {
+                "type": "string",
+                "description": "Remove prefix from affected keys if it matches this string",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/nest#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "match": {
+                "type": "string",
+                "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "match_regex": {
+                "type": "string",
+                "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "title": "Nightfall",
+            "properties": {
+              "name": {
+                "type": "string",
+                "const": "nightfall"
+              },
+              "nightfall_api_key": {
+                "type": "string",
+                "description": "The Nightfall API key to scan your logs with, obtainable from the [Nightfall Dashboard](https://app.nightfall.ai)",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/nightfall#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "policy_id": {
+                "type": "string",
+                "description": "The Nightfall dev platform policy to scan your logs with, configurable in the [Nightfall Dashboard](https://app.nightfall.ai/developer-platform/policies).",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/nightfall#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "sampling_rate": {
+                "type": "integer",
+                "description": "The rate controlling how much of your logs you wish to be scanned, must be a float between (0,1].",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/nightfall#configuration-parameters",
+                "x-doc-required": true,
+                "x-config-data-type": "integer",
+                "x-references-parser": false,
+                "default": 1
+              },
+              "tls.debug": {
+                "type": "integer",
+                "description": "Debug level between 0 (nothing) and 4 (every detail).",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/nightfall#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "integer",
+                "x-references-parser": false,
+                "default": 0
+              },
+              "tls.verify": {
+                "type": "boolean",
+                "description": "When enabled, turns on certificate validation when connecting to the Nightfall API.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/nightfall#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "boolean",
+                "x-references-parser": false,
+                "default": true
+              },
+              "tls.ca_path": {
+                "type": "string",
+                "description": "Absolute path to root certificates, required if tls.verify is true.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/nightfall#configuration-parameters",
+                "x-doc-required": true,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "match": {
+                "type": "string",
+                "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "match_regex": {
+                "type": "string",
+                "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name",
+              "sampling_rate",
+              "tls.ca_path"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "title": "Parser",
+            "properties": {
+              "name": {
+                "type": "string",
+                "const": "parser"
+              },
+              "key_name": {
+                "type": "string",
+                "description": "Specify field name in record to parse.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/parser#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "parser": {
+                "type": "string",
+                "description": "Specify the parser name to interpret the field.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/parser#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": true
+              },
+              "preserve_key": {
+                "type": "boolean",
+                "description": "Keep original Key_Name field in the parsed result.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/parser#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "boolean",
+                "x-references-parser": false,
+                "default": false
+              },
+              "reserve_data": {
+                "type": "boolean",
+                "description": "Keep all other original fields in the parsed result.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/parser#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "boolean",
+                "x-references-parser": false,
+                "default": false
+              },
+              "match": {
+                "type": "string",
+                "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "match_regex": {
+                "type": "string",
+                "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "title": "Record Modifier",
+            "properties": {
+              "name": {
+                "type": "string",
+                "const": "record-modifier"
+              },
+              "record": {
+                "type": "string",
+                "description": "Append fields.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/record-modifier#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "remove_key": {
+                "type": "string",
+                "description": "If the key is matched, that field is removed.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/record-modifier#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "allowlist_key": {
+                "type": "string",
+                "description": "If the key isn't matched, that field is removed.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/record-modifier#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "whitelist_key": {
+                "type": "string",
+                "description": "An alias of Allowlist_key for backwards compatibility.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/record-modifier#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "uuid_key": {
+                "type": "string",
+                "description": "If set, the plugin appends Uuid to each record.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/record-modifier#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "match": {
+                "type": "string",
+                "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "match_regex": {
+                "type": "string",
+                "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "title": "Rewrite Tag",
+            "properties": {
+              "name": {
+                "type": "string",
+                "const": "rewrite-tag"
+              },
+              "rule": {
+                "type": "string",
+                "description": "Defines the matching criteria and the format of the Tag for the matching record.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/rewrite-tag#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "emitter_name": {
+                "type": "string",
+                "description": "When the filter emits a record under the new Tag, there is an internal emitter plugin that takes care of the job.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/rewrite-tag#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "emitter_storage.type": {
+                "type": "string",
+                "description": "Define a buffering mechanism for the new records created.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/rewrite-tag#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "emitter_mem_buf_limit": {
+                "type": "string",
+                "description": "Set a limit on the amount of memory the tag rewrite emitter can consume if the outputs provide backpressure.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/rewrite-tag#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "size",
+                "x-references-parser": false
+              },
+              "match": {
+                "type": "string",
+                "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "match_regex": {
+                "type": "string",
+                "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "title": "Standard Output",
+            "properties": {
+              "name": {
+                "type": "string",
+                "const": "standard-output"
+              },
+              "match": {
+                "type": "string",
+                "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "match_regex": {
+                "type": "string",
+                "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "title": "Sysinfo",
+            "properties": {
+              "name": {
+                "type": "string",
+                "const": "sysinfo"
+              },
+              "fluentbit_version_key": {
+                "type": "string",
+                "description": "Specify the key name for fluent-bit version.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/sysinfo#configuration-prameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "os_name_key": {
+                "type": "string",
+                "description": "Specify the key name for os name.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/sysinfo#configuration-prameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "hostname_key": {
+                "type": "string",
+                "description": "Specify the key name for hostname.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/sysinfo#configuration-prameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "os_version_key": {
+                "type": "string",
+                "description": "Specify the key name for os version.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/sysinfo#configuration-prameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "kernel_version_key": {
+                "type": "string",
+                "description": "Specify the key name for kernel version.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/sysinfo#configuration-prameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "match": {
+                "type": "string",
+                "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "match_regex": {
+                "type": "string",
+                "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "title": "Tensorflow",
+            "properties": {
+              "name": {
+                "type": "string",
+                "const": "tensorflow"
+              },
+              "input_field": {
+                "type": "string",
+                "description": "Specify the name of the field in the record to apply inference on.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/tensorflow#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "model_file": {
+                "type": "string",
+                "description": "Path to the model file (.tflite) to be loaded by Tensorflow Lite.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/tensorflow#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "include_input_fields": {
+                "type": "boolean",
+                "description": "Include all input filed in filter's output",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/tensorflow#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "boolean",
+                "x-references-parser": false,
+                "default": true
+              },
+              "normalization_value": {
+                "type": "string",
+                "description": "Divide input values to normalization_value",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/tensorflow#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "match": {
+                "type": "string",
+                "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "match_regex": {
+                "type": "string",
+                "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "title": "Throttle",
+            "properties": {
+              "name": {
+                "type": "string",
+                "const": "throttle"
+              },
+              "rate": {
+                "type": "string",
+                "description": "Amount of messages for the time.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/throttle#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "window": {
+                "type": "integer",
+                "description": "Amount of intervals to calculate average over.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/throttle#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "integer",
+                "x-references-parser": false
+              },
+              "interval": {
+                "type": "string",
+                "description": "Time interval, expressed in \"sleep\" format.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/throttle#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "duration",
+                "x-references-parser": false
+              },
+              "print_status": {
+                "type": "string",
+                "description": "Whether to print status messages with current rate and the limits to information logs",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/throttle#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "match": {
+                "type": "string",
+                "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "match_regex": {
+                "type": "string",
+                "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "title": "Type Converter",
+            "properties": {
+              "name": {
+                "type": "string",
+                "const": "type-converter"
+              },
+              "int_key": {
+                "type": "string",
+                "description": "This parameter is for integer source.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/type-converter#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "uint_key": {
+                "type": "string",
+                "description": "This parameter is for unsigned integer source.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/type-converter#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "float_key": {
+                "type": "string",
+                "description": "This parameter is for float source.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/type-converter#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "str_key": {
+                "type": "string",
+                "description": "This parameter is for string source.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/type-converter#configuration-parameters",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "match": {
+                "type": "string",
+                "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "match_regex": {
+                "type": "string",
+                "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "title": "Wasm",
+            "properties": {
+              "name": {
+                "type": "string",
+                "const": "wasm"
+              },
+              "wasm_path": {
+                "type": "string",
+                "description": "Path to the built Wasm program that will be used.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/wasm#configuration-parameters-a-hrefconfig-idconfiga",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "event_format": {
+                "type": "string",
+                "description": "Define event format to interact with Wasm programs: msgpack or json.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/wasm#configuration-parameters-a-hrefconfig-idconfiga",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "function_name": {
+                "type": "string",
+                "description": "Wasm function name that will be triggered to do filtering.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/wasm#configuration-parameters-a-hrefconfig-idconfiga",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "accessible_paths": {
+                "type": "array",
+                "description": "Specify the whitelist of paths to be able to access paths from WASM programs.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/wasm#configuration-parameters-a-hrefconfig-idconfiga",
+                "x-doc-required": false,
+                "x-config-data-type": "list",
+                "x-references-parser": false
+              },
+              "wasm_heap_size": {
+                "type": "string",
+                "description": "Size of the heap size of Wasm execution.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/wasm#configuration-parameters-a-hrefconfig-idconfiga",
+                "x-doc-required": false,
+                "x-config-data-type": "size",
+                "x-references-parser": false
+              },
+              "wasm_stack_size": {
+                "type": "string",
+                "description": "Size of the stack size of Wasm execution.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/wasm#configuration-parameters-a-hrefconfig-idconfiga",
+                "x-doc-required": false,
+                "x-config-data-type": "size",
+                "x-references-parser": false
+              },
+              "match": {
+                "type": "string",
+                "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "match_regex": {
+                "type": "string",
+                "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "metrics": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "title": "labels",
+            "properties": {
+              "name": {
+                "type": "string",
+                "const": "labels"
+              },
+              "insert": {
+                "type": "string",
+                "description": "Insert operation expressed as 'key value'.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/processors/labels",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "update": {
+                "type": "string",
+                "description": "Update operation expressed as 'key value'.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/processors/labels",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "upsert": {
+                "type": "string",
+                "description": "Upsert operation expressed as 'key value'.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/processors/labels",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "delete": {
+                "type": "string",
+                "description": "Delete operation expressed as a label key.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/processors/labels",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "hash": {
+                "type": "string",
+                "description": "Hash operation expressed as a label key.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/processors/labels",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "title": "metrics_selector",
+            "properties": {
+              "name": {
+                "type": "string",
+                "const": "metrics_selector"
+              },
+              "action": {
+                "type": "string",
+                "description": "Whether matching metrics are included or excluded.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/processors/metrics-selector",
+                "x-doc-required": true,
+                "x-config-data-type": "enum",
+                "x-references-parser": false,
+                "enum": [
+                  "INCLUDE",
+                  "EXCLUDE"
+                ]
+              },
+              "context": {
+                "type": "string",
+                "description": "Matching context.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/processors/metrics-selector",
+                "x-doc-required": true,
+                "x-config-data-type": "enum",
+                "x-references-parser": false,
+                "enum": [
+                  "metric_name",
+                  "delete_label_value"
+                ]
+              },
+              "metric_name": {
+                "type": "string",
+                "description": "Metric name or regex used by the match operation.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/processors/metrics-selector",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "label": {
+                "type": "string",
+                "description": "Label key/value pair used by delete_label_value matching.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/processors/metrics-selector",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "operation_type": {
+                "type": "string",
+                "description": "Metric-name matching mode.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/processors/metrics-selector",
+                "x-doc-required": false,
+                "x-config-data-type": "enum",
+                "x-references-parser": false,
+                "enum": [
+                  "PREFIX",
+                  "SUBSTRING"
+                ]
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name",
+              "action",
+              "context"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "title": "cumulative_to_delta",
+            "properties": {
+              "name": {
+                "type": "string",
+                "const": "cumulative_to_delta"
+              },
+              "drop_first": {
+                "type": "boolean",
+                "description": "Compatibility option for first-sample handling when initial_value is unset.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/processors/cumulative-to-delta",
+                "x-doc-required": false,
+                "x-config-data-type": "boolean",
+                "x-references-parser": false,
+                "default": true
+              },
+              "drop_on_reset": {
+                "type": "boolean",
+                "description": "Drop a sample when a reset is detected.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/processors/cumulative-to-delta",
+                "x-doc-required": false,
+                "x-config-data-type": "boolean",
+                "x-references-parser": false,
+                "default": true
+              },
+              "initial_value": {
+                "type": "string",
+                "description": "How the first sample for a new series is handled.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/processors/cumulative-to-delta",
+                "x-doc-required": false,
+                "x-config-data-type": "enum",
+                "x-references-parser": false,
+                "enum": [
+                  "auto",
+                  "keep",
+                  "drop"
+                ]
+              },
+              "max_series": {
+                "type": "integer",
+                "description": "Maximum number of series tracked in memory.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/processors/cumulative-to-delta",
+                "x-doc-required": false,
+                "x-config-data-type": "integer",
+                "x-references-parser": false,
+                "default": 65536
+              },
+              "max_staleness": {
+                "type": "string",
+                "description": "How long to retain per-series state.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/processors/cumulative-to-delta",
+                "x-doc-required": false,
+                "x-config-data-type": "time",
+                "x-references-parser": false,
+                "default": "1h"
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "title": "tda",
+            "properties": {
+              "name": {
+                "type": "string",
+                "const": "tda"
+              },
+              "window_size": {
+                "type": "integer",
+                "description": "Number of samples kept in the sliding window.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/processors/tda",
+                "x-doc-required": false,
+                "x-config-data-type": "integer",
+                "x-references-parser": false,
+                "default": 60
+              },
+              "min_points": {
+                "type": "integer",
+                "description": "Minimum number of samples required before analysis runs.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/processors/tda",
+                "x-doc-required": false,
+                "x-config-data-type": "integer",
+                "x-references-parser": false,
+                "default": 10
+              },
+              "embed_dim": {
+                "type": "integer",
+                "description": "Delay embedding dimension.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/processors/tda",
+                "x-doc-required": false,
+                "x-config-data-type": "integer",
+                "x-references-parser": false,
+                "default": 3
+              },
+              "embed_delay": {
+                "type": "integer",
+                "description": "Embedding delay in samples.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/processors/tda",
+                "x-doc-required": false,
+                "x-config-data-type": "integer",
+                "x-references-parser": false,
+                "default": 1
+              },
+              "threshold": {
+                "type": "number",
+                "description": "Distance threshold quantile or 0 for automatic scan.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/processors/tda",
+                "x-doc-required": false,
+                "x-config-data-type": "number",
+                "x-references-parser": false,
+                "default": 0
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "traces": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "title": "content_modifier",
+            "properties": {
+              "name": {
+                "type": "string",
+                "const": "content_modifier"
+              },
+              "action": {
+                "type": "string",
+                "description": "Content modifier action to perform.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/processors/content-modifier",
+                "x-doc-required": true,
+                "x-config-data-type": "enum",
+                "x-references-parser": false,
+                "enum": [
+                  "convert",
+                  "delete",
+                  "extract",
+                  "hash",
+                  "insert",
+                  "rename",
+                  "upsert"
+                ]
+              },
+              "context": {
+                "type": "string",
+                "description": "Trace context where the modification is applied.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/processors/content-modifier",
+                "x-doc-required": true,
+                "x-config-data-type": "enum",
+                "x-references-parser": false,
+                "enum": [
+                  "span_name",
+                  "span_kind",
+                  "span_status",
+                  "span_attributes"
+                ]
+              },
+              "key": {
+                "type": "string",
+                "description": "Key targeted by the action.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/processors/content-modifier",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "value": {
+                "type": "string",
+                "description": "Value used by the action.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/processors/content-modifier",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "pattern": {
+                "type": "string",
+                "description": "Regular expression used by the extract action.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/processors/content-modifier",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "converted_type": {
+                "type": "string",
+                "description": "Target type used by the convert action.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/processors/content-modifier",
+                "x-doc-required": false,
+                "x-config-data-type": "enum",
+                "x-references-parser": false,
+                "enum": [
+                  "string",
+                  "boolean",
+                  "int",
+                  "double"
+                ]
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name",
+              "action",
+              "context"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "title": "sampling",
+            "properties": {
+              "name": {
+                "type": "string",
+                "const": "sampling"
+              },
+              "type": {
+                "type": "string",
+                "description": "Sampling mode.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/processors/sampling",
+                "x-doc-required": true,
+                "x-config-data-type": "enum",
+                "x-references-parser": false,
+                "enum": [
+                  "probabilistic",
+                  "tail"
+                ]
+              },
+              "debug": {
+                "type": "boolean",
+                "description": "Enable sampling debug output.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/processors/sampling",
+                "x-doc-required": false,
+                "x-config-data-type": "boolean",
+                "x-references-parser": false,
+                "default": false
+              },
+              "sampling_settings": {
+                "type": "object",
+                "description": "Sampling settings object, such as percentage or decision_wait.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/processors/sampling",
+                "x-doc-required": false,
+                "x-config-data-type": "map",
+                "x-references-parser": false
+              },
+              "conditions": {
+                "type": "array",
+                "description": "Array of tail-sampling condition objects.",
+                "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/processors/sampling",
+                "x-doc-required": false,
+                "x-config-data-type": "list",
+                "x-references-parser": false
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name",
+              "type"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,101 @@
+{
+  "title": "exec",
+  "doc_url": "https://docs.fluentd.org/input/exec",
+  "description": "Runs an external command and ingests its stdout as events.",
+  "fields": [
+    {
+      "name": "@id",
+      "required": false,
+      "description": "Unique identifier for the plugin instance.",
+      "reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "@log_level",
+      "required": false,
+      "description": "Plugin-specific log level that overrides the global system log level.",
+      "reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+      "data_type": "enum",
+      "validation_rule": {
+        "kind": "enum",
+        "values": [
+          "trace",
+          "debug",
+          "info",
+          "warn",
+          "error",
+          "fatal"
+        ]
+      },
+      "default": "info",
+      "called_enum_options": [
+        "trace",
+        "debug",
+        "info",
+        "warn",
+        "error",
+        "fatal"
+      ]
+    },
+    {
+      "name": "@label",
+      "required": false,
+      "description": "Routes emitted events to a named label.",
+      "reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+      "data_type": "string",
+      "validation_rule": {
+        "kind": "regex_string"
+      }
+    },
+    {
+      "name": "command",
+      "required": true,
+      "description": "Command line executed by the input plugin.",
+      "reference": "https://docs.fluentd.org/input/exec",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "tag",
+      "required": true,
+      "description": "Tag assigned to emitted events.",
+      "reference": "https://docs.fluentd.org/input/exec",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "run_interval",
+      "required": false,
+      "description": "Interval between command executions.",
+      "reference": "https://docs.fluentd.org/input/exec",
+      "data_type": "time",
+      "validation_rule": null,
+      "default": "60s"
+    },
+    {
+      "name": "encoding",
+      "required": false,
+      "description": "Output encoding expected from the command.",
+      "reference": "https://docs.fluentd.org/input/exec",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "allowed_children": [
+    {
+      "section": "parse",
+      "cardinality": {
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    {
+      "section": "extract",
+      "cardinality": {
+        "minimum": 0,
+        "maximum": 1
+      }
+    }
+  ]
+}

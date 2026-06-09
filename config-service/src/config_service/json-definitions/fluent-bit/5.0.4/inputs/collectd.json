@@ -1,0 +1,66 @@
+{
+  "title": "Collectd",
+  "doc_url": "https://docs.fluentbit.io/manual/data-pipeline/inputs/collectd",
+  "fields": [
+    {
+      "name": "listen",
+      "required": false,
+      "description": "Set the address to listen to.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/collectd#configuration-parameters",
+      "default": "0.0.0.0",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "port",
+      "required": false,
+      "description": "Set the port to listen to.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/collectd#configuration-parameters",
+      "default": 25826,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 65535
+      }
+    },
+    {
+      "name": "threaded",
+      "required": false,
+      "description": "Indicates whether to run this input in its own [thread](/manual/administration/multithreading.md#inputs).",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/collectd#configuration-parameters",
+      "default": false,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "typesdb",
+      "required": false,
+      "description": "Set the data specification file.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/collectd#configuration-parameters",
+      "default": "/usr/share/collectd/types.db",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "tag",
+      "required": false,
+      "description": "Tag assigned to records emitted by this input plugin.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/collectd#configuration-parameters",
+    "table_header": [
+      "Key",
+      "Description",
+      "Default"
+    ]
+  },
+  "description": "Fluent Bit input plugin: Collectd."
+}

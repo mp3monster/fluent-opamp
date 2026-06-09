@@ -1,0 +1,143 @@
+{
+  "title": "Azure Blob",
+  "doc_url": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/azure_blob",
+  "fields": [
+    {
+      "name": "account_name",
+      "required": false,
+      "description": "Azure Storage account name.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/azure_blob#configuration-parameters",
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "integer"
+      }
+    },
+    {
+      "name": "auth_type",
+      "required": false,
+      "description": "Specify the type to authenticate against the service.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/azure_blob#configuration-parameters",
+      "default": "key",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "shared_key",
+      "required": false,
+      "description": "Specify the Azure Storage Shared Key to authenticate against the service.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/azure_blob#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "sas_token",
+      "required": false,
+      "description": "Specify the Azure Storage shared access signatures to authenticate against the service.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/azure_blob#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "container_name",
+      "required": false,
+      "description": "Name of the container that will contain the blobs.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/azure_blob#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "blob_type",
+      "required": false,
+      "description": "Specify the desired blob type.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/azure_blob#configuration-parameters",
+      "default": "appendblob",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "auto_create_container",
+      "required": false,
+      "description": "If container_name does not exist in the remote service, enabling this option will handle the exception and auto-create the container.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/azure_blob#configuration-parameters",
+      "default": "on",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "path",
+      "required": false,
+      "description": "Optional path to store your blobs.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/azure_blob#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "emulator_mode",
+      "required": false,
+      "description": "If you want to send data to an Azure emulator service like [Azurite](https://github.com/Azure/Azurite), enable this option so the plugin will format the requests to the expected format.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/azure_blob#configuration-parameters",
+      "default": "off",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "endpoint",
+      "required": false,
+      "description": "If you are using an emulator, this option allows you to specify the absolute HTTP address of such service.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/azure_blob#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "tls",
+      "required": false,
+      "description": "Enable or disable TLS encryption.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/azure_blob#configuration-parameters",
+      "default": "off",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "workers",
+      "required": false,
+      "description": "The number of [workers](/manual/3.2/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/azure_blob#configuration-parameters",
+      "default": 0,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "match",
+      "required": false,
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "match_regex",
+      "required": false,
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/azure_blob#configuration-parameters",
+    "table_header": [
+      "Key",
+      "Description",
+      "default"
+    ]
+  },
+  "description": "The Azure Blob output plugin allows ingesting your records into Azure Blob Storage service."
+}

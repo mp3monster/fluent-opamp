@@ -1,0 +1,167 @@
+{
+  "title": "Amazon Kinesis Data Streams",
+  "doc_url": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kinesis",
+  "fields": [
+    {
+      "name": "auto_retry_requests",
+      "required": false,
+      "description": "Immediately retry failed requests to AWS services once.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kinesis#configuration-parameters",
+      "default": true,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "compression",
+      "required": false,
+      "description": "Compression type for records sent to Kinesis Data Streams.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kinesis#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "endpoint",
+      "required": false,
+      "description": "Specify a custom endpoint for the Kinesis API.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kinesis#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "external_id",
+      "required": false,
+      "description": "Specify an external ID for the STS API.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kinesis#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "log_key",
+      "required": false,
+      "description": "By default, the whole log record will be sent to Kinesis.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kinesis#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "port",
+      "required": false,
+      "description": "TCP port of the Kinesis Streams service.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kinesis#configuration-parameters",
+      "default": 443,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 65535
+      }
+    },
+    {
+      "name": "profile",
+      "required": false,
+      "description": "AWS profile name to use.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kinesis#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "region",
+      "required": true,
+      "description": "The AWS region.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kinesis#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "role_arn",
+      "required": false,
+      "description": "ARN of an IAM role to assume (for cross-account access).",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kinesis#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "simple_aggregation",
+      "required": false,
+      "description": "Enable record aggregation to combine multiple records into single API calls.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kinesis#configuration-parameters",
+      "default": false,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "stream",
+      "required": false,
+      "description": "The name of the Kinesis stream that you want log records sent to.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kinesis#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "sts_endpoint",
+      "required": false,
+      "description": "Custom endpoint for the STS API.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kinesis#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "time_key",
+      "required": false,
+      "description": "Add the timestamp to the record under this key.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kinesis#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "time_key_format",
+      "required": false,
+      "description": "The strftime compliant format string for the timestamp.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kinesis#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "workers",
+      "required": false,
+      "description": "The number of [workers](/manual/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kinesis#configuration-parameters",
+      "default": 1,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "match",
+      "required": false,
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "match_regex",
+      "required": false,
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kinesis#configuration-parameters",
+    "table_header": [
+      "Key",
+      "Description",
+      "Default"
+    ]
+  },
+  "description": "The Amazon Kinesis Data Streams output plugin lets you ingest your records into the Kinesis service."
+}

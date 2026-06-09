@@ -1,0 +1,205 @@
+{
+  "type": "object",
+  "title": "Logs to metrics",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "log_to_metrics",
+      "title": "Plugin"
+    },
+    "add_label": {
+      "type": "string",
+      "description": "Adds a custom label NAME and set the value to the value of KEY.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/log_to_metrics#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "bucket": {
+      "type": "string",
+      "description": "Optional for metric_mode histogram.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/log_to_metrics#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "discard_logs": {
+      "type": "boolean",
+      "description": "Flag that defines if logs should be discarded after processing.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/log_to_metrics#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "emitter_mem_buf_limit": {
+      "type": "string",
+      "description": "Buffer limit for the internal metrics emitter.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/log_to_metrics#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "size",
+      "x-references-parser": false,
+      "default": "10M"
+    },
+    "emitter_name": {
+      "type": "string",
+      "description": "Name of the emitter (advanced users).",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/log_to_metrics#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "exclude": {
+      "type": "string",
+      "description": "Excludes records in which the content of KEY matches the regular expression REGEX.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/log_to_metrics#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "flush_interval_nsec": {
+      "type": "integer",
+      "description": "The interval for metrics emission, in nanoseconds.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/log_to_metrics#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 0
+    },
+    "flush_interval_sec": {
+      "type": "integer",
+      "description": "The interval for metrics emission, in seconds.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/log_to_metrics#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 0
+    },
+    "kubernetes_mode": {
+      "type": "boolean",
+      "description": "If enabled, adds pod_id, pod_name, namespace_name, docker_id and container_name to the metric as labels.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/log_to_metrics#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "label_field": {
+      "type": "string",
+      "description": "Includes a record field as label dimension in the metric.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/log_to_metrics#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "metric_description": {
+      "type": "string",
+      "description": "Sets a description for the metric.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/log_to_metrics#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "metric_mode": {
+      "type": "string",
+      "description": "Defines the mode for the metric.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/log_to_metrics#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "counter"
+    },
+    "metric_name": {
+      "type": "string",
+      "description": "Sets the name of the metric.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/log_to_metrics#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "a"
+    },
+    "metric_namespace": {
+      "type": "string",
+      "description": "Sets the namespace of the metric.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/log_to_metrics#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "log_metric"
+    },
+    "metric_subsystem": {
+      "type": "string",
+      "description": "Subsystem of the metric.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/log_to_metrics#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "regex": {
+      "type": "string",
+      "description": "Includes records in which the content of KEY matches the regular expression REGEX.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/log_to_metrics#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "tag": {
+      "type": "string",
+      "description": "Defines the tag for the generated metrics record.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/log_to_metrics#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "value_field": {
+      "type": "string",
+      "description": "Required for modes gauge and histogram.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/log_to_metrics#configuration-parameters",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match_regex": {
+      "type": "string",
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name",
+    "value_field"
+  ],
+  "additionalProperties": false
+}

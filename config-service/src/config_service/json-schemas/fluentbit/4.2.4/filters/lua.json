@@ -1,0 +1,116 @@
+{
+  "type": "object",
+  "title": "Lua",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "lua",
+      "title": "Plugin"
+    },
+    "call": {
+      "type": "string",
+      "description": "The Lua function name that will be triggered to do filtering.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/lua#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "code": {
+      "type": "string",
+      "description": "Inline Lua code instead of loading from a path defined in script.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/lua#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "code",
+      "x-references-parser": false
+    },
+    "enable_flb_null": {
+      "type": "boolean",
+      "description": "If enabled, null will be converted to flb_null in Lua.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/lua#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false
+    },
+    "protected_mode": {
+      "type": "boolean",
+      "description": "If enabled, the Lua script will be executed in protected mode.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/lua#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false
+    },
+    "script": {
+      "type": "string",
+      "description": "Path to the Lua script that will be used.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/lua#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "time_as_table": {
+      "type": "string",
+      "description": "By default, when the Lua script is invoked, the record timestamp is passed as a floating number, which might lead to precision loss when it's converted back.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/lua#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "type_array_key": {
+      "type": "string",
+      "description": "If these keys are matched, the fields are handled as array.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/lua#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "type_int_key": {
+      "type": "string",
+      "description": "If these keys are matched, the fields are converted to integers.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/lua#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match_regex": {
+      "type": "string",
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}

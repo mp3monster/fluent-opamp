@@ -1,0 +1,142 @@
+{
+  "type": "object",
+  "title": "OpenObserve",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "openobserve",
+      "title": "Plugin"
+    },
+    "compress": {
+      "type": "string",
+      "description": "Recommended.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/openobserve#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "format": {
+      "type": "string",
+      "description": "The format of the log payload.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/openobserve#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "json"
+    },
+    "host": {
+      "type": "string",
+      "description": "The OpenObserve server where you are sending logs.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/openobserve#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "localhost"
+    },
+    "http_passwd": {
+      "type": "string",
+      "description": "Password for HTTP authentication.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/openobserve#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "http_user": {
+      "type": "string",
+      "description": "Username for HTTP authentication.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/openobserve#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "include_tag_key": {
+      "type": "boolean",
+      "description": "If true, a tag is appended to the output.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/openobserve#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "json_date_format": {
+      "type": "string",
+      "description": "Optional.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/openobserve#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "iso8601"
+    },
+    "json_date_key": {
+      "type": "string",
+      "description": "Optional.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/openobserve#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "timestamp"
+    },
+    "tls": {
+      "type": "boolean",
+      "description": "Enable end-to-end security using TLS.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/openobserve#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": "on"
+    },
+    "uri": {
+      "type": "string",
+      "description": "The API path used to send logs.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/openobserve#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "/api/default/default/_json"
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match_regex": {
+      "type": "string",
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "processors": {
+      "$ref": "../processors.json"
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}

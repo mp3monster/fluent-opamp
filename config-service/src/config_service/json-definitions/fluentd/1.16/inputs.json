@@ -1,0 +1,48 @@
+{
+  "artifact_manifest": {
+    "format": "config-service.composite-json/v1",
+    "base": "inputs.base.json",
+    "parts": [
+      {
+        "pointer": "/exec",
+        "file": "inputs/exec.json"
+      },
+      {
+        "pointer": "/forward",
+        "file": "inputs/forward.json"
+      },
+      {
+        "pointer": "/http",
+        "file": "inputs/http.json"
+      },
+      {
+        "pointer": "/monitor_agent",
+        "file": "inputs/monitor_agent.json"
+      },
+      {
+        "pointer": "/sample",
+        "file": "inputs/sample.json"
+      },
+      {
+        "pointer": "/syslog",
+        "file": "inputs/syslog.json"
+      },
+      {
+        "pointer": "/tail",
+        "file": "inputs/tail.json"
+      },
+      {
+        "pointer": "/tcp",
+        "file": "inputs/tcp.json"
+      },
+      {
+        "pointer": "/udp",
+        "file": "inputs/udp.json"
+      },
+      {
+        "pointer": "/unix",
+        "file": "inputs/unix.json"
+      }
+    ]
+  }
+}

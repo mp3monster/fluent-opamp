@@ -1,0 +1,116 @@
+{
+  "title": "Google Chronicle",
+  "doc_url": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/chronicle",
+  "fields": [
+    {
+      "name": "google_service_credentials",
+      "required": false,
+      "description": "Absolute path to a Google Cloud credentials JSON file.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/chronicle#configurations-parameters",
+      "default": "Value of the environment variable *$GOOGLE\\_SERVICE\\_CREDENTIALS*",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "service_account_email",
+      "required": false,
+      "description": "Account email associated with the service.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/chronicle#configurations-parameters",
+      "default": "Value of environment variable *$SERVICE\\_ACCOUNT\\_EMAIL*",
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "integer"
+      }
+    },
+    {
+      "name": "service_account_secret",
+      "required": false,
+      "description": "Private key content associated with the service account.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/chronicle#configurations-parameters",
+      "default": "Value of environment variable *$SERVICE\\_ACCOUNT\\_SECRET*",
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "integer"
+      }
+    },
+    {
+      "name": "project_id",
+      "required": false,
+      "description": "The project id containing the tenant of Google Chronicle to stream into.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/chronicle#configurations-parameters",
+      "default": "The value of the `project_id` in the credentials file",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "customer_id",
+      "required": false,
+      "description": "The customer id to identify the tenant of Google Chronicle to stream into.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/chronicle#configurations-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "log_type",
+      "required": false,
+      "description": "The log type to parse logs as.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/chronicle#configurations-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "region",
+      "required": false,
+      "description": "The GCP region in which to store security logs.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/chronicle#configurations-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "log_key",
+      "required": false,
+      "description": "By default, the whole log record will be sent to Google Chronicle.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/chronicle#configurations-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "workers",
+      "required": false,
+      "description": "The number of [workers](/manual/3.2/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/chronicle#configurations-parameters",
+      "default": 0,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "match",
+      "required": false,
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "match_regex",
+      "required": false,
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/chronicle#configurations-parameters",
+    "table_header": [
+      "Key",
+      "Description",
+      "default"
+    ]
+  },
+  "description": "The Chronicle output plugin allows ingesting security logs into Google Chronicle service."
+}

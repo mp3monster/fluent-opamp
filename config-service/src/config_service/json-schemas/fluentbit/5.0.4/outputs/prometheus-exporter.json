@@ -1,0 +1,99 @@
+{
+  "type": "object",
+  "title": "Prometheus exporter",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "prometheus-exporter",
+      "title": "Plugin"
+    },
+    "add_label": {
+      "type": "string",
+      "description": "This lets you add custom labels to all metrics exposed through the Prometheus exporter.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/prometheus-exporter#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "add_timestamp": {
+      "type": "boolean",
+      "description": "Add timestamp to every metric honoring collection time.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/prometheus-exporter#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "host": {
+      "type": "string",
+      "description": "IP address or hostname Fluent Bit will bind to when hosting Prometheus metrics.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/prometheus-exporter#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "0.0.0.0"
+    },
+    "port": {
+      "type": "integer",
+      "description": "TCP port Fluent Bit will bind to when hosting Prometheus metrics.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/prometheus-exporter#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 2021
+    },
+    "workers": {
+      "type": "integer",
+      "description": "The number of [workers](/manual/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/prometheus-exporter#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 0
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match_regex": {
+      "type": "string",
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "processors": {
+      "$ref": "../processors.json"
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}

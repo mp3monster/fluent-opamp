@@ -1,0 +1,145 @@
+{
+  "type": "object",
+  "title": "Systemd",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "systemd",
+      "title": "Plugin"
+    },
+    "path": {
+      "type": "string",
+      "description": "Optional path to the Systemd journal directory, if not set, the plugin will use default paths to read local-only logs.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/systemd#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "max_fields": {
+      "type": "integer",
+      "description": "Set a maximum number of fields (keys) allowed per record.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/systemd#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 8000
+    },
+    "max_entries": {
+      "type": "integer",
+      "description": "When Fluent Bit starts, the Journal might have a high number of logs in the queue.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/systemd#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 5000
+    },
+    "systemd_filter": {
+      "type": "array",
+      "description": "Allows to perform a query over logs that contains a specific Journald key/value pairs, e.g: _SYSTEMD_UNIT=UNIT.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/systemd#configuration-parameters",
+      "x-doc-required": true,
+      "x-config-data-type": "list",
+      "x-references-parser": false
+    },
+    "systemd_filter_type": {
+      "type": "string",
+      "description": "Define the filter type when Systemd_Filter is specified multiple times.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/systemd#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "Or"
+    },
+    "tag": {
+      "type": "string",
+      "description": "The tag is used to route messages but on Systemd plugin there is an extra functionality: if the tag includes a star/wildcard, it will be expanded with the Systemd Unit file (_SYSTEMD_UNIT, e.g.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "db": {
+      "type": "string",
+      "description": "Specify the absolute path of a database file to keep track of Journald cursor.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/systemd#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "db.sync": {
+      "type": "string",
+      "description": "Set a default synchronization (I/O) method.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/systemd#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "Full"
+    },
+    "read_from_tail": {
+      "type": "string",
+      "description": "Start reading new entries.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/systemd#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "Off"
+    },
+    "lowercase": {
+      "type": "string",
+      "description": "Lowercase the Journald field (key).",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/systemd#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "Off"
+    },
+    "strip_underscores": {
+      "type": "string",
+      "description": "Remove the leading underscore of the Journald field (key).",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/systemd#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "Off"
+    },
+    "threaded": {
+      "type": "boolean",
+      "description": "Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs).",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/systemd#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "processors": {
+      "$ref": "../processors.json"
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name",
+    "systemd_filter",
+    "tag"
+  ],
+  "additionalProperties": false
+}

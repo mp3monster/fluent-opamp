@@ -1,0 +1,153 @@
+{
+  "title": "Kafka REST Proxy",
+  "doc_url": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/kafka-rest-proxy",
+  "fields": [
+    {
+      "name": "avro_http_header",
+      "required": false,
+      "description": "Include Avro header in the HTTP request.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/kafka-rest-proxy#configuration-parameters",
+      "default": false,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "host",
+      "required": false,
+      "description": "IP address or hostname of the target Kafka REST Proxy server.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/kafka-rest-proxy#configuration-parameters",
+      "default": "127.0.0.1",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "include_tag_key",
+      "required": false,
+      "description": "Append the tag name to the final record.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/kafka-rest-proxy#configuration-parameters",
+      "default": false,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "message_key",
+      "required": false,
+      "description": "Optional message key to set.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/kafka-rest-proxy#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "partition",
+      "required": false,
+      "description": "Optional partition number.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/kafka-rest-proxy#configuration-parameters",
+      "default": -1,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "integer"
+      }
+    },
+    {
+      "name": "port",
+      "required": false,
+      "description": "TCP port of the target Kafka REST Proxy server.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/kafka-rest-proxy#configuration-parameters",
+      "default": 8082,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 65535
+      }
+    },
+    {
+      "name": "tag_key",
+      "required": false,
+      "description": "If include_tag_key is enabled, defines the key name for the tag.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/kafka-rest-proxy#configuration-parameters",
+      "default": "_flb-key",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "time_key",
+      "required": false,
+      "description": "Name of the field that holds the record timestamp.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/kafka-rest-proxy#configuration-parameters",
+      "default": "@timestamp",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "time_key_format",
+      "required": false,
+      "description": "Format of the timestamp.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/kafka-rest-proxy#configuration-parameters",
+      "default": "%Y-%m-%dT%H:%M:%S",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "topic",
+      "required": false,
+      "description": "Set the Kafka topic.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/kafka-rest-proxy#configuration-parameters",
+      "default": "fluent-bit",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "url_path",
+      "required": false,
+      "description": "Optional HTTP URL path for the target web server.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/kafka-rest-proxy#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "workers",
+      "required": false,
+      "description": "The number of [workers](/manual/4.2/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/kafka-rest-proxy#configuration-parameters",
+      "default": 0,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "match",
+      "required": false,
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "match_regex",
+      "required": false,
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/kafka-rest-proxy#configuration-parameters",
+    "table_header": [
+      "Key",
+      "Description",
+      "Default"
+    ]
+  },
+  "description": "The Kafka rest (kafka-rest) output plugin lets you flush your records into a Kafka REST Proxy server."
+}

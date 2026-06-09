@@ -1,0 +1,256 @@
+{
+  "type": "object",
+  "title": "Kafka Producer",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "kafka",
+      "title": "Plugin"
+    },
+    "aws_msk_iam": {
+      "type": "boolean",
+      "description": "Enable AWS MSK IAM authentication.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kafka#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "aws_msk_iam_cluster_arn": {
+      "type": "string",
+      "description": "Full ARN of the MSK cluster used for region extraction.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kafka#configuration-parameters",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "brokers": {
+      "type": "array",
+      "description": "Single or multiple list of Kafka brokers.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kafka#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "list",
+      "x-references-parser": false
+    },
+    "client_id": {
+      "type": "string",
+      "description": "Client ID to use when connecting to Kafka.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kafka#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "dynamic_topic": {
+      "type": "boolean",
+      "description": "Adds unknown topics (found in topic_key) to topics.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kafka#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "format": {
+      "type": "string",
+      "description": "Specify data format.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kafka#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "json"
+    },
+    "gelf_full_message_key": {
+      "type": "string",
+      "description": "Key to use as the long message for GELF format output.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kafka#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "gelf_host_key": {
+      "type": "string",
+      "description": "Key to use as the host for GELF format output.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kafka#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "gelf_level_key": {
+      "type": "string",
+      "description": "Key to use as the log level for GELF format output.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kafka#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "gelf_short_message_key": {
+      "type": "string",
+      "description": "Key to use as the short message for GELF format output.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kafka#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "gelf_timestamp_key": {
+      "type": "string",
+      "description": "Key to use as the timestamp for GELF format output.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kafka#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "group_id": {
+      "type": "string",
+      "description": "Consumer group ID.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kafka#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "message_key": {
+      "type": "string",
+      "description": "Optional key to store the message.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kafka#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "message_key_field": {
+      "type": "string",
+      "description": "If set, the value of message_key_field in the record will indicate the message key.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kafka#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "queue_full_retries": {
+      "type": "integer",
+      "description": "Number of local retries to enqueue data when the rdkafka queue is full.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kafka#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 10
+    },
+    "raw_log_key": {
+      "type": "string",
+      "description": "When using the raw format, the value of raw_log_key in the record is sent to Kafka as the payload.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kafka#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "rdkafka.{property}": {
+      "type": "string",
+      "description": "{property} can be any [librdkafka property](https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md).",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kafka#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "schema_id": {
+      "type": "string",
+      "description": "Avro schema ID.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kafka#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "schema_str": {
+      "type": "string",
+      "description": "Avro schema string.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kafka#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "timestamp_format": {
+      "type": "string",
+      "description": "Specify the timestamp format.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kafka#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "double"
+    },
+    "timestamp_key": {
+      "type": "string",
+      "description": "Key to store the record timestamp.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kafka#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "@timestamp"
+    },
+    "topic_key": {
+      "type": "string",
+      "description": "If multiple topics exist, the value of topic_key in the record indicates the topic to use.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kafka#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "topics": {
+      "type": "array",
+      "description": "Single topic or comma-separated list of topics that Fluent Bit will use to send messages to Kafka.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kafka#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "list",
+      "x-references-parser": false,
+      "default": "fluent-bit"
+    },
+    "workers": {
+      "type": "integer",
+      "description": "The number of [workers](/manual/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/kafka#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 0
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match_regex": {
+      "type": "string",
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "processors": {
+      "$ref": "../processors.json"
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name",
+    "aws_msk_iam_cluster_arn"
+  ],
+  "additionalProperties": false
+}

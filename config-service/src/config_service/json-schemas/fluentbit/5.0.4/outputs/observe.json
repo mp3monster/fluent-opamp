@@ -1,0 +1,135 @@
+{
+  "type": "object",
+  "title": "Observe",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "observe",
+      "title": "Plugin"
+    },
+    "compress": {
+      "type": "string",
+      "description": "Sets the payload compression mechanism.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/observe#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "gzip"
+    },
+    "format": {
+      "type": "string",
+      "description": "The data format to be used in the HTTP request body.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/observe#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "msgpack"
+    },
+    "header": {
+      "type": "string",
+      "description": "The specific header that provides the Observe token needed to authorize sending data [into a data stream](https://docs.observeinc.com/en/latest/content/data-ingestion/datastreams.html?highlight=ingest%20token#create-a-datastream).",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/observe#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "Authorization Bearer ${OBSERVE_TOKEN}"
+    },
+    "host": {
+      "type": "string",
+      "description": "IP address or hostname of the Observe data collection endpoint.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/observe#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "OBSERVE_CUSTOMER.collect.observeinc.com"
+    },
+    "port": {
+      "type": "integer",
+      "description": "TCP port to use when sending data to Observe.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/observe#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 443
+    },
+    "tls": {
+      "type": "string",
+      "description": "Specifies whether to use TLS.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/observe#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "on"
+    },
+    "tls.ca_file": {
+      "type": "string",
+      "description": "For Windows only: the path to the root cert.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/observe#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "uri": {
+      "type": "string",
+      "description": "Specifies the HTTP URI for Observe.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/observe#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "/v1/http/fluentbit"
+    },
+    "workers": {
+      "type": "integer",
+      "description": "The number of [workers](/manual/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/observe#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 0
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match_regex": {
+      "type": "string",
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "processors": {
+      "$ref": "../processors.json"
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}

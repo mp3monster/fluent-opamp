@@ -1,0 +1,105 @@
+{
+  "type": "object",
+  "title": "Nightfall",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "nightfall",
+      "title": "Plugin"
+    },
+    "nightfall_api_key": {
+      "type": "string",
+      "description": "The Nightfall API key to scan your logs with, obtainable from the [Nightfall Dashboard](https://app.nightfall.ai)",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/nightfall#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "policy_id": {
+      "type": "string",
+      "description": "The Nightfall dev platform policy to scan your logs with, configurable in the [Nightfall Dashboard](https://app.nightfall.ai/developer-platform/policies).",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/nightfall#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "sampling_rate": {
+      "type": "integer",
+      "description": "The rate controlling how much of your logs you wish to be scanned, must be a float between (0,1].",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/nightfall#configuration-parameters",
+      "x-doc-required": true,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 1
+    },
+    "tls.debug": {
+      "type": "integer",
+      "description": "Debug level between 0 (nothing) and 4 (every detail).",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/nightfall#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 0
+    },
+    "tls.verify": {
+      "type": "boolean",
+      "description": "When enabled, turns on certificate validation when connecting to the Nightfall API.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/nightfall#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": true
+    },
+    "tls.ca_path": {
+      "type": "string",
+      "description": "Absolute path to root certificates, required if tls.verify is true.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/nightfall#configuration-parameters",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match_regex": {
+      "type": "string",
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name",
+    "sampling_rate",
+    "tls.ca_path"
+  ],
+  "additionalProperties": false
+}

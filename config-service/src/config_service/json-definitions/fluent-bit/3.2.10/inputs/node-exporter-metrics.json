@@ -1,0 +1,318 @@
+{
+  "title": "Node Exporter Metrics",
+  "doc_url": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics",
+  "fields": [
+    {
+      "name": "scrape_interval",
+      "required": false,
+      "description": "The rate at which metrics are collected from the host operating system",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
+      "default": "5 seconds",
+      "data_type": "duration",
+      "validation_rule": {
+        "kind": "regex",
+        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+      }
+    },
+    {
+      "name": "path.procfs",
+      "required": false,
+      "description": "The mount point used to collect process information and metrics",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
+      "default": "/proc/",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "path.sysfs",
+      "required": false,
+      "description": "The path in the filesystem used to collect system metrics",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
+      "default": "/sys/",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "collector.cpu.scrape_interval",
+      "required": false,
+      "description": "The rate in seconds at which cpu metrics are collected from the host operating system.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
+      "default": "0 seconds",
+      "data_type": "duration",
+      "validation_rule": {
+        "kind": "regex",
+        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+      }
+    },
+    {
+      "name": "collector.cpufreq.scrape_interval",
+      "required": false,
+      "description": "The rate in seconds at which cpufreq metrics are collected from the host operating system.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
+      "default": "0 seconds",
+      "data_type": "duration",
+      "validation_rule": {
+        "kind": "regex",
+        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+      }
+    },
+    {
+      "name": "collector.meminfo.scrape_interval",
+      "required": false,
+      "description": "The rate in seconds at which meminfo metrics are collected from the host operating system.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
+      "default": "0 seconds",
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "integer"
+      }
+    },
+    {
+      "name": "collector.diskstats.scrape_interval",
+      "required": false,
+      "description": "The rate in seconds at which diskstats metrics are collected from the host operating system.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
+      "default": "0 seconds",
+      "data_type": "duration",
+      "validation_rule": {
+        "kind": "regex",
+        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+      }
+    },
+    {
+      "name": "collector.filesystem.scrape_interval",
+      "required": false,
+      "description": "The rate in seconds at which filesystem metrics are collected from the host operating system.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
+      "default": "0 seconds",
+      "data_type": "duration",
+      "validation_rule": {
+        "kind": "regex",
+        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+      }
+    },
+    {
+      "name": "collector.uname.scrape_interval",
+      "required": false,
+      "description": "The rate in seconds at which uname metrics are collected from the host operating system.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
+      "default": "0 seconds",
+      "data_type": "duration",
+      "validation_rule": {
+        "kind": "regex",
+        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+      }
+    },
+    {
+      "name": "collector.stat.scrape_interval",
+      "required": false,
+      "description": "The rate in seconds at which stat metrics are collected from the host operating system.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
+      "default": "0 seconds",
+      "data_type": "duration",
+      "validation_rule": {
+        "kind": "regex",
+        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+      }
+    },
+    {
+      "name": "collector.time.scrape_interval",
+      "required": false,
+      "description": "The rate in seconds at which time metrics are collected from the host operating system.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
+      "default": "0 seconds",
+      "data_type": "duration",
+      "validation_rule": {
+        "kind": "regex",
+        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+      }
+    },
+    {
+      "name": "collector.loadavg.scrape_interval",
+      "required": false,
+      "description": "The rate in seconds at which loadavg metrics are collected from the host operating system.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
+      "default": "0 seconds",
+      "data_type": "duration",
+      "validation_rule": {
+        "kind": "regex",
+        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+      }
+    },
+    {
+      "name": "collector.vmstat.scrape_interval",
+      "required": false,
+      "description": "The rate in seconds at which vmstat metrics are collected from the host operating system.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
+      "default": "0 seconds",
+      "data_type": "duration",
+      "validation_rule": {
+        "kind": "regex",
+        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+      }
+    },
+    {
+      "name": "collector.thermal_zone.scrape_interval",
+      "required": false,
+      "description": "The rate in seconds at which thermal_zone metrics are collected from the host operating system.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
+      "default": "0 seconds",
+      "data_type": "duration",
+      "validation_rule": {
+        "kind": "regex",
+        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+      }
+    },
+    {
+      "name": "collector.filefd.scrape_interval",
+      "required": false,
+      "description": "The rate in seconds at which filefd metrics are collected from the host operating system.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
+      "default": "0 seconds",
+      "data_type": "duration",
+      "validation_rule": {
+        "kind": "regex",
+        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+      }
+    },
+    {
+      "name": "collector.nvme.scrape_interval",
+      "required": false,
+      "description": "The rate in seconds at which nvme metrics are collected from the host operating system.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
+      "default": "0 seconds",
+      "data_type": "duration",
+      "validation_rule": {
+        "kind": "regex",
+        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+      }
+    },
+    {
+      "name": "collector.processes.scrape_interval",
+      "required": false,
+      "description": "The rate in seconds at which system level of process metrics are collected from the host operating system.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
+      "default": "0 seconds",
+      "data_type": "duration",
+      "validation_rule": {
+        "kind": "regex",
+        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+      }
+    },
+    {
+      "name": "metrics",
+      "required": false,
+      "description": "To specify which metrics are collected from the host operating system.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
+      "default": "\"cpu,cpufreq,meminfo,diskstats,filesystem,uname,stat,time,loadavg,vmstat,netdev,filefd\"",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "filesystem.ignore_mount_point_regex",
+      "required": false,
+      "description": "Specify the regex for the mount points to prevent collection of/ignore.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
+      "default": "\\`^/(dev",
+      "data_type": "string",
+      "validation_rule": {
+        "kind": "regex_string"
+      }
+    },
+    {
+      "name": "filesystem.ignore_filesystem_type_regex",
+      "required": false,
+      "description": "Specify the regex for the filesystem types to prevent collection of/ignore.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
+      "default": "\\`^(autofs",
+      "data_type": "string",
+      "validation_rule": {
+        "kind": "regex_string"
+      }
+    },
+    {
+      "name": "diskstats.ignore_device_regex",
+      "required": false,
+      "description": "Specify the regex for the diskstats to prevent collection of/ignore.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
+      "default": "\\`^(ram",
+      "data_type": "string",
+      "validation_rule": {
+        "kind": "regex_string"
+      }
+    },
+    {
+      "name": "systemd_service_restart_metrics",
+      "required": false,
+      "description": "Determines if the collector will include service restart metrics",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
+      "default": false,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "systemd_unit_start_time_metrics",
+      "required": false,
+      "description": "Determines if the collector will include unit start time metrics",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
+      "default": false,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "systemd_include_service_task_metrics",
+      "required": false,
+      "description": "Determines if the collector will include service task metrics",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
+      "default": false,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "systemd_include_pattern",
+      "required": false,
+      "description": "regex to determine which units are included in the metrics produced by the systemd collector",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
+      "default": "It is not applied unless explicitly set",
+      "data_type": "string",
+      "validation_rule": {
+        "kind": "regex_string"
+      }
+    },
+    {
+      "name": "systemd_exclude_pattern",
+      "required": false,
+      "description": "regex to determine which units are excluded in the metrics produced by the systemd collector",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
+      "default": "\\`.+\\\\.(automount",
+      "data_type": "string",
+      "validation_rule": {
+        "kind": "regex_string"
+      }
+    },
+    {
+      "name": "tag",
+      "required": true,
+      "description": "Tag assigned to records emitted by this input plugin.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
+    "table_header": [
+      "Key",
+      "Description",
+      "Default"
+    ]
+  },
+  "description": "Prometheus Node Exporter is a popular way to collect system level metrics from operating systems, such as CPU / Disk / Network / Process statistics."
+}

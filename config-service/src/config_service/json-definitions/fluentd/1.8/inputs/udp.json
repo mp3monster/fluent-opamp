@@ -1,0 +1,141 @@
+{
+  "title": "udp",
+  "doc_url": "https://docs.fluentd.org/input/udp",
+  "description": "Accepts UDP payloads and parses them into Fluentd events.",
+  "fields": [
+    {
+      "name": "@id",
+      "required": false,
+      "description": "Unique identifier for the plugin instance.",
+      "reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "@log_level",
+      "required": false,
+      "description": "Plugin-specific log level that overrides the global system log level.",
+      "reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+      "data_type": "enum",
+      "validation_rule": {
+        "kind": "enum",
+        "values": [
+          "trace",
+          "debug",
+          "info",
+          "warn",
+          "error",
+          "fatal"
+        ]
+      },
+      "default": "info",
+      "called_enum_options": [
+        "trace",
+        "debug",
+        "info",
+        "warn",
+        "error",
+        "fatal"
+      ]
+    },
+    {
+      "name": "@label",
+      "required": false,
+      "description": "Routes emitted events to a named label.",
+      "reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+      "data_type": "string",
+      "validation_rule": {
+        "kind": "regex_string"
+      }
+    },
+    {
+      "name": "tag",
+      "required": true,
+      "description": "Tag assigned to emitted events.",
+      "reference": "https://docs.fluentd.org/input/udp",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "port",
+      "required": false,
+      "description": "UDP port used by the listener.",
+      "reference": "https://docs.fluentd.org/input/udp",
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 65535
+      },
+      "default": 5160
+    },
+    {
+      "name": "bind",
+      "required": false,
+      "description": "Bind address for the UDP listener.",
+      "reference": "https://docs.fluentd.org/input/udp",
+      "data_type": "string",
+      "validation_rule": null,
+      "default": "0.0.0.0"
+    },
+    {
+      "name": "message_length_limit",
+      "required": false,
+      "description": "Maximum accepted datagram size.",
+      "reference": "https://docs.fluentd.org/input/udp",
+      "data_type": "size",
+      "validation_rule": null,
+      "default": "4096"
+    },
+    {
+      "name": "source_hostname_key",
+      "required": false,
+      "description": "Record key used to inject the client hostname.",
+      "reference": "https://docs.fluentd.org/input/udp",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "source_address_key",
+      "required": false,
+      "description": "Record key used to inject the client address.",
+      "reference": "https://docs.fluentd.org/input/udp",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "remove_newline",
+      "required": false,
+      "description": "Trim trailing newline bytes from incoming payloads.",
+      "reference": "https://docs.fluentd.org/input/udp",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      },
+      "default": true
+    }
+  ],
+  "allowed_children": [
+    {
+      "section": "parse",
+      "cardinality": {
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    {
+      "section": "transport",
+      "cardinality": {
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    {
+      "section": "extract",
+      "cardinality": {
+        "minimum": 0,
+        "maximum": 1
+      }
+    }
+  ]
+}

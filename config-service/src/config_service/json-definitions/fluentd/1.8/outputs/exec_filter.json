@@ -1,0 +1,147 @@
+{
+  "title": "exec_filter",
+  "doc_url": "https://docs.fluentd.org/output/exec_filter",
+  "description": "Transforms events by piping them through an external command and reading the command output back as events.",
+  "fields": [
+    {
+      "name": "@id",
+      "required": false,
+      "description": "Unique identifier for the plugin instance.",
+      "reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "@log_level",
+      "required": false,
+      "description": "Plugin-specific log level that overrides the global system log level.",
+      "reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+      "data_type": "enum",
+      "validation_rule": {
+        "kind": "enum",
+        "values": [
+          "trace",
+          "debug",
+          "info",
+          "warn",
+          "error",
+          "fatal"
+        ]
+      },
+      "default": "info",
+      "called_enum_options": [
+        "trace",
+        "debug",
+        "info",
+        "warn",
+        "error",
+        "fatal"
+      ]
+    },
+    {
+      "name": "command",
+      "required": true,
+      "description": "External command used to transform incoming events.",
+      "reference": "https://docs.fluentd.org/output/exec_filter",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "in_format",
+      "required": false,
+      "description": "Serialization format used for command input.",
+      "reference": "https://docs.fluentd.org/output/exec_filter",
+      "data_type": "enum",
+      "validation_rule": {
+        "kind": "enum",
+        "values": [
+          "tsv",
+          "json",
+          "msgpack"
+        ]
+      },
+      "default": "tsv",
+      "called_enum_options": [
+        "tsv",
+        "json",
+        "msgpack"
+      ]
+    },
+    {
+      "name": "out_format",
+      "required": false,
+      "description": "Serialization format expected from command output.",
+      "reference": "https://docs.fluentd.org/output/exec_filter",
+      "data_type": "enum",
+      "validation_rule": {
+        "kind": "enum",
+        "values": [
+          "tsv",
+          "json",
+          "msgpack"
+        ]
+      },
+      "default": "tsv",
+      "called_enum_options": [
+        "tsv",
+        "json",
+        "msgpack"
+      ]
+    },
+    {
+      "name": "tag",
+      "required": false,
+      "description": "Optional output tag override for events returned by the command.",
+      "reference": "https://docs.fluentd.org/output/exec_filter",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "allowed_children": [
+    {
+      "section": "buffer",
+      "cardinality": {
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    {
+      "section": "parse",
+      "cardinality": {
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    {
+      "section": "format",
+      "cardinality": {
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    {
+      "section": "inject",
+      "cardinality": {
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    {
+      "section": "secondary",
+      "cardinality": {
+        "minimum": 0,
+        "maximum": 1
+      }
+    }
+  ],
+  "directive_argument": {
+    "name": "match",
+    "required": true,
+    "description": "Tag pattern selecting events for this output.",
+    "reference": "https://docs.fluentd.org/configuration/config-file",
+    "data_type": "string",
+    "validation_rule": {
+      "kind": "regex_string"
+    }
+  }
+}

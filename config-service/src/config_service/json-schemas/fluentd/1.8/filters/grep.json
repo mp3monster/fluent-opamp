@@ -1,0 +1,256 @@
+{
+  "type": "object",
+  "title": "grep",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "grep",
+      "title": "Plugin"
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag pattern selecting events for this filter.",
+      "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "directive_arg": {
+      "type": "string",
+      "description": "Tag pattern selecting events for this filter.",
+      "x-doc-reference": "https://docs.fluentd.org/configuration/config-file",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "@id": {
+      "type": "string",
+      "description": "Unique identifier for the plugin instance.",
+      "x-doc-reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "@log_level": {
+      "type": "string",
+      "description": "Plugin-specific log level that overrides the global system log level.",
+      "x-doc-reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "enum",
+      "x-references-parser": false,
+      "enum": [
+        "trace",
+        "debug",
+        "info",
+        "warn",
+        "error",
+        "fatal"
+      ],
+      "default": "info"
+    },
+    "children": {
+      "type": "object",
+      "properties": {
+        "regexp": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string",
+                "description": "Record field evaluated by the regexp rule.",
+                "x-doc-reference": "https://docs.fluentd.org/filter/grep",
+                "x-doc-required": true,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "pattern": {
+                "type": "string",
+                "description": "Regular expression applied to the field.",
+                "x-doc-reference": "https://docs.fluentd.org/filter/grep",
+                "x-doc-required": true,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "key",
+              "pattern"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "exclude": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string",
+                "description": "Record field evaluated by the exclusion rule.",
+                "x-doc-reference": "https://docs.fluentd.org/filter/grep",
+                "x-doc-required": true,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "pattern": {
+                "type": "string",
+                "description": "Regular expression that excludes matching records.",
+                "x-doc-reference": "https://docs.fluentd.org/filter/grep",
+                "x-doc-required": true,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "key",
+              "pattern"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "includes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "path"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "_meta": {
+          "type": "object",
+          "properties": {
+            "comment_lines": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "field_comment_lines": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "anyOf": [
+        {
+          "required": [
+            "match"
+          ]
+        },
+        {
+          "required": [
+            "directive_arg"
+          ]
+        }
+      ]
+    }
+  ]
+}

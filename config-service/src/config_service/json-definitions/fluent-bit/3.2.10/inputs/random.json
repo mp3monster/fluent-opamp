@@ -1,0 +1,61 @@
+{
+  "title": "Random",
+  "doc_url": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/random",
+  "fields": [
+    {
+      "name": "samples",
+      "required": false,
+      "description": "If set, it will only generate a specific number of samples.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/random#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "interval_sec",
+      "required": false,
+      "description": "Interval in seconds between samples generation.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/random#configuration-parameters",
+      "data_type": "duration",
+      "validation_rule": {
+        "kind": "regex",
+        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+      }
+    },
+    {
+      "name": "interval_nsec",
+      "required": false,
+      "description": "Specify a nanoseconds interval for samples generation, it works in conjunction with the Interval_Sec configuration key.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/random#configuration-parameters",
+      "data_type": "duration",
+      "validation_rule": {
+        "kind": "regex",
+        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+      }
+    },
+    {
+      "name": "threaded",
+      "required": false,
+      "description": "Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs).",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/random#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "tag",
+      "required": true,
+      "description": "Tag assigned to records emitted by this input plugin.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/random#configuration-parameters",
+    "table_header": [
+      "Key",
+      "Description"
+    ]
+  },
+  "description": "Random input plugin generate very simple random value samples using the device interface /dev/urandom, if not available it will use a unix timestamp as value."
+}

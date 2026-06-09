@@ -1,0 +1,690 @@
+{
+  "type": "object",
+  "title": "udp",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "udp",
+      "title": "Plugin"
+    },
+    "@id": {
+      "type": "string",
+      "description": "Unique identifier for the plugin instance.",
+      "x-doc-reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "@log_level": {
+      "type": "string",
+      "description": "Plugin-specific log level that overrides the global system log level.",
+      "x-doc-reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "enum",
+      "x-references-parser": false,
+      "enum": [
+        "trace",
+        "debug",
+        "info",
+        "warn",
+        "error",
+        "fatal"
+      ],
+      "default": "info"
+    },
+    "@label": {
+      "type": "string",
+      "description": "Routes emitted events to a named label.",
+      "x-doc-reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "tag": {
+      "type": "string",
+      "description": "Tag assigned to emitted events.",
+      "x-doc-reference": "https://docs.fluentd.org/input/udp",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "port": {
+      "type": "integer",
+      "description": "UDP port used by the listener.",
+      "x-doc-reference": "https://docs.fluentd.org/input/udp",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 5160
+    },
+    "bind": {
+      "type": "string",
+      "description": "Bind address for the UDP listener.",
+      "x-doc-reference": "https://docs.fluentd.org/input/udp",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "0.0.0.0"
+    },
+    "message_length_limit": {
+      "type": "string",
+      "description": "Maximum accepted datagram size.",
+      "x-doc-reference": "https://docs.fluentd.org/input/udp",
+      "x-doc-required": false,
+      "x-config-data-type": "size",
+      "x-references-parser": false,
+      "default": "4096"
+    },
+    "source_hostname_key": {
+      "type": "string",
+      "description": "Record key used to inject the client hostname.",
+      "x-doc-reference": "https://docs.fluentd.org/input/udp",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "source_address_key": {
+      "type": "string",
+      "description": "Record key used to inject the client address.",
+      "x-doc-reference": "https://docs.fluentd.org/input/udp",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "remove_newline": {
+      "type": "boolean",
+      "description": "Trim trailing newline bytes from incoming payloads.",
+      "x-doc-reference": "https://docs.fluentd.org/input/udp",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": true
+    },
+    "children": {
+      "type": "object",
+      "properties": {
+        "parse": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "object",
+                "title": "json",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "const": "json",
+                    "title": "Plugin"
+                  },
+                  "time_key": {
+                    "type": "string",
+                    "description": "Record key containing event time.",
+                    "x-doc-reference": "https://docs.fluentd.org/configuration/parse-section",
+                    "x-doc-required": false,
+                    "x-config-data-type": "string",
+                    "x-references-parser": false
+                  },
+                  "time_type": {
+                    "type": "string",
+                    "description": "How to parse the time value.",
+                    "x-doc-reference": "https://docs.fluentd.org/configuration/parse-section",
+                    "x-doc-required": false,
+                    "x-config-data-type": "enum",
+                    "x-references-parser": false,
+                    "enum": [
+                      "float",
+                      "unixtime",
+                      "string"
+                    ],
+                    "default": "float"
+                  },
+                  "time_format": {
+                    "type": "string",
+                    "description": "Time format used when time_type is string.",
+                    "x-doc-reference": "https://docs.fluentd.org/configuration/parse-section",
+                    "x-doc-required": false,
+                    "x-config-data-type": "string",
+                    "x-references-parser": false
+                  },
+                  "keep_time_key": {
+                    "type": "boolean",
+                    "description": "Preserve the original time key in the record.",
+                    "x-doc-reference": "https://docs.fluentd.org/configuration/parse-section",
+                    "x-doc-required": false,
+                    "x-config-data-type": "boolean",
+                    "x-references-parser": false,
+                    "default": false
+                  },
+                  "_meta": {
+                    "type": "object",
+                    "properties": {
+                      "comment_lines": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "field_comment_lines": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "title": "regexp",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "const": "regexp",
+                    "title": "Plugin"
+                  },
+                  "expression": {
+                    "type": "string",
+                    "description": "Regular expression with named capture groups.",
+                    "x-doc-reference": "https://docs.fluentd.org/configuration/parse-section",
+                    "x-doc-required": true,
+                    "x-config-data-type": "string",
+                    "x-references-parser": false
+                  },
+                  "time_key": {
+                    "type": "string",
+                    "description": "Capture group used as the event time.",
+                    "x-doc-reference": "https://docs.fluentd.org/configuration/parse-section",
+                    "x-doc-required": false,
+                    "x-config-data-type": "string",
+                    "x-references-parser": false
+                  },
+                  "time_format": {
+                    "type": "string",
+                    "description": "Time format used when parsing the captured time string.",
+                    "x-doc-reference": "https://docs.fluentd.org/configuration/parse-section",
+                    "x-doc-required": false,
+                    "x-config-data-type": "string",
+                    "x-references-parser": false
+                  },
+                  "_meta": {
+                    "type": "object",
+                    "properties": {
+                      "comment_lines": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "field_comment_lines": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "name",
+                  "expression"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "title": "multiline",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "const": "multiline",
+                    "title": "Plugin"
+                  },
+                  "format_firstline": {
+                    "type": "string",
+                    "description": "Pattern matching the first line of a multiline event.",
+                    "x-doc-reference": "https://docs.fluentd.org/configuration/parse-section",
+                    "x-doc-required": true,
+                    "x-config-data-type": "string",
+                    "x-references-parser": false
+                  },
+                  "format1": {
+                    "type": "string",
+                    "description": "Primary regular expression for joined multiline content.",
+                    "x-doc-reference": "https://docs.fluentd.org/configuration/parse-section",
+                    "x-doc-required": true,
+                    "x-config-data-type": "string",
+                    "x-references-parser": false
+                  },
+                  "format2": {
+                    "type": "string",
+                    "description": "Optional second format expression.",
+                    "x-doc-reference": "https://docs.fluentd.org/configuration/parse-section",
+                    "x-doc-required": false,
+                    "x-config-data-type": "string",
+                    "x-references-parser": false
+                  },
+                  "_meta": {
+                    "type": "object",
+                    "properties": {
+                      "comment_lines": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "field_comment_lines": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "name",
+                  "format_firstline",
+                  "format1"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "title": "none",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "const": "none",
+                    "title": "Plugin"
+                  },
+                  "message_key": {
+                    "type": "string",
+                    "description": "Key name that will hold the raw event payload.",
+                    "x-doc-reference": "https://docs.fluentd.org/configuration/parse-section",
+                    "x-doc-required": false,
+                    "x-config-data-type": "string",
+                    "x-references-parser": false,
+                    "default": "message"
+                  },
+                  "_meta": {
+                    "type": "object",
+                    "properties": {
+                      "comment_lines": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "field_comment_lines": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "transport": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "protocol": {
+                "type": "string",
+                "description": "Transport protocol specified by the <transport ARG> directive.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                "x-doc-required": true,
+                "x-config-data-type": "enum",
+                "x-references-parser": false
+              },
+              "directive_arg": {
+                "type": "string",
+                "description": "Transport protocol specified by the <transport ARG> directive.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                "x-doc-required": true,
+                "x-config-data-type": "enum",
+                "x-references-parser": false
+              },
+              "linger_timeout": {
+                "type": "integer",
+                "description": "SO_LINGER timeout in seconds.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                "x-doc-required": false,
+                "x-config-data-type": "integer",
+                "x-references-parser": false,
+                "default": 0
+              },
+              "version": {
+                "type": "string",
+                "description": "Fixed TLS protocol version.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                "x-doc-required": false,
+                "x-config-data-type": "enum",
+                "x-references-parser": false,
+                "enum": [
+                  "TLS1_1",
+                  "TLS1_2",
+                  "TLS1_3"
+                ]
+              },
+              "min_version": {
+                "type": "string",
+                "description": "Minimum TLS protocol version.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                "x-doc-required": false,
+                "x-config-data-type": "enum",
+                "x-references-parser": false,
+                "enum": [
+                  "TLS1_1",
+                  "TLS1_2",
+                  "TLS1_3"
+                ]
+              },
+              "max_version": {
+                "type": "string",
+                "description": "Maximum TLS protocol version.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                "x-doc-required": false,
+                "x-config-data-type": "enum",
+                "x-references-parser": false,
+                "enum": [
+                  "TLS1_1",
+                  "TLS1_2",
+                  "TLS1_3"
+                ]
+              },
+              "insecure": {
+                "type": "boolean",
+                "description": "Disable certificate verification for TLS.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                "x-doc-required": false,
+                "x-config-data-type": "boolean",
+                "x-references-parser": false,
+                "default": false
+              },
+              "cert_path": {
+                "type": "string",
+                "description": "Path to the TLS certificate file.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "private_key_path": {
+                "type": "string",
+                "description": "Path to the TLS private key file.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "private_key_passphrase": {
+                "type": "string",
+                "description": "Passphrase for the TLS private key.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "ca_path": {
+                "type": "string",
+                "description": "Path to the trusted CA certificate file.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/transport-section",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [],
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "anyOf": [
+                  {
+                    "required": [
+                      "protocol"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "directive_arg"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "extract": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "tag_key": {
+                "type": "string",
+                "description": "Record field extracted into the event tag.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/extract-section",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "keep_tag_key": {
+                "type": "boolean",
+                "description": "Preserve the original tag field in the record.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/extract-section",
+                "x-doc-required": false,
+                "x-config-data-type": "boolean",
+                "x-references-parser": false,
+                "default": false
+              },
+              "time_key": {
+                "type": "string",
+                "description": "Record field extracted into the event timestamp.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/extract-section",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "keep_time_key": {
+                "type": "boolean",
+                "description": "Preserve the original time field in the record.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/extract-section",
+                "x-doc-required": false,
+                "x-config-data-type": "boolean",
+                "x-references-parser": false,
+                "default": false
+              },
+              "time_type": {
+                "type": "string",
+                "description": "How the extracted time value should be interpreted.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/extract-section",
+                "x-doc-required": false,
+                "x-config-data-type": "enum",
+                "x-references-parser": false,
+                "enum": [
+                  "float",
+                  "unixtime",
+                  "string"
+                ],
+                "default": "float"
+              },
+              "time_format": {
+                "type": "string",
+                "description": "Time format used when time_type is string.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/extract-section",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "timezone": {
+                "type": "string",
+                "description": "Timezone used when parsing string timestamps.",
+                "x-doc-reference": "https://docs.fluentd.org/configuration/extract-section",
+                "x-doc-required": false,
+                "x-config-data-type": "string",
+                "x-references-parser": false
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [],
+            "additionalProperties": false
+          }
+        },
+        "includes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "comment_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "field_comment_lines": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "path"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "_meta": {
+          "type": "object",
+          "properties": {
+            "comment_lines": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "field_comment_lines": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name",
+    "tag"
+  ],
+  "additionalProperties": false
+}

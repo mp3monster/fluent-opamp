@@ -1,0 +1,1090 @@
+{
+  "catalog_type": "plugin-catalog",
+  "schema_version": "1.0.0",
+  "engine": "fluentd",
+  "fluentd_version": "1.19",
+  "description": "Curated Fluentd 1.19 plugin catalog for config-service, including nested section metadata.",
+  "plugins": {
+    "inputs": {},
+    "filters": {},
+    "outputs": {}
+  },
+  "nested_sections": {
+    "parse": {
+      "title": "parse",
+      "description": "Nested parser section used by source, filter, and some output plugins.",
+      "plugin_backed": true,
+      "cardinality": {
+        "minimum": 0,
+        "maximum": 1
+      },
+      "reference": "https://docs.fluentd.org/configuration/parse-section",
+      "variants": {
+        "json": {
+          "title": "json",
+          "doc_url": "https://docs.fluentd.org/parser/json",
+          "description": "Parses each event as JSON.",
+          "fields": [
+            {
+              "name": "time_key",
+              "required": false,
+              "description": "Record key containing event time.",
+              "reference": "https://docs.fluentd.org/configuration/parse-section",
+              "data_type": "string",
+              "validation_rule": null
+            },
+            {
+              "name": "time_type",
+              "required": false,
+              "description": "How to parse the time value.",
+              "reference": "https://docs.fluentd.org/configuration/parse-section",
+              "data_type": "enum",
+              "validation_rule": {
+                "kind": "enum",
+                "values": [
+                  "float",
+                  "unixtime",
+                  "string"
+                ]
+              },
+              "default": "float",
+              "called_enum_options": [
+                "float",
+                "unixtime",
+                "string"
+              ]
+            },
+            {
+              "name": "time_format",
+              "required": false,
+              "description": "Time format used when time_type is string.",
+              "reference": "https://docs.fluentd.org/configuration/parse-section",
+              "data_type": "string",
+              "validation_rule": null
+            },
+            {
+              "name": "keep_time_key",
+              "required": false,
+              "description": "Preserve the original time key in the record.",
+              "reference": "https://docs.fluentd.org/configuration/parse-section",
+              "data_type": "boolean",
+              "validation_rule": {
+                "kind": "boolean"
+              },
+              "default": false
+            }
+          ]
+        },
+        "regexp": {
+          "title": "regexp",
+          "doc_url": "https://docs.fluentd.org/parser/regexp",
+          "description": "Parses records using a regular expression with named captures.",
+          "fields": [
+            {
+              "name": "expression",
+              "required": true,
+              "description": "Regular expression with named capture groups.",
+              "reference": "https://docs.fluentd.org/configuration/parse-section",
+              "data_type": "string",
+              "validation_rule": {
+                "kind": "regex_string"
+              }
+            },
+            {
+              "name": "time_key",
+              "required": false,
+              "description": "Capture group used as the event time.",
+              "reference": "https://docs.fluentd.org/configuration/parse-section",
+              "data_type": "string",
+              "validation_rule": null
+            },
+            {
+              "name": "time_format",
+              "required": false,
+              "description": "Time format used when parsing the captured time string.",
+              "reference": "https://docs.fluentd.org/configuration/parse-section",
+              "data_type": "string",
+              "validation_rule": null
+            }
+          ]
+        },
+        "multiline": {
+          "title": "multiline",
+          "doc_url": "https://docs.fluentd.org/parser/multiline",
+          "description": "Parses multiline records using firstline and format expressions.",
+          "fields": [
+            {
+              "name": "format_firstline",
+              "required": true,
+              "description": "Pattern matching the first line of a multiline event.",
+              "reference": "https://docs.fluentd.org/configuration/parse-section",
+              "data_type": "string",
+              "validation_rule": {
+                "kind": "regex_string"
+              }
+            },
+            {
+              "name": "format1",
+              "required": true,
+              "description": "Primary regular expression for joined multiline content.",
+              "reference": "https://docs.fluentd.org/configuration/parse-section",
+              "data_type": "string",
+              "validation_rule": {
+                "kind": "regex_string"
+              }
+            },
+            {
+              "name": "format2",
+              "required": false,
+              "description": "Optional second format expression.",
+              "reference": "https://docs.fluentd.org/configuration/parse-section",
+              "data_type": "string",
+              "validation_rule": {
+                "kind": "regex_string"
+              }
+            }
+          ]
+        },
+        "none": {
+          "title": "none",
+          "doc_url": "https://docs.fluentd.org/parser/none",
+          "description": "Passes the full input line through without parsing.",
+          "fields": [
+            {
+              "name": "message_key",
+              "required": false,
+              "description": "Key name that will hold the raw event payload.",
+              "reference": "https://docs.fluentd.org/configuration/parse-section",
+              "data_type": "string",
+              "validation_rule": null,
+              "default": "message"
+            }
+          ]
+        }
+      }
+    },
+    "buffer": {
+      "title": "buffer",
+      "description": "Nested output buffer section controlling chunking, flushing, and retry behavior.",
+      "plugin_backed": true,
+      "cardinality": {
+        "minimum": 0,
+        "maximum": 1
+      },
+      "reference": "https://docs.fluentd.org/configuration/buffer-section",
+      "variants": {
+        "file": {
+          "title": "file",
+          "doc_url": "https://docs.fluentd.org/buffer/file",
+          "description": "Persistent on-disk buffer plugin.",
+          "fields": [
+            {
+              "name": "@id",
+              "required": false,
+              "description": "Unique identifier for the plugin instance.",
+              "reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+              "data_type": "string",
+              "validation_rule": null
+            },
+            {
+              "name": "@log_level",
+              "required": false,
+              "description": "Plugin-specific log level that overrides the global system log level.",
+              "reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+              "data_type": "enum",
+              "validation_rule": {
+                "kind": "enum",
+                "values": [
+                  "trace",
+                  "debug",
+                  "info",
+                  "warn",
+                  "error",
+                  "fatal"
+                ]
+              },
+              "default": "info",
+              "called_enum_options": [
+                "trace",
+                "debug",
+                "info",
+                "warn",
+                "error",
+                "fatal"
+              ]
+            },
+            {
+              "name": "path",
+              "required": false,
+              "description": "Directory or file prefix used for buffer chunks.",
+              "reference": "https://docs.fluentd.org/configuration/buffer-section",
+              "data_type": "string",
+              "validation_rule": {
+                "kind": "regex_string"
+              }
+            },
+            {
+              "name": "chunk_keys",
+              "required": false,
+              "description": "Chunk keys rendered into the <buffer ARG> directive argument.",
+              "reference": "https://docs.fluentd.org/configuration/buffer-section",
+              "data_type": "list",
+              "validation_rule": {
+                "kind": "list"
+              }
+            },
+            {
+              "name": "chunk_limit_size",
+              "required": false,
+              "description": "Maximum chunk size before flush.",
+              "reference": "https://docs.fluentd.org/configuration/buffer-section",
+              "data_type": "size",
+              "validation_rule": null,
+              "default": "8m"
+            },
+            {
+              "name": "total_limit_size",
+              "required": false,
+              "description": "Maximum total size across staged and queued chunks.",
+              "reference": "https://docs.fluentd.org/configuration/buffer-section",
+              "data_type": "size",
+              "validation_rule": null,
+              "default": "512m"
+            },
+            {
+              "name": "flush_interval",
+              "required": false,
+              "description": "Interval between flush operations.",
+              "reference": "https://docs.fluentd.org/configuration/buffer-section",
+              "data_type": "time",
+              "validation_rule": null,
+              "default": "60s"
+            },
+            {
+              "name": "retry_timeout",
+              "required": false,
+              "description": "Overall retry timeout before the chunk is discarded or handed to secondary output.",
+              "reference": "https://docs.fluentd.org/configuration/buffer-section",
+              "data_type": "time",
+              "validation_rule": null,
+              "default": "72h"
+            },
+            {
+              "name": "overflow_action",
+              "required": false,
+              "description": "Behavior when the buffer queue is full.",
+              "reference": "https://docs.fluentd.org/configuration/buffer-section",
+              "data_type": "enum",
+              "validation_rule": {
+                "kind": "enum",
+                "values": [
+                  "throw_exception",
+                  "block",
+                  "drop_oldest_chunk"
+                ]
+              },
+              "default": "throw_exception",
+              "called_enum_options": [
+                "throw_exception",
+                "block",
+                "drop_oldest_chunk"
+              ]
+            }
+          ]
+        },
+        "memory": {
+          "title": "memory",
+          "doc_url": "https://docs.fluentd.org/buffer/memory",
+          "description": "In-memory buffer plugin.",
+          "fields": [
+            {
+              "name": "@id",
+              "required": false,
+              "description": "Unique identifier for the plugin instance.",
+              "reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+              "data_type": "string",
+              "validation_rule": null
+            },
+            {
+              "name": "@log_level",
+              "required": false,
+              "description": "Plugin-specific log level that overrides the global system log level.",
+              "reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+              "data_type": "enum",
+              "validation_rule": {
+                "kind": "enum",
+                "values": [
+                  "trace",
+                  "debug",
+                  "info",
+                  "warn",
+                  "error",
+                  "fatal"
+                ]
+              },
+              "default": "info",
+              "called_enum_options": [
+                "trace",
+                "debug",
+                "info",
+                "warn",
+                "error",
+                "fatal"
+              ]
+            },
+            {
+              "name": "chunk_keys",
+              "required": false,
+              "description": "Chunk keys rendered into the <buffer ARG> directive argument.",
+              "reference": "https://docs.fluentd.org/configuration/buffer-section",
+              "data_type": "list",
+              "validation_rule": {
+                "kind": "list"
+              }
+            },
+            {
+              "name": "chunk_limit_size",
+              "required": false,
+              "description": "Maximum chunk size before flush.",
+              "reference": "https://docs.fluentd.org/configuration/buffer-section",
+              "data_type": "size",
+              "validation_rule": null,
+              "default": "8m"
+            },
+            {
+              "name": "total_limit_size",
+              "required": false,
+              "description": "Maximum total in-memory buffer size.",
+              "reference": "https://docs.fluentd.org/configuration/buffer-section",
+              "data_type": "size",
+              "validation_rule": null,
+              "default": "512m"
+            },
+            {
+              "name": "flush_interval",
+              "required": false,
+              "description": "Interval between flush operations.",
+              "reference": "https://docs.fluentd.org/configuration/buffer-section",
+              "data_type": "time",
+              "validation_rule": null,
+              "default": "60s"
+            }
+          ]
+        }
+      }
+    },
+    "format": {
+      "title": "format",
+      "description": "Nested formatter section controlling output serialization.",
+      "plugin_backed": true,
+      "cardinality": {
+        "minimum": 0,
+        "maximum": 1
+      },
+      "reference": "https://docs.fluentd.org/configuration/format-section",
+      "variants": {
+        "json": {
+          "title": "json",
+          "doc_url": "https://docs.fluentd.org/formatter/json",
+          "description": "Formats records as JSON.",
+          "fields": [
+            {
+              "name": "time_type",
+              "required": false,
+              "description": "How time values should be serialized.",
+              "reference": "https://docs.fluentd.org/configuration/format-section",
+              "data_type": "enum",
+              "validation_rule": {
+                "kind": "enum",
+                "values": [
+                  "float",
+                  "unixtime",
+                  "string"
+                ]
+              },
+              "default": "float",
+              "called_enum_options": [
+                "float",
+                "unixtime",
+                "string"
+              ]
+            },
+            {
+              "name": "time_format",
+              "required": false,
+              "description": "Time format used when time_type is string.",
+              "reference": "https://docs.fluentd.org/configuration/format-section",
+              "data_type": "string",
+              "validation_rule": null
+            },
+            {
+              "name": "localtime",
+              "required": false,
+              "description": "Use local time when formatting timestamps.",
+              "reference": "https://docs.fluentd.org/configuration/format-section",
+              "data_type": "boolean",
+              "validation_rule": {
+                "kind": "boolean"
+              },
+              "default": true
+            },
+            {
+              "name": "utc",
+              "required": false,
+              "description": "Use UTC when formatting timestamps.",
+              "reference": "https://docs.fluentd.org/configuration/format-section",
+              "data_type": "boolean",
+              "validation_rule": {
+                "kind": "boolean"
+              },
+              "default": false
+            }
+          ]
+        },
+        "csv": {
+          "title": "csv",
+          "doc_url": "https://docs.fluentd.org/formatter/csv",
+          "description": "Formats records as CSV using a fixed field list.",
+          "fields": [
+            {
+              "name": "fields",
+              "required": true,
+              "description": "Ordered list of record keys emitted as CSV columns.",
+              "reference": "https://docs.fluentd.org/configuration/format-section",
+              "data_type": "list",
+              "validation_rule": {
+                "kind": "list"
+              }
+            },
+            {
+              "name": "delimiter",
+              "required": false,
+              "description": "Field delimiter used in the CSV output.",
+              "reference": "https://docs.fluentd.org/configuration/format-section",
+              "data_type": "string",
+              "validation_rule": null,
+              "default": ","
+            }
+          ]
+        },
+        "ltsv": {
+          "title": "ltsv",
+          "doc_url": "https://docs.fluentd.org/formatter/ltsv",
+          "description": "Formats records as LTSV key:value pairs.",
+          "fields": [
+            {
+              "name": "delimiter",
+              "required": false,
+              "description": "Delimiter used between LTSV fields.",
+              "reference": "https://docs.fluentd.org/configuration/format-section",
+              "data_type": "string",
+              "validation_rule": null,
+              "default": "\t"
+            }
+          ]
+        },
+        "single_value": {
+          "title": "single_value",
+          "doc_url": "https://docs.fluentd.org/formatter/single_value",
+          "description": "Formats one record field as a plain string output.",
+          "fields": [
+            {
+              "name": "message_key",
+              "required": true,
+              "description": "Record field written to the output stream.",
+              "reference": "https://docs.fluentd.org/configuration/format-section",
+              "data_type": "string",
+              "validation_rule": null
+            },
+            {
+              "name": "add_newline",
+              "required": false,
+              "description": "Append a newline after each formatted record.",
+              "reference": "https://docs.fluentd.org/configuration/format-section",
+              "data_type": "boolean",
+              "validation_rule": {
+                "kind": "boolean"
+              },
+              "default": true
+            }
+          ]
+        }
+      }
+    },
+    "transport": {
+      "title": "transport",
+      "description": "Nested connection transport settings for source, filter, and output plugins.",
+      "plugin_backed": false,
+      "cardinality": {
+        "minimum": 0,
+        "maximum": 1
+      },
+      "reference": "https://docs.fluentd.org/configuration/transport-section",
+      "directive_argument": {
+        "name": "protocol",
+        "required": true,
+        "description": "Transport protocol specified by the <transport ARG> directive.",
+        "reference": "https://docs.fluentd.org/configuration/transport-section",
+        "data_type": "enum",
+        "validation_rule": {
+          "kind": "enum",
+          "values": [
+            "tcp",
+            "udp",
+            "tls"
+          ]
+        }
+      },
+      "fields": [
+        {
+          "name": "linger_timeout",
+          "required": false,
+          "description": "SO_LINGER timeout in seconds.",
+          "reference": "https://docs.fluentd.org/configuration/transport-section",
+          "data_type": "integer",
+          "validation_rule": {
+            "kind": "range",
+            "min": 0
+          },
+          "default": 0
+        },
+        {
+          "name": "receive_buffer_size",
+          "required": false,
+          "description": "Maximum socket receive buffer size for TCP, UDP, and TLS transports.",
+          "reference": "https://docs.fluentd.org/configuration/transport-section",
+          "data_type": "integer",
+          "validation_rule": {
+            "kind": "range",
+            "min": 0
+          }
+        },
+        {
+          "name": "version",
+          "required": false,
+          "description": "Fixed TLS protocol version.",
+          "reference": "https://docs.fluentd.org/configuration/transport-section",
+          "data_type": "enum",
+          "validation_rule": {
+            "kind": "enum",
+            "values": [
+              "TLS1_1",
+              "TLS1_2",
+              "TLS1_3"
+            ]
+          },
+          "called_enum_options": [
+            "TLS1_1",
+            "TLS1_2",
+            "TLS1_3"
+          ]
+        },
+        {
+          "name": "min_version",
+          "required": false,
+          "description": "Minimum TLS protocol version.",
+          "reference": "https://docs.fluentd.org/configuration/transport-section",
+          "data_type": "enum",
+          "validation_rule": {
+            "kind": "enum",
+            "values": [
+              "TLS1_1",
+              "TLS1_2",
+              "TLS1_3"
+            ]
+          },
+          "called_enum_options": [
+            "TLS1_1",
+            "TLS1_2",
+            "TLS1_3"
+          ]
+        },
+        {
+          "name": "max_version",
+          "required": false,
+          "description": "Maximum TLS protocol version.",
+          "reference": "https://docs.fluentd.org/configuration/transport-section",
+          "data_type": "enum",
+          "validation_rule": {
+            "kind": "enum",
+            "values": [
+              "TLS1_1",
+              "TLS1_2",
+              "TLS1_3"
+            ]
+          },
+          "called_enum_options": [
+            "TLS1_1",
+            "TLS1_2",
+            "TLS1_3"
+          ]
+        },
+        {
+          "name": "insecure",
+          "required": false,
+          "description": "Disable certificate verification for TLS.",
+          "reference": "https://docs.fluentd.org/configuration/transport-section",
+          "data_type": "boolean",
+          "validation_rule": {
+            "kind": "boolean"
+          },
+          "default": false
+        },
+        {
+          "name": "cert_path",
+          "required": false,
+          "description": "Path to the TLS certificate file.",
+          "reference": "https://docs.fluentd.org/configuration/transport-section",
+          "data_type": "string",
+          "validation_rule": {
+            "kind": "regex_string"
+          }
+        },
+        {
+          "name": "private_key_path",
+          "required": false,
+          "description": "Path to the TLS private key file.",
+          "reference": "https://docs.fluentd.org/configuration/transport-section",
+          "data_type": "string",
+          "validation_rule": {
+            "kind": "regex_string"
+          }
+        },
+        {
+          "name": "private_key_passphrase",
+          "required": false,
+          "description": "Passphrase for the TLS private key.",
+          "reference": "https://docs.fluentd.org/configuration/transport-section",
+          "data_type": "string",
+          "validation_rule": null
+        },
+        {
+          "name": "ca_path",
+          "required": false,
+          "description": "Path to the trusted CA certificate file.",
+          "reference": "https://docs.fluentd.org/configuration/transport-section",
+          "data_type": "string",
+          "validation_rule": {
+            "kind": "regex_string"
+          }
+        }
+      ]
+    },
+    "storage": {
+      "title": "storage",
+      "description": "Nested plugin state storage settings.",
+      "plugin_backed": true,
+      "cardinality": {
+        "minimum": 0,
+        "maximum": 1
+      },
+      "reference": "https://docs.fluentd.org/configuration/storage-section",
+      "variants": {
+        "local": {
+          "title": "local",
+          "doc_url": "https://docs.fluentd.org/storage/local",
+          "description": "Stores plugin state on the local filesystem.",
+          "fields": [
+            {
+              "name": "path",
+              "required": false,
+              "description": "File path used to persist the plugin state.",
+              "reference": "https://docs.fluentd.org/configuration/storage-section",
+              "data_type": "string",
+              "validation_rule": {
+                "kind": "regex_string"
+              }
+            },
+            {
+              "name": "persistent",
+              "required": false,
+              "description": "Persist state to disk rather than keeping it in memory only.",
+              "reference": "https://docs.fluentd.org/configuration/storage-section",
+              "data_type": "boolean",
+              "validation_rule": {
+                "kind": "boolean"
+              },
+              "default": true
+            }
+          ]
+        }
+      }
+    },
+    "service_discovery": {
+      "title": "service_discovery",
+      "description": "Nested output target discovery section.",
+      "plugin_backed": true,
+      "cardinality": {
+        "minimum": 0,
+        "maximum": 1
+      },
+      "reference": "https://docs.fluentd.org/configuration/service_discovery-section",
+      "variants": {
+        "file": {
+          "title": "file",
+          "doc_url": "https://docs.fluentd.org/service_discovery/file",
+          "description": "Loads target endpoints from a local file.",
+          "fields": [
+            {
+              "name": "path",
+              "required": true,
+              "description": "Path to the discovery file.",
+              "reference": "https://docs.fluentd.org/configuration/service_discovery-section",
+              "data_type": "string",
+              "validation_rule": {
+                "kind": "regex_string"
+              }
+            }
+          ]
+        },
+        "static": {
+          "title": "static",
+          "doc_url": "https://docs.fluentd.org/service_discovery/static",
+          "description": "Uses a fixed list of predeclared forwarding targets.",
+          "fields": [
+            {
+              "name": "services",
+              "required": false,
+              "description": "List of static service definitions.",
+              "reference": "https://docs.fluentd.org/configuration/service_discovery-section",
+              "data_type": "list",
+              "validation_rule": {
+                "kind": "list"
+              }
+            }
+          ]
+        },
+        "srv": {
+          "title": "srv",
+          "doc_url": "https://docs.fluentd.org/service_discovery/srv",
+          "description": "Resolves output targets from DNS SRV records.",
+          "fields": [
+            {
+              "name": "service",
+              "required": true,
+              "description": "Service label used in the SRV lookup.",
+              "reference": "https://docs.fluentd.org/configuration/service_discovery-section",
+              "data_type": "string",
+              "validation_rule": null
+            },
+            {
+              "name": "hostname",
+              "required": true,
+              "description": "Hostname portion used in the SRV lookup.",
+              "reference": "https://docs.fluentd.org/configuration/service_discovery-section",
+              "data_type": "string",
+              "validation_rule": null
+            }
+          ]
+        }
+      }
+    },
+    "extract": {
+      "title": "extract",
+      "description": "Nested extract section used to copy tag/time values from record keys.",
+      "plugin_backed": false,
+      "cardinality": {
+        "minimum": 0,
+        "maximum": 1
+      },
+      "reference": "https://docs.fluentd.org/configuration/extract-section",
+      "fields": [
+        {
+          "name": "tag_key",
+          "required": false,
+          "description": "Record field extracted into the event tag.",
+          "reference": "https://docs.fluentd.org/configuration/extract-section",
+          "data_type": "string",
+          "validation_rule": null
+        },
+        {
+          "name": "keep_tag_key",
+          "required": false,
+          "description": "Preserve the original tag field in the record.",
+          "reference": "https://docs.fluentd.org/configuration/extract-section",
+          "data_type": "boolean",
+          "validation_rule": {
+            "kind": "boolean"
+          },
+          "default": false
+        },
+        {
+          "name": "time_key",
+          "required": false,
+          "description": "Record field extracted into the event timestamp.",
+          "reference": "https://docs.fluentd.org/configuration/extract-section",
+          "data_type": "string",
+          "validation_rule": null
+        },
+        {
+          "name": "keep_time_key",
+          "required": false,
+          "description": "Preserve the original time field in the record.",
+          "reference": "https://docs.fluentd.org/configuration/extract-section",
+          "data_type": "boolean",
+          "validation_rule": {
+            "kind": "boolean"
+          },
+          "default": false
+        },
+        {
+          "name": "time_type",
+          "required": false,
+          "description": "How the extracted time value should be interpreted.",
+          "reference": "https://docs.fluentd.org/configuration/extract-section",
+          "data_type": "enum",
+          "validation_rule": {
+            "kind": "enum",
+            "values": [
+              "float",
+              "unixtime",
+              "string"
+            ]
+          },
+          "default": "float",
+          "called_enum_options": [
+            "float",
+            "unixtime",
+            "string"
+          ]
+        },
+        {
+          "name": "time_format",
+          "required": false,
+          "description": "Time format used when time_type is string.",
+          "reference": "https://docs.fluentd.org/configuration/extract-section",
+          "data_type": "string",
+          "validation_rule": null
+        },
+        {
+          "name": "timezone",
+          "required": false,
+          "description": "Timezone used when parsing string timestamps.",
+          "reference": "https://docs.fluentd.org/configuration/extract-section",
+          "data_type": "string",
+          "validation_rule": null
+        }
+      ]
+    },
+    "inject": {
+      "title": "inject",
+      "description": "Nested inject section used to add metadata into emitted records.",
+      "plugin_backed": false,
+      "cardinality": {
+        "minimum": 0,
+        "maximum": 1
+      },
+      "reference": "https://docs.fluentd.org/configuration/inject-section",
+      "fields": [
+        {
+          "name": "hostname_key",
+          "required": false,
+          "description": "Record field used to inject the local hostname.",
+          "reference": "https://docs.fluentd.org/configuration/inject-section",
+          "data_type": "string",
+          "validation_rule": null
+        },
+        {
+          "name": "worker_id_key",
+          "required": false,
+          "description": "Record field used to inject the Fluentd worker id.",
+          "reference": "https://docs.fluentd.org/configuration/inject-section",
+          "data_type": "string",
+          "validation_rule": null
+        },
+        {
+          "name": "tag_key",
+          "required": false,
+          "description": "Record field used to inject the event tag.",
+          "reference": "https://docs.fluentd.org/configuration/inject-section",
+          "data_type": "string",
+          "validation_rule": null
+        },
+        {
+          "name": "time_key",
+          "required": false,
+          "description": "Record field used to inject the formatted event time.",
+          "reference": "https://docs.fluentd.org/configuration/inject-section",
+          "data_type": "string",
+          "validation_rule": null
+        },
+        {
+          "name": "time_type",
+          "required": false,
+          "description": "How injected time values should be formatted.",
+          "reference": "https://docs.fluentd.org/configuration/inject-section",
+          "data_type": "enum",
+          "validation_rule": {
+            "kind": "enum",
+            "values": [
+              "float",
+              "unixtime",
+              "string"
+            ]
+          },
+          "default": "float",
+          "called_enum_options": [
+            "float",
+            "unixtime",
+            "string"
+          ]
+        },
+        {
+          "name": "time_format",
+          "required": false,
+          "description": "Time format used when time_type is string.",
+          "reference": "https://docs.fluentd.org/configuration/inject-section",
+          "data_type": "string",
+          "validation_rule": null
+        }
+      ]
+    },
+    "record": {
+      "title": "record",
+      "description": "Nested record section used by record_transformer to define injected fields.",
+      "plugin_backed": false,
+      "cardinality": {
+        "minimum": 0,
+        "maximum": 1
+      },
+      "reference": "https://docs.fluentd.org/filter/record_transformer",
+      "fields": [
+        {
+          "name": "entries",
+          "required": false,
+          "description": "Map of output record keys to literal values or embedded Ruby expressions.",
+          "reference": "https://docs.fluentd.org/filter/record_transformer",
+          "data_type": "map",
+          "validation_rule": null
+        }
+      ]
+    },
+    "regexp": {
+      "title": "regexp",
+      "description": "Nested regexp rule used by grep filters.",
+      "plugin_backed": false,
+      "cardinality": {
+        "minimum": 0,
+        "maximum": null
+      },
+      "reference": "https://docs.fluentd.org/filter/grep",
+      "fields": [
+        {
+          "name": "key",
+          "required": true,
+          "description": "Record field evaluated by the regexp rule.",
+          "reference": "https://docs.fluentd.org/filter/grep",
+          "data_type": "string",
+          "validation_rule": null
+        },
+        {
+          "name": "pattern",
+          "required": true,
+          "description": "Regular expression applied to the field.",
+          "reference": "https://docs.fluentd.org/filter/grep",
+          "data_type": "string",
+          "validation_rule": {
+            "kind": "regex_string"
+          }
+        }
+      ]
+    },
+    "exclude": {
+      "title": "exclude",
+      "description": "Nested exclude rule used by grep filters.",
+      "plugin_backed": false,
+      "cardinality": {
+        "minimum": 0,
+        "maximum": null
+      },
+      "reference": "https://docs.fluentd.org/filter/grep",
+      "fields": [
+        {
+          "name": "key",
+          "required": true,
+          "description": "Record field evaluated by the exclusion rule.",
+          "reference": "https://docs.fluentd.org/filter/grep",
+          "data_type": "string",
+          "validation_rule": null
+        },
+        {
+          "name": "pattern",
+          "required": true,
+          "description": "Regular expression that excludes matching records.",
+          "reference": "https://docs.fluentd.org/filter/grep",
+          "data_type": "string",
+          "validation_rule": {
+            "kind": "regex_string"
+          }
+        }
+      ]
+    },
+    "store": {
+      "title": "store",
+      "description": "Nested store output used by out_copy.",
+      "plugin_backed": true,
+      "reuses_output_plugins": true,
+      "cardinality": {
+        "minimum": 1,
+        "maximum": null
+      },
+      "reference": "https://docs.fluentd.org/output/copy"
+    },
+    "secondary": {
+      "title": "secondary",
+      "description": "Nested secondary output used for failed chunk retries.",
+      "plugin_backed": true,
+      "reuses_output_plugins": true,
+      "cardinality": {
+        "minimum": 0,
+        "maximum": 1
+      },
+      "reference": "https://docs.fluentd.org/configuration/buffer-section"
+    }
+  },
+  "root_sections": {
+    "labels": {
+      "title": "label",
+      "description": "Named routing branch containing filter and output directives.",
+      "fields": [
+        {
+          "name": "name",
+          "required": true,
+          "description": "Label name, including the leading @ character.",
+          "reference": "https://docs.fluentd.org/configuration/config-file",
+          "data_type": "string",
+          "validation_rule": null
+        }
+      ]
+    },
+    "workers": {
+      "title": "worker",
+      "description": "Worker scope used to restrict directives to a specific worker id or range.",
+      "fields": [
+        {
+          "name": "name",
+          "required": true,
+          "description": "Worker selector used in the <worker ARG> directive, for example 0 or 0-1.",
+          "reference": "https://docs.fluentd.org/configuration/config-file",
+          "data_type": "string",
+          "validation_rule": null
+        }
+      ]
+    },
+    "includes": {
+      "title": "@include",
+      "description": "List of included configuration files or globs applied before runtime.",
+      "fields": [
+        {
+          "name": "path",
+          "required": true,
+          "description": "Included file path, glob, or URL.",
+          "reference": "https://docs.fluentd.org/configuration/config-file",
+          "data_type": "string",
+          "validation_rule": null
+        }
+      ]
+    }
+  },
+  "custom_plugins": {}
+}

@@ -1,0 +1,339 @@
+{
+  "type": "object",
+  "title": "Stackdriver",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "stackdriver",
+      "title": "Plugin"
+    },
+    "autoformat_stackdriver_trace": {
+      "type": "boolean",
+      "description": "Rewrite the trace field to include the projectID and format it for use with Cloud Trace.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/stackdriver#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "cloud_logging_base_url": {
+      "type": "string",
+      "description": "Set the base Cloud Logging API URL to use for the /v2/entries:write API request.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/stackdriver#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "https://logging.googleapis.com"
+    },
+    "compress": {
+      "type": "string",
+      "description": "Set payload compression mechanism.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/stackdriver#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "custom_k8s_regex": {
+      "type": "string",
+      "description": "Set a custom regular expression to extract fields like pod_name, namespace_name, container_name, and docker_id from the local_resource_id in logs.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/stackdriver#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "(?<pod_name>[a-z0-9](?:[-a-z0-9]*[a-z0-9])?(?:\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*)_(?<namespace_name>[^_]+)_(?<container_name>.+)-(?<docker_id>[a-z0-9]{64})\\.log$"
+    },
+    "export_to_project_id": {
+      "type": "integer",
+      "description": "The GCP project that should receive these logs.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/stackdriver#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": "The `project_id` in the `google_service_credentials` file, or the `project_id` from Google's `metadata.google.internal` server."
+    },
+    "google_service_credentials": {
+      "type": "string",
+      "description": "Absolute path to a Google Cloud credentials JSON file.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/stackdriver#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "Value of environment variable `$GOOGLE_APPLICATION_CREDENTIALS"
+    },
+    "http_request_key": {
+      "type": "string",
+      "description": "The name of the key from the original record that contains the LogEntry's httpRequest.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/stackdriver#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "logging.googleapis.com/http_request"
+    },
+    "job": {
+      "type": "string",
+      "description": "An identifier for a grouping of related tasks, such as the name of a microservice or distributed batch.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/stackdriver#configuration-parameters",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "k8s_cluster_location": {
+      "type": "string",
+      "description": "The physical location of the cluster that contains (node or pod based on the resource type) the container.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/stackdriver#configuration-parameters",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "k8s_cluster_name": {
+      "type": "string",
+      "description": "The name of the cluster that the container (node or pod based on the resource type) is running in.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/stackdriver#configuration-parameters",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "labels": {
+      "type": "array",
+      "description": "Optional list of comma-separated strings specifying key=value pairs.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/stackdriver#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "list",
+      "x-references-parser": false
+    },
+    "labels_key": {
+      "type": "string",
+      "description": "The name of the key from the original record that contains the LogEntry's labels.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/stackdriver#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "logging.googleapis.com/labels"
+    },
+    "location": {
+      "type": "string",
+      "description": "The GCP or AWS region in which to store data about the resource.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/stackdriver#configuration-parameters",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "log_name_key": {
+      "type": "string",
+      "description": "The name of the key from the original record that contains the logName value.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/stackdriver#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "logging.googleapis.com/logName"
+    },
+    "metadata_server": {
+      "type": "string",
+      "description": "Prefix for a metadata server.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/stackdriver#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "Value of environment variable `$METADATA_SERVER`, or `http://metadata.google.internal` if unset."
+    },
+    "namespace": {
+      "type": "string",
+      "description": "A namespace identifier, such as a cluster name or environment.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/stackdriver#configuration-parameters",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "node_id": {
+      "type": "string",
+      "description": "A unique identifier for the node within the namespace, such as a hostname or IP address.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/stackdriver#configuration-parameters",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "project_id_key": {
+      "type": "string",
+      "description": "The value of this field is used by the Stackdriver output plugin to find the GCP projectID from jsonPayload and then extract the value of it to set the PROJECT_ID within LogEntry logName, which controls the GCP project that should receive these logs.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/stackdriver#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "logging.googleapis.com/projectId`. See [Stackdriver Special Fields](/manual/data-pipeline/outputs/stackdriver_special_fields.md#log-entry-fields) for more info."
+    },
+    "resource": {
+      "type": "string",
+      "description": "Set resource type of data.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/stackdriver#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "global"
+    },
+    "resource_labels": {
+      "type": "array",
+      "description": "An optional list of comma-separated strings specifying resource label plain text assignments (new=value) and mappings from an original field in the log entry to a destination field (destination=$original).",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/stackdriver#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "list",
+      "x-references-parser": false
+    },
+    "service_account_email": {
+      "type": "integer",
+      "description": "Account email associated with the service.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/stackdriver#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": "Value of environment variable `$SERVICE_ACCOUNT_EMAIL"
+    },
+    "service_account_secret": {
+      "type": "integer",
+      "description": "Private key content associated with the service account.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/stackdriver#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": "Value of environment variable `$SERVICE_ACCOUNT_SECRET"
+    },
+    "severity_key": {
+      "type": "string",
+      "description": "The name of the key from the original record that contains the severity.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/stackdriver#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "logging.googleapis.com/severity"
+    },
+    "span_id_key": {
+      "type": "string",
+      "description": "The name of the key from the original record that contains the span ID.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/stackdriver#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "logging.googleapis.com/spanId"
+    },
+    "stackdriver_agent": {
+      "type": "string",
+      "description": "Set a custom User-Agent header value for requests sent to Cloud Logging.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/stackdriver#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "tag_prefix": {
+      "type": "string",
+      "description": "Set the tag_prefix used to validate the tag of logs with Kubernetes resource type.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/stackdriver#configuration-parameters",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "k8s_container.`, `k8s_pod.`, `k8s_node."
+    },
+    "task_id": {
+      "type": "string",
+      "description": "A unique identifier for the task within the namespace and job, such as a replica index identifying the task within the job.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/stackdriver#configuration-parameters",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "test_log_entry_format": {
+      "type": "boolean",
+      "description": "Test-only option that prints the generated Cloud Logging payload without sending it.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/stackdriver#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "text_payload_key": {
+      "type": "string",
+      "description": "Set the key from the record to use as the textPayload field in the log entry.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/stackdriver#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "trace_key": {
+      "type": "string",
+      "description": "The name of the key from the original record that contains the trace value.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/stackdriver#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "logging.googleapis.com/trace"
+    },
+    "trace_sampled_key": {
+      "type": "string",
+      "description": "The name of the key from the original record that contains the trace sampled flag.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/stackdriver#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "logging.googleapis.com/traceSampled"
+    },
+    "workers": {
+      "type": "integer",
+      "description": "The number of [workers](/manual/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/stackdriver#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 1
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match_regex": {
+      "type": "string",
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "processors": {
+      "$ref": "../processors.json"
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name",
+    "job",
+    "k8s_cluster_location",
+    "k8s_cluster_name",
+    "location",
+    "namespace",
+    "node_id",
+    "tag_prefix",
+    "task_id"
+  ],
+  "additionalProperties": false
+}

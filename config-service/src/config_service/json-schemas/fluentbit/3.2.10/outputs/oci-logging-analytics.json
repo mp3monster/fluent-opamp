@@ -1,0 +1,98 @@
+{
+  "type": "object",
+  "title": "Oracle Log Analytics",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "oci-logging-analytics",
+      "title": "Plugin"
+    },
+    "config_file_location": {
+      "type": "string",
+      "description": "The location of the configuration file containing OCI authentication details.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/oci-logging-analytics#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "profile_name": {
+      "type": "string",
+      "description": "OCI Config Profile Name to be used from the configuration file",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/oci-logging-analytics#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "DEFAULT"
+    },
+    "namespace": {
+      "type": "string",
+      "description": "OCI Tenancy Namespace in which the collected log data is to be uploaded",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/oci-logging-analytics#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "proxy": {
+      "type": "string",
+      "description": "define proxy if required, in [http://host:port](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/http:/host:port) format, supports only http protocol",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/oci-logging-analytics#configuration-parameters",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "workers": {
+      "type": "integer",
+      "description": "The number of [workers](/manual/3.2/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/oci-logging-analytics#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 1
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match_regex": {
+      "type": "string",
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "processors": {
+      "$ref": "../processors.json"
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name",
+    "proxy"
+  ],
+  "additionalProperties": false
+}

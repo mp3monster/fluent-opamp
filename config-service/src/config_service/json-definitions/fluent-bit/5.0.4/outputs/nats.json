@@ -1,0 +1,66 @@
+{
+  "title": "NATS",
+  "doc_url": "https://docs.fluentbit.io/manual/data-pipeline/outputs/nats",
+  "fields": [
+    {
+      "name": "host",
+      "required": false,
+      "description": "The IP address or hostname of the NATS server.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/nats#configuration-parameters",
+      "default": "127.0.0.1",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "port",
+      "required": false,
+      "description": "The TCP port of the target NATS server.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/nats#configuration-parameters",
+      "default": 4222,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 65535
+      }
+    },
+    {
+      "name": "workers",
+      "required": false,
+      "description": "The number of [workers](/manual/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/nats#configuration-parameters",
+      "default": 0,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "match",
+      "required": false,
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "match_regex",
+      "required": false,
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/nats#configuration-parameters",
+    "table_header": [
+      "Key",
+      "Description",
+      "Default"
+    ]
+  },
+  "description": "The NATS output plugin lets you flush your records into a NATS Server server endpoint."
+}

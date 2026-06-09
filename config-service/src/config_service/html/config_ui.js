@@ -1939,6 +1939,61 @@
       });
   }
 
+  function validateCurrentDocument(options) {
+    var settings = options && typeof options === "object" ? options : {};
+    var saveOnSuccess = Boolean(settings.saveOnSuccess);
+    if (!state.doc) {
+      return Promise.resolve(null);
+    }
+    if (state.mergeIncludesForValidation && (!Array.isArray(state.includedDocuments) || state.includedDocuments.length === 0)) {
+      setStatusMessage("Validation include merge is enabled, but no included files are loaded in memory.");
+    }
+    if (saveOnSuccess && !state.currentSourcePath) {
+      window.alert("Save if valid is only available for files opened from the server catalog.");
+      return Promise.resolve(null);
+    }
+    var payload = {
+      config: state.doc.config,
+      annotations: state.doc.annotations || {},
+      included_documents: Array.isArray(state.includedDocuments) ? state.includedDocuments : [],
+      merge_includes_for_validation: Boolean(state.mergeIncludesForValidation),
+      save_on_success: saveOnSuccess,
+      save_source_path: state.currentSourcePath || "",
+      header_comments: normalizedHeaderComments(state.headerComments || ""),
+      include_config_header: true,
+      profile: "strict",
+    };
+    return fetchJson(API_BASE + "/validate/" + encodeURIComponent(state.doc.version) + currentApiQuery(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+      .then(function (result) {
+        renderValidationState(result);
+        if (result && result.saved) {
+          setStatusMessage(result.save_message || "Saved validated configuration.");
+        }
+        if (result && result.save_declined) {
+          window.alert(result.save_message || "Validation failed; file was not saved.");
+        }
+        return result;
+      })
+      .catch(function (err) {
+        if (err && err.payload && Array.isArray(err.payload.errors)) {
+          renderValidationState({ ok: false, errors: err.payload.errors });
+        } else {
+          setValidationText(String(err));
+        }
+        if (saveOnSuccess) {
+          var message = err && err.payload && err.payload.save_message
+            ? String(err.payload.save_message)
+            : "Validation failed; file was not saved.";
+          window.alert(message);
+        }
+        throw err;
+      });
+  }
+
   function updateAddPluginState() {
     var hasCatalog = Boolean(state.catalog && state.catalog.plugins);
     var hasPluginValue = Boolean(el.pluginName && el.pluginName.value);
@@ -3487,6 +3542,13 @@ function renderPlugins() {
     });
 
     el.saveConfig.addEventListener("click", function () {
+      if (state.currentSourcePath) {
+        setStatusMessage("Validating before saving configuration back to the server file.");
+        validateCurrentDocument({ saveOnSuccess: true }).catch(function (_err) {
+          // Validation/render details are already reflected in the UI.
+        });
+        return;
+      }
       triggerConfigDownload();
     });
 
@@ -3896,54 +3958,9 @@ function renderPlugins() {
     }
 
     el.validateBtn.addEventListener("click", function () {
-      if (!state.doc) {
-        return;
-      }
-      if (state.mergeIncludesForValidation && (!Array.isArray(state.includedDocuments) || state.includedDocuments.length === 0)) {
-        setStatusMessage("Validation include merge is enabled, but no included files are loaded in memory.");
-      }
-      if (state.saveOnValidate && !state.currentSourcePath) {
-        window.alert("Save if valid is only available for files opened from the server catalog.");
-        return;
-      }
-      var payload = {
-        config: state.doc.config,
-        annotations: state.doc.annotations || {},
-        included_documents: Array.isArray(state.includedDocuments) ? state.includedDocuments : [],
-        merge_includes_for_validation: Boolean(state.mergeIncludesForValidation),
-        save_on_success: Boolean(state.saveOnValidate),
-        save_source_path: state.currentSourcePath || "",
-        header_comments: normalizedHeaderComments(state.headerComments || ""),
-        include_config_header: true,
-        profile: "strict",
-      };
-      fetchJson(API_BASE + "/validate/" + encodeURIComponent(state.doc.version) + currentApiQuery(), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      })
-        .then(function (result) {
-          renderValidationState(result);
-          if (result && result.saved) {
-            setStatusMessage(result.save_message || "Saved validated configuration.");
-          }
-          if (result && result.save_declined) {
-            window.alert(result.save_message || "Validation failed; file was not saved.");
-          }
-        })
-        .catch(function (err) {
-          if (err && err.payload && Array.isArray(err.payload.errors)) {
-            renderValidationState({ ok: false, errors: err.payload.errors });
-          } else {
-            setValidationText(String(err));
-          }
-          if (state.saveOnValidate) {
-            var message = err && err.payload && err.payload.save_message
-              ? String(err.payload.save_message)
-              : "Validation failed; file was not saved.";
-            window.alert(message);
-          }
-        });
+      validateCurrentDocument({ saveOnSuccess: Boolean(state.saveOnValidate) }).catch(function (_err) {
+        // Validation/render details are already reflected in the UI.
+      });
     });
 
     if (el.dryRunBtn) {

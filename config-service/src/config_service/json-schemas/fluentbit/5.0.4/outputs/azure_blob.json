@@ -1,0 +1,376 @@
+{
+  "type": "object",
+  "title": "Azure Blob",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "azure_blob",
+      "title": "Plugin"
+    },
+    "account_name": {
+      "type": "integer",
+      "description": "Azure Storage account name.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/azure_blob#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false
+    },
+    "auth_type": {
+      "type": "string",
+      "description": "Specify the type to authenticate against the service.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/azure_blob#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "key"
+    },
+    "auto_create_container": {
+      "type": "boolean",
+      "description": "If container_name doesn't exist in the remote service, enabling this option handles the exception and auto-creates the container.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/azure_blob#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": true
+    },
+    "azure_blob_buffer_key": {
+      "type": "boolean",
+      "description": "Set the Azure Blob buffer key which needs to be specified when using multiple instances of Azure Blob output plugin and buffering is enabled.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/azure_blob#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": "key"
+    },
+    "blob_type": {
+      "type": "string",
+      "description": "Specify the desired blob type.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/azure_blob#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "appendblob"
+    },
+    "blob_uri_length": {
+      "type": "integer",
+      "description": "Set the length of the generated blob URI used when creating and uploading objects to Azure Blob Storage.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/azure_blob#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 64
+    },
+    "buffer_dir": {
+      "type": "string",
+      "description": "Specifies the location of directory where the buffered data will be stored.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/azure_blob#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "size",
+      "x-references-parser": false,
+      "default": "/tmp/fluent-bit/azure-blob/"
+    },
+    "buffer_file_delete_early": {
+      "type": "boolean",
+      "description": "Whether to delete the buffered file early after successful blob creation.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/azure_blob#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "buffering_enabled": {
+      "type": "boolean",
+      "description": "Enable buffering into disk before ingesting into Azure Blob.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/azure_blob#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "compress": {
+      "type": "string",
+      "description": "Sets payload compression in network transfer.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/azure_blob#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "compress_blob": {
+      "type": "boolean",
+      "description": "Enables compression in the final blockblob file.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/azure_blob#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "configuration_endpoint_bearer_token": {
+      "type": "string",
+      "description": "Bearer token for the configuration endpoint.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/azure_blob#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "configuration_endpoint_password": {
+      "type": "string",
+      "description": "Basic authentication password for the configuration endpoint.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/azure_blob#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "configuration_endpoint_url": {
+      "type": "string",
+      "description": "Configuration endpoint URL.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/azure_blob#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "configuration_endpoint_username": {
+      "type": "string",
+      "description": "Basic authentication username for the configuration endpoint.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/azure_blob#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "container_name": {
+      "type": "string",
+      "description": "Name of the container that will contain the blobs.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/azure_blob#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "database_file": {
+      "type": "string",
+      "description": "Absolute path to a database file used to store blob file contexts.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/azure_blob#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "date_key": {
+      "type": "string",
+      "description": "Key name used to store the record timestamp.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/azure_blob#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "@timestamp"
+    },
+    "delete_on_max_upload_error": {
+      "type": "boolean",
+      "description": "Whether to delete the buffer file on maximum upload errors.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/azure_blob#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "emulator_mode": {
+      "type": "boolean",
+      "description": "To send data to an Azure emulator service like [Azurite](https://github.com/Azure/Azurite), enable this option to format the requests in the expected format.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/azure_blob#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "endpoint": {
+      "type": "string",
+      "description": "When using an emulator, this option lets you specify the absolute HTTP address of such service.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/azure_blob#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "file_delivery_attempt_limit": {
+      "type": "integer",
+      "description": "Maximum number of delivery attempts for a file.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/azure_blob#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 1
+    },
+    "io_timeout": {
+      "type": "string",
+      "description": "HTTP IO timeout.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/azure_blob#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "duration",
+      "x-references-parser": false,
+      "default": "60s"
+    },
+    "part_delivery_attempt_limit": {
+      "type": "integer",
+      "description": "Maximum number of delivery attempts for a file part.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/azure_blob#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 1
+    },
+    "part_size": {
+      "type": "string",
+      "description": "Size of each part when uploading blob files.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/azure_blob#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "size",
+      "x-references-parser": false,
+      "default": "25M"
+    },
+    "path": {
+      "type": "string",
+      "description": "Optional.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/azure_blob#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "sas_token": {
+      "type": "string",
+      "description": "Specify the Azure Storage shared access signatures to authenticate against the service.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/azure_blob#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "scheduler_max_retries": {
+      "type": "integer",
+      "description": "Maximum number of retries for the scheduler send blob.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/azure_blob#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 3
+    },
+    "shared_key": {
+      "type": "string",
+      "description": "Specify the Azure Storage Shared Key to authenticate against the service.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/azure_blob#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "store_dir_limit_size": {
+      "type": "string",
+      "description": "Set the max size of the buffer directory.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/azure_blob#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "size",
+      "x-references-parser": false,
+      "default": "8G"
+    },
+    "tls": {
+      "type": "boolean",
+      "description": "Enable or disable TLS encryption.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/azure_blob#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": "off"
+    },
+    "unify_tag": {
+      "type": "boolean",
+      "description": "Whether to create a single buffer file when buffering mode is enabled.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/azure_blob#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "upload_file_size": {
+      "type": "string",
+      "description": "Specifies the size of files to be uploaded in MB.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/azure_blob#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "size",
+      "x-references-parser": false,
+      "default": "200M"
+    },
+    "upload_part_freshness_limit": {
+      "type": "string",
+      "description": "Maximum lifespan of an uncommitted file part.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/azure_blob#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "6D"
+    },
+    "upload_parts_timeout": {
+      "type": "string",
+      "description": "Timeout for uploading parts of a blob file.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/azure_blob#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "duration",
+      "x-references-parser": false,
+      "default": "10M"
+    },
+    "upload_timeout": {
+      "type": "string",
+      "description": "Optional.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/azure_blob#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "duration",
+      "x-references-parser": false,
+      "default": "30m"
+    },
+    "workers": {
+      "type": "integer",
+      "description": "The number of [workers](/manual/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/azure_blob#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 0
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match_regex": {
+      "type": "string",
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "processors": {
+      "$ref": "../processors.json"
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}

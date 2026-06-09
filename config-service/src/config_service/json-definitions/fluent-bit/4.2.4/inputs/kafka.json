@@ -1,0 +1,137 @@
+{
+  "title": "Kafka",
+  "doc_url": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/kafka",
+  "fields": [
+    {
+      "name": "brokers",
+      "required": false,
+      "description": "Single or multiple list of Kafka Brokers.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/kafka#configuration-parameters",
+      "data_type": "list",
+      "validation_rule": {
+        "kind": "list",
+        "delimiter": ","
+      }
+    },
+    {
+      "name": "buffer_max_size",
+      "required": false,
+      "description": "Specify the maximum size of buffer per cycle to poll Kafka messages from subscribed topics.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/kafka#configuration-parameters",
+      "default": "4M",
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "integer"
+      }
+    },
+    {
+      "name": "client_id",
+      "required": false,
+      "description": "Client id passed to librdkafka.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/kafka#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "enable_auto_commit",
+      "required": false,
+      "description": "Rely on Kafka auto-commit and commit messages in batches.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/kafka#configuration-parameters",
+      "default": false,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "format",
+      "required": false,
+      "description": "Serialization format of the messages.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/kafka#configuration-parameters",
+      "default": "none",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "group_id",
+      "required": false,
+      "description": "Group id passed to librdkafka.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/kafka#configuration-parameters",
+      "default": "fluent-bit",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "poll_ms",
+      "required": false,
+      "description": "Kafka brokers polling interval in milliseconds.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/kafka#configuration-parameters",
+      "default": 500,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "poll_timeout_ms",
+      "required": false,
+      "description": "Timeout in milliseconds for Kafka consumer poll operations.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/kafka#configuration-parameters",
+      "default": 1,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "rdkafka.{property}",
+      "required": false,
+      "description": "{property} can be any [librdkafka properties](https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md).",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/kafka#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "threaded",
+      "required": false,
+      "description": "Indicates whether to run this input in its own [thread](/manual/4.2/administration/multithreading.md#inputs).",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/kafka#configuration-parameters",
+      "default": false,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "topics",
+      "required": false,
+      "description": "Single entry or list of comma-separated topics (,) that Fluent Bit will subscribe to.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/kafka#configuration-parameters",
+      "data_type": "list",
+      "validation_rule": {
+        "kind": "list",
+        "delimiter": ","
+      }
+    },
+    {
+      "name": "tag",
+      "required": true,
+      "description": "Tag assigned to records emitted by this input plugin.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/kafka#configuration-parameters",
+    "table_header": [
+      "Key",
+      "Description",
+      "Default"
+    ]
+  },
+  "description": "Fluent Bit input plugin: Kafka."
+}

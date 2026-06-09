@@ -1,0 +1,110 @@
+{
+  "type": "object",
+  "title": "Expect",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "expect",
+      "title": "Plugin"
+    },
+    "action": {
+      "type": "string",
+      "description": "Action to take when a rule doesn't match.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/expect#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "warn"
+    },
+    "key_exists": {
+      "type": "string",
+      "description": "Check if a key with a given name exists in the record.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/expect#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "key_not_exists": {
+      "type": "string",
+      "description": "Check if a key doesn't exist in the record.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/expect#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "key_val_eq": {
+      "type": "string",
+      "description": "Check that the value of the key equals the given value in the configuration.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/expect#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "key_val_is_not_null": {
+      "type": "string",
+      "description": "Check that the value of the key is NOT NULL.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/expect#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "key_val_is_null": {
+      "type": "string",
+      "description": "Check that the value of the key is NULL.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/expect#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "result_key": {
+      "type": "string",
+      "description": "Specify a key name for the matching result added when action is set to result_key.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/expect#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "matched"
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match_regex": {
+      "type": "string",
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,65 @@
+{
+  "title": "Exit",
+  "doc_url": "https://docs.fluentbit.io/manual/data-pipeline/outputs/exit",
+  "fields": [
+    {
+      "name": "flush_count",
+      "required": false,
+      "description": "Number of flushes to wait for before exiting.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/exit#configuration-parameters",
+      "default": -1,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "integer"
+      }
+    },
+    {
+      "name": "record_count",
+      "required": false,
+      "description": "Number of records to wait for before exiting.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/exit#configuration-parameters",
+      "default": -1,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "integer"
+      }
+    },
+    {
+      "name": "time_count",
+      "required": false,
+      "description": "Number of seconds to wait for before exiting.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/exit#configuration-parameters",
+      "default": -1,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "integer"
+      }
+    },
+    {
+      "name": "match",
+      "required": false,
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "match_regex",
+      "required": false,
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/exit#configuration-parameters",
+    "table_header": [
+      "Key",
+      "Description",
+      "Default"
+    ]
+  },
+  "description": "The exit plugin is a utility plugin which causes Fluent Bit to exit after one of the following occurs:"
+}

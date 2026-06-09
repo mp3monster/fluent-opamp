@@ -1,0 +1,40 @@
+{
+  "artifact_manifest": {
+    "format": "config-service.composite-json/v1",
+    "base": "outputs.base.json",
+    "parts": [
+      {
+        "pointer": "/copy",
+        "file": "outputs/copy.json"
+      },
+      {
+        "pointer": "/exec",
+        "file": "outputs/exec.json"
+      },
+      {
+        "pointer": "/exec_filter",
+        "file": "outputs/exec_filter.json"
+      },
+      {
+        "pointer": "/file",
+        "file": "outputs/file.json"
+      },
+      {
+        "pointer": "/forward",
+        "file": "outputs/forward.json"
+      },
+      {
+        "pointer": "/null",
+        "file": "outputs/null.json"
+      },
+      {
+        "pointer": "/relabel",
+        "file": "outputs/relabel.json"
+      },
+      {
+        "pointer": "/stdout",
+        "file": "outputs/stdout.json"
+      }
+    ]
+  }
+}

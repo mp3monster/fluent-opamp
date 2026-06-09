@@ -1,0 +1,67 @@
+{
+  "title": "Flow counter",
+  "doc_url": "https://docs.fluentbit.io/manual/data-pipeline/outputs/flowcounter",
+  "fields": [
+    {
+      "name": "event_based",
+      "required": false,
+      "description": "When enabled, use the timestamp from the log event for time bucketing instead of the current wall-clock time.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/flowcounter#configuration-parameters",
+      "default": false,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "unit",
+      "required": false,
+      "description": "The unit of duration.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/flowcounter#configuration-parameters",
+      "default": "minute",
+      "data_type": "duration",
+      "validation_rule": {
+        "kind": "regex",
+        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+      }
+    },
+    {
+      "name": "workers",
+      "required": false,
+      "description": "The number of [workers](/manual/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/flowcounter#configuration-parameters",
+      "default": 0,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "match",
+      "required": false,
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "match_regex",
+      "required": false,
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/flowcounter#configuration-parameters",
+    "table_header": [
+      "Key",
+      "Description",
+      "Default"
+    ]
+  },
+  "description": "The Flow counter output plugin lets you count up records and their size."
+}
