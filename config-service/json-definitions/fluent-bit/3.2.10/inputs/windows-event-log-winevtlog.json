@@ -1,0 +1,151 @@
+{
+  "title": "Windows Event Log (winevtlog)",
+  "doc_url": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog",
+  "fields": [
+    {
+      "name": "channels",
+      "required": false,
+      "description": "A comma-separated list of channels to read from.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga",
+      "data_type": "list",
+      "validation_rule": {
+        "kind": "list",
+        "delimiter": ","
+      }
+    },
+    {
+      "name": "interval_sec",
+      "required": false,
+      "description": "Set the polling interval for each channel.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga",
+      "default": 1,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "interval_nsec",
+      "required": false,
+      "description": "Set the polling interval for each channel (sub seconds.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga",
+      "default": 0,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "read_existing_events",
+      "required": false,
+      "description": "Whether to read existing events from head or tailing events at last on subscribing.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga",
+      "default": false,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "db",
+      "required": false,
+      "description": "Set the path to save the read offsets.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "string_inserts",
+      "required": false,
+      "description": "Whether to include StringInserts in output records.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga",
+      "default": true,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "render_event_as_xml",
+      "required": false,
+      "description": "Whether to render system part of event as XML string or not.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga",
+      "default": false,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "ignore_missing_channels",
+      "required": false,
+      "description": "Whether to ignore event channels not present in the event log, and continue running with subscribed channels.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga",
+      "default": false,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "use_ansi",
+      "required": false,
+      "description": "Use ANSI encoding on eventlog messages.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga",
+      "default": false,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "event_query",
+      "required": false,
+      "description": "Specify XML query for filtering events.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga",
+      "default": "*",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "read_limit_per_cycle",
+      "required": false,
+      "description": "Specify read limit per cycle.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga",
+      "default": "512KiB",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "threaded",
+      "required": false,
+      "description": "Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs).",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga",
+      "default": false,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "tag",
+      "required": true,
+      "description": "Tag assigned to records emitted by this input plugin.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga",
+    "table_header": [
+      "Key",
+      "Description",
+      "Default"
+    ]
+  },
+  "description": "The winevtlog input plugin allows you to read Windows Event Log with new API from winevt.h."
+}

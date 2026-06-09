@@ -1,0 +1,114 @@
+{
+  "title": "Prometheus scrape Metrics",
+  "doc_url": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/prometheus-scrape-metrics",
+  "fields": [
+    {
+      "name": "bearer_token",
+      "required": false,
+      "description": "Set the bearer token for authentication with the Prometheus endpoint.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/prometheus-scrape-metrics#configuration",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "buffer_max_size",
+      "required": false,
+      "description": "Set the maximum buffer size for the HTTP response.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/prometheus-scrape-metrics#configuration",
+      "default": "10M",
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "integer"
+      }
+    },
+    {
+      "name": "host",
+      "required": false,
+      "description": "The host of the Prometheus metric endpoint to scrape.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/prometheus-scrape-metrics#configuration",
+      "default": "localhost",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "http_passwd",
+      "required": false,
+      "description": "Set the password for HTTP basic authentication.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/prometheus-scrape-metrics#configuration",
+      "default": "\"\"",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "http_user",
+      "required": false,
+      "description": "Set the username for HTTP basic authentication.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/prometheus-scrape-metrics#configuration",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "metrics_path",
+      "required": true,
+      "description": "The metrics URI endpoint, which must start with a forward slash (/).",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/prometheus-scrape-metrics#configuration",
+      "default": "/metrics",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "port",
+      "required": false,
+      "description": "The port of the Prometheus metric endpoint to scrape.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/prometheus-scrape-metrics#configuration",
+      "default": 9100,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 65535
+      }
+    },
+    {
+      "name": "scrape_interval",
+      "required": false,
+      "description": "The interval to scrape metrics.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/prometheus-scrape-metrics#configuration",
+      "default": "10s",
+      "data_type": "duration",
+      "validation_rule": {
+        "kind": "regex",
+        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+      }
+    },
+    {
+      "name": "threaded",
+      "required": false,
+      "description": "Indicates whether to run this input in its own [thread](/manual/4.2/administration/multithreading.md#inputs).",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/prometheus-scrape-metrics#configuration",
+      "default": false,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "tag",
+      "required": true,
+      "description": "Tag assigned to records emitted by this input plugin.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/prometheus-scrape-metrics#configuration",
+    "table_header": [
+      "Key",
+      "Description",
+      "Default"
+    ]
+  },
+  "description": "Fluent Bit input plugin: Prometheus scrape Metrics."
+}

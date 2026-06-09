@@ -1,0 +1,27 @@
+{
+  "title": "Counter",
+  "doc_url": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/counter",
+  "fields": [
+    {
+      "name": "match",
+      "required": false,
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "match_regex",
+      "required": false,
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "no_table_under_config_heading",
+    "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/counter#configuration-file"
+  },
+  "description": "Counter is a very simple plugin that counts how many records it's getting upon flush time."
+}

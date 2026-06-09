@@ -1,0 +1,572 @@
+{
+  "title": "OpenTelemetry",
+  "doc_url": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry",
+  "fields": [
+    {
+      "name": "alias",
+      "required": false,
+      "description": "Sets an alias for multiple instances of the same input plugin.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "buffer_chunk_size",
+      "required": false,
+      "description": "Size of each buffer chunk allocated for HTTP requests (advanced users only).",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "default": "512K",
+      "data_type": "size",
+      "validation_rule": {
+        "kind": "regex",
+        "pattern": "^\\\\d+([KMGTP]i?[Bb]?|[KMGTP])?$"
+      }
+    },
+    {
+      "name": "buffer_max_size",
+      "required": false,
+      "description": "Maximum size of the HTTP request buffer in KB, MB, or GB.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "default": "4M",
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "integer"
+      }
+    },
+    {
+      "name": "encode_profiles_as_log",
+      "required": false,
+      "description": "Encode profiles received as text and ingest them in the logging pipeline.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "default": true,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "host",
+      "required": false,
+      "description": "The hostname.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "default": "localhost",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "http2",
+      "required": false,
+      "description": "Enable HTTP/2 protocol support for the OpenTelemetry receiver.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "default": true,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "http_server.max_connections",
+      "required": false,
+      "description": "Maximum number of concurrent active HTTP connections.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "default": 0,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "http_server.workers",
+      "required": false,
+      "description": "Number of HTTP listener worker threads.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "default": 1,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "http_server.ingress_queue_event_limit",
+      "required": false,
+      "description": "Maximum number of deferred ingress queue entries.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "default": 8192,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "http_server.ingress_queue_byte_limit",
+      "required": false,
+      "description": "Maximum size of the deferred ingress queue.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "default": "256M",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "listen",
+      "required": false,
+      "description": "The network address to listen on.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "default": "0.0.0.0",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "log_level",
+      "required": false,
+      "description": "Specifies the log level for this plugin.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "default": "info",
+      "data_type": "enum",
+      "validation_rule": null,
+      "called_enum_options": [
+        "off",
+        "trace",
+        "debug",
+        "info",
+        "warn",
+        "error"
+      ]
+    },
+    {
+      "name": "log_suppress_interval",
+      "required": false,
+      "description": "Suppresses log messages from this plugin that appear similar within a specified time interval.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "default": 0,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "logs_body_key",
+      "required": false,
+      "description": "Specify a body key.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "logs_metadata_key",
+      "required": false,
+      "description": "Key name to store OpenTelemetry logs metadata in the record.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "default": "otlp",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "mem_buf_limit",
+      "required": false,
+      "description": "Set a memory buffer limit for the input plugin.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "default": 0,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "net.accept_timeout",
+      "required": false,
+      "description": "Set maximum time allowed to establish an incoming connection.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "default": "10s",
+      "data_type": "duration",
+      "validation_rule": {
+        "kind": "regex",
+        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+      }
+    },
+    {
+      "name": "net.accept_timeout_log_error",
+      "required": false,
+      "description": "On client accept timeout, specify if it should log an error.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "default": true,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "net.backlog",
+      "required": false,
+      "description": "Set the backlog size for listening sockets.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "default": 128,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "net.io_timeout",
+      "required": false,
+      "description": "Set maximum time a connection can stay idle.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "default": "0s",
+      "data_type": "duration",
+      "validation_rule": {
+        "kind": "regex",
+        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+      }
+    },
+    {
+      "name": "net.keepalive",
+      "required": false,
+      "description": "Enable or disable keepalive support.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "default": true,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "net.share_port",
+      "required": false,
+      "description": "Allow multiple plugins to bind to the same port.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "default": false,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "oauth2.allowed_audience",
+      "required": false,
+      "description": "Audience claim to enforce when validating incoming OAuth 2.0 JSON Web Token (JWT) tokens.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "oauth2.allowed_clients",
+      "required": false,
+      "description": "Authorized client_id or azp claim values.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "oauth2.issuer",
+      "required": false,
+      "description": "Expected issuer (iss) claim for OAuth 2.0 JWT validation.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "oauth2.jwks_refresh_interval",
+      "required": false,
+      "description": "How often in seconds to refresh the cached JSON Web Key Set (JWKS) keys from oauth2.jwks_url.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "default": 300,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "oauth2.jwks_url",
+      "required": false,
+      "description": "JWKS endpoint URL used to fetch public keys for OAuth 2.0 JWT validation.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "oauth2.validate",
+      "required": false,
+      "description": "Enable OAuth 2.0 JWT validation for incoming requests.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "default": false,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "port",
+      "required": false,
+      "description": "The port for Fluent Bit to listen for incoming connections.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "default": 4318,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 65535
+      }
+    },
+    {
+      "name": "profiles_support",
+      "required": false,
+      "description": "This is an experimental feature, feel free to test it but don't enable this in production environments.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "default": false,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "raw_traces",
+      "required": false,
+      "description": "Forward traces without processing.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "default": false,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "routable",
+      "required": false,
+      "description": "If set to true, the data generated by the plugin will be routable, meaning that it can be forwarded to other plugins or outputs.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "default": true,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "storage.pause_on_chunks_overlimit",
+      "required": false,
+      "description": "Enable pausing on an input when they reach their chunks limit.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "storage.type",
+      "required": false,
+      "description": "Sets the storage type for this input, one of: filesystem, memory or memrb.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "default": "memory",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "successful_response_code",
+      "required": false,
+      "description": "Allows for setting a successful response code.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "default": 201,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "tag",
+      "required": false,
+      "description": "Set a tag for the events generated by this input plugin.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "tag_from_uri",
+      "required": false,
+      "description": "If no explicit tag is set, the tag is created from the URI.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "default": true,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "tag_key",
+      "required": false,
+      "description": "Record accessor key to use for generating tags from incoming records.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "thread.ring_buffer.capacity",
+      "required": false,
+      "description": "Number of slots in the ring buffer for data entries when running in [threaded](/manual/administration/multithreading.md) mode.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "default": 1024,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "thread.ring_buffer.window",
+      "required": false,
+      "description": "Percentage threshold (1-100) of the ring buffer capacity at which a flush is triggered when running in [threaded](/manual/administration/multithreading.md) mode.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "default": 5,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "threaded",
+      "required": false,
+      "description": "Enable [multithreading](/manual/administration/multithreading.md) for this input to run in a separate dedicated thread.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "default": false,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "tls",
+      "required": false,
+      "description": "Enable or disable TLS/SSL support.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "default": "off",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "tls.ca_file",
+      "required": false,
+      "description": "Absolute path to CA certificate file.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "tls.ca_path",
+      "required": false,
+      "description": "Absolute path to scan for certificate files.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "tls.ciphers",
+      "required": false,
+      "description": "Specify TLS ciphers up to TLSv1.2.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "tls.crt_file",
+      "required": false,
+      "description": "Absolute path to Certificate file.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "tls.debug",
+      "required": false,
+      "description": "Set TLS debug level.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "default": 1,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "tls.key_file",
+      "required": false,
+      "description": "Absolute path to private Key file.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "tls.key_passwd",
+      "required": false,
+      "description": "Optional password for tls.key_file file.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "tls.max_version",
+      "required": false,
+      "description": "Specify the maximum version of TLS.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "integer"
+      }
+    },
+    {
+      "name": "tls.min_version",
+      "required": false,
+      "description": "Specify the minimum version of TLS.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "integer"
+      }
+    },
+    {
+      "name": "tls.verify",
+      "required": false,
+      "description": "Force certificate validation.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "default": "on",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "tls.verify_hostname",
+      "required": false,
+      "description": "Enable or disable to verify hostname.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "default": "off",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "tls.vhost",
+      "required": false,
+      "description": "Hostname to be used for TLS SNI extension.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
+    "table_header": [
+      "Key",
+      "Description",
+      "Default"
+    ]
+  },
+  "description": "Fluent Bit input plugin: OpenTelemetry."
+}

@@ -1,0 +1,71 @@
+{
+  "title": "Null",
+  "doc_url": "https://docs.fluentbit.io/manual/data-pipeline/outputs/null",
+  "fields": [
+    {
+      "name": "format",
+      "required": false,
+      "description": "Specify the data format.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/null#configuration-parameters",
+      "default": "msgpack",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "json_date_format",
+      "required": false,
+      "description": "Specify the format of the date.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/null#configuration-parameters",
+      "default": "double",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "json_date_key",
+      "required": false,
+      "description": "Specify the name of the time key in the output record.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/null#configuration-parameters",
+      "default": "date",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "workers",
+      "required": false,
+      "description": "The number of [workers](/manual/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/null#configuration-parameters",
+      "default": 1,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "match",
+      "required": false,
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "match_regex",
+      "required": false,
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/null#configuration-parameters",
+    "table_header": [
+      "Key",
+      "Description",
+      "Default"
+    ]
+  },
+  "description": "Fluent Bit output plugin: Null."
+}

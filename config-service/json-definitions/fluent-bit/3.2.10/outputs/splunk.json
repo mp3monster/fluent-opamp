@@ -1,0 +1,128 @@
+{
+  "title": "Splunk",
+  "doc_url": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/splunk",
+  "fields": [
+    {
+      "name": "host",
+      "required": false,
+      "description": "IP address or hostname of the target Splunk service.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/splunk#configuration-parameters",
+      "default": "127.0.0.1",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "port",
+      "required": false,
+      "description": "TCP port of the target Splunk service.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/splunk#configuration-parameters",
+      "default": 8088,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 65535
+      }
+    },
+    {
+      "name": "splunk_token",
+      "required": false,
+      "description": "Specify the Authentication Token for the HTTP Event Collector interface.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/splunk#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "http_user",
+      "required": false,
+      "description": "Optional username for Basic Authentication on HEC",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/splunk#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "http_passwd",
+      "required": false,
+      "description": "Password for user defined in HTTP_User",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/splunk#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "http_buffer_size",
+      "required": false,
+      "description": "Buffer size used to receive Splunk HTTP responses",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/splunk#configuration-parameters",
+      "default": "2M",
+      "data_type": "size",
+      "validation_rule": {
+        "kind": "regex",
+        "pattern": "^\\\\d+([KMGTP]i?[Bb]?|[KMGTP])?$"
+      }
+    },
+    {
+      "name": "compress",
+      "required": false,
+      "description": "Set payload compression mechanism.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/splunk#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "channel",
+      "required": false,
+      "description": "Specify X-Splunk-Request-Channel Header for the HTTP Event Collector interface.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/splunk#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "http_debug_bad_request",
+      "required": false,
+      "description": "If the HTTP server response code is 400 (bad request) and this flag is enabled, it will print the full HTTP request and response to the stdout interface.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/splunk#configuration-parameters",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "workers",
+      "required": false,
+      "description": "The number of [workers](/manual/3.2/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/splunk#configuration-parameters",
+      "default": 2,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "match",
+      "required": false,
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "match_regex",
+      "required": false,
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/splunk#configuration-parameters",
+    "table_header": [
+      "Key",
+      "Description",
+      "default"
+    ]
+  },
+  "description": "Splunk output plugin allows to ingest your records into a Splunk Enterprise service through the HTTP Event Collector (HEC) interface."
+}

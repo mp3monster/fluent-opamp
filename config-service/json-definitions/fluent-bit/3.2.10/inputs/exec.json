@@ -1,0 +1,105 @@
+{
+  "title": "Exec",
+  "doc_url": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec",
+  "fields": [
+    {
+      "name": "command",
+      "required": false,
+      "description": "The command to execute, passed to [popen(...)](https://man7.org/linux/man-pages/man3/popen.3.html) without any additional escaping or processing.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "parser",
+      "required": false,
+      "description": "Specify the name of a parser to interpret the entry as a structured message.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null,
+      "references_parser": true
+    },
+    {
+      "name": "interval_sec",
+      "required": false,
+      "description": "Polling interval (seconds).",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec#configuration-parameters",
+      "data_type": "duration",
+      "validation_rule": {
+        "kind": "regex",
+        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+      }
+    },
+    {
+      "name": "interval_nsec",
+      "required": false,
+      "description": "Polling interval (nanosecond).",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec#configuration-parameters",
+      "data_type": "duration",
+      "validation_rule": {
+        "kind": "regex",
+        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+      }
+    },
+    {
+      "name": "buf_size",
+      "required": false,
+      "description": "Size of the buffer (check [unit sizes](/manual/3.2/administration/configuring-fluent-bit/unit-sizes.md) for allowed values)",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec#configuration-parameters",
+      "data_type": "size",
+      "validation_rule": {
+        "kind": "regex",
+        "pattern": "^\\\\d+([KMGTP]i?[Bb]?|[KMGTP])?$"
+      }
+    },
+    {
+      "name": "oneshot",
+      "required": false,
+      "description": "Only run once at startup.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "exit_after_oneshot",
+      "required": false,
+      "description": "Exit as soon as the one-shot command exits.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "propagate_exit_code",
+      "required": false,
+      "description": "When exiting due to Exit_After_Oneshot, cause fluent-bit to exit with the exit code of the command exited by this plugin.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "threaded",
+      "required": false,
+      "description": "Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs).",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "tag",
+      "required": true,
+      "description": "Tag assigned to records emitted by this input plugin.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec#configuration-parameters",
+    "table_header": [
+      "Key",
+      "Description"
+    ]
+  },
+  "description": "The exec input plugin, allows to execute external program and collects event logs."
+}

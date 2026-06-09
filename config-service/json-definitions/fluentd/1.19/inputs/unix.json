@@ -1,0 +1,91 @@
+{
+  "title": "unix",
+  "doc_url": "https://docs.fluentd.org/input/unix",
+  "description": "Receives Fluentd Forward protocol events over a Unix domain socket.",
+  "fields": [
+    {
+      "name": "@id",
+      "required": false,
+      "description": "Unique identifier for the plugin instance.",
+      "reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "@log_level",
+      "required": false,
+      "description": "Plugin-specific log level that overrides the global system log level.",
+      "reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+      "data_type": "enum",
+      "validation_rule": {
+        "kind": "enum",
+        "values": [
+          "trace",
+          "debug",
+          "info",
+          "warn",
+          "error",
+          "fatal"
+        ]
+      },
+      "default": "info",
+      "called_enum_options": [
+        "trace",
+        "debug",
+        "info",
+        "warn",
+        "error",
+        "fatal"
+      ]
+    },
+    {
+      "name": "@label",
+      "required": false,
+      "description": "Routes emitted events to a named label.",
+      "reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+      "data_type": "string",
+      "validation_rule": {
+        "kind": "regex_string"
+      }
+    },
+    {
+      "name": "path",
+      "required": true,
+      "description": "Path to the Unix domain socket.",
+      "reference": "https://docs.fluentd.org/input/unix",
+      "data_type": "string",
+      "validation_rule": {
+        "kind": "regex_string"
+      }
+    },
+    {
+      "name": "backlog",
+      "required": false,
+      "description": "Socket listen backlog.",
+      "reference": "https://docs.fluentd.org/input/unix",
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 1
+      },
+      "default": 1024
+    },
+    {
+      "name": "tag",
+      "required": false,
+      "description": "Optional tag override for incoming events.",
+      "reference": "https://docs.fluentd.org/input/unix",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "allowed_children": [
+    {
+      "section": "transport",
+      "cardinality": {
+        "minimum": 0,
+        "maximum": 1
+      }
+    }
+  ]
+}

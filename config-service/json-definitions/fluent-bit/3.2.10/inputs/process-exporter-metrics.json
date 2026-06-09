@@ -1,0 +1,76 @@
+{
+  "title": "Process Exporter Metrics",
+  "doc_url": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/process-exporter-metrics",
+  "fields": [
+    {
+      "name": "scrape_interval",
+      "required": false,
+      "description": "The rate at which metrics are collected.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/process-exporter-metrics#configuration",
+      "default": "5 seconds",
+      "data_type": "duration",
+      "validation_rule": {
+        "kind": "regex",
+        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+      }
+    },
+    {
+      "name": "path.procfs",
+      "required": false,
+      "description": "The mount point used to collect process information and metrics.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/process-exporter-metrics#configuration",
+      "default": "/proc/",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "process_include_pattern",
+      "required": false,
+      "description": "regex to determine which names of processes are included in the metrics produced by this plugin",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/process-exporter-metrics#configuration",
+      "default": "It is applied for all process unless explicitly set. Default is `.+`.",
+      "data_type": "string",
+      "validation_rule": {
+        "kind": "regex_string"
+      }
+    },
+    {
+      "name": "process_exclude_pattern",
+      "required": false,
+      "description": "regex to determine which names of processes are excluded in the metrics produced by this plugin",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/process-exporter-metrics#configuration",
+      "default": "It is not applied unless explicitly set. Default is `NULL`.",
+      "data_type": "string",
+      "validation_rule": {
+        "kind": "regex_string"
+      }
+    },
+    {
+      "name": "metrics",
+      "required": false,
+      "description": "To specify which process level of metrics are collected from the host operating system.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/process-exporter-metrics#configuration",
+      "default": "cpu,io,memory,state,context_switches,fd,start_time,thread_wchan,thread",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "tag",
+      "required": true,
+      "description": "Tag assigned to records emitted by this input plugin.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/process-exporter-metrics#configuration",
+    "table_header": [
+      "Key",
+      "Description",
+      "Default"
+    ]
+  },
+  "description": "Prometheus Node Exporter is a popular way to collect system level metrics from operating systems, such as CPU / Disk / Network / Process statistics."
+}

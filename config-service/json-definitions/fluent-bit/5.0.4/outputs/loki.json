@@ -1,0 +1,241 @@
+{
+  "title": "Loki",
+  "doc_url": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki",
+  "fields": [
+    {
+      "name": "host",
+      "required": false,
+      "description": "Loki base hostname or IP address.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "default": "127.0.0.1",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "uri",
+      "required": true,
+      "description": "Specify a custom HTTP URI.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "default": "/loki/api/v1/push",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "port",
+      "required": false,
+      "description": "The Loki TCP port.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "default": 3100,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 65535
+      }
+    },
+    {
+      "name": "tls",
+      "required": false,
+      "description": "Use TLS authentication.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "default": "off",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "http_user",
+      "required": false,
+      "description": "Set HTTP basic authentication user name.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "http_passwd",
+      "required": false,
+      "description": "Set HTTP basic authentication password.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "bearer_token",
+      "required": false,
+      "description": "Set bearer token authentication token value.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "header",
+      "required": false,
+      "description": "Add additional arbitrary HTTP header key/value pair.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "tenant_id",
+      "required": false,
+      "description": "Tenant ID used by default to push logs to Loki.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "labels",
+      "required": false,
+      "description": "Stream labels for API request.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "default": "job=fluent-bit",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "label_keys",
+      "required": false,
+      "description": "(Optional.) List of record keys that will be placed as stream labels.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "data_type": "list",
+      "validation_rule": {
+        "kind": "list",
+        "delimiter": ","
+      }
+    },
+    {
+      "name": "label_map_path",
+      "required": false,
+      "description": "Specify the label map path.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "structured_metadata",
+      "required": false,
+      "description": "(Optional.) Comma-separated list of key=value strings specifying structured metadata for the log line.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "data_type": "list",
+      "validation_rule": {
+        "kind": "list",
+        "delimiter": ","
+      }
+    },
+    {
+      "name": "structured_metadata_map_keys",
+      "required": false,
+      "description": "(Optional.) Comma-separated list of record key strings specifying record values of type map, used to dynamically populate structured metadata for the log line.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "data_type": "list",
+      "validation_rule": {
+        "kind": "list",
+        "delimiter": ","
+      }
+    },
+    {
+      "name": "remove_keys",
+      "required": false,
+      "description": "(Optional.) List of keys to remove.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "data_type": "list",
+      "validation_rule": {
+        "kind": "list",
+        "delimiter": ","
+      }
+    },
+    {
+      "name": "drop_single_key",
+      "required": false,
+      "description": "When set to true and after extracting labels only a single key remains, the log line sent to Loki will be the value of that key in line_format.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "line_format",
+      "required": false,
+      "description": "Format to use when flattening the record to a log line.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "default": "json",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "auto_kubernetes_labels",
+      "required": false,
+      "description": "If set to true, adds all Kubernetes labels to the stream labels.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "default": false,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "tenant_id_key",
+      "required": false,
+      "description": "Specify the name of the key from the original record that contains the Tenant ID.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "buffer_size",
+      "required": false,
+      "description": "Maximum HTTP response buffer size.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "default": "512KB",
+      "data_type": "size",
+      "validation_rule": {
+        "kind": "regex",
+        "pattern": "^\\\\d+([KMGTP]i?[Bb]?|[KMGTP])?$"
+      }
+    },
+    {
+      "name": "compress",
+      "required": false,
+      "description": "Set payload compression mechanism.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "workers",
+      "required": false,
+      "description": "The number of [workers](/manual/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+      "default": 0,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "match",
+      "required": false,
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "match_regex",
+      "required": false,
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/loki#configuration-parameters",
+    "table_header": [
+      "Key",
+      "Description",
+      "Default"
+    ]
+  },
+  "description": "Loki is multi-tenant log aggregation system inspired by Prometheus."
+}

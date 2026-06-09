@@ -1,0 +1,71 @@
+{
+  "title": "Record Modifier",
+  "doc_url": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/record-modifier",
+  "fields": [
+    {
+      "name": "record",
+      "required": false,
+      "description": "Append fields.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/record-modifier#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "remove_key",
+      "required": false,
+      "description": "If the key is matched, that field is removed.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/record-modifier#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "allowlist_key",
+      "required": false,
+      "description": "If the key isn't matched, that field is removed.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/record-modifier#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "whitelist_key",
+      "required": false,
+      "description": "An alias of Allowlist_key for backwards compatibility.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/record-modifier#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "uuid_key",
+      "required": false,
+      "description": "If set, the plugin appends Uuid to each record.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/record-modifier#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "match",
+      "required": false,
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "match_regex",
+      "required": false,
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/record-modifier#configuration-parameters",
+    "table_header": [
+      "Key",
+      "Description"
+    ]
+  },
+  "description": "The Record Modifier filter plugin lets you append fields to a record, or exclude specific fields."
+}

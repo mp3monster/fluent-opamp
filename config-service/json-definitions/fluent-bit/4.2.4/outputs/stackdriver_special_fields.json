@@ -1,0 +1,27 @@
+{
+  "title": "Stackdriver special fields",
+  "doc_url": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/stackdriver_special_fields",
+  "fields": [
+    {
+      "name": "match",
+      "required": false,
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "match_regex",
+      "required": false,
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "no_config_heading",
+    "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/stackdriver_special_fields"
+  },
+  "description": "When the google-logging-agent receives a structured log record, it treats some fields specially, allowing users to set specific fields in the LogEntry object that get written to the Logging API."
+}

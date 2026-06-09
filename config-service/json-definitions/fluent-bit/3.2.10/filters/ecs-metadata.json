@@ -1,0 +1,73 @@
+{
+  "title": "ECS Metadata",
+  "doc_url": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/ecs-metadata",
+  "fields": [
+    {
+      "name": "add",
+      "required": false,
+      "description": "This parameter is similar to the ADD option in the [modify filter](https://docs.fluentbit.io/manual/pipeline/filters/modify).",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/ecs-metadata#configuration-parameters",
+      "default": "No default",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "ecs_tag_prefix",
+      "required": true,
+      "description": "This parameter is similar to the Kube_Tag_Prefix option in the [Kubernetes filter](https://docs.fluentbit.io/manual/pipeline/filters/kubernetes) and performs the same function.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/ecs-metadata#configuration-parameters",
+      "default": "emptry string",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "cluster_metadata_only",
+      "required": false,
+      "description": "When enabled, the plugin will only attempt to attach cluster metadata values.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/ecs-metadata#configuration-parameters",
+      "default": "Off",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "ecs_meta_cache_ttl",
+      "required": false,
+      "description": "The filter builds a hash table in memory mapping each unique container short ID to its metadata.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/ecs-metadata#configuration-parameters",
+      "default": "1h (1 hour)",
+      "data_type": "duration",
+      "validation_rule": {
+        "kind": "regex",
+        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+      }
+    },
+    {
+      "name": "match",
+      "required": false,
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "match_regex",
+      "required": false,
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/filters/ecs-metadata#configuration-parameters",
+    "table_header": [
+      "Key",
+      "Description",
+      "Default"
+    ]
+  },
+  "description": "The ECS Filter Enriches logs with AWS Elastic Container Service Metadata."
+}

@@ -1,0 +1,72 @@
+{
+  "title": "copy",
+  "doc_url": "https://docs.fluentd.org/output/copy",
+  "description": "Duplicates matched records to multiple nested store outputs.",
+  "fields": [
+    {
+      "name": "@id",
+      "required": false,
+      "description": "Unique identifier for the plugin instance.",
+      "reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "@log_level",
+      "required": false,
+      "description": "Plugin-specific log level that overrides the global system log level.",
+      "reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+      "data_type": "enum",
+      "validation_rule": {
+        "kind": "enum",
+        "values": [
+          "trace",
+          "debug",
+          "info",
+          "warn",
+          "error",
+          "fatal"
+        ]
+      },
+      "default": "info",
+      "called_enum_options": [
+        "trace",
+        "debug",
+        "info",
+        "warn",
+        "error",
+        "fatal"
+      ]
+    },
+    {
+      "name": "deep_copy",
+      "required": false,
+      "description": "Deep copy records before passing them to each nested store.",
+      "reference": "https://docs.fluentd.org/output/copy",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      },
+      "default": false
+    }
+  ],
+  "allowed_children": [
+    {
+      "section": "store",
+      "cardinality": {
+        "minimum": 1,
+        "maximum": null
+      }
+    }
+  ],
+  "directive_argument": {
+    "name": "match",
+    "required": true,
+    "description": "Tag pattern selecting events for this output.",
+    "reference": "https://docs.fluentd.org/configuration/config-file",
+    "data_type": "string",
+    "validation_rule": {
+      "kind": "regex_string"
+    }
+  }
+}

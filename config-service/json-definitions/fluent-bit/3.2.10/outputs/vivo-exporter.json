@@ -1,0 +1,75 @@
+{
+  "title": "Vivo Exporter",
+  "doc_url": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/vivo-exporter",
+  "fields": [
+    {
+      "name": "empty_stream_on_read",
+      "required": false,
+      "description": "If enabled, when an HTTP client consumes the data from a stream, the stream content will be removed.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/vivo-exporter#configuration-parameters",
+      "default": "Off",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "stream_queue_size",
+      "required": false,
+      "description": "Specify the maximum queue size per stream.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/vivo-exporter#configuration-parameters",
+      "default": "20M",
+      "data_type": "size",
+      "validation_rule": {
+        "kind": "regex",
+        "pattern": "^\\\\d+([KMGTP]i?[Bb]?|[KMGTP])?$"
+      }
+    },
+    {
+      "name": "http_cors_allow_origin",
+      "required": false,
+      "description": "Specify the value for the HTTP Access-Control-Allow-Origin header (CORS).",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/vivo-exporter#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "workers",
+      "required": false,
+      "description": "The number of [workers](/manual/3.2/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/vivo-exporter#configuration-parameters",
+      "default": 1,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "match",
+      "required": false,
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "match_regex",
+      "required": false,
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/vivo-exporter#configuration-parameters",
+    "table_header": [
+      "Key",
+      "Description",
+      "Default"
+    ]
+  },
+  "description": "Vivo Exporter is an output plugin that exposes logs, metrics, and traces through an HTTP endpoint."
+}

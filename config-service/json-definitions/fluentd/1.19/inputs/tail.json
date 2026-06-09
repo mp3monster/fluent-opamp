@@ -1,0 +1,152 @@
+{
+  "title": "tail",
+  "doc_url": "https://docs.fluentd.org/input/tail",
+  "description": "Reads log lines from files and emits them as Fluentd events.",
+  "fields": [
+    {
+      "name": "@id",
+      "required": false,
+      "description": "Unique identifier for the plugin instance.",
+      "reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "@log_level",
+      "required": false,
+      "description": "Plugin-specific log level that overrides the global system log level.",
+      "reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+      "data_type": "enum",
+      "validation_rule": {
+        "kind": "enum",
+        "values": [
+          "trace",
+          "debug",
+          "info",
+          "warn",
+          "error",
+          "fatal"
+        ]
+      },
+      "default": "info",
+      "called_enum_options": [
+        "trace",
+        "debug",
+        "info",
+        "warn",
+        "error",
+        "fatal"
+      ]
+    },
+    {
+      "name": "@label",
+      "required": false,
+      "description": "Routes emitted events to a named label.",
+      "reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+      "data_type": "string",
+      "validation_rule": {
+        "kind": "regex_string"
+      }
+    },
+    {
+      "name": "tag",
+      "required": true,
+      "description": "Tag assigned to emitted events.",
+      "reference": "https://docs.fluentd.org/input/tail",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "path",
+      "required": true,
+      "description": "Path or glob of files to watch.",
+      "reference": "https://docs.fluentd.org/input/tail",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "exclude_path",
+      "required": false,
+      "description": "List of file path patterns excluded from watching.",
+      "reference": "https://docs.fluentd.org/input/tail",
+      "data_type": "list",
+      "validation_rule": {
+        "kind": "list"
+      }
+    },
+    {
+      "name": "pos_file",
+      "required": false,
+      "description": "Path to the position file used to resume tailing after restart.",
+      "reference": "https://docs.fluentd.org/input/tail",
+      "data_type": "string",
+      "validation_rule": {
+        "kind": "regex_string"
+      }
+    },
+    {
+      "name": "read_from_head",
+      "required": false,
+      "description": "Read the target file from the beginning on startup.",
+      "reference": "https://docs.fluentd.org/input/tail",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      },
+      "default": false
+    },
+    {
+      "name": "follow_inodes",
+      "required": false,
+      "description": "Track inodes to avoid duplicate reads when files rotate.",
+      "reference": "https://docs.fluentd.org/input/tail",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      },
+      "default": false
+    },
+    {
+      "name": "refresh_interval",
+      "required": false,
+      "description": "How often Fluentd refreshes the watched file set.",
+      "reference": "https://docs.fluentd.org/input/tail",
+      "data_type": "time",
+      "validation_rule": null,
+      "default": "60s"
+    },
+    {
+      "name": "rotate_wait",
+      "required": false,
+      "description": "Time to keep the old file handle open after rotation.",
+      "reference": "https://docs.fluentd.org/input/tail",
+      "data_type": "time",
+      "validation_rule": null,
+      "default": "5s"
+    },
+    {
+      "name": "path_key",
+      "required": false,
+      "description": "Record key used to inject the tailed file path.",
+      "reference": "https://docs.fluentd.org/input/tail",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "allowed_children": [
+    {
+      "section": "parse",
+      "cardinality": {
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    {
+      "section": "storage",
+      "cardinality": {
+        "minimum": 0,
+        "maximum": 1
+      }
+    }
+  ]
+}

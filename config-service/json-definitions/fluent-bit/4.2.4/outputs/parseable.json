@@ -1,0 +1,137 @@
+{
+  "title": "Parseable",
+  "doc_url": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/parseable",
+  "fields": [
+    {
+      "name": "add_label",
+      "required": false,
+      "description": "Add custom labels to the telemetry data.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/parseable#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "header",
+      "required": true,
+      "description": "Required headers for Parseable integration.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/parseable#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "host",
+      "required": false,
+      "description": "Your Parseable Ingestor hostname or IP address.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/parseable#configuration-parameters",
+      "default": "parseable",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "http_passwd",
+      "required": false,
+      "description": "Password for HTTP basic authentication.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/parseable#configuration-parameters",
+      "default": "admin",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "http_user",
+      "required": false,
+      "description": "Username for HTTP basic authentication.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/parseable#configuration-parameters",
+      "default": "admin",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "log_response_payload",
+      "required": false,
+      "description": "Log the response payload from the server for debugging.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/parseable#configuration-parameters",
+      "default": false,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "logs_uri",
+      "required": false,
+      "description": "Specify the HTTP URI for the target web server listening for logs.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/parseable#configuration-parameters",
+      "default": "/v1/logs",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "metrics_uri",
+      "required": false,
+      "description": "Specify the HTTP URI for the target web server listening for metrics.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/parseable#configuration-parameters",
+      "default": "/v1/metrics",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "port",
+      "required": false,
+      "description": "TCP port of your Parseable Ingestor.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/parseable#configuration-parameters",
+      "default": 8000,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 65535
+      }
+    },
+    {
+      "name": "tls",
+      "required": false,
+      "description": "Enable or disable TLS/SSL encryption.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/parseable#configuration-parameters",
+      "default": "off",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "traces_uri",
+      "required": false,
+      "description": "Specify the HTTP URI for the target web server listening for traces.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/parseable#configuration-parameters",
+      "default": "/v1/traces",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "match",
+      "required": false,
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "match_regex",
+      "required": false,
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/parseable#configuration-parameters",
+    "table_header": [
+      "Key",
+      "Description",
+      "Default"
+    ]
+  },
+  "description": "Stream logs, metrics, and traces to Parseable by utilizing the OpenTelemetry plugin to send telemetry data to the Parseable OpenTelemetry-compatible Ingestor endpoints."
+}

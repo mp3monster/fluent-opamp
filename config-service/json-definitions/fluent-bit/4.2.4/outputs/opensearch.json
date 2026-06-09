@@ -1,0 +1,381 @@
+{
+  "title": "OpenSearch",
+  "doc_url": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch",
+  "fields": [
+    {
+      "name": "aws_auth",
+      "required": false,
+      "description": "Enable AWS Sigv4 Authentication for Amazon OpenSearch Service.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
+      "default": "Off",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "aws_external_id",
+      "required": false,
+      "description": "External ID for the AWS IAM Role specified with aws_role_arn.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "aws_profile",
+      "required": false,
+      "description": "AWS profile name.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
+      "default": "default",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "aws_region",
+      "required": false,
+      "description": "Specify the AWS region for Amazon OpenSearch Service.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "aws_role_arn",
+      "required": false,
+      "description": "AWS IAM Role to assume to put records to your Amazon cluster.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "aws_service_name",
+      "required": false,
+      "description": "Service name to be used in AWS Sigv4 signature.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
+      "default": "es",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "aws_sts_endpoint",
+      "required": false,
+      "description": "Specify the custom STS endpoint to be used with STS API for Amazon OpenSearch Service.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "buffer_size",
+      "required": true,
+      "description": "Specify the buffer size used to read the response from the OpenSearch HTTP service.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
+      "default": "512k",
+      "data_type": "size",
+      "validation_rule": {
+        "kind": "regex",
+        "pattern": "^\\\\d+([KMGTP]i?[Bb]?|[KMGTP])?$"
+      }
+    },
+    {
+      "name": "compress",
+      "required": false,
+      "description": "Set payload compression mechanism.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "current_time_index",
+      "required": false,
+      "description": "Use current time for index generation instead of message record.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
+      "default": "Off",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "generate_id",
+      "required": false,
+      "description": "When enabled, generate _id for outgoing records.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
+      "default": "Off",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "host",
+      "required": false,
+      "description": "IP address or hostname of the target OpenSearch instance.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
+      "default": "127.0.0.1",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "http_passwd",
+      "required": false,
+      "description": "Password for user defined in http_user.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "http_user",
+      "required": false,
+      "description": "Optional username credential for HTTP basic authentication.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "id_key",
+      "required": false,
+      "description": "If set, _id will be the value of the key from incoming record and generate_id option is ignored.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "include_tag_key",
+      "required": false,
+      "description": "When enabled, append the Tag name to the record.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
+      "default": "Off",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "index",
+      "required": false,
+      "description": "Index name, supports [Record Accessor syntax](/manual/4.2/administration/configuring-fluent-bit/classic-mode/record-accessor.md) from 2.0.5 or later.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
+      "default": "fluent-bit",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "logstash_dateformat",
+      "required": false,
+      "description": "Time format, based on [strftime](https://man7.org/linux/man-pages/man3/strftime.3.html), to generate the second part of the index name.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
+      "default": "%Y.%m.%d",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "logstash_format",
+      "required": false,
+      "description": "Enable Logstash format compatibility.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
+      "default": "Off",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "logstash_prefix",
+      "required": false,
+      "description": "When logstash_format is enabled, the index name is composed using a prefix and the date.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
+      "default": "logstash",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "logstash_prefix_key",
+      "required": false,
+      "description": "When included, the value of the key in the record will be evaluated as key reference and overrides logstash_prefix for index generation.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "logstash_prefix_separator",
+      "required": false,
+      "description": "Set a separator between logstash_prefix and the date.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
+      "default": "-",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "path",
+      "required": false,
+      "description": "OpenSearch accepts new data on HTTP query path /_bulk.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "pipeline",
+      "required": false,
+      "description": "OpenSearch lets you set up filters called pipelines.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "port",
+      "required": false,
+      "description": "TCP port of the target OpenSearch instance.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
+      "default": 9200,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 65535
+      }
+    },
+    {
+      "name": "replace_dots",
+      "required": false,
+      "description": "When enabled, replace field name dots (.) with underscores (_).",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
+      "default": "Off",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "suppress_type_name",
+      "required": false,
+      "description": "When enabled, mapping types is removed and the type option is ignored.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
+      "default": "Off",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "tag_key",
+      "required": false,
+      "description": "When include_tag_key is enabled, this property defines the key name for the tag.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
+      "default": "flb-key",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "time_key",
+      "required": false,
+      "description": "When logstash_format is enabled, each record will get a new timestamp field.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
+      "default": "@timestamp",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "time_key_format",
+      "required": false,
+      "description": "When logstash_format is enabled, this property defines the format of the timestamp.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
+      "default": "%Y-%m-%dT%H:%M:%S",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "time_key_nanos",
+      "required": false,
+      "description": "When logstash_format is enabled, enabling this property sends nanosecond precision timestamps.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
+      "default": "Off",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "trace_error",
+      "required": false,
+      "description": "When enabled, print the OpenSearch API calls to stdout when OpenSearch returns an error (for diagnostics only).",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
+      "default": "Off",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "trace_output",
+      "required": false,
+      "description": "When enabled, print the OpenSearch API calls to stdout (for diagnostics only).",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
+      "default": "Off",
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "type",
+      "required": false,
+      "description": "Type name.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
+      "default": "_doc",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "workers",
+      "required": false,
+      "description": "The number of [workers](/manual/4.2/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
+      "default": 0,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "write_operation",
+      "required": false,
+      "description": "Operation to use to write in bulk requests.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
+      "default": "create",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "match",
+      "required": false,
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "match_regex",
+      "required": false,
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
+    "table_header": [
+      "Key",
+      "Description",
+      "Default"
+    ]
+  },
+  "description": "Fluent Bit output plugin: OpenSearch."
+}

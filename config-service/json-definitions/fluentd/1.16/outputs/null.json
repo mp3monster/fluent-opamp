@@ -1,0 +1,61 @@
+{
+  "title": "null",
+  "doc_url": "https://docs.fluentd.org/output/null",
+  "description": "Drops matched records.",
+  "fields": [
+    {
+      "name": "@id",
+      "required": false,
+      "description": "Unique identifier for the plugin instance.",
+      "reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "@log_level",
+      "required": false,
+      "description": "Plugin-specific log level that overrides the global system log level.",
+      "reference": "https://docs.fluentd.org/configuration/plugin-common-parameters",
+      "data_type": "enum",
+      "validation_rule": {
+        "kind": "enum",
+        "values": [
+          "trace",
+          "debug",
+          "info",
+          "warn",
+          "error",
+          "fatal"
+        ]
+      },
+      "default": "info",
+      "called_enum_options": [
+        "trace",
+        "debug",
+        "info",
+        "warn",
+        "error",
+        "fatal"
+      ]
+    }
+  ],
+  "allowed_children": [
+    {
+      "section": "buffer",
+      "cardinality": {
+        "minimum": 0,
+        "maximum": 1
+      }
+    }
+  ],
+  "directive_argument": {
+    "name": "match",
+    "required": true,
+    "description": "Tag pattern selecting events for this output.",
+    "reference": "https://docs.fluentd.org/configuration/config-file",
+    "data_type": "string",
+    "validation_rule": {
+      "kind": "regex_string"
+    }
+  }
+}

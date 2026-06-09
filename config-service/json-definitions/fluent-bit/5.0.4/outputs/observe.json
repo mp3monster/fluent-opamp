@@ -1,0 +1,119 @@
+{
+  "title": "Observe",
+  "doc_url": "https://docs.fluentbit.io/manual/data-pipeline/outputs/observe",
+  "fields": [
+    {
+      "name": "compress",
+      "required": false,
+      "description": "Sets the payload compression mechanism.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/observe#configuration-parameters",
+      "default": "gzip",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "format",
+      "required": false,
+      "description": "The data format to be used in the HTTP request body.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/observe#configuration-parameters",
+      "default": "msgpack",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "header",
+      "required": false,
+      "description": "The specific header that provides the Observe token needed to authorize sending data [into a data stream](https://docs.observeinc.com/en/latest/content/data-ingestion/datastreams.html?highlight=ingest%20token#create-a-datastream).",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/observe#configuration-parameters",
+      "default": "Authorization Bearer ${OBSERVE_TOKEN}",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "host",
+      "required": false,
+      "description": "IP address or hostname of the Observe data collection endpoint.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/observe#configuration-parameters",
+      "default": "OBSERVE_CUSTOMER.collect.observeinc.com",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "port",
+      "required": false,
+      "description": "TCP port to use when sending data to Observe.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/observe#configuration-parameters",
+      "default": 443,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 65535
+      }
+    },
+    {
+      "name": "tls",
+      "required": false,
+      "description": "Specifies whether to use TLS.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/observe#configuration-parameters",
+      "default": "on",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "tls.ca_file",
+      "required": false,
+      "description": "For Windows only: the path to the root cert.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/observe#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "uri",
+      "required": false,
+      "description": "Specifies the HTTP URI for Observe.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/observe#configuration-parameters",
+      "default": "/v1/http/fluentbit",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "workers",
+      "required": false,
+      "description": "The number of [workers](/manual/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/observe#configuration-parameters",
+      "default": 0,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "match",
+      "required": false,
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "match_regex",
+      "required": false,
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/observe#configuration-parameters",
+    "table_header": [
+      "Key",
+      "Description",
+      "Default"
+    ]
+  },
+  "description": "Use the HTTP output plugin to flush your records into Observe."
+}

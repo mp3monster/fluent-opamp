@@ -1,0 +1,106 @@
+{
+  "title": "ECS metadata",
+  "doc_url": "https://docs.fluentbit.io/manual/data-pipeline/filters/ecs-metadata",
+  "fields": [
+    {
+      "name": "add",
+      "required": false,
+      "description": "Similar to the add option in the [modify filter](/manual/data-pipeline/filters/modify.md).",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/ecs-metadata#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "agent_endpoint_retries",
+      "required": false,
+      "description": "Number of retries for failed metadata requests to the ECS Agent Introspection endpoint.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/ecs-metadata#configuration-parameters",
+      "default": 2,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "cluster_metadata_only",
+      "required": false,
+      "description": "When enabled, the plugin only attempts to attach cluster metadata values.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/ecs-metadata#configuration-parameters",
+      "default": false,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "ecs_meta_cache_ttl",
+      "required": false,
+      "description": "The filter builds a hash table in memory mapping each unique container short ID to its metadata.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/ecs-metadata#configuration-parameters",
+      "default": "1h",
+      "data_type": "duration",
+      "validation_rule": {
+        "kind": "regex",
+        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+      }
+    },
+    {
+      "name": "ecs_meta_host",
+      "required": false,
+      "description": "The host name at which the ECS Agent Introspection endpoint is reachable.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/ecs-metadata#configuration-parameters",
+      "default": "127.0.0.1",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "ecs_meta_port",
+      "required": false,
+      "description": "The port at which the ECS Agent Introspection endpoint is reachable.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/ecs-metadata#configuration-parameters",
+      "default": 51678,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 65535
+      }
+    },
+    {
+      "name": "ecs_tag_prefix",
+      "required": true,
+      "description": "Similar to the kube_tag_prefix option in the [Kubernetes filter](/manual/data-pipeline/filters/kubernetes.md) and performs the same function.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/ecs-metadata#configuration-parameters",
+      "default": "\"\"",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "match",
+      "required": false,
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "match_regex",
+      "required": false,
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/ecs-metadata#configuration-parameters",
+    "table_header": [
+      "Key",
+      "Description",
+      "Default"
+    ]
+  },
+  "description": "Fluent Bit filter plugin: ECS metadata."
+}

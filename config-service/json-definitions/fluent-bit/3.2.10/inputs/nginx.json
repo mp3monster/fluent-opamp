@@ -1,0 +1,77 @@
+{
+  "title": "NGINX Exporter Metrics",
+  "doc_url": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/nginx",
+  "fields": [
+    {
+      "name": "host",
+      "required": false,
+      "description": "Name of the target host or IP address to check.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/nginx#configuration-parameters",
+      "default": "localhost",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "port",
+      "required": false,
+      "description": "Port of the target nginx service to connect to.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/nginx#configuration-parameters",
+      "default": 80,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 65535
+      }
+    },
+    {
+      "name": "status_url",
+      "required": false,
+      "description": "The URL of the Stub Status Handler.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/nginx#configuration-parameters",
+      "default": "/status",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "nginx_plus",
+      "required": false,
+      "description": "Turn on NGINX plus mode.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/nginx#configuration-parameters",
+      "default": true,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "threaded",
+      "required": false,
+      "description": "Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs).",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/nginx#configuration-parameters",
+      "default": false,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "tag",
+      "required": true,
+      "description": "Tag assigned to records emitted by this input plugin.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/nginx#configuration-parameters",
+    "table_header": [
+      "Key",
+      "Description",
+      "Default"
+    ]
+  },
+  "description": "NGINX Exporter Metrics input plugin scrapes metrics from the NGINX stub status handler."
+}

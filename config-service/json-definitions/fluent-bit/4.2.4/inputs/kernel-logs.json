@@ -1,0 +1,47 @@
+{
+  "title": "Kernel logs",
+  "doc_url": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/kernel-logs",
+  "fields": [
+    {
+      "name": "prio_level",
+      "required": false,
+      "description": "The log level to filter.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/kernel-logs#configuration-parameters",
+      "default": 8,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "threaded",
+      "required": false,
+      "description": "Indicates whether to run this input in its own [thread](/manual/4.2/administration/multithreading.md#inputs).",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/kernel-logs#configuration-parameters",
+      "default": false,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "tag",
+      "required": true,
+      "description": "Tag assigned to records emitted by this input plugin.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/kernel-logs#configuration-parameters",
+    "table_header": [
+      "Key",
+      "Description",
+      "Default"
+    ]
+  },
+  "description": "Fluent Bit input plugin: Kernel logs."
+}

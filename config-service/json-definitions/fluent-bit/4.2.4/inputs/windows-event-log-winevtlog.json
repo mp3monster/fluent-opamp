@@ -1,0 +1,260 @@
+{
+  "title": "Windows Event logs (winevtlog)",
+  "doc_url": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/windows-event-log-winevtlog",
+  "fields": [
+    {
+      "name": "channels",
+      "required": false,
+      "description": "A comma-separated list of channels to read from.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/windows-event-log-winevtlog#configuration-parameters",
+      "data_type": "list",
+      "validation_rule": {
+        "kind": "list",
+        "delimiter": ","
+      }
+    },
+    {
+      "name": "db",
+      "required": false,
+      "description": "Optional.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/windows-event-log-winevtlog#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "event_query",
+      "required": false,
+      "description": "Specify XML query for filtering events.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/windows-event-log-winevtlog#configuration-parameters",
+      "default": "*",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "ignore_missing_channels",
+      "required": false,
+      "description": "Optional.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/windows-event-log-winevtlog#configuration-parameters",
+      "default": false,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "interval_nsec",
+      "required": false,
+      "description": "Optional.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/windows-event-log-winevtlog#configuration-parameters",
+      "default": 0,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "interval_sec",
+      "required": false,
+      "description": "Optional.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/windows-event-log-winevtlog#configuration-parameters",
+      "default": 1,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "read_existing_events",
+      "required": false,
+      "description": "Optional.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/windows-event-log-winevtlog#configuration-parameters",
+      "default": false,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "read_limit_per_cycle",
+      "required": false,
+      "description": "Specify read limit per cycle.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/windows-event-log-winevtlog#configuration-parameters",
+      "default": "512KiB",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "remote.domain",
+      "required": false,
+      "description": "Specify domain name of remote access for Windows EventLog.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/windows-event-log-winevtlog#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "remote.password",
+      "required": false,
+      "description": "Specify password of remote access for Windows EventLog.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/windows-event-log-winevtlog#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "remote.server",
+      "required": false,
+      "description": "Specify server name of remote access for Windows EventLog.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/windows-event-log-winevtlog#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "remote.username",
+      "required": false,
+      "description": "Specify user name of remote access for Windows EventLog.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/windows-event-log-winevtlog#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "reconnect.base_ms",
+      "required": false,
+      "description": "Base reconnect delay in milliseconds after a subscription failure.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/windows-event-log-winevtlog#configuration-parameters",
+      "default": 500,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "reconnect.max_ms",
+      "required": false,
+      "description": "Maximum reconnect delay in milliseconds.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/windows-event-log-winevtlog#configuration-parameters",
+      "default": 30000,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "reconnect.multiplier",
+      "required": false,
+      "description": "Backoff multiplier applied between reconnect attempts.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/windows-event-log-winevtlog#configuration-parameters",
+      "default": "2.0",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "reconnect.jitter_pct",
+      "required": false,
+      "description": "Jitter percentage applied to the reconnect delay to avoid synchronized retries.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/windows-event-log-winevtlog#configuration-parameters",
+      "default": 20,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "reconnect.max_retries",
+      "required": false,
+      "description": "Maximum number of reconnect attempts before the channel stops retrying.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/windows-event-log-winevtlog#configuration-parameters",
+      "default": 8,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "render_event_as_text",
+      "required": false,
+      "description": "Optional.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/windows-event-log-winevtlog#configuration-parameters",
+      "default": false,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "render_event_as_xml",
+      "required": false,
+      "description": "Optional.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/windows-event-log-winevtlog#configuration-parameters",
+      "default": false,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "render_event_text_key",
+      "required": false,
+      "description": "Optional.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/windows-event-log-winevtlog#configuration-parameters",
+      "default": "log",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "string_inserts",
+      "required": false,
+      "description": "Optional.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/windows-event-log-winevtlog#configuration-parameters",
+      "default": true,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "threaded",
+      "required": false,
+      "description": "Indicates whether to run this input in its own [thread](/manual/4.2/administration/multithreading.md#inputs).",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/windows-event-log-winevtlog#configuration-parameters",
+      "default": false,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "use_ansi",
+      "required": false,
+      "description": "Optional.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/windows-event-log-winevtlog#configuration-parameters",
+      "default": false,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "tag",
+      "required": true,
+      "description": "Tag assigned to records emitted by this input plugin.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/windows-event-log-winevtlog#configuration-parameters",
+    "table_header": [
+      "Key",
+      "Description",
+      "Default"
+    ]
+  },
+  "description": "Fluent Bit input plugin: Windows Event logs (winevtlog)."
+}

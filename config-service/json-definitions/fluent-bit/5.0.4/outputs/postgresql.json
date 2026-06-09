@@ -1,0 +1,122 @@
+{
+  "title": "PostgreSQL",
+  "doc_url": "https://docs.fluentbit.io/manual/data-pipeline/outputs/postgresql",
+  "fields": [
+    {
+      "name": "cockroachdb",
+      "required": false,
+      "description": "Set to true if you will connect the plugin with a CockroachDB.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/postgresql#configuration-parameters",
+      "default": false,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "connection_options",
+      "required": false,
+      "description": "Specifies any valid [PostgreSQL connection options](https://www.postgresql.org/docs/devel/libpq-connect.html#LIBPQ-CONNECT-OPTIONS).",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/postgresql#configuration-parameters",
+      "default": "_none_",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "database",
+      "required": false,
+      "description": "Database name to connect to.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/postgresql#configuration-parameters",
+      "default": "fluentbit",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "host",
+      "required": false,
+      "description": "Hostname/IP address of the PostgreSQL instance.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/postgresql#configuration-parameters",
+      "default": "127.0.0.1",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "password",
+      "required": false,
+      "description": "Password of PostgreSQL username.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/postgresql#configuration-parameters",
+      "default": "_none_",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "port",
+      "required": false,
+      "description": "PostgreSQL port.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/postgresql#configuration-parameters",
+      "default": 5432,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 65535
+      }
+    },
+    {
+      "name": "table",
+      "required": false,
+      "description": "Table name where to store data.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/postgresql#configuration-parameters",
+      "default": "fluentbit",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "user",
+      "required": false,
+      "description": "PostgreSQL username.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/postgresql#configuration-parameters",
+      "default": "_none_",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "workers",
+      "required": false,
+      "description": "The number of [workers](/manual/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/postgresql#configuration-parameters",
+      "default": 1,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "match",
+      "required": false,
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "match_regex",
+      "required": false,
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/postgresql#configuration-parameters",
+    "table_header": [
+      "Key",
+      "Description",
+      "Default"
+    ]
+  },
+  "description": "PostgreSQL is an open source database management system that supports the SQL language and is capable of storing both structured and unstructured data, such as JSON objects."
+}

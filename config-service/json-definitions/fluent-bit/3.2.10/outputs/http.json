@@ -1,0 +1,279 @@
+{
+  "title": "HTTP",
+  "doc_url": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/http",
+  "fields": [
+    {
+      "name": "host",
+      "required": false,
+      "description": "IP address or hostname of the target HTTP Server",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/http#configuration-parameters",
+      "default": "127.0.0.1",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "http_user",
+      "required": false,
+      "description": "Basic Auth Username",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/http#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "http_passwd",
+      "required": false,
+      "description": "Basic Auth Password.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/http#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "aws_auth",
+      "required": false,
+      "description": "Enable AWS SigV4 authentication",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/http#configuration-parameters",
+      "default": false,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "aws_service",
+      "required": false,
+      "description": "Specify the AWS service code, i.e.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/http#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "aws_region",
+      "required": false,
+      "description": "Specify the AWS region of your service, used by SigV4 authentication",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/http#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "aws_sts_endpoint",
+      "required": false,
+      "description": "Specify the custom sts endpoint to be used with STS API, used with the AWS_Role_ARN option, used by SigV4 authentication",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/http#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "aws_role_arn",
+      "required": false,
+      "description": "AWS IAM Role to assume, used by SigV4 authentication",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/http#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "aws_external_id",
+      "required": false,
+      "description": "External ID for the AWS IAM Role specified with aws_role_arn, used by SigV4 authentication",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/http#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "port",
+      "required": false,
+      "description": "TCP port of the target HTTP Server",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/http#configuration-parameters",
+      "default": 80,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 65535
+      }
+    },
+    {
+      "name": "proxy",
+      "required": false,
+      "description": "Specify an HTTP Proxy.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/http#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "uri",
+      "required": false,
+      "description": "Specify an optional HTTP URI for the target web server, e.g: /something",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/http#configuration-parameters",
+      "default": "/",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "compress",
+      "required": false,
+      "description": "Set payload compression mechanism.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/http#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "format",
+      "required": false,
+      "description": "Specify the data format to be used in the HTTP request body, by default it uses msgpack.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/http#configuration-parameters",
+      "default": "msgpack",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "allow_duplicated_headers",
+      "required": false,
+      "description": "Specify if duplicated headers are allowed.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/http#configuration-parameters",
+      "default": true,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "log_response_payload",
+      "required": false,
+      "description": "Specify if the response paylod should be logged or not.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/http#configuration-parameters",
+      "default": true,
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "name": "header_tag",
+      "required": false,
+      "description": "Specify an optional HTTP header field for the original message tag.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/http#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "header",
+      "required": false,
+      "description": "Add a HTTP header key/value pair.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/http#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "json_date_key",
+      "required": false,
+      "description": "Specify the name of the time key in the output record.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/http#configuration-parameters",
+      "default": "date",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "json_date_format",
+      "required": false,
+      "description": "Specify the format of the date.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/http#configuration-parameters",
+      "default": "double",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "gelf_timestamp_key",
+      "required": false,
+      "description": "Specify the key to use for timestamp in gelf format",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/http#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "gelf_host_key",
+      "required": false,
+      "description": "Specify the key to use for the host in gelf format",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/http#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "gelf_short_message_key",
+      "required": false,
+      "description": "Specify the key to use as the short message in gelf format",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/http#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "gelf_full_message_key",
+      "required": false,
+      "description": "Specify the key to use for the full message in gelf format",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/http#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "gelf_level_key",
+      "required": false,
+      "description": "Specify the key to use for the level in gelf format",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/http#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "body_key",
+      "required": true,
+      "description": "Specify the key to use as the body of the request (must prefix with \"$\").",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/http#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "headers_key",
+      "required": true,
+      "description": "Specify the key to use as the headers of the request (must prefix with \"$\").",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/http#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "workers",
+      "required": false,
+      "description": "The number of [workers](/manual/3.2/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/http#configuration-parameters",
+      "default": 2,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "match",
+      "required": false,
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "match_regex",
+      "required": false,
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/http#configuration-parameters",
+    "table_header": [
+      "Key",
+      "Description",
+      "default"
+    ]
+  },
+  "description": "The http output plugin allows to flush your records into a HTTP endpoint."
+}

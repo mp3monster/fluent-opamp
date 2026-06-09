@@ -1,0 +1,56 @@
+{
+  "title": "CPU Log Based Metrics",
+  "doc_url": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/cpu-metrics",
+  "fields": [
+    {
+      "name": "interval_sec",
+      "required": false,
+      "description": "Polling interval in seconds",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/cpu-metrics#configuration-parameters",
+      "default": 1,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "interval_nsec",
+      "required": false,
+      "description": "Polling interval in nanoseconds",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/cpu-metrics#configuration-parameters",
+      "default": 0,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 0
+      }
+    },
+    {
+      "name": "pid",
+      "required": false,
+      "description": "Specify the ID (PID) of a running process in the system.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/cpu-metrics#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "tag",
+      "required": true,
+      "description": "Tag assigned to records emitted by this input plugin.",
+      "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "data_type": "string",
+      "validation_rule": null
+    }
+  ],
+  "extraction": {
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/cpu-metrics#configuration-parameters",
+    "table_header": [
+      "Key",
+      "Description",
+      "Default"
+    ]
+  },
+  "description": "The cpu input plugin, measures the CPU usage of a process or the whole system by default (considering per CPU core)."
+}
