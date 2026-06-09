@@ -242,5 +242,5 @@ Slack setup files prepared.
 Next:
 1. Follow docs/slack_configuration.md to create/install the Slack app from this manifest.
 2. If you skipped tokens, rerun this script with --bot-token/--signing-secret/--app-token.
-3. Start broker: ./scripts/start_broker.sh
+3. Start broker: opamp-cli start broker
 EOF
