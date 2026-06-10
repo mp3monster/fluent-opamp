@@ -1,0 +1,154 @@
+{
+  "type": "object",
+  "title": "Windows Event Log (winevtlog)",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "winevtlog",
+      "title": "Plugin"
+    },
+    "channels": {
+      "type": "array",
+      "description": "A comma-separated list of channels to read from.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga",
+      "x-doc-required": false,
+      "x-config-data-type": "list",
+      "x-references-parser": false
+    },
+    "interval_sec": {
+      "type": "integer",
+      "description": "Set the polling interval for each channel.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 1
+    },
+    "interval_nsec": {
+      "type": "integer",
+      "description": "Set the polling interval for each channel (sub seconds.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 0
+    },
+    "read_existing_events": {
+      "type": "boolean",
+      "description": "Whether to read existing events from head or tailing events at last on subscribing.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "db": {
+      "type": "string",
+      "description": "Set the path to save the read offsets.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "string_inserts": {
+      "type": "boolean",
+      "description": "Whether to include StringInserts in output records.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": true
+    },
+    "render_event_as_xml": {
+      "type": "boolean",
+      "description": "Whether to render system part of event as XML string or not.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "ignore_missing_channels": {
+      "type": "boolean",
+      "description": "Whether to ignore event channels not present in the event log, and continue running with subscribed channels.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "use_ansi": {
+      "type": "boolean",
+      "description": "Use ANSI encoding on eventlog messages.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "event_query": {
+      "type": "string",
+      "description": "Specify XML query for filtering events.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "*"
+    },
+    "read_limit_per_cycle": {
+      "type": "string",
+      "description": "Specify read limit per cycle.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "512KiB"
+    },
+    "threaded": {
+      "type": "boolean",
+      "description": "Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs).",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "tag": {
+      "type": "string",
+      "description": "Tag assigned to records emitted by this input plugin.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "processors": {
+      "$ref": "../processors.json"
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name",
+    "tag"
+  ],
+  "additionalProperties": false
+}

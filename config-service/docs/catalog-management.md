@@ -8,10 +8,21 @@ Catalogs define plugin metadata used for:
 
 ## Catalog location
 - `config-service/json-definitions/*.json`
+- `config-service/json-definitions/fluent-bit/<version>/`
+- `config-service/json-definitions/fluentd/<version>/`
 - Registered in `config-service/config/catalog-registry.json`
 - Service/system option definitions are registered in `config-service/config/service-registry.json`
 - Parser definitions are registered in `config-service/config/parser-registry.json`
 - Generated runtime schemas are written to `config-service/json-schemas/*.json`
+- Generated runtime schema shards live under `config-service/json-schemas/<config_type>/<version>/`
+
+Large catalog and schema files are stored as manifest files. The public top-level file
+name remains stable, but the manifest now points to:
+1. a versioned base file
+2. one manifest per plugin section (`inputs`, `filters`, `outputs`)
+3. one JSON file per plugin under the matching section folder
+
+Runtime loaders and developer tools assemble those shards automatically.
 
 ## Expected plugin field metadata
 Each field should include:
@@ -75,15 +86,31 @@ This lets the UI build a dedicated Parsers section and lets validation match par
 2. known built-in Fluent Bit parser names for that version
 
 ## Add a new version
-1. Add JSON catalog file under `config-service/json-definitions/`
-2. Add version entry under the correct engine in `catalog-registry.json`
-3. Add matching service definition entry in `service-registry.json`
-4. Add matching parser definition entry in `parser-registry.json` when the engine supports parser definitions
-5. Optionally update `default_versions`
-6. Restart backend (or use dev reload flow) and verify:
+1. Add the top-level JSON catalog manifest under `config-service/json-definitions/`
+2. Add the matching per-version shard directory under `config-service/json-definitions/<engine>/<version>/`
+3. Add version entry under the correct engine in `catalog-registry.json`
+4. Add matching service definition entry in `service-registry.json`
+5. Add matching parser definition entry in `parser-registry.json` when the engine supports parser definitions
+6. Optionally update `default_versions`
+7. Restart backend (or use dev reload flow) and verify:
    - `GET /config-service/api/v1/versions?config_type=<engine>`
    - `GET /config-service/api/v1/parser-options/{version}` for Fluent Bit
    - `POST /config-service/api/v1/catalog/{version}/validate`
+
+For large `all-plugins-catalog.json` files, keep the top-level file as the registry
+target and place the generated shards in version folders such as:
+1. `config-service/json-definitions/fluent-bit/3.2.10/inputs/tail.json`
+2. `config-service/json-definitions/fluent-bit/3.2.10/filters/grep.json`
+3. `config-service/json-definitions/fluent-bit/3.2.10/outputs/stdout.json`
+4. `config-service/json-schemas/fluentbit/3.2.10/inputs/tail.json`
+5. `config-service/json-schemas/fluentbit/3.2.10/outputs/stdout.json`
+6. `config-service/json-schemas/fluentbit/3.2.10/processors.json`
+
+This keeps editors responsive while preserving the registry path.
+
+Fluent Bit schema plugin shards may either:
+1. include shared `processors` details inline
+2. or reference the version-local shared file `processors.json` via JSON Schema `$ref`
 
 ## Fluentd artifacts
 Generated Fluentd catalog and service files currently live at:

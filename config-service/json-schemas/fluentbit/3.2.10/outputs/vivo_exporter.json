@@ -1,0 +1,90 @@
+{
+  "type": "object",
+  "title": "Vivo Exporter",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "vivo_exporter",
+      "title": "Plugin"
+    },
+    "empty_stream_on_read": {
+      "type": "boolean",
+      "description": "If enabled, when an HTTP client consumes the data from a stream, the stream content will be removed.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/vivo-exporter#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": "Off"
+    },
+    "stream_queue_size": {
+      "type": "string",
+      "description": "Specify the maximum queue size per stream.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/vivo-exporter#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "size",
+      "x-references-parser": false,
+      "default": "20M"
+    },
+    "http_cors_allow_origin": {
+      "type": "string",
+      "description": "Specify the value for the HTTP Access-Control-Allow-Origin header (CORS).",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/vivo-exporter#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "workers": {
+      "type": "integer",
+      "description": "The number of [workers](/manual/3.2/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/vivo-exporter#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 1
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match_regex": {
+      "type": "string",
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "processors": {
+      "$ref": "../processors.json"
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}

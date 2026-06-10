@@ -199,7 +199,7 @@
             "properties": {
               "name": {
                 "type": "string",
-                "const": "aws-metadata"
+                "const": "aws"
               },
               "imds_version": {
                 "type": "string",
@@ -467,7 +467,7 @@
             "properties": {
               "name": {
                 "type": "string",
-                "const": "ecs-metadata"
+                "const": "ecs"
               },
               "add": {
                 "type": "string",
@@ -662,7 +662,7 @@
             "properties": {
               "name": {
                 "type": "string",
-                "const": "geoip2-filter"
+                "const": "geoip2"
               },
               "database": {
                 "type": "string",
@@ -1602,7 +1602,7 @@
             "properties": {
               "name": {
                 "type": "string",
-                "const": "multiline-stacktrace"
+                "const": "multiline"
               },
               "multiline.parser": {
                 "type": "string",
@@ -2005,7 +2005,7 @@
             "properties": {
               "name": {
                 "type": "string",
-                "const": "record-modifier"
+                "const": "record_modifier"
               },
               "record": {
                 "type": "string",
@@ -2096,7 +2096,7 @@
             "properties": {
               "name": {
                 "type": "string",
-                "const": "rewrite-tag"
+                "const": "rewrite_tag"
               },
               "rule": {
                 "type": "string",
@@ -2179,7 +2179,7 @@
             "properties": {
               "name": {
                 "type": "string",
-                "const": "standard-output"
+                "const": "stdout"
               },
               "match": {
                 "type": "string",
@@ -2488,7 +2488,7 @@
             "properties": {
               "name": {
                 "type": "string",
-                "const": "type-converter"
+                "const": "type_converter"
               },
               "int_key": {
                 "type": "string",

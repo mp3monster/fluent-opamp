@@ -1,0 +1,206 @@
+{
+  "type": "object",
+  "title": "Prometheus remote write",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "prometheus_remote_write",
+      "title": "Plugin"
+    },
+    "add_label": {
+      "type": "string",
+      "description": "This lets you add custom labels to all metrics sent by the prometheus_remote_write output.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/prometheus-remote-write#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "aws_auth": {
+      "type": "boolean",
+      "description": "Enable AWS SigV4 authentication.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/prometheus-remote-write#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "aws_external_id": {
+      "type": "string",
+      "description": "External ID for the AWS IAM Role specified with aws_role_arn, used by SigV4 authentication.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/prometheus-remote-write#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "aws_profile": {
+      "type": "string",
+      "description": "AWS profile name.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/prometheus-remote-write#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "aws_region": {
+      "type": "string",
+      "description": "Region of your Amazon Managed Service for Prometheus workspace.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/prometheus-remote-write#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "aws_role_arn": {
+      "type": "string",
+      "description": "AWS IAM Role to assume, used by SigV4 authentication.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/prometheus-remote-write#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "aws_service": {
+      "type": "string",
+      "description": "AWS destination service code, used by SigV4 authentication.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/prometheus-remote-write#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "aps"
+    },
+    "aws_sts_endpoint": {
+      "type": "string",
+      "description": "Specify the custom STS endpoint to be used with STS API, used with the aws_role_arn option, used by SigV4 authentication.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/prometheus-remote-write#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "compression": {
+      "type": "string",
+      "description": "Payload compression algorithm.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/prometheus-remote-write#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "snappy"
+    },
+    "header": {
+      "type": "string",
+      "description": "Add a HTTP header key/value pair.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/prometheus-remote-write#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "host": {
+      "type": "string",
+      "description": "IP address or hostname of the target HTTP server.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/prometheus-remote-write#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "127.0.0.1"
+    },
+    "http_passwd": {
+      "type": "string",
+      "description": "Basic Auth password.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/prometheus-remote-write#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "http_user": {
+      "type": "string",
+      "description": "Basic Auth username.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/prometheus-remote-write#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "log_response_payload": {
+      "type": "boolean",
+      "description": "Log the response payload within the Fluent Bit log.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/prometheus-remote-write#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": true
+    },
+    "port": {
+      "type": "integer",
+      "description": "TCP port of the target HTTP server.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/prometheus-remote-write#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 80
+    },
+    "proxy": {
+      "type": "string",
+      "description": "Specify an HTTP proxy.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/prometheus-remote-write#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "uri": {
+      "type": "string",
+      "description": "Specify an optional HTTP URI for the target web server, for example /someuri.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/prometheus-remote-write#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "workers": {
+      "type": "integer",
+      "description": "The number of [workers](/manual/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/prometheus-remote-write#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 2
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match_regex": {
+      "type": "string",
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "processors": {
+      "$ref": "../processors.json"
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}

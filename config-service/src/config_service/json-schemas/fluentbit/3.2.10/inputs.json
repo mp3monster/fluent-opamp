@@ -10,22 +10,22 @@
       },
       {
         "pointer": "/items/oneOf",
-        "file": "inputs/cpu-metrics.json",
+        "file": "inputs/cpu.json",
         "operation": "append"
       },
       {
         "pointer": "/items/oneOf",
-        "file": "inputs/disk-io-metrics.json",
-        "operation": "append"
-      },
-      {
-        "pointer": "/items/oneOf",
-        "file": "inputs/docker-events.json",
+        "file": "inputs/disk.json",
         "operation": "append"
       },
       {
         "pointer": "/items/oneOf",
         "file": "inputs/docker-metrics.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "inputs/docker_events.json",
         "operation": "append"
       },
       {
@@ -50,12 +50,12 @@
       },
       {
         "pointer": "/items/oneOf",
-        "file": "inputs/exec-wasi.json",
+        "file": "inputs/exec_wasi.json",
         "operation": "append"
       },
       {
         "pointer": "/items/oneOf",
-        "file": "inputs/fluentbit-metrics.json",
+        "file": "inputs/fluentbit_metrics.json",
         "operation": "append"
       },
       {
@@ -85,17 +85,17 @@
       },
       {
         "pointer": "/items/oneOf",
-        "file": "inputs/kernel-logs.json",
+        "file": "inputs/kmsg.json",
         "operation": "append"
       },
       {
         "pointer": "/items/oneOf",
-        "file": "inputs/kubernetes-events.json",
+        "file": "inputs/kubernetes_events.json",
         "operation": "append"
       },
       {
         "pointer": "/items/oneOf",
-        "file": "inputs/memory-metrics.json",
+        "file": "inputs/mem.json",
         "operation": "append"
       },
       {
@@ -105,17 +105,17 @@
       },
       {
         "pointer": "/items/oneOf",
-        "file": "inputs/network-io-metrics.json",
+        "file": "inputs/netif.json",
         "operation": "append"
       },
       {
         "pointer": "/items/oneOf",
-        "file": "inputs/nginx.json",
+        "file": "inputs/nginx_metrics.json",
         "operation": "append"
       },
       {
         "pointer": "/items/oneOf",
-        "file": "inputs/node-exporter-metrics.json",
+        "file": "inputs/node_exporter_metrics.json",
         "operation": "append"
       },
       {
@@ -125,27 +125,27 @@
       },
       {
         "pointer": "/items/oneOf",
-        "file": "inputs/podman-metrics.json",
+        "file": "inputs/podman_metrics.json",
         "operation": "append"
       },
       {
         "pointer": "/items/oneOf",
-        "file": "inputs/process.json",
+        "file": "inputs/proc.json",
         "operation": "append"
       },
       {
         "pointer": "/items/oneOf",
-        "file": "inputs/process-exporter-metrics.json",
+        "file": "inputs/process_exporter_metrics.json",
         "operation": "append"
       },
       {
         "pointer": "/items/oneOf",
-        "file": "inputs/prometheus-remote-write.json",
+        "file": "inputs/prometheus_remote_write.json",
         "operation": "append"
       },
       {
         "pointer": "/items/oneOf",
-        "file": "inputs/prometheus-scrape-metrics.json",
+        "file": "inputs/prometheus_scrape.json",
         "operation": "append"
       },
       {
@@ -155,7 +155,7 @@
       },
       {
         "pointer": "/items/oneOf",
-        "file": "inputs/serial-interface.json",
+        "file": "inputs/serial.json",
         "operation": "append"
       },
       {
@@ -165,12 +165,12 @@
       },
       {
         "pointer": "/items/oneOf",
-        "file": "inputs/standard-input.json",
+        "file": "inputs/statsd.json",
         "operation": "append"
       },
       {
         "pointer": "/items/oneOf",
-        "file": "inputs/statsd.json",
+        "file": "inputs/stdin.json",
         "operation": "append"
       },
       {
@@ -205,17 +205,17 @@
       },
       {
         "pointer": "/items/oneOf",
-        "file": "inputs/windows-event-log.json",
+        "file": "inputs/windows_exporter_metrics.json",
         "operation": "append"
       },
       {
         "pointer": "/items/oneOf",
-        "file": "inputs/windows-event-log-winevtlog.json",
+        "file": "inputs/winevtlog.json",
         "operation": "append"
       },
       {
         "pointer": "/items/oneOf",
-        "file": "inputs/windows-exporter-metrics.json",
+        "file": "inputs/winlog.json",
         "operation": "append"
       }
     ]

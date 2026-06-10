@@ -13,13 +13,27 @@
 
 from __future__ import annotations
 
-import json
+import logging
+import shutil
+import sys
 from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFINITIONS_DIR = REPO_ROOT / "config-service" / "json-definitions"
 SRC_DEFINITIONS_DIR = REPO_ROOT / "config-service" / "src" / "config_service" / "json-definitions"
+SRC_ROOT = REPO_ROOT / "config-service" / "src"
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
+
+from config_service.json_artifacts import (  # noqa: E402
+    KEY_FILE,
+    KEY_PAYLOAD,
+    KEY_POINTER,
+    load_json_artifact,
+    write_manifest_json_artifact,
+)
+from config_service.fluentbit_plugin_name_support import normalize_plugin_map  # noqa: E402
 
 LOG_LEVELS = ["off", "trace", "debug", "info", "warn", "error"]
 ROUTER_REFERENCES = {
@@ -28,6 +42,8 @@ ROUTER_REFERENCES = {
     "5.0.4": "https://docs.fluentbit.io/manual/data-pipeline/router",
 }
 TAG_REQUIRED_BY_VERSION = {"3.2.10", "4.2.4"}
+DEFAULT_TIMEOUT = 20
+LOGGER = logging.getLogger("add_fluentbit_processors")
 
 
 def field(
@@ -408,22 +424,114 @@ def _ensure_router_fields(payload: dict[str, Any], version: str) -> None:
                 fields.append(dict(match_regex_field))
 
 
-def update_catalog(path: Path) -> None:
-    data = json.loads(path.read_text(encoding="utf-8"))
+def _clear_legacy_flat_parts(path: Path) -> None:
+    for stale_path in path.parent.glob(f"{path.stem}.*{path.suffix}"):
+        stale_path.unlink(missing_ok=True)
+
+
+def _normalize_plugin_names(
+    payload: dict[str, Any],
+    *,
+    timeout: int,
+    logger: logging.Logger,
+    page_cache: dict[str, str],
+) -> None:
+    plugins = payload.get("plugins", {})
+    if not isinstance(plugins, dict):
+        return
+
+    for section in ("inputs", "filters", "outputs"):
+        section_plugins = plugins.get(section, {})
+        if not isinstance(section_plugins, dict):
+            continue
+        normalized, resolutions, collisions = normalize_plugin_map(
+            section_plugins,
+            section,
+            timeout=timeout,
+            logger=logger,
+            page_cache=page_cache,
+        )
+        plugins[section] = normalized
+        rename_count = sum(
+            1
+            for item in resolutions
+            if item.expected_name and item.expected_name != item.current_name and item.expected_name not in collisions
+        )
+        logger.info(
+            "normalized plugin section version=%s section=%s checked=%s renamed=%s collisions=%s",
+            payload.get("fluent_bit_version"),
+            section,
+            len(resolutions),
+            rename_count,
+            len(collisions),
+        )
+
+
+def update_catalog(
+    path: Path,
+    *,
+    timeout: int = DEFAULT_TIMEOUT,
+    logger: logging.Logger | None = None,
+    page_cache: dict[str, str] | None = None,
+) -> None:
+    active_logger = logger or LOGGER
+    active_page_cache = page_cache if page_cache is not None else {}
+    data = load_json_artifact(path)
     version = str(data.get("fluent_bit_version"))
+    _normalize_plugin_names(data, timeout=timeout, logger=active_logger, page_cache=active_page_cache)
     common = data.setdefault("common", {})
     common["processors"] = processors_definition(version)
     _ensure_router_fields(data, version)
-    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+
+    version_dir = path.parent / "fluent-bit" / version
+    shutil.rmtree(version_dir, ignore_errors=True)
+    _clear_legacy_flat_parts(path)
+
+    base_payload = dict(data)
+    plugins = dict(base_payload.get("plugins", {}))
+    base_payload["plugins"] = plugins
+    top_level_parts: list[dict[str, Any]] = []
+    for section in ("inputs", "filters", "outputs"):
+        section_plugins = dict(plugins.get(section, {}))
+        nested_manifest = write_manifest_json_artifact(
+            version_dir / f"{section}.json",
+            base_file=f"{section}.base.json",
+            base_payload={},
+            parts=[
+                {
+                    KEY_POINTER: f"/{plugin_name}",
+                    KEY_FILE: f"{section}/{plugin_name}.json",
+                    KEY_PAYLOAD: plugin_def,
+                }
+                for plugin_name, plugin_def in sorted(section_plugins.items())
+            ],
+        )
+        plugins[section] = {}
+        top_level_parts.append(
+            {
+                KEY_POINTER: f"/plugins/{section}",
+                KEY_FILE: f"fluent-bit/{version}/{section}.json",
+                KEY_PAYLOAD: nested_manifest,
+            }
+        )
+
+    write_manifest_json_artifact(
+        path,
+        base_file=f"fluent-bit/{version}/all-plugins-catalog.base.json",
+        base_payload=base_payload,
+        parts=top_level_parts,
+    )
 
 
 def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    page_cache: dict[str, str] = {}
     for version in ("3.2.10", "4.2.4", "5.0.4"):
         filename = f"fluent-bit-{version}-all-plugins-catalog.json"
-        update_catalog(DEFINITIONS_DIR / filename)
+        update_catalog(DEFINITIONS_DIR / filename, logger=LOGGER, page_cache=page_cache)
         src_path = SRC_DEFINITIONS_DIR / filename
         if src_path.exists():
-            update_catalog(src_path)
+            update_catalog(src_path, logger=LOGGER, page_cache=page_cache)
 
 
 if __name__ == "__main__":

@@ -8,20 +8,20 @@
         "file": "inputs/collectd.json"
       },
       {
-        "pointer": "/cpu-metrics",
-        "file": "inputs/cpu-metrics.json"
+        "pointer": "/cpu",
+        "file": "inputs/cpu.json"
       },
       {
-        "pointer": "/disk-io-metrics",
-        "file": "inputs/disk-io-metrics.json"
-      },
-      {
-        "pointer": "/docker-events",
-        "file": "inputs/docker-events.json"
+        "pointer": "/disk",
+        "file": "inputs/disk.json"
       },
       {
         "pointer": "/docker-metrics",
         "file": "inputs/docker-metrics.json"
+      },
+      {
+        "pointer": "/docker_events",
+        "file": "inputs/docker_events.json"
       },
       {
         "pointer": "/dummy",
@@ -40,12 +40,12 @@
         "file": "inputs/exec.json"
       },
       {
-        "pointer": "/exec-wasi",
-        "file": "inputs/exec-wasi.json"
+        "pointer": "/exec_wasi",
+        "file": "inputs/exec_wasi.json"
       },
       {
-        "pointer": "/fluentbit-metrics",
-        "file": "inputs/fluentbit-metrics.json"
+        "pointer": "/fluentbit_metrics",
+        "file": "inputs/fluentbit_metrics.json"
       },
       {
         "pointer": "/forward",
@@ -68,76 +68,76 @@
         "file": "inputs/kafka.json"
       },
       {
-        "pointer": "/kernel-logs",
-        "file": "inputs/kernel-logs.json"
+        "pointer": "/kmsg",
+        "file": "inputs/kmsg.json"
       },
       {
-        "pointer": "/kubernetes-events",
-        "file": "inputs/kubernetes-events.json"
+        "pointer": "/kubernetes_events",
+        "file": "inputs/kubernetes_events.json"
       },
       {
-        "pointer": "/memory-metrics",
-        "file": "inputs/memory-metrics.json"
+        "pointer": "/mem",
+        "file": "inputs/mem.json"
       },
       {
         "pointer": "/mqtt",
         "file": "inputs/mqtt.json"
       },
       {
-        "pointer": "/network-io-metrics",
-        "file": "inputs/network-io-metrics.json"
+        "pointer": "/netif",
+        "file": "inputs/netif.json"
       },
       {
-        "pointer": "/nginx",
-        "file": "inputs/nginx.json"
+        "pointer": "/nginx_metrics",
+        "file": "inputs/nginx_metrics.json"
       },
       {
-        "pointer": "/node-exporter-metrics",
-        "file": "inputs/node-exporter-metrics.json"
+        "pointer": "/node_exporter_metrics",
+        "file": "inputs/node_exporter_metrics.json"
       },
       {
         "pointer": "/opentelemetry",
         "file": "inputs/opentelemetry.json"
       },
       {
-        "pointer": "/podman-metrics",
-        "file": "inputs/podman-metrics.json"
+        "pointer": "/podman_metrics",
+        "file": "inputs/podman_metrics.json"
       },
       {
-        "pointer": "/process",
-        "file": "inputs/process.json"
+        "pointer": "/proc",
+        "file": "inputs/proc.json"
       },
       {
-        "pointer": "/process-exporter-metrics",
-        "file": "inputs/process-exporter-metrics.json"
+        "pointer": "/process_exporter_metrics",
+        "file": "inputs/process_exporter_metrics.json"
       },
       {
-        "pointer": "/prometheus-remote-write",
-        "file": "inputs/prometheus-remote-write.json"
+        "pointer": "/prometheus_remote_write",
+        "file": "inputs/prometheus_remote_write.json"
       },
       {
-        "pointer": "/prometheus-scrape-metrics",
-        "file": "inputs/prometheus-scrape-metrics.json"
+        "pointer": "/prometheus_scrape",
+        "file": "inputs/prometheus_scrape.json"
       },
       {
         "pointer": "/random",
         "file": "inputs/random.json"
       },
       {
-        "pointer": "/serial-interface",
-        "file": "inputs/serial-interface.json"
+        "pointer": "/serial",
+        "file": "inputs/serial.json"
       },
       {
         "pointer": "/splunk",
         "file": "inputs/splunk.json"
       },
       {
-        "pointer": "/standard-input",
-        "file": "inputs/standard-input.json"
-      },
-      {
         "pointer": "/statsd",
         "file": "inputs/statsd.json"
+      },
+      {
+        "pointer": "/stdin",
+        "file": "inputs/stdin.json"
       },
       {
         "pointer": "/syslog",
@@ -164,16 +164,16 @@
         "file": "inputs/udp.json"
       },
       {
-        "pointer": "/windows-event-log",
-        "file": "inputs/windows-event-log.json"
+        "pointer": "/windows_exporter_metrics",
+        "file": "inputs/windows_exporter_metrics.json"
       },
       {
-        "pointer": "/windows-event-log-winevtlog",
-        "file": "inputs/windows-event-log-winevtlog.json"
+        "pointer": "/winevtlog",
+        "file": "inputs/winevtlog.json"
       },
       {
-        "pointer": "/windows-exporter-metrics",
-        "file": "inputs/windows-exporter-metrics.json"
+        "pointer": "/winlog",
+        "file": "inputs/winlog.json"
       }
     ]
   }

@@ -1,0 +1,84 @@
+{
+  "type": "object",
+  "title": "Rewrite tag",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "rewrite_tag",
+      "title": "Plugin"
+    },
+    "emitter_mem_buf_limit": {
+      "type": "string",
+      "description": "Set a limit on the amount of memory the tag rewrite emitter can consume if the outputs provide backpressure.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/rewrite-tag#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "size",
+      "x-references-parser": false
+    },
+    "emitter_name": {
+      "type": "string",
+      "description": "Use this property to configure an optional name for the internal emitter plugin that handles filters emitting a record under the new tag.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/rewrite-tag#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "emitter_storage.type": {
+      "type": "string",
+      "description": "Define a buffering mechanism for the new records created.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/rewrite-tag#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "rule": {
+      "type": "string",
+      "description": "Defines the matching criteria and the format of the tag for the matching record.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/rewrite-tag#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match_regex": {
+      "type": "string",
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}

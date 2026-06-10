@@ -1,0 +1,143 @@
+{
+  "type": "object",
+  "title": "Kafka REST Proxy",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "kafka-rest",
+      "title": "Plugin"
+    },
+    "host": {
+      "type": "string",
+      "description": "IP address or hostname of the target Kafka REST Proxy server",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kafka-rest-proxy#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "127.0.0.1"
+    },
+    "port": {
+      "type": "integer",
+      "description": "TCP port of the target Kafka REST Proxy server",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kafka-rest-proxy#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 8082
+    },
+    "topic": {
+      "type": "string",
+      "description": "Set the Kafka topic",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kafka-rest-proxy#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "fluent-bit"
+    },
+    "partition": {
+      "type": "string",
+      "description": "Set the partition number (optional)",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kafka-rest-proxy#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "message_key": {
+      "type": "string",
+      "description": "Set a message key (optional)",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kafka-rest-proxy#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "time_key": {
+      "type": "string",
+      "description": "The Time_Key property defines the name of the field that holds the record timestamp.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kafka-rest-proxy#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "@timestamp"
+    },
+    "time_key_format": {
+      "type": "string",
+      "description": "Defines the format of the timestamp.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kafka-rest-proxy#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "%Y-%m-%dT%H:%M:%S"
+    },
+    "include_tag_key": {
+      "type": "string",
+      "description": "Append the Tag name to the final record.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kafka-rest-proxy#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "Off"
+    },
+    "tag_key": {
+      "type": "boolean",
+      "description": "If Include_Tag_Key is enabled, this property defines the key name for the tag.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kafka-rest-proxy#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": "\\_flb-key"
+    },
+    "workers": {
+      "type": "integer",
+      "description": "The number of [workers](/manual/3.2/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kafka-rest-proxy#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 0
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match_regex": {
+      "type": "string",
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "processors": {
+      "$ref": "../processors.json"
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}

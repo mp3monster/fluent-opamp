@@ -14,6 +14,8 @@
 from __future__ import annotations
 
 import json
+import shutil
+import sys
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
@@ -21,6 +23,16 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[2]
 JSON_DEFINITIONS_DIR = REPO_ROOT / "config-service" / "json-definitions"
 SRC_JSON_DEFINITIONS_DIR = REPO_ROOT / "config-service" / "src" / "config_service" / "json-definitions"
+SRC_ROOT = REPO_ROOT / "config-service" / "src"
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
+
+from config_service.json_artifacts import (  # noqa: E402
+    KEY_FILE,
+    KEY_PAYLOAD,
+    KEY_POINTER,
+    write_manifest_json_artifact,
+)
 
 FLUENTD_LOG_LEVELS = ["trace", "debug", "info", "warn", "error", "fatal"]
 TIME_TYPES = ["float", "unixtime", "string"]
@@ -1036,6 +1048,56 @@ def write_json(path: Path, payload: dict[str, Any]) -> None:
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
+def _clear_legacy_flat_parts(directory: Path, filename: str) -> None:
+    manifest_path = directory / filename
+    for stale_path in directory.glob(f"{manifest_path.stem}.*{manifest_path.suffix}"):
+        stale_path.unlink(missing_ok=True)
+
+
+def _write_catalog_artifact(directory: Path, engine_dir: str, version: str, payload: dict[str, Any]) -> None:
+    filename = f"fluentd-{version}-all-plugins-catalog.json"
+    manifest_path = directory / filename
+    version_dir = directory / engine_dir / version
+
+    shutil.rmtree(version_dir, ignore_errors=True)
+    _clear_legacy_flat_parts(directory, filename)
+
+    base_payload = deepcopy(payload)
+    plugins = base_payload["plugins"]
+    top_level_parts: list[dict[str, Any]] = []
+
+    for section in ("inputs", "filters", "outputs"):
+        section_plugins = deepcopy(plugins[section])
+        nested_manifest = write_manifest_json_artifact(
+            version_dir / f"{section}.json",
+            base_file=f"{section}.base.json",
+            base_payload={},
+            parts=[
+                {
+                    KEY_POINTER: f"/{plugin_name}",
+                    KEY_FILE: f"{section}/{plugin_name}.json",
+                    KEY_PAYLOAD: plugin_def,
+                }
+                for plugin_name, plugin_def in sorted(section_plugins.items())
+            ],
+        )
+        plugins[section] = {}
+        top_level_parts.append(
+            {
+                KEY_POINTER: f"/plugins/{section}",
+                KEY_FILE: f"{engine_dir}/{version}/{section}.json",
+                KEY_PAYLOAD: nested_manifest,
+            }
+        )
+
+    write_manifest_json_artifact(
+        manifest_path,
+        base_file=f"{engine_dir}/{version}/all-plugins-catalog.base.json",
+        base_payload=base_payload,
+        parts=top_level_parts,
+    )
+
+
 def main() -> None:
     output_dirs = (JSON_DEFINITIONS_DIR, SRC_JSON_DEFINITIONS_DIR)
     for directory in output_dirs:
@@ -1044,10 +1106,7 @@ def main() -> None:
         catalog_payload = build_catalog(version)
         service_payload = build_service_definition(version)
         for directory in output_dirs:
-            write_json(
-                directory / f"fluentd-{version}-all-plugins-catalog.json",
-                catalog_payload,
-            )
+            _write_catalog_artifact(directory, "fluentd", version, catalog_payload)
             write_json(
                 directory / f"fluentd-{version}-service-options.json",
                 service_payload,

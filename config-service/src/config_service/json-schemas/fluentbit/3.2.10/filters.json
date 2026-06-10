@@ -5,7 +5,7 @@
     "parts": [
       {
         "pointer": "/items/oneOf",
-        "file": "filters/aws-metadata.json",
+        "file": "filters/aws.json",
         "operation": "append"
       },
       {
@@ -15,7 +15,7 @@
       },
       {
         "pointer": "/items/oneOf",
-        "file": "filters/ecs-metadata.json",
+        "file": "filters/ecs.json",
         "operation": "append"
       },
       {
@@ -25,7 +25,7 @@
       },
       {
         "pointer": "/items/oneOf",
-        "file": "filters/geoip2-filter.json",
+        "file": "filters/geoip2.json",
         "operation": "append"
       },
       {
@@ -55,7 +55,7 @@
       },
       {
         "pointer": "/items/oneOf",
-        "file": "filters/multiline-stacktrace.json",
+        "file": "filters/multiline.json",
         "operation": "append"
       },
       {
@@ -75,17 +75,17 @@
       },
       {
         "pointer": "/items/oneOf",
-        "file": "filters/record-modifier.json",
+        "file": "filters/record_modifier.json",
         "operation": "append"
       },
       {
         "pointer": "/items/oneOf",
-        "file": "filters/rewrite-tag.json",
+        "file": "filters/rewrite_tag.json",
         "operation": "append"
       },
       {
         "pointer": "/items/oneOf",
-        "file": "filters/standard-output.json",
+        "file": "filters/stdout.json",
         "operation": "append"
       },
       {
@@ -105,7 +105,7 @@
       },
       {
         "pointer": "/items/oneOf",
-        "file": "filters/type-converter.json",
+        "file": "filters/type_converter.json",
         "operation": "append"
       },
       {

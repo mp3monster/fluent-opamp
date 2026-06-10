@@ -243,7 +243,7 @@
             "properties": {
               "name": {
                 "type": "string",
-                "const": "aws-metadata"
+                "const": "aws"
               },
               "account_id": {
                 "type": "boolean",
@@ -524,7 +524,7 @@
             "properties": {
               "name": {
                 "type": "string",
-                "const": "ecs-metadata"
+                "const": "ecs"
               },
               "add": {
                 "type": "string",
@@ -747,7 +747,7 @@
             "properties": {
               "name": {
                 "type": "string",
-                "const": "geoip2-filter"
+                "const": "geoip2"
               },
               "database": {
                 "type": "string",
@@ -1871,7 +1871,7 @@
             "properties": {
               "name": {
                 "type": "string",
-                "const": "multiline-stacktrace"
+                "const": "multiline"
               },
               "buffer": {
                 "type": "boolean",
@@ -2299,7 +2299,7 @@
             "properties": {
               "name": {
                 "type": "string",
-                "const": "record-modifier"
+                "const": "record_modifier"
               },
               "allowlist_key": {
                 "type": "string",
@@ -2390,7 +2390,7 @@
             "properties": {
               "name": {
                 "type": "string",
-                "const": "rewrite-tag"
+                "const": "rewrite_tag"
               },
               "emitter_mem_buf_limit": {
                 "type": "string",
@@ -2473,7 +2473,7 @@
             "properties": {
               "name": {
                 "type": "string",
-                "const": "standard-output"
+                "const": "stdout"
               },
               "match": {
                 "type": "string",
@@ -2782,7 +2782,7 @@
             "properties": {
               "name": {
                 "type": "string",
-                "const": "type-converter"
+                "const": "type_converter"
               },
               "float_key": {
                 "type": "string",

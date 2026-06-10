@@ -35,7 +35,7 @@
       },
       {
         "pointer": "/items/oneOf",
-        "file": "outputs/cloudwatch.json",
+        "file": "outputs/cloudwatch_logs.json",
         "operation": "append"
       },
       {
@@ -60,7 +60,7 @@
       },
       {
         "pointer": "/items/oneOf",
-        "file": "outputs/elasticsearch.json",
+        "file": "outputs/es.json",
         "operation": "append"
       },
       {
@@ -71,11 +71,6 @@
       {
         "pointer": "/items/oneOf",
         "file": "outputs/file.json",
-        "operation": "append"
-      },
-      {
-        "pointer": "/items/oneOf",
-        "file": "outputs/firehose.json",
         "operation": "append"
       },
       {
@@ -110,12 +105,17 @@
       },
       {
         "pointer": "/items/oneOf",
-        "file": "outputs/kafka-rest-proxy.json",
+        "file": "outputs/kafka-rest.json",
         "operation": "append"
       },
       {
         "pointer": "/items/oneOf",
-        "file": "outputs/kinesis.json",
+        "file": "outputs/kinesis_firehose.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/kinesis_streams.json",
         "operation": "append"
       },
       {
@@ -135,7 +135,7 @@
       },
       {
         "pointer": "/items/oneOf",
-        "file": "outputs/new-relic.json",
+        "file": "outputs/nrlogs.json",
         "operation": "append"
       },
       {
@@ -146,11 +146,6 @@
       {
         "pointer": "/items/oneOf",
         "file": "outputs/observe.json",
-        "operation": "append"
-      },
-      {
-        "pointer": "/items/oneOf",
-        "file": "outputs/oci-logging-analytics.json",
         "operation": "append"
       },
       {
@@ -170,7 +165,17 @@
       },
       {
         "pointer": "/items/oneOf",
+        "file": "outputs/oracle_log_analytics.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
         "file": "outputs/parseable.json",
+        "operation": "append"
+      },
+      {
+        "pointer": "/items/oneOf",
+        "file": "outputs/pgsql.json",
         "operation": "append"
       },
       {
@@ -180,17 +185,12 @@
       },
       {
         "pointer": "/items/oneOf",
-        "file": "outputs/postgresql.json",
+        "file": "outputs/prometheus_exporter.json",
         "operation": "append"
       },
       {
         "pointer": "/items/oneOf",
-        "file": "outputs/prometheus-exporter.json",
-        "operation": "append"
-      },
-      {
-        "pointer": "/items/oneOf",
-        "file": "outputs/prometheus-remote-write.json",
+        "file": "outputs/prometheus_remote_write.json",
         "operation": "append"
       },
       {
@@ -225,7 +225,7 @@
       },
       {
         "pointer": "/items/oneOf",
-        "file": "outputs/standard-output.json",
+        "file": "outputs/stdout.json",
         "operation": "append"
       },
       {
@@ -235,12 +235,12 @@
       },
       {
         "pointer": "/items/oneOf",
-        "file": "outputs/tcp-and-tls.json",
+        "file": "outputs/tcp.json",
         "operation": "append"
       },
       {
         "pointer": "/items/oneOf",
-        "file": "outputs/treasure-data.json",
+        "file": "outputs/td.json",
         "operation": "append"
       },
       {
@@ -250,7 +250,7 @@
       },
       {
         "pointer": "/items/oneOf",
-        "file": "outputs/vivo-exporter.json",
+        "file": "outputs/vivo_exporter.json",
         "operation": "append"
       },
       {

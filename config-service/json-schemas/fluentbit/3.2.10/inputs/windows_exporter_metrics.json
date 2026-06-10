@@ -1,0 +1,255 @@
+{
+  "type": "object",
+  "title": "Windows Exporter Metrics",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "windows_exporter_metrics",
+      "title": "Plugin"
+    },
+    "scrape_interval": {
+      "type": "string",
+      "description": "The rate at which metrics are collected from the host operating system",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "duration",
+      "x-references-parser": false,
+      "default": "5 seconds"
+    },
+    "we.logical_disk.allow_disk_regex": {
+      "type": "string",
+      "description": "Specify the regex for logical disk metrics to allow collection of.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "\"/.+/\""
+    },
+    "we.logical_disk.deny_disk_regex": {
+      "type": "string",
+      "description": "Specify the regex for logical disk metrics to prevent collection of/ignore.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "NULL"
+    },
+    "we.net.allow_nic_regex": {
+      "type": "string",
+      "description": "Specify the regex for network metrics captured by the name of the NIC, by default captures all NICs but to exclude adjust the regex.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "\"/.+/\""
+    },
+    "we.service.where": {
+      "type": "string",
+      "description": "Specify the WHERE clause for retrieving service metrics.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "NULL"
+    },
+    "we.service.include": {
+      "type": "array",
+      "description": "Specify the key value pairs for the include condition for the WHERE clause of service metrics.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "list",
+      "x-references-parser": false,
+      "default": "NULL"
+    },
+    "we.service.exclude": {
+      "type": "array",
+      "description": "Specify the key value pairs for the exclude condition for the WHERE clause of service metrics.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "list",
+      "x-references-parser": false,
+      "default": "NULL"
+    },
+    "we.process.allow_process_regex": {
+      "type": "string",
+      "description": "Specify the regex covering the process metrics to collect.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "\"/.+/\""
+    },
+    "we.process.deny_process_regex": {
+      "type": "string",
+      "description": "Specify the regex for process metrics to prevent collection of/ignore.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "NULL"
+    },
+    "collector.cpu.scrape_interval": {
+      "type": "string",
+      "description": "The rate in seconds at which cpu metrics are collected from the host operating system.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "duration",
+      "x-references-parser": false,
+      "default": "0 seconds"
+    },
+    "collector.net.scrape_interval": {
+      "type": "string",
+      "description": "The rate in seconds at which net metrics are collected from the host operating system.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "duration",
+      "x-references-parser": false,
+      "default": "0 seconds"
+    },
+    "collector.logical_disk.scrape_interval": {
+      "type": "string",
+      "description": "The rate in seconds at which logical_disk metrics are collected from the host operating system.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "duration",
+      "x-references-parser": false,
+      "default": "0 seconds"
+    },
+    "collector.cs.scrape_interval": {
+      "type": "string",
+      "description": "The rate in seconds at which cs metrics are collected from the host operating system.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "duration",
+      "x-references-parser": false,
+      "default": "0 seconds"
+    },
+    "collector.os.scrape_interval": {
+      "type": "string",
+      "description": "The rate in seconds at which os metrics are collected from the host operating system.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "duration",
+      "x-references-parser": false,
+      "default": "0 seconds"
+    },
+    "collector.thermalzone.scrape_interval": {
+      "type": "string",
+      "description": "The rate in seconds at which thermalzone metrics are collected from the host operating system.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "duration",
+      "x-references-parser": false,
+      "default": "0 seconds"
+    },
+    "collector.cpu_info.scrape_interval": {
+      "type": "string",
+      "description": "The rate in seconds at which cpu_info metrics are collected from the host operating system.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "duration",
+      "x-references-parser": false,
+      "default": "0 seconds"
+    },
+    "collector.logon.scrape_interval": {
+      "type": "string",
+      "description": "The rate in seconds at which logon metrics are collected from the host operating system.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "duration",
+      "x-references-parser": false,
+      "default": "0 seconds"
+    },
+    "collector.system.scrape_interval": {
+      "type": "string",
+      "description": "The rate in seconds at which system metrics are collected from the host operating system.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "duration",
+      "x-references-parser": false,
+      "default": "0 seconds"
+    },
+    "collector.service.scrape_interval": {
+      "type": "string",
+      "description": "The rate in seconds at which service metrics are collected from the host operating system.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "duration",
+      "x-references-parser": false,
+      "default": "0 seconds"
+    },
+    "collector.memory.scrape_interval": {
+      "type": "string",
+      "description": "The rate in seconds at which memory metrics are collected from the host operating system.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "duration",
+      "x-references-parser": false,
+      "default": "0 seconds"
+    },
+    "collector.paging_file.scrape_interval": {
+      "type": "string",
+      "description": "The rate in seconds at which paging_file metrics are collected from the host operating system.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "duration",
+      "x-references-parser": false,
+      "default": "0 seconds"
+    },
+    "collector.process.scrape_interval": {
+      "type": "string",
+      "description": "The rate in seconds at which process metrics are collected from the host operating system.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "duration",
+      "x-references-parser": false,
+      "default": "0 seconds"
+    },
+    "metrics": {
+      "type": "string",
+      "description": "To specify which metrics are collected from the host operating system.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "\"cpu,cpu_info,os,net,logical_disk,cs,thermalzone,logon,system,service\""
+    },
+    "tag": {
+      "type": "string",
+      "description": "Tag assigned to records emitted by this input plugin.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "processors": {
+      "$ref": "../processors.json"
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name",
+    "tag"
+  ],
+  "additionalProperties": false
+}

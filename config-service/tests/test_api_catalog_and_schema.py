@@ -19,7 +19,6 @@ Test-case reference: config-service/docs/TEST_CASES.md
 from __future__ import annotations
 
 import json
-import logging
 import sys
 from pathlib import Path
 
@@ -28,13 +27,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from config_service.app import create_app
-from config_service.runtime_config import (
-    ENV_CONFIG_TOOL_CONFIG_PATH,
-    resolve_log_level_name,
-    resolve_read_only,
-    resolve_ui_base_css_path,
-    resolve_web_port,
-)
+from config_service.json_artifacts import load_json_artifact, load_json_schema_artifact
 
 YAML_KEYWORD_LITERALS = {
     "null",
@@ -178,7 +171,7 @@ def test_fluent_bit_catalogs_have_no_other_yaml_keyword_plugin_name_conflicts() 
     base = Path(__file__).resolve().parents[1] / "json-definitions"
     conflicts: list[tuple[str, str, str]] = []
     for path in sorted(base.glob("fluent-bit-*-all-plugins-catalog.json")):
-        body = json.loads(path.read_text(encoding="utf-8"))
+        body = load_json_artifact(path)
         for section, plugins in body.get("plugins", {}).items():
             for plugin_name in plugins.keys():
                 if plugin_name in YAML_KEYWORD_LITERALS:
@@ -194,7 +187,7 @@ def test_fluent_bit_catalogs_include_router_fields_for_all_plugins() -> None:
     base = Path(__file__).resolve().parents[1] / "json-definitions"
     missing: list[tuple[str, str, str, str]] = []
     for path in sorted(base.glob("fluent-bit-*-all-plugins-catalog.json")):
-        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload = load_json_artifact(path)
         plugins = payload.get("plugins", {})
 
         for section, field_name in (("inputs", "tag"), ("filters", "match"), ("filters", "match_regex"), ("outputs", "match"), ("outputs", "match_regex")):
@@ -214,7 +207,7 @@ def test_fluent_bit_older_catalogs_require_tag_for_inputs_except_forward() -> No
     missing_required: list[tuple[str, str]] = []
     for version in ("3.2.10", "4.2.4"):
         path = base / f"fluent-bit-{version}-all-plugins-catalog.json"
-        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload = load_json_artifact(path)
         inputs = payload.get("plugins", {}).get("inputs", {})
         for plugin_name, plugin_def in inputs.items():
             if plugin_name == "forward":
@@ -230,7 +223,7 @@ def test_fluentd_catalogs_expose_match_directive_argument_for_filters_and_output
     base = Path(__file__).resolve().parents[1] / "json-definitions"
     mismatches: list[tuple[str, str, str, str]] = []
     for path in sorted(base.glob("fluentd-*-all-plugins-catalog.json")):
-        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload = load_json_artifact(path)
         plugins = payload.get("plugins", {})
         for section in ("filters", "outputs"):
             section_plugins = plugins.get(section, {})
@@ -245,6 +238,18 @@ def test_fluentd_catalogs_expose_match_directive_argument_for_filters_and_output
                     mismatches.append((path.name, section, plugin_name, argument_name))
 
     assert mismatches == []
+
+
+def test_fluentbit_schema_plugin_shards_can_reference_shared_processors() -> None:
+    base = Path(__file__).resolve().parents[1] / "json-schemas" / "fluentbit" / "3.2.10"
+    plugin_path = base / "inputs" / "tail.json"
+    raw_payload = json.loads(plugin_path.read_text(encoding="utf-8"))
+    processors_ref = raw_payload.get("properties", {}).get("processors", {}).get("$ref")
+    assert processors_ref == "../processors.json"
+    assert (base / "processors.json").exists()
+
+    plugin_payload = load_json_schema_artifact(plugin_path)
+    assert plugin_payload["properties"]["processors"]["type"] == "object"
 
 @pytest.mark.asyncio
 async def test_validate_request_errors_are_normalized() -> None:

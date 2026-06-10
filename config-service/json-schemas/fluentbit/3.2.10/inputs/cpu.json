@@ -1,0 +1,74 @@
+{
+  "type": "object",
+  "title": "CPU Log Based Metrics",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "cpu",
+      "title": "Plugin"
+    },
+    "interval_sec": {
+      "type": "integer",
+      "description": "Polling interval in seconds",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/cpu-metrics#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 1
+    },
+    "interval_nsec": {
+      "type": "integer",
+      "description": "Polling interval in nanoseconds",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/cpu-metrics#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 0
+    },
+    "pid": {
+      "type": "string",
+      "description": "Specify the ID (PID) of a running process in the system.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/cpu-metrics#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "tag": {
+      "type": "string",
+      "description": "Tag assigned to records emitted by this input plugin.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "processors": {
+      "$ref": "../processors.json"
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name",
+    "tag"
+  ],
+  "additionalProperties": false
+}

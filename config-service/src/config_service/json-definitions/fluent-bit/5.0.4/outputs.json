@@ -28,8 +28,8 @@
         "file": "outputs/chronicle.json"
       },
       {
-        "pointer": "/cloudwatch",
-        "file": "outputs/cloudwatch.json"
+        "pointer": "/cloudwatch_logs",
+        "file": "outputs/cloudwatch_logs.json"
       },
       {
         "pointer": "/counter",
@@ -48,8 +48,8 @@
         "file": "outputs/dynatrace.json"
       },
       {
-        "pointer": "/elasticsearch",
-        "file": "outputs/elasticsearch.json"
+        "pointer": "/es",
+        "file": "outputs/es.json"
       },
       {
         "pointer": "/exit",
@@ -58,10 +58,6 @@
       {
         "pointer": "/file",
         "file": "outputs/file.json"
-      },
-      {
-        "pointer": "/firehose",
-        "file": "outputs/firehose.json"
       },
       {
         "pointer": "/flowcounter",
@@ -88,12 +84,16 @@
         "file": "outputs/kafka.json"
       },
       {
-        "pointer": "/kafka-rest-proxy",
-        "file": "outputs/kafka-rest-proxy.json"
+        "pointer": "/kafka-rest",
+        "file": "outputs/kafka-rest.json"
       },
       {
-        "pointer": "/kinesis",
-        "file": "outputs/kinesis.json"
+        "pointer": "/kinesis_firehose",
+        "file": "outputs/kinesis_firehose.json"
+      },
+      {
+        "pointer": "/kinesis_streams",
+        "file": "outputs/kinesis_streams.json"
       },
       {
         "pointer": "/logdna",
@@ -108,8 +108,8 @@
         "file": "outputs/nats.json"
       },
       {
-        "pointer": "/new-relic",
-        "file": "outputs/new-relic.json"
+        "pointer": "/nrlogs",
+        "file": "outputs/nrlogs.json"
       },
       {
         "pointer": "/null",
@@ -118,10 +118,6 @@
       {
         "pointer": "/observe",
         "file": "outputs/observe.json"
-      },
-      {
-        "pointer": "/oci-logging-analytics",
-        "file": "outputs/oci-logging-analytics.json"
       },
       {
         "pointer": "/openobserve",
@@ -136,24 +132,28 @@
         "file": "outputs/opentelemetry.json"
       },
       {
+        "pointer": "/oracle_log_analytics",
+        "file": "outputs/oracle_log_analytics.json"
+      },
+      {
         "pointer": "/parseable",
         "file": "outputs/parseable.json"
+      },
+      {
+        "pointer": "/pgsql",
+        "file": "outputs/pgsql.json"
       },
       {
         "pointer": "/plot",
         "file": "outputs/plot.json"
       },
       {
-        "pointer": "/postgresql",
-        "file": "outputs/postgresql.json"
+        "pointer": "/prometheus_exporter",
+        "file": "outputs/prometheus_exporter.json"
       },
       {
-        "pointer": "/prometheus-exporter",
-        "file": "outputs/prometheus-exporter.json"
-      },
-      {
-        "pointer": "/prometheus-remote-write",
-        "file": "outputs/prometheus-remote-write.json"
+        "pointer": "/prometheus_remote_write",
+        "file": "outputs/prometheus_remote_write.json"
       },
       {
         "pointer": "/s3",
@@ -180,28 +180,28 @@
         "file": "outputs/stackdriver_special_fields.json"
       },
       {
-        "pointer": "/standard-output",
-        "file": "outputs/standard-output.json"
+        "pointer": "/stdout",
+        "file": "outputs/stdout.json"
       },
       {
         "pointer": "/syslog",
         "file": "outputs/syslog.json"
       },
       {
-        "pointer": "/tcp-and-tls",
-        "file": "outputs/tcp-and-tls.json"
+        "pointer": "/tcp",
+        "file": "outputs/tcp.json"
       },
       {
-        "pointer": "/treasure-data",
-        "file": "outputs/treasure-data.json"
+        "pointer": "/td",
+        "file": "outputs/td.json"
       },
       {
         "pointer": "/udp",
         "file": "outputs/udp.json"
       },
       {
-        "pointer": "/vivo-exporter",
-        "file": "outputs/vivo-exporter.json"
+        "pointer": "/vivo_exporter",
+        "file": "outputs/vivo_exporter.json"
       },
       {
         "pointer": "/websocket",

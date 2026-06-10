@@ -4,24 +4,24 @@
     "base": "filters.base.json",
     "parts": [
       {
-        "pointer": "/aws-metadata",
-        "file": "filters/aws-metadata.json"
+        "pointer": "/aws",
+        "file": "filters/aws.json"
       },
       {
         "pointer": "/checklist",
         "file": "filters/checklist.json"
       },
       {
-        "pointer": "/ecs-metadata",
-        "file": "filters/ecs-metadata.json"
+        "pointer": "/ecs",
+        "file": "filters/ecs.json"
       },
       {
         "pointer": "/expect",
         "file": "filters/expect.json"
       },
       {
-        "pointer": "/geoip2-filter",
-        "file": "filters/geoip2-filter.json"
+        "pointer": "/geoip2",
+        "file": "filters/geoip2.json"
       },
       {
         "pointer": "/grep",
@@ -44,8 +44,8 @@
         "file": "filters/modify.json"
       },
       {
-        "pointer": "/multiline-stacktrace",
-        "file": "filters/multiline-stacktrace.json"
+        "pointer": "/multiline",
+        "file": "filters/multiline.json"
       },
       {
         "pointer": "/nest",
@@ -60,16 +60,16 @@
         "file": "filters/parser.json"
       },
       {
-        "pointer": "/record-modifier",
-        "file": "filters/record-modifier.json"
+        "pointer": "/record_modifier",
+        "file": "filters/record_modifier.json"
       },
       {
-        "pointer": "/rewrite-tag",
-        "file": "filters/rewrite-tag.json"
+        "pointer": "/rewrite_tag",
+        "file": "filters/rewrite_tag.json"
       },
       {
-        "pointer": "/standard-output",
-        "file": "filters/standard-output.json"
+        "pointer": "/stdout",
+        "file": "filters/stdout.json"
       },
       {
         "pointer": "/sysinfo",
@@ -84,8 +84,8 @@
         "file": "filters/throttle.json"
       },
       {
-        "pointer": "/type-converter",
-        "file": "filters/type-converter.json"
+        "pointer": "/type_converter",
+        "file": "filters/type_converter.json"
       },
       {
         "pointer": "/wasm",

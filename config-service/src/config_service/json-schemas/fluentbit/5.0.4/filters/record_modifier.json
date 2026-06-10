@@ -1,0 +1,92 @@
+{
+  "type": "object",
+  "title": "Record modifier",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "record_modifier",
+      "title": "Plugin"
+    },
+    "allowlist_key": {
+      "type": "string",
+      "description": "If the key isn't matched, that field is removed.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/record-modifier#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "record": {
+      "type": "string",
+      "description": "Append fields.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/record-modifier#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "remove_key": {
+      "type": "string",
+      "description": "If the key is matched, that field is removed.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/record-modifier#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "uuid_key": {
+      "type": "string",
+      "description": "If set, the plugin appends UUID to each record.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/record-modifier#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "whitelist_key": {
+      "type": "string",
+      "description": "An alias of allowlist_key for backwards compatibility.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/filters/record-modifier#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match_regex": {
+      "type": "string",
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}

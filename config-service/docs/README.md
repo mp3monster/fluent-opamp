@@ -29,8 +29,10 @@ This folder contains user-facing documentation for running, configuring, and ext
 
 ## Generated artifacts
 - Fluent Bit and Fluentd version catalogs: `config-service/json-definitions/`
+- Per-version catalog shards: `config-service/json-definitions/fluent-bit/<version>/` and `config-service/json-definitions/fluentd/<version>/`
 - Versioned service/system option definitions: `config-service/json-definitions/`
 - Generated runtime JSON Schemas: `config-service/json-schemas/`
+- Per-version schema shards: `config-service/json-schemas/<config_type>/<version>/`
 
 ## Primary runtime entry points
 - Backend app: `config-service/src/config_service/app.py`

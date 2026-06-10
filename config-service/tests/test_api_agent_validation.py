@@ -23,10 +23,12 @@ import sys
 from pathlib import Path
 
 import pytest
+from quart import Quart
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from config_service.app import create_app
+from config_service.opamp_integration import register_config_service_feature
 from config_service.runtime_config import ENV_CONFIG_TOOL_CONFIG_PATH
 
 
@@ -83,6 +85,29 @@ async def test_agent_validation_availability_hides_disabled_entries(
     monkeypatch.setenv(ENV_CONFIG_TOOL_CONFIG_PATH, str(config_path))
 
     app = create_app(mode="standalone")
+    client = app.test_client()
+
+    resp = await client.get("/config-service/api/v1/agent-validation/availability/5.0.4?config_type=fluentbit")
+    assert resp.status_code == 200
+    body = await resp.get_json()
+    assert body["ok"] is True
+    assert body["available"] is False
+
+
+@pytest.mark.asyncio
+async def test_embedded_agent_validation_availability_registers_service(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_path = tmp_path / "config-service.json"
+    config_path.write_text(
+        json.dumps(_runtime_config_with_entry(dry_run_validation_enabled=False)),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv(ENV_CONFIG_TOOL_CONFIG_PATH, str(config_path))
+
+    app = Quart(__name__)
+    register_config_service_feature(app)
     client = app.test_client()
 
     resp = await client.get("/config-service/api/v1/agent-validation/availability/5.0.4?config_type=fluentbit")

@@ -73,6 +73,14 @@ Rules:
 2. Each engine key must map to a non-empty object of `version -> JSON path`.
 3. `default_versions` should provide a default version for each configured engine.
 
+The registry continues to point at the top-level manifest file. Those manifests may
+assemble per-version shard directories such as:
+1. `config-service/json-definitions/fluent-bit/3.2.10/inputs/`
+2. `config-service/json-definitions/fluent-bit/3.2.10/filters/`
+3. `config-service/json-definitions/fluent-bit/3.2.10/outputs/`
+4. `config-service/json-definitions/fluentd/1.19/inputs/`
+5. `config-service/json-schemas/fluentbit/5.0.4/outputs/`
+
 ## Service registry format
 Path: `config-service/config/service-registry.json`
 

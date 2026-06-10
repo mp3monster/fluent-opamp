@@ -1,0 +1,93 @@
+{
+  "type": "object",
+  "title": "Process Exporter Metrics",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "process_exporter_metrics",
+      "title": "Plugin"
+    },
+    "scrape_interval": {
+      "type": "string",
+      "description": "The rate at which metrics are collected.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/process-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "duration",
+      "x-references-parser": false,
+      "default": "5 seconds"
+    },
+    "path.procfs": {
+      "type": "string",
+      "description": "The mount point used to collect process information and metrics.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/process-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "/proc/"
+    },
+    "process_include_pattern": {
+      "type": "string",
+      "description": "regex to determine which names of processes are included in the metrics produced by this plugin",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/process-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "It is applied for all process unless explicitly set. Default is `.+`."
+    },
+    "process_exclude_pattern": {
+      "type": "string",
+      "description": "regex to determine which names of processes are excluded in the metrics produced by this plugin",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/process-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "It is not applied unless explicitly set. Default is `NULL`."
+    },
+    "metrics": {
+      "type": "string",
+      "description": "To specify which process level of metrics are collected from the host operating system.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/process-exporter-metrics#configuration",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false,
+      "default": "cpu,io,memory,state,context_switches,fd,start_time,thread_wchan,thread"
+    },
+    "tag": {
+      "type": "string",
+      "description": "Tag assigned to records emitted by this input plugin.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "processors": {
+      "$ref": "../processors.json"
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name",
+    "tag"
+  ],
+  "additionalProperties": false
+}

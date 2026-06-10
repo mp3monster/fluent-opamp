@@ -25,6 +25,11 @@ Purpose:
    - descriptions
    - hyperlinks to Fluent Bit documentation
 
+The schema input files can be either direct JSON payloads or manifest files that point to
+versioned shard trees such as `json-schemas/fluentbit/3.2.10/inputs/*.json`. Individual
+plugin shard files may use JSON Schema `$ref` to shared version-local fragments such as
+`json-schemas/fluentbit/3.2.10/processors.json`.
+
 Inputs:
 1. [fluentbit-3.2.10-config-schema.json](../json-schemas/fluentbit-3.2.10-config-schema.json)
 2. [fluentbit-4.2.4-config-schema.json](../json-schemas/fluentbit-4.2.4-config-schema.json)
@@ -79,6 +84,9 @@ Purpose:
    - `filters`
    - `outputs`
 
+The catalog input files can be either direct JSON payloads or manifest files that point to
+versioned shard trees such as `json-definitions/fluent-bit/3.2.10/outputs/*.json`.
+
 Inputs:
 1. [fluent-bit-3.2.10-all-plugins-catalog.json](../json-definitions/fluent-bit-3.2.10-all-plugins-catalog.json)
 2. [fluent-bit-4.2.4-all-plugins-catalog.json](../json-definitions/fluent-bit-4.2.4-all-plugins-catalog.json)
@@ -101,4 +109,32 @@ Optional:
 ```bash
 python3 config-service/dev-tools/quick-references/generate_fluentbit_plugin_attribute_reference.py --help
 python3 config-service/dev-tools/quick-references/generate_fluentbit_plugin_attribute_reference.py --source-dir config-service/json-definitions --output-dir quick-references
+```
+
+## Fluent Bit Plugin Name Checker
+
+Script:
+- [check_fluentbit_plugin_names.py](../dev-tools/check_fluentbit_plugin_names.py)
+
+Purpose:
+1. Reads Fluent Bit plugin definition files from one named folder such as `json-definitions/fluent-bit/3.2.10/inputs`
+2. Fetches each plugin's documentation page from its `doc_url`
+3. Extracts the real Fluent Bit config `Name` from page content such as:
+   - `[INPUT] Name stdin`
+   - `[FILTER] Name rewrite_tag`
+   - `[output:stdout:stdout.0]`
+4. Logs every check and any applied rename
+5. Optionally updates matching catalog manifests and schema shard files
+
+Run it:
+
+```bash
+cd /mnt/d/dev/opamp
+python3 config-service/dev-tools/check_fluentbit_plugin_names.py config-service/json-definitions/fluent-bit/3.2.10/inputs
+```
+
+Apply changes:
+
+```bash
+python3 config-service/dev-tools/check_fluentbit_plugin_names.py --apply config-service/json-definitions/fluent-bit/3.2.10/inputs
 ```

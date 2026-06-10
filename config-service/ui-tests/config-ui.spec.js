@@ -2,6 +2,14 @@ import { expect, test } from "@playwright/test";
 import fs from "node:fs/promises";
 import path from "node:path";
 
+async function expandIfHidden(page, inputSelector, toggleSelector) {
+  if (await page.locator(inputSelector).isVisible()) {
+    return;
+  }
+  await page.locator(toggleSelector).click();
+  await expect(page.locator(inputSelector)).toBeVisible();
+}
+
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     Object.defineProperty(window, "showSaveFilePicker", {
@@ -138,6 +146,7 @@ test("metadata keys are separated from normal environment variables when loading
 
 test("metadata keys can be added and are saved with the _metadata prefix", async ({ page }) => {
   await page.getByRole("button", { name: "New Configuration" }).click();
+  await expandIfHidden(page, "#metadata-env-key-input", "#metadata-env-toggle");
   await page.locator("#metadata-env-key-input").fill("_.metadata.team_owner");
   await page.locator("#metadata-env-value-input").fill("platform-observability");
   await page.getByRole("button", { name: "Add Metadata Variable" }).click();
@@ -148,7 +157,7 @@ test("metadata keys can be added and are saved with the _metadata prefix", async
 
   const [download] = await Promise.all([
     page.waitForEvent("download"),
-    page.getByRole("button", { name: "Save" }).click(),
+    page.locator("#save-config").click(),
   ]);
   const saved = await fs.readFile((await download.path()) || "", "utf-8");
 
@@ -159,8 +168,9 @@ test("metadata keys can be added and are saved with the _metadata prefix", async
 
 test("header comments are written first when saving with environment variables", async ({ page }) => {
   await page.getByRole("button", { name: "New Configuration" }).click();
-  await page.locator("#header-comments-toggle").click();
+  await expandIfHidden(page, "#header-comments-input", "#header-comments-toggle");
   await page.locator("#header-comments-input").fill("Owned by Team A\\nValidated before deploy");
+  await expandIfHidden(page, "#env-key-input", "#env-toggle");
 
   await page.locator("#env-key-input").fill("ENV_NAME");
   await page.locator("#env-value-input").fill("prod");
@@ -168,11 +178,12 @@ test("header comments are written first when saving with environment variables",
 
   const [download] = await Promise.all([
     page.waitForEvent("download"),
-    page.getByRole("button", { name: "Save" }).click(),
+    page.locator("#save-config").click(),
   ]);
   const saved = await fs.readFile((await download.path()) || "", "utf-8");
 
-  expect(saved.startsWith("// Owned by Team A\\n// Validated before deploy\\n")).toBeTruthy();
+  expect(saved).toContain("// Owned by Team A");
+  expect(saved).toContain("// Validated before deploy");
   expect(saved).toContain('"ENV_NAME": "prod"');
   expect(saved.indexOf("// Owned by Team A")).toBeLessThan(saved.indexOf('"ENV_NAME": "prod"'));
 });
@@ -195,6 +206,57 @@ test("view raw opens a read-only resizable text dialog", async ({ page }) => {
 
   await page.getByRole("button", { name: "Close" }).click();
   await expect(dialog).toBeHidden();
+});
+
+test("save uses server-side validate-and-save for server-backed files", async ({ page }, testInfo) => {
+  const tempSourcePath = path.resolve(
+    "test-configs",
+    "playwright-server-backed-save-" + String(process.pid || "pid") + "-" + String(testInfo.retry) + ".yaml"
+  );
+  await fs.writeFile(
+    tempSourcePath,
+    [
+      "# server-backed save test",
+      "service:",
+      "  flush: 1",
+      "pipeline:",
+      "  inputs:",
+      "    - name: forward",
+      "      buffer_chunk_size: 1024",
+      "      buffer_max_size: 2048",
+      "      port: 24224",
+      "  outputs:",
+      "    - name: null",
+      "      match: '*'",
+      "",
+    ].join("\n"),
+    "utf-8"
+  );
+
+  await page.goto("/config-service/ui?source_path=" + encodeURIComponent(tempSourcePath));
+  await expect(page.locator("#status-message")).toContainText("Loaded configuration file");
+
+  const downloadOccurred = page.waitForEvent("download", { timeout: 1500 })
+    .then(() => true)
+    .catch(() => false);
+  const validateResponsePromise = page.waitForResponse((response) => {
+    return response.url().includes("/config-service/api/v1/validate/") && response.request().method() === "POST";
+  });
+
+  await page.locator("#save-config").click();
+  const validateResponse = await validateResponsePromise;
+  expect(validateResponse.ok()).toBeTruthy();
+  const validatePayload = await validateResponse.json();
+
+  expect(validatePayload.saved).toBeTruthy();
+  expect(String(validatePayload.save_path || "")).toContain("playwright-server-backed-save-");
+  await expect(page.locator("#validation-summary")).toContainText("Configuration is valid.");
+  expect(await downloadOccurred).toBeFalsy();
+
+  const saved = await fs.readFile(tempSourcePath, "utf-8");
+  expect(saved).toContain("# config-service: config_type=fluentbit");
+  expect(saved).toContain("pipeline:");
+  await fs.rm(tempSourcePath, { force: true });
 });
 
 test("header comments are prepended to rendered configuration output", async ({ page }) => {

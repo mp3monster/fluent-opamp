@@ -1,0 +1,180 @@
+{
+  "type": "object",
+  "title": "Amazon Kinesis Data Streams",
+  "properties": {
+    "name": {
+      "type": "string",
+      "const": "kinesis_streams",
+      "title": "Plugin"
+    },
+    "auto_retry_requests": {
+      "type": "boolean",
+      "description": "Immediately retry failed requests to AWS services once.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/kinesis#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": true
+    },
+    "compression": {
+      "type": "string",
+      "description": "Compression type for records sent to Kinesis Data Streams.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/kinesis#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "endpoint": {
+      "type": "string",
+      "description": "Specify a custom endpoint for the Kinesis API.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/kinesis#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "external_id": {
+      "type": "string",
+      "description": "Specify an external ID for the STS API.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/kinesis#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "log_key": {
+      "type": "string",
+      "description": "By default, the whole log record will be sent to Kinesis.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/kinesis#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "port": {
+      "type": "integer",
+      "description": "TCP port of the Kinesis Streams service.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/kinesis#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 443
+    },
+    "profile": {
+      "type": "string",
+      "description": "AWS profile name to use.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/kinesis#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "region": {
+      "type": "string",
+      "description": "The AWS region.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/kinesis#configuration-parameters",
+      "x-doc-required": true,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "role_arn": {
+      "type": "string",
+      "description": "ARN of an IAM role to assume (for cross-account access).",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/kinesis#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "simple_aggregation": {
+      "type": "boolean",
+      "description": "Enable record aggregation to combine multiple records into single API calls.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/kinesis#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "boolean",
+      "x-references-parser": false,
+      "default": false
+    },
+    "stream": {
+      "type": "string",
+      "description": "The name of the Kinesis stream that you want log records sent to.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/kinesis#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "sts_endpoint": {
+      "type": "string",
+      "description": "Custom endpoint for the STS API.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/kinesis#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "time_key": {
+      "type": "string",
+      "description": "Add the timestamp to the record under this key.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/kinesis#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "time_key_format": {
+      "type": "string",
+      "description": "The strftime compliant format string for the timestamp.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/kinesis#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "workers": {
+      "type": "integer",
+      "description": "The number of [workers](/manual/4.2/administration/multithreading.md#outputs) to perform flush operations for this output.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/kinesis#configuration-parameters",
+      "x-doc-required": false,
+      "x-config-data-type": "integer",
+      "x-references-parser": false,
+      "default": 1
+    },
+    "match": {
+      "type": "string",
+      "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "match_regex": {
+      "type": "string",
+      "description": "Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set.",
+      "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/router",
+      "x-doc-required": false,
+      "x-config-data-type": "string",
+      "x-references-parser": false
+    },
+    "processors": {
+      "$ref": "../processors.json"
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "comment_lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "field_comment_lines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name",
+    "region"
+  ],
+  "additionalProperties": false
+}
