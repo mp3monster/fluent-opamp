@@ -19,7 +19,7 @@ Create a standalone `cli/` component for the OpAMP repository.
 
 The CLI should be a Python package named `opamp-cli` with console entrypoint `opamp-cli`.
 Its purpose is to provide a guided local operator workflow for launching, stopping, inspecting,
-and script-generating commands for the OpAMP server, config service, catalog UI, broker, simulator,
+and script-generating commands for the OpAMP server, config editor, catalog, broker, simulator,
 and client utilities.
 
 The implementation should be designed so that:
@@ -155,8 +155,8 @@ The CLI must support guided `start`, `stop`, and `restart` commands.
 For `start`:
 
 - `Server`
-- `Config Catalog UI`
-- `Config Service`
+- `Catalog`
+- `Config Editor`
 - `Broker`
 - `Simulator`
 - `Fluent Bit client`
@@ -165,10 +165,10 @@ For `start`:
 For `stop`:
 
 - `Server`
-- `Config Catalog UI`
+- `Catalog`
 - `Broker`
 - `Simulator`
-- `Config Service`
+- `Config Editor`
 - `Fluent Bit client`
 - `Fluentd client`
 - `All clients`
@@ -207,7 +207,7 @@ Direct guided commands should work both by full label and by aliases.
 Examples:
 
 - `start server`
-- `start config service`
+- `start config editor`
 - `start catalog`
 - `stop broker`
 - `stop clients`
@@ -216,7 +216,7 @@ Examples:
 
 ### Availability rule for catalog UI
 
-`Config Catalog UI` should only appear when catalog sources are configured in `config/opamp.json`.
+`Catalog` should only appear when catalog sources are configured in `config/opamp.json`.
 If required, the CLI should generate a temporary runtime config under `cli/runtime/` to enable catalog launch without mutating the repo config.
 
 ### Demo profile rule

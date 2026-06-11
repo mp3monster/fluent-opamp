@@ -59,6 +59,7 @@ COMMAND_QUIT = "quit"
 COMMAND_DEMO = "demo"
 COMMAND_ENABLE_PROCESS_TAIL = "enable-process-tail"
 COMMAND_DISABLE_PROCESS_TAIL = "disable-process-tail"
+COMMAND_DEV_FLB_CONFIG = "dev-flb-config"
 ACTION_KIND_BACKGROUND_START = "background_start"
 ACTION_KIND_SIMULATOR_START = "simulator_start"
 ACTION_KIND_DEMO_CONSUMERS_START = "demo_consumers_start"
@@ -77,8 +78,8 @@ ACTION_ID_FLUENTD_CLIENT = "fluentd_client"
 ACTION_ID_ALL_CLIENTS = "all_clients"
 ACTION_ID_ALL_MANAGED = "all_managed"
 LABEL_SERVER = "Server"
-LABEL_CONFIG_CATALOG_UI = "Config Catalog UI"
-LABEL_CONFIG_SERVICE = "Config Service"
+LABEL_CONFIG_CATALOG_UI = "Catalog"
+LABEL_CONFIG_SERVICE = "Config Editor"
 LABEL_BROKER = "Broker"
 LABEL_SIMULATOR = "Simulator"
 LABEL_FLUENTBIT_CLIENT = "Fluent Bit client"
@@ -116,7 +117,7 @@ GUIDED_STOP_ACTION_ORDER = [
 GUIDED_ACTION_ALIASES = {
     ACTION_ID_SERVER: ["srv"],
     ACTION_ID_CATALOG_UI: ["catalog", "catalog ui", "config catalog", "config catalog ui"],
-    ACTION_ID_CONFIG_SERVICE: ["config", "cfg", "config service", "config-service"],
+    ACTION_ID_CONFIG_SERVICE: ["config", "cfg", "editor", "config editor", "config-editor", "config service", "config-service"],
     ACTION_ID_BROKER: ["brk"],
     ACTION_ID_SIMULATOR: ["sim"],
     ACTION_ID_FLUENTBIT_CLIENT: ["fluent bit", "fluentbit", "fluent bit client", "fb"],
@@ -135,6 +136,7 @@ HELP_TEXT = """Usage:
   opamp-cli demo
   opamp-cli enable-process-tail
   opamp-cli disable-process-tail
+  opamp-cli dev-flb-config
 
 Behavior:
   - Interactive `start`, `stop`, and `restart` commands open guided multi-stage choices.
@@ -149,8 +151,8 @@ Examples:
   # Start server
   opamp-cli start server
 
-  # Start config catalog UI
-  opamp-cli start "config catalog ui"
+  # Start catalog
+  opamp-cli start catalog
 
   # Stop server
   opamp-cli stop server
@@ -173,11 +175,15 @@ Examples:
   # Enable log tail windows for future managed starts
   opamp-cli enable-process-tail
 
+  # Open the dev-only Fluent Bit generator workflow
+  opamp-cli dev-flb-config
+
 Notes:
   - Interactive autocomplete uses prompt_toolkit when installed.
   - Fallback completion uses readline when available.
-  - Guided actions can be run directly, for example `start config service`.
+  - Guided actions can be run directly, for example `start config editor`.
   - When OPAMP_DEMO=true, `demo` acts like `start demo consumers`.
+  - When APP_ENABLE_DEV_FEATURES=true and the Fluent Bit dev tools are present, `dev-flb-config` opens a guided generator workflow.
   - Guided start/stop/restart actions run components directly instead of relying on repo wrapper scripts.
   - Set OPAMP_DEMO=true to enable demo consumer options from cli/config/demo_consumer_profiles.json.
   - Guided starts record launched PIDs in cli/runtime/managed_processes.json.

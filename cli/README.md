@@ -82,17 +82,18 @@ Both shortcuts run the compatibility entrypoint:
 
 - Guided multi-stage flow:
   - Type `start` in interactive mode, then choose what to start
-    (for example `server`, `config catalog ui`, `config service`, `broker`, `simulator`, `fluentbit client`, `fluentd client`).
+    (for example `server`, `catalog`, `config editor`, `broker`, `simulator`, `fluentbit client`, `fluentd client`).
   - Type `stop` in interactive mode, then choose what to stop.
   - `stop all` stops all CLI-managed recorded processes.
   - Type `restart` in interactive mode, then choose what to restart.
-  - You can also run guided actions directly on one line, for example `start server`, `stop config service`, or `restart server`.
+  - You can also run guided actions directly on one line, for example `start server`, `stop config editor`, or `restart server`.
   - Type `status` in interactive mode to list the effective OpAMP config file,
     config load status, managed processes, PID liveness, and log paths.
   - Type `list` in interactive mode to display the current command hierarchy and guided options (including flag-gated options).
   - Type `enable-process-tail` to open a separate tail shell for each future managed start log.
   - Type `disable-process-tail` to turn that behavior off again.
-  - `Config Catalog UI` is shown when catalog sources are configured in `config/opamp.json`. The CLI writes a temporary runtime config under `cli/runtime/` so the catalog can be launched without editing the repo config.
+  - When `APP_ENABLE_DEV_FEATURES=true` and the Fluent Bit generator scripts are present, type `dev-flb-config` to open a guided prompt for the Fluent Bit asset/markdown utilities.
+  - `Catalog` is shown when catalog sources are configured in `config/opamp.json`. The CLI writes a temporary runtime config under `cli/runtime/` so the catalog can be launched without editing the repo config.
 - If the first word is `script`, a script file is generated for the current OS:
   - Linux/macOS: `.sh`
   - Windows: `.cmd`
@@ -109,6 +110,7 @@ cli/main.py --help
 opamp-cli status
 opamp-cli list
 opamp-cli enable-process-tail
+APP_ENABLE_DEV_FEATURES=true opamp-cli dev-flb-config
 ```
 
 Guided examples:
@@ -118,7 +120,7 @@ opamp-cli start server
 opamp-cli stop all
 
 opamp-cli
-opamp> start config service
+opamp> start config editor
 ```
 
 Demo consumer mode:
@@ -147,8 +149,8 @@ The process-tail preference is stored in `cli/runtime/settings.json`.
 ## Autocomplete
 
 - Press `Tab` in interactive mode for suggestions.
-- `start` and `stop` suggestions are context-aware, so the CLI offers guided targets like `Config Service` instead of unrelated global words.
-- `start`, `stop`, and `restart` suggestions are context-aware, so the CLI offers guided targets like `Config Service` instead of unrelated global words.
+- `start` and `stop` suggestions are context-aware, so the CLI offers guided targets like `Config Editor` instead of unrelated global words.
+- `start`, `stop`, and `restart` suggestions are context-aware, so the CLI offers guided targets like `Config Editor` instead of unrelated global words.
 - File and script arguments use path completion when `prompt_toolkit` is available.
 - Direct `python cli/main.py` runs on Windows include a built-in Tab completion fallback even when `prompt_toolkit` is not installed.
 - On Windows, install dependencies first so `prompt_toolkit` is available:

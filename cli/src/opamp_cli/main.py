@@ -77,6 +77,7 @@ try:
         CLI_SETTING_ENABLE_PROCESS_TAIL,
         CLI_SETTINGS_FILENAME,
         COMMAND_DEMO,
+        COMMAND_DEV_FLB_CONFIG,
         COMMAND_DISABLE_PROCESS_TAIL,
         COMMAND_ENABLE_PROCESS_TAIL,
         COMMAND_EXIT,
@@ -162,6 +163,7 @@ except ImportError:
         CLI_SETTING_ENABLE_PROCESS_TAIL,
         CLI_SETTINGS_FILENAME,
         COMMAND_DISABLE_PROCESS_TAIL,
+        COMMAND_DEV_FLB_CONFIG,
         COMMAND_ENABLE_PROCESS_TAIL,
         COMMAND_EXIT,
         COMMAND_HELP,
@@ -317,6 +319,47 @@ def _execute_command(command_text: str) -> int:
     return int(completed.returncode)
 
 
+def _load_module_from_path(*, module_name: str, path: Path) -> Any | None:
+    """Load one Python module from a file path, returning None on failure."""
+    inserted_parent = False
+    parent_text = str(path.parent.resolve())
+    if parent_text not in sys.path:
+        sys.path.insert(0, parent_text)
+        inserted_parent = True
+    try:
+        spec = importlib.util.spec_from_file_location(module_name, path)
+    except Exception:
+        if inserted_parent:
+            try:
+                sys.path.remove(parent_text)
+            except ValueError:
+                pass
+        return None
+    if spec is None or spec.loader is None:
+        if inserted_parent:
+            try:
+                sys.path.remove(parent_text)
+            except ValueError:
+                pass
+        return None
+    module = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(module)
+    except Exception:
+        if inserted_parent:
+            try:
+                sys.path.remove(parent_text)
+            except ValueError:
+                pass
+        return None
+    if inserted_parent:
+        try:
+            sys.path.remove(parent_text)
+        except ValueError:
+            pass
+    return module
+
+
 def _command_text_from_args(args: list[str]) -> str:
     """Reconstruct shell-safe command text from parsed CLI argv items."""
     return " ".join(_shell_quote(arg) for arg in args)
@@ -364,6 +407,9 @@ def _handle_command(raw_command: str) -> int:  # noqa: PLR0911
     if lowered == COMMAND_LIST:
         logger.info("printing CLI option hierarchy")
         return _print_option_hierarchy()
+    if lowered == COMMAND_DEV_FLB_CONFIG:
+        logger.info("starting dev fluent bit config workflow")
+        return _execute_dev_fluentbit_config_workflow()
 
     if _script_mode_enabled(command_text):
         output_name, script_command = _split_script_directive(command_text)
@@ -404,7 +450,270 @@ def _top_level_commands() -> list[str]:
     ]
     if _demo_mode_enabled():
         commands.append(COMMAND_DEMO)
+    if _fluentbit_dev_tool_available():
+        commands.append(COMMAND_DEV_FLB_CONFIG)
     return commands
+
+
+def _fluentbit_dev_tool_script_paths() -> list[Path]:
+    """Return known Fluent Bit dev-tool script paths in repo-relative order."""
+    repo_root = _repo_root()
+    return [
+        (repo_root / "config-service" / "dev-tools" / "generate_fluentbit_assets.py").resolve(),
+        (repo_root / "config-service" / "dev-tools" / "generate_fluentbit_markdown.py").resolve(),
+    ]
+
+
+def _load_dev_tool_spec_from_script(script_path: Path) -> dict[str, Any] | None:
+    """Load one self-described CLI dev-tool spec from a Python script."""
+    if script_path.is_file() is not True:
+        return None
+    module_name = f"opamp_cli_dev_tool_{_slugify(script_path.stem)}"
+    module = _load_module_from_path(module_name=module_name, path=script_path)
+    if module is None:
+        return None
+
+    spec_payload: Any = None
+    spec_factory = getattr(module, "cli_dev_tool_spec", None)
+    if callable(spec_factory):
+        try:
+            spec_payload = spec_factory()
+        except Exception:
+            return None
+    elif isinstance(getattr(module, "CLI_DEV_TOOL_SPEC", None), dict):
+        spec_payload = dict(getattr(module, "CLI_DEV_TOOL_SPEC"))
+    if not isinstance(spec_payload, dict):
+        return None
+
+    spec = json.loads(json.dumps(spec_payload))
+    spec["script_path"] = str(script_path.resolve())
+    spec.setdefault("id", _slugify(str(spec.get("label") or script_path.stem)).replace("-", "_"))
+    spec.setdefault("label", script_path.stem)
+    spec.setdefault("description", "")
+    arguments = spec.get("arguments", [])
+    spec["arguments"] = arguments if isinstance(arguments, list) else []
+    return spec
+
+
+def _fluentbit_dev_tool_specs() -> list[dict[str, Any]]:
+    """Return discovered Fluent Bit dev-tool specs when dev mode is enabled."""
+    if _dev_features_enabled() is not True:
+        return []
+    specs: list[dict[str, Any]] = []
+    for script_path in _fluentbit_dev_tool_script_paths():
+        spec = _load_dev_tool_spec_from_script(script_path)
+        if isinstance(spec, dict):
+            specs.append(spec)
+    return specs
+
+
+def _fluentbit_dev_tool_available() -> bool:
+    """Return whether the dev Fluent Bit workflow should be exposed."""
+    return bool(_fluentbit_dev_tool_specs())
+
+
+def _prompt_text(
+    prompt_text: str,
+    *,
+    input_reader: Callable[[str], str] | None = None,
+) -> str:
+    """Read one prompt value via provided reader or built-in input."""
+    if input_reader is not None:
+        return str(input_reader(prompt_text))
+    return input(prompt_text)
+
+
+def _parse_yes_no(value: str, *, default: bool) -> bool | None:
+    """Parse one yes/no value, returning None when it is invalid."""
+    cleaned = str(value or "").strip().lower()
+    if not cleaned:
+        return default
+    if cleaned in {"y", "yes", "true", "1", "on"}:
+        return True
+    if cleaned in {"n", "no", "false", "0", "off"}:
+        return False
+    return None
+
+
+def _prompt_dev_tool_selection(
+    specs: list[dict[str, Any]],
+    *,
+    input_reader: Callable[[str], str] | None = None,
+) -> list[dict[str, Any]] | None:
+    """Prompt for one or all dev-tool specs to run."""
+    if not specs:
+        return None
+    print("Choose a Fluent Bit dev utility:")
+    for index, spec in enumerate(specs, start=1):
+        label = str(spec.get("label") or f"Tool {index}")
+        description = str(spec.get("description") or "").strip()
+        print(f"  {index}. {label}")
+        if description:
+            print(f"     {description}")
+    if len(specs) > 1:
+        print(f"  {len(specs) + 1}. Run all")
+    print("  0. cancel")
+
+    while True:
+        try:
+            selected = _prompt_text("dev-flb-config> ", input_reader=input_reader).strip()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return None
+        if selected in {"0", "", "cancel", "c"}:
+            return None
+        if selected.isdigit():
+            index = int(selected)
+            if 1 <= index <= len(specs):
+                return [specs[index - 1]]
+            if len(specs) > 1 and index == len(specs) + 1:
+                return list(specs)
+        normalized = _normalized_label(selected)
+        if normalized == _normalized_label("run all") and len(specs) > 1:
+            return list(specs)
+        for spec in specs:
+            label = str(spec.get("label") or "")
+            if _normalized_label(label) == normalized:
+                return [spec]
+        print("Please choose a valid number from the list.")
+
+
+def _prompt_dev_tool_arguments(
+    spec: dict[str, Any],
+    *,
+    input_reader: Callable[[str], str] | None = None,
+) -> dict[str, Any] | None:
+    """Prompt for one dev-tool spec argument set."""
+    answers: dict[str, Any] = {}
+    for field in spec.get("arguments", []):
+        if not isinstance(field, dict):
+            continue
+        name = str(field.get("name") or "").strip()
+        if not name:
+            continue
+        prompt_label = str(field.get("prompt") or name).strip()
+        default = field.get("default")
+        kind = str(field.get("kind") or "text").strip().lower()
+        choices = [str(item) for item in field.get("choices", []) if str(item).strip()]
+        required = bool(field.get("required"))
+        multiple = bool(field.get("multiple"))
+
+        while True:
+            default_suffix = ""
+            if kind == "bool":
+                default_suffix = " [Y/n]" if bool(default) else " [y/N]"
+            elif default not in {None, ""}:
+                default_suffix = f" [{default}]"
+            try:
+                raw_value = _prompt_text(f"{prompt_label}{default_suffix}: ", input_reader=input_reader)
+            except (EOFError, KeyboardInterrupt):
+                print()
+                return None
+            value = str(raw_value or "").strip()
+            if kind == "bool":
+                parsed_bool = _parse_yes_no(value, default=bool(default))
+                if parsed_bool is None:
+                    print("Please answer yes or no.")
+                    continue
+                answers[name] = parsed_bool
+                break
+            if not value:
+                value = str(default or "").strip()
+            if required and not value:
+                print("A value is required.")
+                continue
+            if choices and value:
+                matching = next((choice for choice in choices if choice.lower() == value.lower()), None)
+                if matching is None:
+                    print(f"Choose one of: {', '.join(choices)}")
+                    continue
+                answers[name] = matching
+                break
+            if multiple:
+                answers[name] = [item.strip() for item in value.split(",") if item.strip()]
+                if required and not answers[name]:
+                    print("At least one value is required.")
+                    continue
+                break
+            answers[name] = value
+            break
+    return answers
+
+
+def _dev_tool_argv(spec: dict[str, Any], answers: dict[str, Any]) -> list[str]:
+    """Build argv for one self-described dev tool."""
+    script_path = Path(str(spec.get("script_path") or "")).resolve()
+    argv = [sys.executable, str(script_path)]
+    for field in spec.get("arguments", []):
+        if not isinstance(field, dict):
+            continue
+        name = str(field.get("name") or "").strip()
+        if not name:
+            continue
+        value = answers.get(name)
+        kind = str(field.get("kind") or "text").strip().lower()
+        if kind == "bool":
+            bool_value = bool(value)
+            argv.extend(str(item) for item in field.get("args_when_true" if bool_value else "args_when_false", []))
+            continue
+        flag = str(field.get("flag") or "").strip()
+        if not flag:
+            continue
+        if field.get("multiple"):
+            for item in value or []:
+                argv.extend([flag, str(item)])
+            continue
+        text_value = str(value or "").strip()
+        if text_value:
+            argv.extend([flag, text_value])
+    return argv
+
+
+def _run_dev_tool_spec(spec: dict[str, Any], answers: dict[str, Any]) -> int:
+    """Execute one configured dev-tool spec in the foreground."""
+    logger = _get_logger()
+    argv = _dev_tool_argv(spec, answers)
+    logger.info("executing dev fluent bit tool label=%s argv=%s", spec.get("label"), argv)
+    print(f"Executing: {_command_text_from_args(argv)}")
+    completed = subprocess.run(
+        argv,
+        cwd=str(_repo_root()),
+        env=_build_exec_env(),
+        check=False,
+    )
+    return int(completed.returncode)
+
+
+def _execute_dev_fluentbit_config_workflow(
+    *,
+    input_reader: Callable[[str], str] | None = None,
+) -> int:
+    """Prompt for and run one or more dev-only Fluent Bit generation utilities."""
+    if _dev_features_enabled() is not True:
+        print(
+            f"{COMMAND_DEV_FLB_CONFIG} is only available when {APP_ENABLE_DEV_FEATURES_ENV}=true.",
+            file=sys.stderr,
+        )
+        return 1
+    specs = _fluentbit_dev_tool_specs()
+    if not specs:
+        print(
+            f"{COMMAND_DEV_FLB_CONFIG} is unavailable because the Fluent Bit dev tool scripts could not be located.",
+            file=sys.stderr,
+        )
+        return 1
+    selected_specs = _prompt_dev_tool_selection(specs, input_reader=input_reader)
+    if not selected_specs:
+        return 0
+    for spec in selected_specs:
+        print(f"Configure: {spec.get('label')}")
+        answers = _prompt_dev_tool_arguments(spec, input_reader=input_reader)
+        if answers is None:
+            return 0
+        exit_code = _run_dev_tool_spec(spec, answers)
+        if exit_code != 0:
+            return exit_code
+    return 0
 
 
 def _catalog_start_available() -> bool:
@@ -2801,7 +3110,9 @@ def _interactive_loop() -> int:  # noqa: PLR0912,PLR0915
         "Example: script demo-start-clients "
         "python -m opamp_consumer.fluentbit_client"
     )
-    print("You can type `start server`, `stop config service`, or `restart server` directly.")
+    print("You can type `start server`, `stop config editor`, or `restart server` directly.")
+    if _fluentbit_dev_tool_available():
+        print(f"Use `{COMMAND_DEV_FLB_CONFIG}` for the Fluent Bit dev generator workflow.")
     print("Use `enable-process-tail` to tail managed process logs in a new shell.")
     detected_flags = _detected_behavior_flags()
     if detected_flags:
@@ -2836,6 +3147,12 @@ def _interactive_loop() -> int:  # noqa: PLR0912,PLR0915
         if raw.strip().lower() == COMMAND_STATUS:
             logger.info("interactive status requested")
             _print_status()
+            continue
+        if raw.strip().lower() == COMMAND_DEV_FLB_CONFIG:
+            logger.info("interactive dev fluent bit config requested")
+            code = _execute_dev_fluentbit_config_workflow(input_reader=input_reader)
+            if code != 0:
+                print(f"Command exited with code {code}")
             continue
         guided = _split_guided_command(raw)
         if guided is not None:

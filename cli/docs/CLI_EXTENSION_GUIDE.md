@@ -161,6 +161,9 @@ Example:
 - `config_service`
   - `config`
   - `cfg`
+  - `editor`
+  - `config editor`
+  - `config-editor`
   - `config service`
   - `config-service`
 
@@ -278,7 +281,7 @@ Same rule for the stop menu.
 The CLI now prefers label-based examples such as:
 
 - `start server`
-- `start config service`
+- `start config editor`
 
 This is safer than numeric examples because numeric examples can drift when menu order changes.
 

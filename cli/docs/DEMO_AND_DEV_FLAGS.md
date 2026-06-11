@@ -51,6 +51,11 @@ Relevant CLI behavior:
 
 - demo profile starts set `APP_ENABLE_DEV_FEATURES=true` when invoking `consumer-sim`
 - startup messaging in interactive CLI only mentions this flag when it is actually detected as enabled
+- when the Fluent Bit dev-generator scripts are present, `opamp-cli dev-flb-config` is exposed as a guided developer workflow
+- that workflow discovers tool metadata from:
+  - `config-service/dev-tools/generate_fluentbit_assets.py`
+  - `config-service/dev-tools/generate_fluentbit_markdown.py`
+- the CLI uses the metadata exported by those scripts to keep prompts and supported flags aligned with the tools themselves
 
 One important non-CLI interaction is the security checks flow:
 

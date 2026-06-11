@@ -296,14 +296,14 @@ def test_resolve_guided_action_matches_aliases() -> None:
     restart_action = cli_main._resolve_guided_action("restart", "catalog")  # type: ignore[attr-defined]
 
     assert start_action is not None
-    assert start_action["label"] == "Config Catalog UI"
+    assert start_action["label"] == "Catalog"
     assert "-m catalog_service " in str(start_action.get("command_text") or "")
     assert stop_action is not None
     assert stop_action["label"] == "All clients"
     assert stop_all_action is not None
     assert stop_all_action["label"] == "All managed processes"
     assert restart_action is not None
-    assert restart_action["label"] == "Config Catalog UI"
+    assert restart_action["label"] == "Catalog"
 
 
 def test_start_and_stop_action_orders_are_stable(monkeypatch) -> None:
@@ -314,8 +314,8 @@ def test_start_and_stop_action_orders_are_stable(monkeypatch) -> None:
 
     assert start_labels == [
         "Server",
-        "Config Catalog UI",
-        "Config Service",
+        "Catalog",
+        "Config Editor",
         "Broker",
         "Simulator",
         "Fluent Bit client",
@@ -323,10 +323,10 @@ def test_start_and_stop_action_orders_are_stable(monkeypatch) -> None:
     ]
     assert stop_labels == [
         "Server",
-        "Config Catalog UI",
+        "Catalog",
         "Broker",
         "Simulator",
-        "Config Service",
+        "Config Editor",
         "Fluent Bit client",
         "Fluentd client",
         "All clients",
@@ -640,7 +640,7 @@ def test_stop_recorded_processes_reports_when_nothing_matches(monkeypatch, capsy
         "_prune_cli_process_state",
         lambda: {
             "processes": [
-                {"name": "Config Service", "pid": 1001},
+                {"name": "Config Editor", "pid": 1001},
             ]
         },
     )
@@ -788,3 +788,92 @@ def test_detected_behavior_flags_returns_only_enabled_flags(monkeypatch) -> None
     assert "OPAMP_DEMO=true" in detected
     assert "APP_ENABLE_DEV_FEATURES=true" in detected
     assert "enable_process_tail=true" in detected
+
+
+def test_top_level_commands_include_dev_flb_config_only_when_available(monkeypatch) -> None:
+    monkeypatch.setattr(cli_main, "_demo_mode_enabled", lambda: False)
+    monkeypatch.setattr(cli_main, "_fluentbit_dev_tool_available", lambda: True)
+
+    commands = cli_main._top_level_commands()  # type: ignore[attr-defined]
+
+    assert "dev-flb-config" in commands
+
+    monkeypatch.setattr(cli_main, "_fluentbit_dev_tool_available", lambda: False)
+    commands = cli_main._top_level_commands()  # type: ignore[attr-defined]
+    assert "dev-flb-config" not in commands
+
+
+def test_handle_command_routes_dev_flb_config_to_workflow(monkeypatch) -> None:
+    called: dict[str, int] = {"count": 0}
+
+    def fake_workflow(*, input_reader=None):  # type: ignore[no-untyped-def]
+        assert input_reader is None
+        called["count"] += 1
+        return 0
+
+    monkeypatch.setattr(cli_main, "_execute_dev_fluentbit_config_workflow", fake_workflow)
+
+    code = cli_main._handle_command("dev-flb-config")  # type: ignore[attr-defined]
+
+    assert code == 0
+    assert called["count"] == 1
+
+
+def test_execute_dev_fluentbit_config_workflow_prompts_and_runs_selected_tool(monkeypatch) -> None:
+    monkeypatch.setattr(cli_main, "_dev_features_enabled", lambda: True)
+    monkeypatch.setattr(
+        cli_main,
+        "_fluentbit_dev_tool_specs",
+        lambda: [
+            {
+                "id": "fluentbit_assets",
+                "label": "Generate Fluent Bit assets",
+                "description": "Generate catalog artifacts.",
+                "script_path": "/tmp/generate_fluentbit_assets.py",
+                "arguments": [
+                    {
+                        "name": "versions",
+                        "flag": "--version",
+                        "prompt": "Version",
+                        "required": True,
+                        "multiple": True,
+                        "default": "5.0.7",
+                    },
+                    {
+                        "name": "generate_schemas",
+                        "prompt": "Generate schemas",
+                        "kind": "bool",
+                        "default": True,
+                        "args_when_false": ["--no-schemas"],
+                    },
+                ],
+            }
+        ],
+    )
+
+    prompts = iter(["1", "5.0.7,5.0.8", "n"])
+    captured: dict[str, list[str]] = {"argv": []}
+
+    def fake_reader(_prompt: str) -> str:
+        return next(prompts)
+
+    def fake_run(argv: list[str], **_kwargs) -> subprocess.CompletedProcess[str]:
+        captured["argv"] = list(argv)
+        return subprocess.CompletedProcess(args=argv, returncode=0)
+
+    monkeypatch.setattr(cli_main.subprocess, "run", fake_run)
+
+    code = cli_main._execute_dev_fluentbit_config_workflow(  # type: ignore[attr-defined]
+        input_reader=fake_reader
+    )
+
+    assert code == 0
+    assert captured["argv"] == [
+        cli_main.sys.executable,
+        "/tmp/generate_fluentbit_assets.py",
+        "--version",
+        "5.0.7",
+        "--version",
+        "5.0.8",
+        "--no-schemas",
+    ]
