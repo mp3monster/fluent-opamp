@@ -51,11 +51,11 @@
       "default": false
     },
     "buffer_max_size": {
-      "type": "integer",
+      "type": "string",
       "description": "Specify the maximum buffer size in KB/MB/GB to the HTTP payload.",
       "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/opentelemetry#configuration-a-hrefconfiguration-idconfigurationa",
       "x-doc-required": false,
-      "x-config-data-type": "integer",
+      "x-config-data-type": "size",
       "x-references-parser": false,
       "default": "4M"
     },

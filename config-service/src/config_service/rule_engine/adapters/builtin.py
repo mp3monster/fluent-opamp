@@ -50,6 +50,7 @@ RULE_KIND_RANGE = "range"
 RULE_KIND_REGEX = "regex"
 RULE_KIND_REGEX_STRING = "regex_string"
 RULE_KIND_BOOLEAN = "boolean"
+RULE_KIND_SIZE = "size"
 DATA_TYPE_STRING = "string"
 DATA_TYPE_TIME = "time"
 DATA_TYPE_INTEGER = "integer"
@@ -65,6 +66,9 @@ DATA_TYPE_MAP = "map"
 SIGNAL_LOGS = "logs"
 
 LOGGER = logging.getLogger(__name__)
+# Fluent Bit size literals follow the upstream unit-size rules:
+# https://docs.fluentbit.io/manual/administration/configuring-fluent-bit#unit-sizes
+SIZE_VALUE_PATTERN = re.compile(r"^\d+([KMGTP]i?[Bb]?|[KMGTP])?$")
 
 
 def _iter_pipeline_plugins(config: dict[str, Any]):
@@ -446,6 +450,13 @@ class ValidationRuleConstraintsAdapter(RuleAdapter):
                     if pattern and re.fullmatch(pattern, value) is None:
                         LOGGER.warning("regex mismatch path=%s pattern=%s", path, pattern)
                         issues.append(_issue("regex_mismatch", path, f"Value for '{key}' does not match required pattern."))
+
+                # Canonical size-value branch using Fluent Bit unit-size syntax:
+                # https://docs.fluentbit.io/manual/administration/configuring-fluent-bit#unit-sizes
+                elif kind == RULE_KIND_SIZE and isinstance(value, str):
+                    if SIZE_VALUE_PATTERN.fullmatch(value) is None:
+                        LOGGER.warning("size mismatch path=%s value=%s", path, value)
+                        issues.append(_issue("regex_mismatch", path, f"Value for '{key}' must be a valid size."))
 
                 # Explicit boolean-only branch.
                 elif kind == RULE_KIND_BOOLEAN and not isinstance(value, bool):

@@ -47,7 +47,7 @@
       "description": "When buffering is true, specifies the location of directory where the buffered data will be stored.",
       "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/azure_kusto#configuration-parameters",
       "x-doc-required": false,
-      "x-config-data-type": "size",
+      "x-config-data-type": "string",
       "x-references-parser": false,
       "default": "/tmp/fluent-bit/azure-kusto/"
     },

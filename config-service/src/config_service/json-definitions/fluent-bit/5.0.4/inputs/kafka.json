@@ -19,9 +19,9 @@
       "description": "Specify the maximum size of buffer per cycle to poll Kafka messages from subscribed topics.",
       "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/kafka#configuration-parameters",
       "default": "4M",
-      "data_type": "integer",
+      "data_type": "size",
       "validation_rule": {
-        "kind": "integer"
+        "kind": "size"
       }
     },
     {

@@ -13,6 +13,7 @@
 
 from __future__ import annotations
 
+import argparse
 import logging
 import shutil
 import sys
@@ -33,15 +34,9 @@ from config_service.json_artifacts import (  # noqa: E402
     load_json_artifact,
     write_manifest_json_artifact,
 )
-from config_service.fluentbit_plugin_name_support import normalize_plugin_map  # noqa: E402
+from config_service.fluentbit_docs_support import normalize_plugin_map  # noqa: E402
 
 LOG_LEVELS = ["off", "trace", "debug", "info", "warn", "error"]
-ROUTER_REFERENCES = {
-    "3.2.10": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
-    "4.2.4": "https://docs.fluentbit.io/manual/4.2/data-pipeline/router",
-    "5.0.4": "https://docs.fluentbit.io/manual/data-pipeline/router",
-}
-TAG_REQUIRED_BY_VERSION = {"3.2.10", "4.2.4"}
 DEFAULT_TIMEOUT = 20
 LOGGER = logging.getLogger("add_fluentbit_processors")
 
@@ -359,15 +354,37 @@ def processors_definition(version: str) -> dict[str, Any]:
     }
 
 
-def _router_reference(version: str) -> str:
-    return ROUTER_REFERENCES.get(version, "https://docs.fluentbit.io/manual/data-pipeline/router")
+def _version_requires_input_tags(version: str) -> bool:
+    return str(version).startswith(("3.", "4."))
+
+
+def _router_reference(payload: dict[str, Any], version: str) -> str:
+    plugins = payload.get("plugins", {})
+    if isinstance(plugins, dict):
+        for section in ("inputs", "filters", "outputs"):
+            section_plugins = plugins.get(section, {})
+            if not isinstance(section_plugins, dict):
+                continue
+            for plugin_def in section_plugins.values():
+                if not isinstance(plugin_def, dict):
+                    continue
+                doc_url = str(plugin_def.get("doc_url") or "").strip()
+                if "/data-pipeline/" in doc_url:
+                    return doc_url.split("/data-pipeline/", 1)[0] + "/data-pipeline/router"
+                if "/pipeline/" in doc_url:
+                    return doc_url.split("/pipeline/", 1)[0] + "/pipeline/router"
+    if str(version).startswith("3."):
+        return f"https://docs.fluentbit.io/manual/{version.rsplit('.', 1)[0]}/pipeline/router"
+    if str(version).startswith("4."):
+        return f"https://docs.fluentbit.io/manual/{version.rsplit('.', 1)[0]}/data-pipeline/router"
+    return "https://docs.fluentbit.io/manual/data-pipeline/router"
 
 
 def _ensure_router_fields(payload: dict[str, Any], version: str) -> None:
     plugins = payload.get("plugins", {})
     if not isinstance(plugins, dict):
         return
-    reference = _router_reference(version)
+    reference = _router_reference(payload, version)
 
     tag_field = field(
         "tag",
@@ -397,7 +414,7 @@ def _ensure_router_fields(payload: dict[str, Any], version: str) -> None:
         if "tag" not in existing:
             tag_payload = dict(tag_field)
             if (
-                version in TAG_REQUIRED_BY_VERSION
+                _version_requires_input_tags(version)
                 and str(plugin_name) != "forward"
             ):
                 tag_payload["required"] = True
@@ -406,7 +423,7 @@ def _ensure_router_fields(payload: dict[str, Any], version: str) -> None:
             tag_existing = existing_fields.get("tag")
             if isinstance(tag_existing, dict):
                 tag_existing["reference"] = reference
-                if version in TAG_REQUIRED_BY_VERSION and str(plugin_name) != "forward":
+                if _version_requires_input_tags(version) and str(plugin_name) != "forward":
                     tag_existing["required"] = True
 
     for section in ("filters", "outputs"):
@@ -523,10 +540,35 @@ def update_catalog(
     )
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Add Fluent Bit processor and router metadata to plugin catalogs.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument(
+        "--version",
+        action="append",
+        dest="versions",
+        help="Fluent Bit version to process. Repeat for multiple versions. Defaults to all local catalog versions.",
+    )
+    return parser.parse_args()
+
+
+def _available_versions() -> list[str]:
+    versions: set[str] = set()
+    for path in DEFINITIONS_DIR.glob("fluent-bit-*-all-plugins-catalog.json"):
+        token = path.name.removeprefix("fluent-bit-").removesuffix("-all-plugins-catalog.json")
+        if token:
+            versions.add(token)
+    return sorted(versions)
+
+
 def main() -> None:
+    args = parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     page_cache: dict[str, str] = {}
-    for version in ("3.2.10", "4.2.4", "5.0.4"):
+    versions = args.versions or _available_versions()
+    for version in versions:
         filename = f"fluent-bit-{version}-all-plugins-catalog.json"
         update_catalog(DEFINITIONS_DIR / filename, logger=LOGGER, page_cache=page_cache)
         src_path = SRC_DEFINITIONS_DIR / filename

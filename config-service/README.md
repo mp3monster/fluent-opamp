@@ -5,8 +5,8 @@ Standalone package for the config-service backend and Python-served UI used to v
 This package ships:
 - the `config_service` Python package
 - bundled HTML/CSS/JS UI assets
-- bundled catalog and service definition JSON files
-- generated runtime JSON schemas
+- bundled catalog and service definition JSON files, including versioned manifest shards
+- generated runtime JSON schemas, including per-version plugin shards
 
 Repository source layout:
 - Python backend package: `src/config_service`

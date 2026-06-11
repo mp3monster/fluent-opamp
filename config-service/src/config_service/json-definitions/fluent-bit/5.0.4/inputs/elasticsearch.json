@@ -10,8 +10,7 @@
       "default": "512K",
       "data_type": "size",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+([KMGTP]i?[Bb]?|[KMGTP])?$"
+        "kind": "size"
       }
     },
     {
@@ -20,9 +19,9 @@
       "description": "Set the maximum size of buffer.",
       "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/elasticsearch#configuration-parameters",
       "default": "4M",
-      "data_type": "integer",
+      "data_type": "size",
       "validation_rule": {
-        "kind": "integer"
+        "kind": "size"
       }
     },
     {

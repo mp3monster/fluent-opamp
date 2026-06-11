@@ -16,11 +16,11 @@
       "x-references-parser": false
     },
     "buffer_max_size": {
-      "type": "integer",
+      "type": "string",
       "description": "Specify the maximum size of buffer per cycle to poll Kafka messages from subscribed topics.",
       "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/kafka#configuration-parameters",
       "x-doc-required": false,
-      "x-config-data-type": "integer",
+      "x-config-data-type": "size",
       "x-references-parser": false,
       "default": "4M"
     },

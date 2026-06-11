@@ -29,8 +29,7 @@
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/filters/multiline-stacktrace#configuration-parameters",
       "data_type": "size",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+([KMGTP]i?[Bb]?|[KMGTP])?$"
+        "kind": "size"
       }
     },
     {

@@ -17,11 +17,11 @@
       "default": "512K"
     },
     "buffer_max_size": {
-      "type": "integer",
+      "type": "string",
       "description": "Specifies the maximum buffer size to receive a request.",
       "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/prometheus-remote-write#configuration-parameters",
       "x-doc-required": false,
-      "x-config-data-type": "integer",
+      "x-config-data-type": "size",
       "x-references-parser": false,
       "default": "4M"
     },

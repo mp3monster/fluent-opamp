@@ -57,9 +57,9 @@
       "description": "Specify the maximum buffer size in KB/MB/GB to the HTTP payload.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/opentelemetry#configuration-a-hrefconfiguration-idconfigurationa",
       "default": "4M",
-      "data_type": "integer",
+      "data_type": "size",
       "validation_rule": {
-        "kind": "integer"
+        "kind": "size"
       }
     },
     {
@@ -70,8 +70,7 @@
       "default": "512K",
       "data_type": "size",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+([KMGTP]i?[Bb]?|[KMGTP])?$"
+        "kind": "size"
       }
     },
     {

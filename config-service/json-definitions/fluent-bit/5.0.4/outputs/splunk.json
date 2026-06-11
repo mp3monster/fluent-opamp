@@ -34,8 +34,7 @@
       "reference": "https://docs.fluentbit.io/manual/data-pipeline/outputs/splunk#configuration-parameters",
       "data_type": "size",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+([KMGTP]i?[Bb]?|[KMGTP])?$"
+        "kind": "size"
       }
     },
     {

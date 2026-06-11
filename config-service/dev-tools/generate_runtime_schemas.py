@@ -13,6 +13,7 @@
 
 from __future__ import annotations
 
+import argparse
 import copy
 import json
 import shutil
@@ -154,7 +155,11 @@ def _write_schema_artifact(directory: Path, config_type: str, version: str, sche
     )
 
 
-def main() -> None:
+def generate_runtime_schemas(
+    *,
+    config_types: list[str] | None = None,
+    versions: list[str] | None = None,
+) -> None:
     from config_service.services.catalog_service import CatalogService
     from config_service.services.schema_service import SchemaService
 
@@ -164,12 +169,46 @@ def main() -> None:
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     SRC_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    requested_types = set(config_types or catalog_service.get_supported_config_types())
+    requested_versions = set(versions or [])
     for config_type in catalog_service.get_supported_config_types():
+        if config_type not in requested_types:
+            continue
         for version in catalog_service.get_versions(config_type=config_type):
+            if requested_versions and version not in requested_versions:
+                continue
             catalog = catalog_service.get_catalog(version, config_type=config_type)
             schema = schema_service.compile_schema(catalog, strict_mode=True)
             _write_schema_artifact(OUTPUT_DIR, config_type, version, schema)
             _write_schema_artifact(SRC_OUTPUT_DIR, config_type, version, schema)
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Generate runtime JSON Schemas from registered catalogs.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument(
+        "--config-type",
+        action="append",
+        dest="config_types",
+        help="Configuration type to generate. Repeat for multiple types.",
+    )
+    parser.add_argument(
+        "--version",
+        action="append",
+        dest="versions",
+        help="Version to generate. Repeat for multiple versions.",
+    )
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = parse_args()
+    generate_runtime_schemas(
+        config_types=args.config_types,
+        versions=args.versions,
+    )
 
 
 if __name__ == "__main__":

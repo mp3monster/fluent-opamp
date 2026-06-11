@@ -155,10 +155,21 @@ async def test_health_and_versions() -> None:
     net_dns_mode = next(item for item in s3_fields if item["name"] == "net.dns.mode")
     assert net_dns_mode["data_type"] == "enum"
     assert net_dns_mode["called_enum_options"] == ["UDP", "TCP"]
+    tail_fields = catalog_body["plugins"]["inputs"]["tail"]["fields"]
+    tail_buffer_max_size = next(item for item in tail_fields if item["name"] == "buffer_max_size")
+    assert tail_buffer_max_size["data_type"] == "size"
     azure_kusto_fields = catalog_body["plugins"]["outputs"]["azure_kusto"]["fields"]
     net_dns_resolver = next(item for item in azure_kusto_fields if item["name"] == "net.dns.resolver")
     assert net_dns_resolver["data_type"] == "enum"
     assert net_dns_resolver["called_enum_options"] == ["LEGACY", "ASYNC"]
+
+    schema = await client.post("/config-service/api/v1/schema/5.0.4?config_type=fluentbit", json={"strict": True})
+    assert schema.status_code == 200
+    schema_body = await schema.get_json()
+    input_variants = schema_body["schema"]["properties"]["config"]["properties"]["pipeline"]["properties"]["inputs"]["items"]["oneOf"]
+    tail_schema = next(item for item in input_variants if item["properties"]["name"]["const"] == "tail")
+    assert tail_schema["properties"]["buffer_max_size"]["type"] == "string"
+    assert tail_schema["properties"]["buffer_max_size"]["x-config-data-type"] == "size"
 
     issue_codes = await client.get("/config-service/api/v1/issue-codes")
     assert issue_codes.status_code == 200

@@ -48,11 +48,8 @@
       "description": "When buffering is true, specifies the location of directory where the buffered data will be stored.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/azure_kusto#configuration-parameters",
       "default": "/tmp/fluent-bit/azure-kusto/",
-      "data_type": "size",
-      "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+([KMGTP]i?[Bb]?|[KMGTP])?$"
-      }
+      "data_type": "string",
+      "validation_rule": null
     },
     {
       "name": "buffer_file_delete_early",
@@ -509,8 +506,7 @@
       "default": "8G",
       "data_type": "size",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+([KMGTP]i?[Bb]?|[KMGTP])?$"
+        "kind": "size"
       }
     },
     {
@@ -705,8 +701,7 @@
       "default": "200MB",
       "data_type": "size",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+([KMGTP]i?[Bb]?|[KMGTP])?$"
+        "kind": "size"
       }
     },
     {

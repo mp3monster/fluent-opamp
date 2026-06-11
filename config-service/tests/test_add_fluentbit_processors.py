@@ -24,7 +24,7 @@ SRC_ROOT = Path(__file__).resolve().parents[1] / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from config_service.fluentbit_plugin_name_support import PluginNameResolution
+from config_service.fluentbit_docs_support import PluginNameResolution
 from config_service.json_artifacts import load_json_artifact
 
 

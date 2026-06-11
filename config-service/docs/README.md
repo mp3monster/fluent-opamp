@@ -7,14 +7,15 @@ This folder contains user-facing documentation for running, configuring, and ext
 2. [Configuration Reference](./configuration.md)
 3. [UI User Guide](./ui-user-guide.md)
 4. [Catalog Management](./catalog-management.md)
-5. [Custom Validation Logic](./custom-validation.md)
-6. [API Reference](./api-reference.md)
-7. [Troubleshooting](./troubleshooting.md)
-8. [Standalone Packaging](./standalone-packaging.md)
-9. [UI Testing](./ui-testing.md)
-10. [Developer Tools](./dev-tools.md)
-11. [Test Cases](./TEST_CASES.md)
-12. [UI Framework Decision](./ui-framework-decision.md)
+5. [Plugin JSON File Format](./plugin-json-file-format.md)
+6. [Custom Validation Logic](./custom-validation.md)
+7. [API Reference](./api-reference.md)
+8. [Troubleshooting](./troubleshooting.md)
+9. [Standalone Packaging](./standalone-packaging.md)
+10. [UI Testing](./ui-testing.md)
+11. [Developer Tools](./dev-tools.md)
+12. [Test Cases](./TEST_CASES.md)
+13. [UI Framework Decision](./ui-framework-decision.md)
 
 ## What this service provides
 - Versioned Fluent Bit catalog loading from config.
@@ -42,4 +43,6 @@ This folder contains user-facing documentation for running, configuring, and ext
 - Developer tooling and generators: `config-service/dev-tools`
 - Backend lint/test entrypoint: `config-service/dev-tools/run_backend_quality_checks.py`
 - UI browser-test entrypoint: `config-service/dev-tools/run_ui_quality_checks.sh`
+- Fluent Bit asset generator: `config-service/dev-tools/generate_fluentbit_assets.py`
+- Fluent Bit markdown generator: `config-service/dev-tools/generate_fluentbit_markdown.py`
 - Fluent Bit quick-reference generator: `config-service/dev-tools/quick-references/generate_fluentbit_schema_quick_reference.py`

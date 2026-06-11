@@ -26,11 +26,11 @@
       "default": "512K"
     },
     "buffer_max_size": {
-      "type": "integer",
+      "type": "string",
       "description": "Specify the maximum buffer size to receive a JSON message.",
       "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/http#configuration-parameters",
       "x-doc-required": false,
-      "x-config-data-type": "integer",
+      "x-config-data-type": "size",
       "x-references-parser": false,
       "default": "4M"
     },

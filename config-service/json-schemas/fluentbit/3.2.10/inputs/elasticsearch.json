@@ -8,11 +8,11 @@
       "title": "Plugin"
     },
     "buffer_max_size": {
-      "type": "integer",
+      "type": "string",
       "description": "Set the maximum size of buffer.",
       "x-doc-reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/elasticsearch#configuration-parameters",
       "x-doc-required": false,
-      "x-config-data-type": "integer",
+      "x-config-data-type": "size",
       "x-references-parser": false,
       "default": "4M"
     },

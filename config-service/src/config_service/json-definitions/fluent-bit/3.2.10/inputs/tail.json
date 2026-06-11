@@ -10,8 +10,7 @@
       "default": "32k",
       "data_type": "size",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+([KMGTP]i?[Bb]?|[KMGTP])?$"
+        "kind": "size"
       }
     },
     {
@@ -20,9 +19,9 @@
       "description": "Set the limit of the buffer size per monitored file.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/tail#configuration-parameters-a-hrefconfig-idconfiga",
       "default": "32k",
-      "data_type": "integer",
+      "data_type": "size",
       "validation_rule": {
-        "kind": "integer"
+        "kind": "size"
       }
     },
     {
@@ -177,8 +176,7 @@
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/tail#configuration-parameters-a-hrefconfig-idconfiga",
       "data_type": "size",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+([KMGTP]i?[Bb]?|[KMGTP])?$"
+        "kind": "size"
       }
     },
     {
@@ -247,8 +245,7 @@
       "default": "50M",
       "data_type": "size",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+([KMGTP]i?[Bb]?|[KMGTP])?$"
+        "kind": "size"
       }
     },
     {

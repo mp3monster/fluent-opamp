@@ -25,11 +25,11 @@
       "default": "512K"
     },
     "buffer_max_size": {
-      "type": "integer",
+      "type": "string",
       "description": "Maximum size of the HTTP request buffer in KB, MB, or GB.",
       "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
       "x-doc-required": false,
-      "x-config-data-type": "integer",
+      "x-config-data-type": "size",
       "x-references-parser": false,
       "default": "4M"
     },

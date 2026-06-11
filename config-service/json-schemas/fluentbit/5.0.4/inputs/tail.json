@@ -17,11 +17,11 @@
       "default": "32k"
     },
     "buffer_max_size": {
-      "type": "integer",
+      "type": "string",
       "description": "Set the limit of the buffer size per monitored file.",
       "x-doc-reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/tail#configuration-parameters",
       "x-doc-required": true,
-      "x-config-data-type": "integer",
+      "x-config-data-type": "size",
       "x-references-parser": false,
       "default": "32k"
     },

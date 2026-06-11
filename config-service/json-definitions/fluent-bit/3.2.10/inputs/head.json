@@ -17,8 +17,7 @@
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/head#configuration-parameters",
       "data_type": "size",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+([KMGTP]i?[Bb]?|[KMGTP])?$"
+        "kind": "size"
       }
     },
     {

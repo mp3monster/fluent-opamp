@@ -2,6 +2,55 @@
 
 This page summarizes developer-facing helper scripts in `config-service/dev-tools`.
 
+## Fluent Bit Asset Generator
+
+Script:
+- [generate_fluentbit_assets.py](../dev-tools/generate_fluentbit_assets.py)
+
+Purpose:
+1. Scrapes Fluent Bit plugin documentation for one or more versions
+2. Supports:
+   - the Fluent Bit docs website
+   - the `fluent/fluent-bit-docs` GitHub repo
+   - automatic GitHub → website fallback
+3. Generates versioned Fluent Bit catalog JSON artifacts under:
+   - `config-service/json-definitions`
+   - `config-service/src/config_service/json-definitions`
+4. Runs the post-processing pass that:
+   - normalizes plugin names to the real Fluent Bit config `Name`
+   - adds shared processor metadata
+   - adds router-related fields
+   - writes split manifest + per-plugin shard files
+5. Optionally updates `config-service/config/catalog-registry.json`
+6. Optionally regenerates runtime schemas for the requested versions
+
+The generated catalog layout is versioned and sharded:
+1. Top-level manifest file: `json-definitions/fluent-bit-<version>-all-plugins-catalog.json`
+2. Version folder: `json-definitions/fluent-bit/<version>/`
+3. Plugin-type manifests: `inputs.json`, `filters.json`, `outputs.json`
+4. Per-plugin files under `inputs/`, `filters/`, and `outputs/`
+
+Run it:
+
+```bash
+cd /mnt/d/dev/opamp
+python3 config-service/dev-tools/generate_fluentbit_assets.py --version 5.0.7
+```
+
+Useful examples:
+
+```bash
+python3 config-service/dev-tools/generate_fluentbit_assets.py --version 5.0.7 --source website
+python3 config-service/dev-tools/generate_fluentbit_assets.py --version 5.0.7 --source github --github-ref master
+python3 config-service/dev-tools/generate_fluentbit_assets.py --version 5.0.7 --no-schemas
+python3 config-service/dev-tools/generate_fluentbit_assets.py --version 5.0.7 --no-register
+```
+
+Notes:
+1. The website root is resolved from `https://docs.fluentbit.io/manual/<version>/administration/configuring-fluent-bit`
+2. If the exact patch path does not exist, the tool falls back to the series path and then the unversioned manual
+3. GitHub mode resolves `.gitbook.yaml` first so plugin names come from the canonical docs mapping rather than page slugs
+
 ## Fluent Bit Schema Quick Reference Generator
 
 Script:
@@ -111,30 +160,28 @@ python3 config-service/dev-tools/quick-references/generate_fluentbit_plugin_attr
 python3 config-service/dev-tools/quick-references/generate_fluentbit_plugin_attribute_reference.py --source-dir config-service/json-definitions --output-dir quick-references
 ```
 
-## Fluent Bit Plugin Name Checker
+## Fluent Bit Markdown Generator
 
 Script:
-- [check_fluentbit_plugin_names.py](../dev-tools/check_fluentbit_plugin_names.py)
+- [generate_fluentbit_markdown.py](../dev-tools/generate_fluentbit_markdown.py)
 
 Purpose:
-1. Reads Fluent Bit plugin definition files from one named folder such as `json-definitions/fluent-bit/3.2.10/inputs`
-2. Fetches each plugin's documentation page from its `doc_url`
-3. Extracts the real Fluent Bit config `Name` from page content such as:
-   - `[INPUT] Name stdin`
-   - `[FILTER] Name rewrite_tag`
-   - `[output:stdout:stdout.0]`
-4. Logs every check and any applied rename
-5. Optionally updates matching catalog manifests and schema shard files
+1. Regenerates human-readable Fluent Bit Markdown references from local generated artifacts
+2. Runs:
+   - the schema quick-reference generator
+   - the plugin attribute reference generator
+3. Uses the already-generated local schema/catalog JSON artifacts as the source of truth
 
 Run it:
 
 ```bash
 cd /mnt/d/dev/opamp
-python3 config-service/dev-tools/check_fluentbit_plugin_names.py config-service/json-definitions/fluent-bit/3.2.10/inputs
+python3 config-service/dev-tools/generate_fluentbit_markdown.py --version 5.0.7
 ```
 
-Apply changes:
+Optional:
 
 ```bash
-python3 config-service/dev-tools/check_fluentbit_plugin_names.py --apply config-service/json-definitions/fluent-bit/3.2.10/inputs
+python3 config-service/dev-tools/generate_fluentbit_markdown.py --version 5.0.7 --skip-attribute-reference
+python3 config-service/dev-tools/generate_fluentbit_markdown.py --version 5.0.7 --skip-schema-reference
 ```

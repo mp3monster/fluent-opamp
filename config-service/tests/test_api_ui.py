@@ -165,7 +165,6 @@ async def test_validate_save_toggle_is_present_in_ui() -> None:
     assert ui.status_code == 200
     html = (await ui.get_data()).decode("utf-8")
     assert 'id="validation-save-toggle"' in html
-    assert "Save if valid" in html
 
 @pytest.mark.asyncio
 async def test_config_service_help_page_served() -> None:

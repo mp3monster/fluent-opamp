@@ -1727,9 +1727,18 @@
     el.featureMenuSelect.selectedIndex = 0;
   }
 
+  function requestedSourcePathFromLocation() {
+    try {
+      var current = new URL(window.location.href);
+      return String(current.searchParams.get("source_path") || "").trim();
+    } catch (_err) {
+      return "";
+    }
+  }
+
   function configServiceOpenSourcePath() {
     var current = new URL(window.location.href);
-    var sourcePath = String(current.searchParams.get("source_path") || "").trim();
+    var sourcePath = requestedSourcePathFromLocation();
     if (!sourcePath) {
       return Promise.resolve(false);
     }
@@ -4102,8 +4111,29 @@ function renderPlugins() {
         state.issueCodeMap = {};
       });
 
+    var requestedSourcePath = requestedSourcePathFromLocation();
     loadVersionsForType(state.configType)
       .then(function () {
+        if (requestedSourcePath) {
+          clearOpenFileSelection();
+          state.currentFileName = "";
+          state.doc = null;
+          state.headerComments = "";
+          if (el.headerCommentsInput) {
+            el.headerCommentsInput.value = "";
+          }
+          return configServiceOpenSourcePath().then(function (opened) {
+            if (opened) {
+              return true;
+            }
+            state.doc = emptyDoc(state.selectedVersion, state.configType);
+            ensureDoc();
+            state.doc.configType = state.configType;
+            el.configTypeSelect.value = state.configType;
+            return false;
+          });
+        }
+
         var cookieDoc = localStorage.getItem(LAST_DOC_STORAGE);
         var cookieHeaderComments = localStorage.getItem(LAST_HEADER_COMMENTS_STORAGE);
         var cookieName = getCookie(LAST_FILE_COOKIE);
@@ -4132,7 +4162,12 @@ function renderPlugins() {
         el.configTypeSelect.value = state.configType;
         return loadVersionsForType(state.configType, state.doc.version || state.selectedVersion);
       })
-      .then(function () {
+      .then(function (openedRequestedSourcePath) {
+        if (openedRequestedSourcePath === true) {
+          updateReadOnlyState();
+          updateRenderedDirtyState();
+          return null;
+        }
         if (!state.selectedVersion) {
           renderAll();
           return null;
@@ -4147,7 +4182,7 @@ function renderPlugins() {
         renderAll();
         updateReadOnlyState();
         updateRenderedDirtyState();
-        return configServiceOpenSourcePath();
+        return null;
       })
       .catch(function (err) {
         setValidationText(String(err));

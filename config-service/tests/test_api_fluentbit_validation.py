@@ -398,6 +398,38 @@ async def test_validate_rejects_invalid_time_value_format() -> None:
     assert "$.pipeline.outputs[0].processors.metrics[0].max_staleness" in invalid_type_paths
 
 @pytest.mark.asyncio
+async def test_validate_rejects_invalid_size_value_format() -> None:
+    app = create_app(mode="standalone")
+    client = app.test_client()
+
+    payload = {
+        "config": {
+            "pipeline": {
+                "inputs": [
+                    {
+                        "name": "tail",
+                        "path": "/var/log/test.log",
+                        "buffer_chunk_size": "not-a-size",
+                        "buffer_max_size": "64K",
+                    }
+                ],
+                "filters": [],
+                "outputs": [{"name": "null", "match": "*"}],
+            }
+        },
+        "profile": "strict",
+    }
+
+    response = await client.post(
+        "/config-service/api/v1/validate/5.0.4?config_type=fluentbit",
+        json=payload,
+    )
+    assert response.status_code in (200, 400)
+    body = await response.get_json()
+    mismatch_paths = {item["path"] for item in body["errors"] if item["code"] == "regex_mismatch"}
+    assert "$.pipeline.inputs[0].buffer_chunk_size" in mismatch_paths
+
+@pytest.mark.asyncio
 async def test_validate_route_output_reference_and_enablement() -> None:
     app = create_app(mode="standalone")
     client = app.test_client()

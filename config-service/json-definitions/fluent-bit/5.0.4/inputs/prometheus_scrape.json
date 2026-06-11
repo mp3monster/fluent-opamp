@@ -16,9 +16,9 @@
       "description": "Set the maximum buffer size for the HTTP response.",
       "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/prometheus-scrape-metrics#configuration",
       "default": "10M",
-      "data_type": "integer",
+      "data_type": "size",
       "validation_rule": {
-        "kind": "integer"
+        "kind": "size"
       }
     },
     {

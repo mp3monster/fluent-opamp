@@ -16,11 +16,11 @@
       "x-references-parser": false
     },
     "buffer_max_size": {
-      "type": "integer",
+      "type": "string",
       "description": "Set the maximum buffer size for the HTTP response.",
       "x-doc-reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/prometheus-scrape-metrics#configuration",
       "x-doc-required": false,
-      "x-config-data-type": "integer",
+      "x-config-data-type": "size",
       "x-references-parser": false,
       "default": "10M"
     },

@@ -30,9 +30,9 @@
       "description": "Specify the maximum buffer size in KB to receive a JSON message.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/prometheus-remote-write#configuration",
       "default": "4M",
-      "data_type": "integer",
+      "data_type": "size",
       "validation_rule": {
-        "kind": "integer"
+        "kind": "size"
       }
     },
     {
@@ -43,8 +43,7 @@
       "default": "512K",
       "data_type": "size",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+([KMGTP]i?[Bb]?|[KMGTP])?$"
+        "kind": "size"
       }
     },
     {

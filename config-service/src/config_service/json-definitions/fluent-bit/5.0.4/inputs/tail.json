@@ -4,25 +4,24 @@
   "fields": [
     {
       "name": "buffer_chunk_size",
-      "required": true,
+      "required": false,
       "description": "Set the initial buffer size to read file data.",
       "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/tail#configuration-parameters",
       "default": "32k",
       "data_type": "size",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+([KMGTP]i?[Bb]?|[KMGTP])?$"
+        "kind": "size"
       }
     },
     {
       "name": "buffer_max_size",
-      "required": true,
+      "required": false,
       "description": "Set the limit of the buffer size per monitored file.",
       "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/tail#configuration-parameters",
       "default": "32k",
-      "data_type": "integer",
+      "data_type": "size",
       "validation_rule": {
-        "kind": "integer"
+        "kind": "size"
       }
     },
     {
@@ -113,8 +112,7 @@
       "default": "50M",
       "data_type": "size",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+([KMGTP]i?[Bb]?|[KMGTP])?$"
+        "kind": "size"
       }
     },
     {
@@ -202,8 +200,7 @@
       "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/tail#configuration-parameters",
       "data_type": "size",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+([KMGTP]i?[Bb]?|[KMGTP])?$"
+        "kind": "size"
       }
     },
     {
@@ -343,8 +340,7 @@
       "default": "50M",
       "data_type": "size",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+([KMGTP]i?[Bb]?|[KMGTP])?$"
+        "kind": "size"
       }
     },
     {
