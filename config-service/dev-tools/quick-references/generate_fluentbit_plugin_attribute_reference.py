@@ -22,18 +22,24 @@ What this script does:
 
 Dependencies:
 1. Python 3.10+.
-2. Python standard library only (`argparse`, `json`, `pathlib`, `typing`).
+2. Python standard library plus local `config_service` helpers.
 """
 
 from __future__ import annotations
 
 import argparse
-import json
+import sys
 from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 CONFIG_SERVICE_ROOT = Path(__file__).resolve().parents[2]
+SRC_ROOT = CONFIG_SERVICE_ROOT / "src"
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
+
+from config_service.json_artifacts import load_json_artifact  # noqa: E402
+
 DEFAULT_SOURCE_DIR = CONFIG_SERVICE_ROOT / "json-definitions"
 DEFAULT_OUTPUT_DIR = REPO_ROOT / "quick-references"
 DEFAULT_VERSIONS = ("3.2.10", "4.2.4", "5.0.4")
@@ -119,7 +125,7 @@ def _render_markdown(version: str, payload: dict[str, Any], source_file: Path) -
 def generate_reference(version: str, source_dir: Path, output_dir: Path) -> None:
     input_path = _input_path(source_dir, version)
     output_path = _output_path(output_dir, version)
-    payload = json.loads(input_path.read_text(encoding="utf-8"))
+    payload = load_json_artifact(input_path)
     output_path.write_text(_render_markdown(version, payload, input_path), encoding="utf-8")
     print(f"Wrote {output_path}")
 

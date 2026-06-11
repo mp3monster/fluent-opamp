@@ -63,17 +63,22 @@ class CatalogFileIndexService:
         self._lock = threading.RLock()
         self._file_signatures: dict[str, FileSignature] = {}
         self._cached_payload: dict[str, object] | None = None
+        
+        LOGGER.debug("CatalogFileIndexService initd")
 
     def scan(self) -> dict[str, object]:
         """Return table-ready payload, refreshing cached metadata when source files change."""
+        LOGGER.debug("CatalogFileIndexService.scan - going to try a scan")
         with self._lock:
             current_signatures = self._source_file_signatures()
             if self._cached_payload is not None and current_signatures == self._file_signatures:
+                LOGGER.debug("CatalogFileIndexService.scan - NO change found")                
                 return self._cached_payload
 
             payload = self._build_payload()
             self._file_signatures = current_signatures
             self._cached_payload = payload
+            LOGGER.debug("CatalogFileIndexService.scan - change found")                
             return payload
 
     def _build_payload(self) -> dict[str, object]:
@@ -139,6 +144,8 @@ class CatalogFileIndexService:
         if not base_dir.exists() or not base_dir.is_dir():
             return []
 
+        LOGGER.debug("CatalogFileIndexService._scan_source inspecting %s/%s", 
+                     self.repo_root, source.folder)
         allowed_ext = {ext.lower() for ext in source.extensions}
         rows: list[CatalogRow] = []
         for path in sorted(base_dir.rglob("*")):

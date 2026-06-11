@@ -21,7 +21,7 @@ What this script does:
 
 Dependencies:
 1. Python 3.10+.
-2. Python standard library only (`argparse`, `json`, `re`, `pathlib`, `typing`).
+2. Python standard library plus local `config_service` helpers.
 """
 
 from __future__ import annotations
@@ -29,11 +29,18 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 CONFIG_SERVICE_ROOT = Path(__file__).resolve().parents[2]
+SRC_ROOT = CONFIG_SERVICE_ROOT / "src"
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
+
+from config_service.json_artifacts import load_json_schema_artifact  # noqa: E402
+
 DEFAULT_SOURCE_DIR = CONFIG_SERVICE_ROOT / "json-schemas"
 DEFAULT_OUTPUT_DIR = REPO_ROOT / "quick-references"
 
@@ -65,7 +72,7 @@ def _display_path(path: Path) -> str:
 
 
 def load_schema(source_dir: Path, version: str) -> dict[str, Any]:
-    return json.loads(schema_path(source_dir, version).read_text(encoding="utf-8"))
+    return load_json_schema_artifact(schema_path(source_dir, version))
 
 
 def plugin_variants(schema: dict[str, Any], section: str) -> list[dict[str, Any]]:
