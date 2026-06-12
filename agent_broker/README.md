@@ -20,10 +20,9 @@ existing `fluent-opamp` MCP-enabled service.
 ## Project layout
 
 - `opamp_broker/` application package
-- `scripts/` helper scripts for run/package
+- `scripts/` helper scripts for setup/package
 - `docs/` design and transcript documents
   - docs index: `docs/README.md`
-- `.broker/` runtime artifacts (created by service/start scripts)
 
 ## Folder purposes (agent_broker root)
 
@@ -32,13 +31,13 @@ existing `fluent-opamp` MCP-enabled service.
 - `opamp_broker/config/`: broker runtime configuration and static config artifacts (for example broker defaults and Slack manifest).
 - `opamp_broker/graph/`: conversation graph assembly, planning logic, and execution flow wiring.
 - `opamp_broker/mcp/`: MCP transport client and tool registry integration used to call provider tools.
+- `opamp_broker/mcp/proxy.py`: optional local MCP proxy endpoint so desktop clients can call the broker, which then proxies to the provider.
 - `opamp_broker/session/`: in-memory session lifecycle management and idle-session sweeper logic.
 - `opamp_broker/social_collaboration/`: abstract social-collaboration adapter interface and adapter factory.
 - `opamp_broker/social_collaboration/adapters/`: concrete social-collaboration adapter implementations (for example Slack).
 - `opamp_broker/slack/`: Slack-specific client and handler implementation used by the Slack social-collaboration adapter.
 - `opamp_broker/utils/`: shared utility helpers used by broker modules.
-- `scripts/`: helper scripts for Slack setup plus broker start/run workflows on Linux/macOS and Windows.
-- `.broker/`: runtime state and logs when using service scripts (for example `broker.pid`, `broker.log`, `broker.log.err`).
+- `scripts/`: helper scripts for Slack setup, packaging, and local development utilities.
 
 ## Pre-requisites
 
@@ -91,17 +90,12 @@ existing `fluent-opamp` MCP-enabled service.
    - activate the venv
    - `pip install -r requirements.txt`
 6. Run:
-   - Preferred startup scripts (also ensure dependencies are installed each run):
-     - Linux/macOS foreground: `./scripts/start_broker.sh`
-     - Windows PowerShell foreground: `.\scripts\start_broker.ps1`
-     - Linux/macOS background service mode: `./scripts/start_broker.sh --service`
-     - Windows PowerShell background service mode: `.\scripts\start_broker.ps1 -Service`
-     - Show broker CLI help (forwarded through startup scripts):
-       - Linux/macOS: `./scripts/start_broker.sh -h`
-       - Windows PowerShell: `.\scripts\start_broker.ps1 -h`
-   - Stop service mode:
-     - Linux/macOS: `./scripts/stop_broker_service.sh`
-     - Windows PowerShell: `.\scripts\stop_broker_service.ps1`
+   - Preferred guided lifecycle via `opamp-cli`:
+     - Start broker: `opamp-cli start broker`
+     - Stop broker: `opamp-cli stop broker`
+     - Show managed process state: `opamp-cli status`
+   - If `opamp-cli` is not installed yet:
+     - `PYTHONPATH=cli/src python3 -m opamp_cli start broker`
    - Show broker CLI options + version details: `python -m opamp_broker.broker_app -h`
    - Optional explicit adapter selection: `python -m opamp_broker.broker_app --social-collaboration slack`
    - Show broker version metadata: `python -m opamp_broker.broker_app --version`
@@ -120,9 +114,12 @@ existing `fluent-opamp` MCP-enabled service.
 - In-memory thread state is cleared after the configured idle timeout.
 - On shutdown the broker tells active threads it is "going to bed" and clears working context.
 - MCP connectivity is intentionally simplified to the provider `/mcp` endpoint and supports configurable connection strategy (`auto`/`json`/`sse`), protocol version attempts, timeout, and startup discovery retry/backoff via `mcp.*` settings.
+- When `mcp_server.enabled` is `true`, the broker also exposes its own local `/mcp` proxy endpoint for desktop MCP clients and forwards `initialize`, `tools/list`, and `tools/call` upstream to the provider.
+- Recommended deployment posture: send untrusted or agentic MCP traffic to the broker proxy first, not directly to the provider. This keeps richer provider APIs on an internal-only surface and lets the broker act as the narrower, easier-to-restrict boundary.
+- Broker OTLP export uses the shared top-level `otlp-endpoints` block. If that block is not present in the broker config file, the broker inherits it from the referenced `paths.opamp_config_path` file.
 - Ensure broker `mcp.connection_mode` aligns with provider response mode (SSE/streaming vs JSON). `auto` is recommended unless you explicitly need to force one mode.
 - broker deployment packaging checks whether `opamp-cli` is available and warns when it is not detected
-- the CLI is deployed separately from the broker package/zip and should be installed alongside broker operations when you want the guided launcher workflow
+- the CLI is deployed separately from the broker package/zip and is now the preferred way to start/stop the broker locally
 - Agent filters can be passed directly to the discovered listing tool, for example:
   - `/opamp tool_otel_agents service_instance_id=checkout host_name=prod-node invert_filter=true`
   - `/opamp show agents host_ip=10.0.0.5 client_version=1.2`

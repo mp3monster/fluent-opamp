@@ -35,14 +35,17 @@ from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
+from hypercorn.asyncio import serve
+from hypercorn.config import Config as HypercornConfig
 
-from opamp_broker.config.loader import load_runtime_config
+from opamp_broker.config.loader import get_effective_config_path, load_runtime_config
 from opamp_broker.component_version import (
     component_version_text,
     load_component_version_info,
 )
 from opamp_broker.graph.graph import build_graph
 from opamp_broker.mcp.client import MCPClient
+from opamp_broker.mcp.proxy import MCPProxyService, create_mcp_proxy_app
 from opamp_broker.mcp.tools import MCPToolRegistry
 from opamp_broker.planner.ai_connection_factory import (
     create_ai_connection,
@@ -60,6 +63,11 @@ from opamp_broker.session.manager import (
 from opamp_broker.session.sweeper import SessionSweeper
 from opamp_broker.social_collaboration.factory import (
     create_social_collaboration_adapter,
+)
+from shared.observability import (
+    attach_observability,
+    configure_process_observability,
+    load_observability_config_from_payload,
 )
 
 ENV_BROKER_LOGGING_CONFIG_PATH = "OPAMP_BROKER_LOGGING_CONFIG"
@@ -256,6 +264,22 @@ def _resolve_social_collaboration_implementation(
 def _is_startup_verification_enabled(mode: str) -> bool:
     """Return whether startup verification mode should run."""
     return mode in {"social", "ai_svc", "all"}
+
+
+def _resolve_mcp_proxy_settings(config: dict[str, Any]) -> dict[str, Any]:
+    """Resolve broker-hosted MCP proxy listener settings."""
+    mcp_server = config.get("mcp_server", {})
+    if not isinstance(mcp_server, dict):
+        mcp_server = {}
+    path = str(mcp_server.get("path", "/mcp")).strip() or "/mcp"
+    if not path.startswith("/"):
+        path = f"/{path}"
+    return {
+        "enabled": bool(mcp_server.get("enabled", False)),
+        "host": str(mcp_server.get("host", "127.0.0.1")).strip() or "127.0.0.1",
+        "port": int(mcp_server.get("port", 8080)),
+        "path": path,
+    }
 
 
 def _resolve_planner_runtime_settings(config: dict[str, Any]) -> dict[str, Any]:
@@ -638,8 +662,20 @@ async def main(
     """
     load_dotenv()
     broker_started_at_utc = datetime.now(timezone.utc).isoformat()
+    effective_config_path = get_effective_config_path(config_path)
     config = load_runtime_config(config_path)
     configure_logging(config["broker"]["log_level"])
+    logger.info("using broker config path: %s", effective_config_path)
+    observability_config = load_observability_config_from_payload(config)
+    configure_process_observability(
+        service_name="opamp-broker",
+        config=observability_config,
+        log_level=getattr(
+            logging,
+            str(config["broker"]["log_level"]).strip().upper(),
+            logging.INFO,
+        ),
+    )
     selected_social_collaboration_implementation = (
         _resolve_social_collaboration_implementation(
             config,
@@ -680,6 +716,10 @@ async def main(
     )
     tool_registry = MCPToolRegistry(mcp_client)
     mcp_retry_settings = _resolve_mcp_retry_settings(config)
+    mcp_proxy_settings = _resolve_mcp_proxy_settings(config)
+    mcp_proxy_service: MCPProxyService | None = None
+    mcp_proxy_shutdown_event: asyncio.Event | None = None
+    mcp_proxy_task: asyncio.Task[Any] | None = None
     try:
         await _refresh_tools_with_backoff(
             tool_registry=tool_registry,
@@ -700,12 +740,77 @@ async def main(
             },
         )
 
+    if mcp_proxy_settings["enabled"]:
+        mcp_proxy_service = MCPProxyService(
+            mcp_url=config["derived"]["provider_routes"]["mcp_url"],
+            timeout_seconds=config["mcp"]["request_timeout_seconds"],
+            connection_mode=mcp_connection_settings["connection_mode"],
+            protocol_version_attempts=mcp_connection_settings[
+                "protocol_version_attempts"
+            ],
+        )
+        mcp_proxy_app = create_mcp_proxy_app(
+            proxy_service=mcp_proxy_service,
+            mcp_path=mcp_proxy_settings["path"],
+        )
+        attach_observability(
+            mcp_proxy_app,
+            service_name="opamp-broker",
+            config=observability_config,
+            log_level=getattr(
+                logging,
+                str(config["broker"]["log_level"]).strip().upper(),
+                logging.INFO,
+            ),
+        )
+        mcp_proxy_config = HypercornConfig()
+        mcp_proxy_config.bind = [
+            f"{mcp_proxy_settings['host']}:{mcp_proxy_settings['port']}"
+        ]
+        mcp_proxy_shutdown_event = asyncio.Event()
+        mcp_proxy_task = asyncio.create_task(
+            serve(
+                mcp_proxy_app,
+                mcp_proxy_config,
+                shutdown_trigger=mcp_proxy_shutdown_event.wait,
+            ),
+            name="mcp-proxy-http",
+        )
+        logger.info(
+            "broker MCP proxy listening at http://%s:%s%s",
+            mcp_proxy_settings["host"],
+            mcp_proxy_settings["port"],
+            mcp_proxy_settings["path"],
+            extra={
+                "event": "broker.mcp_proxy.started",
+                "context": {
+                    "host": mcp_proxy_settings["host"],
+                    "port": mcp_proxy_settings["port"],
+                    "path": mcp_proxy_settings["path"],
+                },
+            },
+        )
+
     graph = build_graph(tool_registry, config)
     default_ai_mode = _resolve_default_client_ai_mode(config)
     session_manager = SessionManager(default_ai_mode=default_ai_mode)
-    social_collaboration_adapter = create_social_collaboration_adapter(
-        selected_social_collaboration_implementation
-    )
+    try:
+        social_collaboration_adapter = create_social_collaboration_adapter(
+            selected_social_collaboration_implementation
+        )
+    except KeyError as exc:
+        if (
+            mcp_proxy_settings["enabled"]
+            and selected_social_collaboration_implementation == "slack"
+        ):
+            logger.warning(
+                "Slack credentials were not available; falling back to MCP-only broker mode because mcp_server.enabled=true: %s",
+                exc,
+            )
+            selected_social_collaboration_implementation = "none"
+            social_collaboration_adapter = create_social_collaboration_adapter("none")
+        else:
+            raise
     social_collaboration_adapter.register_handlers(
         session_manager,
         graph,
@@ -786,6 +891,10 @@ async def main(
                 },
             },
         )
+        if mcp_proxy_shutdown_event is not None:
+            mcp_proxy_shutdown_event.set()
+        if mcp_proxy_service is not None:
+            await mcp_proxy_service.close()
         await mcp_client.close()
         stop_event.set()
 
@@ -796,7 +905,10 @@ async def main(
 
     await stop_event.wait()
 
-    for task in (sweeper_task, social_collaboration_task):
+    tasks_to_cancel = [sweeper_task, social_collaboration_task]
+    if mcp_proxy_task is not None:
+        tasks_to_cancel.append(mcp_proxy_task)
+    for task in tasks_to_cancel:
         task.cancel()
         with suppress(asyncio.CancelledError):
             await task

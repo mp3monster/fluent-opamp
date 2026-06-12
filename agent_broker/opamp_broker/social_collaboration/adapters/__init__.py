@@ -12,8 +12,15 @@
 
 """Concrete social-collaboration adapter implementations."""
 
-from opamp_broker.social_collaboration.adapters.slack import (
-    SlackSocialCollaborationAdapter,
+from opamp_broker.social_collaboration.adapters.none import (
+    NoopSocialCollaborationAdapter,
 )
 
-__all__ = ["SlackSocialCollaborationAdapter"]
+try:  # pragma: no cover - optional dependency import guard.
+    from opamp_broker.social_collaboration.adapters.slack import (
+        SlackSocialCollaborationAdapter,
+    )
+
+    __all__ = ["SlackSocialCollaborationAdapter", "NoopSocialCollaborationAdapter"]
+except ModuleNotFoundError:  # pragma: no cover - test/runtime env without Slack deps.
+    __all__ = ["NoopSocialCollaborationAdapter"]

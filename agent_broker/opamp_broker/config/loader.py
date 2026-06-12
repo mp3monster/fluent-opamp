@@ -23,12 +23,14 @@ import os
 from copy import deepcopy
 from pathlib import Path
 from typing import Any, Dict
+from urllib.parse import SplitResult, urlsplit, urlunsplit
 
 from opamp_broker.planner.constants import (
     SLACK_FORMAT_SYSTEM_PROMPT_KEY,
     SYSTEM_PROMPT_KEY,
     VERIFICATION_PROMPT_KEY,
 )
+from shared.observability import CFG_OTLP_ENDPOINTS
 
 _PROMPT_TEXT_FIELD = "text"
 _PROMPT_DESCRIPTION_FIELD = "description"
@@ -69,6 +71,7 @@ DEFAULTS: Dict[str, Any] = {
     "paths": {
         "opamp_project_root": "../fluent-opamp",
         "opamp_config_path": "../fluent-opamp/config/opamp.json",
+        "provider_port_override": None,
     },
     "mcp": {
         "request_timeout_seconds": 30,
@@ -79,6 +82,12 @@ DEFAULTS: Dict[str, Any] = {
         "startup_discovery_max_backoff_seconds": 5.0,
         "startup_discovery_backoff_multiplier": 2.0,
         "startup_discovery_jitter_seconds": 0.25,
+    },
+    "mcp_server": {
+        "enabled": False,
+        "host": "127.0.0.1",
+        "port": 8080,
+        "path": "/mcp",
     },
     "planner": {
         "mode": "rule-first",
@@ -211,6 +220,52 @@ def _load_json_if_exists(path: Path) -> Dict[str, Any]:
         return json.load(handle)
 
 
+def _normalize_port_override(port_value: Any) -> int | None:
+    """Normalize the optional provider port override from runtime config."""
+    if port_value is None:
+        return None
+    if isinstance(port_value, str):
+        port_value = port_value.strip()
+        if not port_value:
+            return None
+    port = int(port_value)
+    if port < 1 or port > 65535:
+        raise ValueError("provider port override must be between 1 and 65535")
+    return port
+
+
+def _replace_url_port(base_url: str, port: int) -> str:
+    """Return a URL with the same scheme/host/path and an overridden port."""
+    parsed = urlsplit(base_url)
+    hostname = parsed.hostname or "localhost"
+    if ":" in hostname and not hostname.startswith("["):
+        hostname = f"[{hostname}]"
+    auth = ""
+    if parsed.username:
+        auth = parsed.username
+        if parsed.password:
+            auth = f"{auth}:{parsed.password}"
+        auth = f"{auth}@"
+    netloc = f"{auth}{hostname}:{port}"
+    replaced = SplitResult(
+        scheme=parsed.scheme or "http",
+        netloc=netloc,
+        path=parsed.path,
+        query=parsed.query,
+        fragment=parsed.fragment,
+    )
+    return urlunsplit(replaced)
+
+
+def get_effective_config_path(config_path: str | None = None) -> Path:
+    """Return the absolute broker config path used for runtime loading."""
+    return Path(
+        config_path
+        or os.getenv("BROKER_CONFIG_PATH")
+        or Path(__file__).with_name("broker.ui_responses.json")
+    ).resolve()
+
+
 def load_runtime_config(config_path: str | None = None) -> Dict[str, Any]:
     """Build the effective broker configuration used at runtime.
 
@@ -225,11 +280,7 @@ def load_runtime_config(config_path: str | None = None) -> Dict[str, Any]:
     Returns:
         Dict[str, Any]: Fully merged configuration with derived provider routes.
     """
-    runtime_path = Path(
-        config_path
-        or os.getenv("BROKER_CONFIG_PATH")
-        or Path(__file__).with_name("broker.ui_responses.json")
-    ).resolve()
+    runtime_path = get_effective_config_path(config_path)
 
     config = deepcopy(DEFAULTS)
     config = _deep_merge(config, _load_json_if_exists(runtime_path))
@@ -264,11 +315,22 @@ def load_runtime_config(config_path: str | None = None) -> Dict[str, Any]:
 
     opamp_config_path = Path(config["paths"]["opamp_config_path"]).expanduser().resolve()
     opamp_config = _load_json_if_exists(opamp_config_path)
+    if (
+        CFG_OTLP_ENDPOINTS not in config
+        and isinstance(opamp_config.get(CFG_OTLP_ENDPOINTS), dict)
+    ):
+        config[CFG_OTLP_ENDPOINTS] = deepcopy(opamp_config[CFG_OTLP_ENDPOINTS])
     provider = opamp_config.get("provider", {})
     consumer = opamp_config.get("consumer", {})
 
     webui_port = provider.get("webui_port", 8080)
+    port_override = _normalize_port_override(
+        config.get("paths", {}).get("provider_port_override")
+    )
+    provider_port = port_override or webui_port
     base_url = consumer.get("server_url", f"http://localhost:{webui_port}")
+    if port_override is not None:
+        base_url = _replace_url_port(base_url, port_override)
     auth_mode = provider.get("ui-use-authorization", "none")
     opamp_auth_mode = provider.get("opamp-use-authorization", "none")
 
@@ -283,7 +345,7 @@ def load_runtime_config(config_path: str | None = None) -> Dict[str, Any]:
 
     config["derived"] = {
         "provider_routes": provider_routes,
-        "provider_port": webui_port,
+        "provider_port": provider_port,
         "opamp_config_loaded": bool(opamp_config),
     }
     return config

@@ -379,45 +379,68 @@ class MCPClient:
 
     async def discover_tools(self) -> list[dict[str, Any]]:
         """Initialize provider MCP and return discovered tool definitions."""
-        self._mcp_session_id = None
-        initialize_result: dict[str, Any] | None = None
-        initialize_error: Exception | None = None
-        for protocol_version in self._protocol_version_attempts:
-            try:
-                initialize_result = await self._rpc(
-                    "initialize",
-                    {
-                        "protocolVersion": protocol_version,
-                        "clientInfo": {
-                            "name": "opamp-conversation-broker",
-                            "version": "0.1.0",
-                        },
-                        "capabilities": {},
-                    },
-                    include_session_header=False,
-                    protocol_version=protocol_version,
-                )
-                self._mcp_protocol_version = protocol_version
-                break
-            except Exception as exc:  # pragma: no cover - defensive compatibility.
-                initialize_error = exc
-                logger.warning(
-                    "MCP initialize attempt failed for protocol version %s: %s",
-                    protocol_version,
-                    exc,
-                )
-        if initialize_result is None:
-            if initialize_error is not None:
-                raise initialize_error
-            raise RuntimeError("MCP initialize failed without an explicit error")
-
-        result = await self._rpc("tools/list", {})
+        await self.initialize()
+        result = await self.list_tools()
         raw_tools = result.get("tools", [])
         if not isinstance(raw_tools, list):
             return []
         return [
             tool for tool in raw_tools if isinstance(tool, dict) and "name" in tool
         ]
+
+    async def initialize(
+        self,
+        *,
+        protocol_version: str | None = None,
+        client_info: dict[str, Any] | None = None,
+        capabilities: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Initialize the upstream MCP session with version fallback."""
+        requested_protocol_version = str(protocol_version or "").strip()
+        attempts: list[str] = []
+        if requested_protocol_version:
+            attempts.append(requested_protocol_version)
+        for fallback_version in self._protocol_version_attempts:
+            if fallback_version not in attempts:
+                attempts.append(fallback_version)
+
+        self._mcp_session_id = None
+        initialize_result: dict[str, Any] | None = None
+        initialize_error: Exception | None = None
+        for attempted_protocol_version in attempts:
+            try:
+                initialize_result = await self._rpc(
+                    "initialize",
+                    {
+                        "protocolVersion": attempted_protocol_version,
+                        "clientInfo": client_info
+                        or {
+                            "name": "opamp-conversation-broker",
+                            "version": "0.1.0",
+                        },
+                        "capabilities": capabilities or {},
+                    },
+                    include_session_header=False,
+                    protocol_version=attempted_protocol_version,
+                )
+                self._mcp_protocol_version = attempted_protocol_version
+                break
+            except Exception as exc:  # pragma: no cover - defensive compatibility.
+                initialize_error = exc
+                logger.warning(
+                    "MCP initialize attempt failed for protocol version %s: %s",
+                    attempted_protocol_version,
+                    exc,
+                )
+        if initialize_result is None:
+            if initialize_error is not None:
+                raise initialize_error
+            raise RuntimeError("MCP initialize failed without an explicit error")
+        return initialize_result
+
+    async def list_tools(self) -> dict[str, Any]:
+        """Return the raw ``tools/list`` result from the provider."""
+        return await self._rpc("tools/list", {})
 
     async def call_tool(self, name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         """Invoke one provider MCP tool by name."""

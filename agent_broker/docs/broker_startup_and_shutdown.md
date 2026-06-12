@@ -66,8 +66,11 @@ Typical `broker.json` values:
 - `mcp.request_timeout_seconds`
 - `mcp.connection_mode`
 - `mcp.startup_discovery_max_attempts`
+- `mcp_server.enabled`
+- `mcp_server.port`
 - `planner.model`
 - `paths.opamp_config_path`
+- `paths.provider_port_override`
 
 Why keep them separate:
 
@@ -143,7 +146,8 @@ Example `broker.json`:
   },
   "paths": {
     "opamp_project_root": "../fluent-opamp",
-    "opamp_config_path": "../fluent-opamp/config/opamp.json"
+    "opamp_config_path": "../fluent-opamp/config/opamp.json",
+    "provider_port_override": 8070
   },
   "mcp": {
     "request_timeout_seconds": 30,
@@ -154,6 +158,12 @@ Example `broker.json`:
     "startup_discovery_max_backoff_seconds": 5.0,
     "startup_discovery_backoff_multiplier": 2.0,
     "startup_discovery_jitter_seconds": 0.25
+  },
+  "mcp_server": {
+    "enabled": true,
+    "host": "127.0.0.1",
+    "port": 8080,
+    "path": "/mcp"
   },
   "planner": {
     "mode": "rule-first",
@@ -186,10 +196,12 @@ Field reference:
    `messages.ai_mode_off_ack_text` controls the response text for exact `AI Off` commands.
    `messages.slack_error_reply` is retained for config compatibility, but the broker now returns a fixed fallback sentence for unhandled exceptions: `sorry, I stumbled, you might want to try that again`.
 5. `paths`
-   File locations used to discover OpAMP provider/consumer settings. `paths.opamp_config_path` is the key value for deriving MCP route URLs.
+   File locations and route overrides used to discover OpAMP provider/consumer settings. `paths.opamp_config_path` is the key value for deriving MCP route URLs. `paths.provider_port_override` lets the broker replace the port in the derived provider base URL when the broker must call a different listener than the one declared in the OpAMP config.
 6. `mcp`
    MCP client behavior, including connection strategy (`auto`/`json`/`sse`), protocol-version attempts, request timeout, and startup discovery retry/backoff controls.
-7. `planner`
+7. `mcp_server`
+   Optional broker-hosted MCP proxy listener for local desktop clients. When enabled, the broker exposes its own local `/mcp` endpoint and forwards supported MCP requests to the upstream provider MCP endpoint.
+8. `planner`
    AI planner behavior (provider, model, timeout, temperature, token limits, API key env var, base URL, and prompts file path).
 
 ### Bundled `broker.ui_responses.json` field coverage
@@ -535,12 +547,19 @@ Broker MCP connectivity is fixed to the OpAMP provider MCP endpoint derived at r
 
 - `<provider_base_url>/mcp`
 
+Recommended boundary:
+
+1. Send desktop, agentic, or otherwise less-trusted MCP traffic to the broker's local `/mcp` proxy when `mcp_server.enabled=true`.
+2. Keep the provider's richer HTTP APIs and direct MCP/SSE transports on an internal/trusted surface where possible.
+3. This separation gives you one narrower endpoint to expose externally while reserving the full provider API surface for internal automation and operators.
+
 If broker logs show `HTTP ... POST <provider_base_url>/mcp ... 404`, the provider is reachable but not exposing streamable HTTP MCP on `/mcp`.
-With current provider builds, `/mcp` is exposed by default. If you still see 404:
+With current provider builds, `/mcp` is exposed only when `provider.allow-mcp=true`. If you still see 404:
 
 1. Restart the provider with the latest code/build.
-2. Confirm provider startup logs include MCP streamable HTTP exposure at `/mcp`.
-3. Re-run broker startup or verification.
+2. Confirm provider config sets `provider.allow-mcp=true` where broker-to-provider MCP is required.
+3. Confirm provider startup logs include MCP streamable HTTP exposure at `/mcp`.
+4. Re-run broker startup or verification.
 
 The broker uses provider MCP JSON-RPC calls in this sequence:
 

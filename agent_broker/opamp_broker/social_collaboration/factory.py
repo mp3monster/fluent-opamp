@@ -15,11 +15,11 @@
 from __future__ import annotations
 
 from opamp_broker.social_collaboration.base import SocialCollaborationAdapter
-from opamp_broker.social_collaboration.adapters.slack import (
-    SlackSocialCollaborationAdapter,
+from opamp_broker.social_collaboration.adapters.none import (
+    NoopSocialCollaborationAdapter,
 )
 
-SUPPORTED_SOCIAL_COLLABORATION_IMPLEMENTATIONS = ("slack",)
+SUPPORTED_SOCIAL_COLLABORATION_IMPLEMENTATIONS = ("slack", "none")
 
 
 def create_social_collaboration_adapter(
@@ -28,7 +28,13 @@ def create_social_collaboration_adapter(
     """Build a social collaboration adapter for the requested implementation."""
     normalized = str(implementation or "slack").strip().lower()
     if normalized == "slack":
+        from opamp_broker.social_collaboration.adapters.slack import (
+            SlackSocialCollaborationAdapter,
+        )
+
         return SlackSocialCollaborationAdapter.from_environment()
+    if normalized == "none":
+        return NoopSocialCollaborationAdapter()
     supported = ", ".join(SUPPORTED_SOCIAL_COLLABORATION_IMPLEMENTATIONS)
     raise ValueError(
         f"unsupported social collaboration implementation '{implementation}'; "

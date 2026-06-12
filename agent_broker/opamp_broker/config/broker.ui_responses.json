@@ -33,7 +33,8 @@
   },
   "paths": {
     "opamp_project_root": "../fluent-opamp",
-    "opamp_config_path": "../fluent-opamp/config/opamp.json"
+    "opamp_config_path": "../fluent-opamp/config/opamp.json",
+    "provider_port_override": 8070
   },
   "mcp": {
     "request_timeout_seconds": 30,
@@ -44,6 +45,12 @@
     "startup_discovery_max_backoff_seconds": 5.0,
     "startup_discovery_backoff_multiplier": 2.0,
     "startup_discovery_jitter_seconds": 0.25
+  },
+  "mcp_server": {
+    "enabled": true,
+    "host": "127.0.0.1",
+    "port": 8080,
+    "path": "/mcp"
   },
   "planner": {
     "mode": "rule-first",
