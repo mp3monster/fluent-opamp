@@ -78,6 +78,7 @@ try:
         CLI_SETTINGS_FILENAME,
         COMMAND_DEMO,
         COMMAND_DEV_FLB_CONFIG,
+        COMMAND_DEV_MCP_CONFIG,
         COMMAND_DISABLE_PROCESS_TAIL,
         COMMAND_ENABLE_PROCESS_TAIL,
         COMMAND_EXIT,
@@ -164,6 +165,7 @@ except ImportError:
         CLI_SETTINGS_FILENAME,
         COMMAND_DISABLE_PROCESS_TAIL,
         COMMAND_DEV_FLB_CONFIG,
+        COMMAND_DEV_MCP_CONFIG,
         COMMAND_ENABLE_PROCESS_TAIL,
         COMMAND_EXIT,
         COMMAND_HELP,
@@ -410,6 +412,9 @@ def _handle_command(raw_command: str) -> int:  # noqa: PLR0911
     if lowered == COMMAND_DEV_FLB_CONFIG:
         logger.info("starting dev fluent bit config workflow")
         return _execute_dev_fluentbit_config_workflow()
+    if lowered == COMMAND_DEV_MCP_CONFIG:
+        logger.info("starting dev mcp config workflow")
+        return _execute_dev_mcp_config_workflow()
 
     if _script_mode_enabled(command_text):
         output_name, script_command = _split_script_directive(command_text)
@@ -452,6 +457,8 @@ def _top_level_commands() -> list[str]:
         commands.append(COMMAND_DEMO)
     if _fluentbit_dev_tool_available():
         commands.append(COMMAND_DEV_FLB_CONFIG)
+    if _mcp_dev_tool_available():
+        commands.append(COMMAND_DEV_MCP_CONFIG)
     return commands
 
 
@@ -512,6 +519,31 @@ def _fluentbit_dev_tool_available() -> bool:
     return bool(_fluentbit_dev_tool_specs())
 
 
+def _mcp_dev_tool_script_paths() -> list[Path]:
+    """Return known MCP dev-tool script paths in repo-relative order."""
+    repo_root = _repo_root()
+    return [
+        (repo_root / "mcp" / "configure_mcp_clients.py").resolve(),
+    ]
+
+
+def _mcp_dev_tool_specs() -> list[dict[str, Any]]:
+    """Return discovered MCP dev-tool specs when dev mode is enabled."""
+    if _dev_features_enabled() is not True:
+        return []
+    specs: list[dict[str, Any]] = []
+    for script_path in _mcp_dev_tool_script_paths():
+        spec = _load_dev_tool_spec_from_script(script_path)
+        if isinstance(spec, dict):
+            specs.append(spec)
+    return specs
+
+
+def _mcp_dev_tool_available() -> bool:
+    """Return whether the dev MCP workflow should be exposed."""
+    return bool(_mcp_dev_tool_specs())
+
+
 def _prompt_text(
     prompt_text: str,
     *,
@@ -538,12 +570,14 @@ def _parse_yes_no(value: str, *, default: bool) -> bool | None:
 def _prompt_dev_tool_selection(
     specs: list[dict[str, Any]],
     *,
+    command_name: str,
+    tool_family_label: str,
     input_reader: Callable[[str], str] | None = None,
 ) -> list[dict[str, Any]] | None:
     """Prompt for one or all dev-tool specs to run."""
     if not specs:
         return None
-    print("Choose a Fluent Bit dev utility:")
+    print(f"Choose a {tool_family_label} dev utility:")
     for index, spec in enumerate(specs, start=1):
         label = str(spec.get("label") or f"Tool {index}")
         description = str(spec.get("description") or "").strip()
@@ -556,7 +590,7 @@ def _prompt_dev_tool_selection(
 
     while True:
         try:
-            selected = _prompt_text("dev-flb-config> ", input_reader=input_reader).strip()
+            selected = _prompt_text(f"{command_name}> ", input_reader=input_reader).strip()
         except (EOFError, KeyboardInterrupt):
             print()
             return None
@@ -644,6 +678,7 @@ def _dev_tool_argv(spec: dict[str, Any], answers: dict[str, Any]) -> list[str]:
     """Build argv for one self-described dev tool."""
     script_path = Path(str(spec.get("script_path") or "")).resolve()
     argv = [sys.executable, str(script_path)]
+    argv.extend(str(item) for item in spec.get("fixed_args", []))
     for field in spec.get("arguments", []):
         if not isinstance(field, dict):
             continue
@@ -673,7 +708,7 @@ def _run_dev_tool_spec(spec: dict[str, Any], answers: dict[str, Any]) -> int:
     """Execute one configured dev-tool spec in the foreground."""
     logger = _get_logger()
     argv = _dev_tool_argv(spec, answers)
-    logger.info("executing dev fluent bit tool label=%s argv=%s", spec.get("label"), argv)
+    logger.info("executing dev tool label=%s argv=%s", spec.get("label"), argv)
     print(f"Executing: {_command_text_from_args(argv)}")
     completed = subprocess.run(
         argv,
@@ -702,7 +737,49 @@ def _execute_dev_fluentbit_config_workflow(
             file=sys.stderr,
         )
         return 1
-    selected_specs = _prompt_dev_tool_selection(specs, input_reader=input_reader)
+    selected_specs = _prompt_dev_tool_selection(
+        specs,
+        command_name=COMMAND_DEV_FLB_CONFIG,
+        tool_family_label="Fluent Bit",
+        input_reader=input_reader,
+    )
+    if not selected_specs:
+        return 0
+    for spec in selected_specs:
+        print(f"Configure: {spec.get('label')}")
+        answers = _prompt_dev_tool_arguments(spec, input_reader=input_reader)
+        if answers is None:
+            return 0
+        exit_code = _run_dev_tool_spec(spec, answers)
+        if exit_code != 0:
+            return exit_code
+    return 0
+
+
+def _execute_dev_mcp_config_workflow(
+    *,
+    input_reader: Callable[[str], str] | None = None,
+) -> int:
+    """Prompt for and run one or more dev-only MCP configuration utilities."""
+    if _dev_features_enabled() is not True:
+        print(
+            f"{COMMAND_DEV_MCP_CONFIG} is only available when {APP_ENABLE_DEV_FEATURES_ENV}=true.",
+            file=sys.stderr,
+        )
+        return 1
+    specs = _mcp_dev_tool_specs()
+    if not specs:
+        print(
+            f"{COMMAND_DEV_MCP_CONFIG} is unavailable because the MCP dev tool scripts could not be located.",
+            file=sys.stderr,
+        )
+        return 1
+    selected_specs = _prompt_dev_tool_selection(
+        specs,
+        command_name=COMMAND_DEV_MCP_CONFIG,
+        tool_family_label="MCP",
+        input_reader=input_reader,
+    )
     if not selected_specs:
         return 0
     for spec in selected_specs:
@@ -3113,6 +3190,8 @@ def _interactive_loop() -> int:  # noqa: PLR0912,PLR0915
     print("You can type `start server`, `stop config editor`, or `restart server` directly.")
     if _fluentbit_dev_tool_available():
         print(f"Use `{COMMAND_DEV_FLB_CONFIG}` for the Fluent Bit dev generator workflow.")
+    if _mcp_dev_tool_available():
+        print(f"Use `{COMMAND_DEV_MCP_CONFIG}` for the MCP client configuration workflow.")
     print("Use `enable-process-tail` to tail managed process logs in a new shell.")
     detected_flags = _detected_behavior_flags()
     if detected_flags:
@@ -3151,6 +3230,12 @@ def _interactive_loop() -> int:  # noqa: PLR0912,PLR0915
         if raw.strip().lower() == COMMAND_DEV_FLB_CONFIG:
             logger.info("interactive dev fluent bit config requested")
             code = _execute_dev_fluentbit_config_workflow(input_reader=input_reader)
+            if code != 0:
+                print(f"Command exited with code {code}")
+            continue
+        if raw.strip().lower() == COMMAND_DEV_MCP_CONFIG:
+            logger.info("interactive dev mcp config requested")
+            code = _execute_dev_mcp_config_workflow(input_reader=input_reader)
             if code != 0:
                 print(f"Command exited with code {code}")
             continue
