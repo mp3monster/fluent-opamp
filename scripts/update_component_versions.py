@@ -20,6 +20,9 @@ COMPONENT_VERSION_TARGETS: dict[str, str] = {
     "consumer": "consumer/src/opamp_consumer/version.json",
     "consumer-sim": "consumer-sim/version.json",
 }
+SECONDARY_COMPONENT_VERSION_TARGETS: dict[str, tuple[str, ...]] = {
+    "consumer-sim": ("consumer-sim/src/opamp_consumer_sim/version.json",),
+}
 
 UNKNOWN_VALUE = "unknown"
 SEMVER_LABEL_PATTERN = re.compile(
@@ -231,6 +234,11 @@ def main(argv: list[str] | None = None) -> int:
         _write_json(target_path, payload)
         if not args.quiet:
             print(f"[version] updated {component}: {target_path}")
+        for secondary_target in SECONDARY_COMPONENT_VERSION_TARGETS.get(component, ()):
+            secondary_path = repo_root / secondary_target
+            _write_json(secondary_path, payload)
+            if not args.quiet:
+                print(f"[version] updated {component}: {secondary_path}")
     return 0
 
 

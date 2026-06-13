@@ -1,57 +1,106 @@
 #!/usr/bin/env python3
-"""Build provider/consumer wheels and optionally publish to a GitHub release."""
+"""Build deployable Python wheel artefacts and optionally publish them.
+
+This script can build independent wheels for the OpAMP provider, consumer,
+catalog service, CLI, and consumer simulator launcher. Each selected artefact
+also receives its own CycloneDX SBOM.
+"""
 
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import mimetypes
 import os
 import subprocess
 import sys
-import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
-import zipfile
-from datetime import datetime, timedelta, timezone
-from email import message_from_bytes
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from dev_tools.sbom import (  # noqa: E402
+    validate_wheel_artifact_sbom,
+    write_wheel_artifact_sbom,
+)
+
 DEFAULT_REPO = "mp3monster/fluent-opamp"
-DEFAULT_PROVIDER_SBOM_PATH = (
+DEFAULT_MANUAL_PATH = "dist/manual/opamp_manual.pdf"
+DEFAULT_COMPONENTS = ("provider", "consumer", "catalog", "cli", "consumer-sim")
+LEGACY_DEFAULT_PROVIDER_SBOM_PATH = (
     "dist/sbom/opamp_provider_deployable_artifacts.cyclonedx.json"
 )
-DEFAULT_CONSUMER_SBOM_PATH = (
+LEGACY_DEFAULT_CONSUMER_SBOM_PATH = (
     "dist/sbom/opamp_consumer_deployable_artifacts.cyclonedx.json"
 )
-DEFAULT_MANUAL_PATH = "dist/manual/opamp_manual.pdf"
+
+
+@dataclass(frozen=True)
+class ComponentTarget:
+    """Describes one independently buildable wheel artefact."""
+
+    key: str
+    source_dir: str
+    dist_dirname: str
+    root_component_name: str
+    default_sbom_relpath: str
+    display_name: str
+
+
+COMPONENT_TARGETS: dict[str, ComponentTarget] = {
+    "provider": ComponentTarget(
+        key="provider",
+        source_dir="provider",
+        dist_dirname="provider",
+        root_component_name="fluent-opamp-provider-deployable-artifact",
+        default_sbom_relpath="dist/sbom/opamp_provider_deployable_artifacts.cyclonedx.json",
+        display_name="Provider",
+    ),
+    "consumer": ComponentTarget(
+        key="consumer",
+        source_dir="consumer",
+        dist_dirname="consumer",
+        root_component_name="fluent-opamp-consumer-deployable-artifact",
+        default_sbom_relpath="dist/sbom/opamp_consumer_deployable_artifacts.cyclonedx.json",
+        display_name="Consumer",
+    ),
+    "catalog": ComponentTarget(
+        key="catalog",
+        source_dir="catalog-service",
+        dist_dirname="catalog",
+        root_component_name="fluent-opamp-catalog-service-deployable-artifact",
+        default_sbom_relpath="dist/sbom/opamp_catalog_service_deployable_artifacts.cyclonedx.json",
+        display_name="Catalog service",
+    ),
+    "cli": ComponentTarget(
+        key="cli",
+        source_dir="cli",
+        dist_dirname="cli",
+        root_component_name="fluent-opamp-cli-deployable-artifact",
+        default_sbom_relpath="dist/sbom/opamp_cli_deployable_artifacts.cyclonedx.json",
+        display_name="CLI",
+    ),
+    "consumer-sim": ComponentTarget(
+        key="consumer-sim",
+        source_dir="consumer-sim",
+        dist_dirname="consumer-sim",
+        root_component_name="fluent-opamp-consumer-sim-deployable-artifact",
+        default_sbom_relpath="dist/sbom/opamp_consumer_sim_deployable_artifacts.cyclonedx.json",
+        display_name="Consumer simulator",
+    ),
+}
 
 
 def _run(cmd: list[str], *, cwd: Path) -> None:
     """Run one subprocess command and stream output to the console."""
     print(f"+ {' '.join(cmd)}")
     subprocess.run(cmd, cwd=str(cwd), check=True)
-
-
-def _ensure_python_build(repo_root: Path, python_exe: str) -> None:
-    """Ensure the `build` package is available for wheel generation."""
-    _ensure_python_package(
-        repo_root=repo_root,
-        python_exe=python_exe,
-        package_name="build",
-    )
-
-
-def _ensure_cyclonedx_python_tool(repo_root: Path, python_exe: str) -> None:
-    """Ensure cyclonedx-py CLI is available via the `cyclonedx-bom` package."""
-    _ensure_python_package(
-        repo_root=repo_root,
-        python_exe=python_exe,
-        package_name="cyclonedx-bom",
-    )
 
 
 def _ensure_python_package(
@@ -72,6 +121,15 @@ def _ensure_python_package(
         return
     print(f"Python package `{package_name}` not found; installing it now...")
     _run([python_exe, "-m", "pip", "install", package_name], cwd=repo_root)
+
+
+def _ensure_python_build(repo_root: Path, python_exe: str) -> None:
+    """Ensure the `build` package is available for wheel generation."""
+    _ensure_python_package(
+        repo_root=repo_root,
+        python_exe=python_exe,
+        package_name="build",
+    )
 
 
 def _update_component_versions(repo_root: Path, python_exe: str) -> None:
@@ -154,7 +212,7 @@ def _run_security_checks(
 
 
 def _clean_dir(path: Path) -> None:
-    """Remove files from one directory, creating it when absent."""
+    """Remove build files from one directory, creating it when absent."""
     path.mkdir(parents=True, exist_ok=True)
     for child in path.iterdir():
         if child.is_file():
@@ -165,378 +223,35 @@ def _build_component_wheel(
     *,
     repo_root: Path,
     python_exe: str,
-    component_dir: str,
+    component: ComponentTarget,
     out_dir: Path,
+    no_isolation: bool,
 ) -> Path:
-    """Build one wheel and return its path."""
+    """Build one component wheel and return its path."""
     _clean_dir(out_dir)
-    _run(
-        [
-            python_exe,
-            "-m",
-            "build",
-            "--wheel",
-            "--outdir",
-            str(out_dir),
-            str(repo_root / component_dir),
-        ],
-        cwd=repo_root,
-    )
+    cmd = [
+        python_exe,
+        "-m",
+        "build",
+        "--wheel",
+        "--outdir",
+        str(out_dir),
+    ]
+    if no_isolation:
+        cmd.append("--no-isolation")
+    cmd.append(str(repo_root / component.source_dir))
+    _run(cmd, cwd=repo_root)
     wheels = sorted(out_dir.glob("*.whl"))
     if not wheels:
-        raise RuntimeError(f"wheel build for {component_dir} produced no .whl files")
+        raise RuntimeError(
+            f"wheel build for {component.source_dir} produced no .whl files"
+        )
     if len(wheels) > 1:
         print(
-            f"warning: multiple wheels found for {component_dir}; using latest: "
-            f"{wheels[-1].name}"
+            f"warning: multiple wheels found for {component.source_dir}; "
+            f"using latest: {wheels[-1].name}"
         )
     return wheels[-1]
-
-
-def _normalize_dist_name(value: str) -> str:
-    """Normalize distribution name to a stable lowercase key."""
-    return str(value or "").strip().lower().replace("_", "-")
-
-
-def _sha256(path: Path) -> str:
-    """Return SHA-256 digest for one file."""
-    hasher = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            hasher.update(chunk)
-    return hasher.hexdigest()
-
-
-def _read_wheel_metadata(wheel_path: Path) -> dict[str, Any]:
-    """Read Name/Version/Requires-Dist from a wheel METADATA payload."""
-    metadata_bytes: bytes | None = None
-    with zipfile.ZipFile(wheel_path, "r") as archive:
-        for member in archive.namelist():
-            if member.endswith(".dist-info/METADATA"):
-                metadata_bytes = archive.read(member)
-                break
-    if metadata_bytes is None:
-        raise RuntimeError(f"wheel missing dist-info/METADATA: {wheel_path}")
-
-    metadata = message_from_bytes(metadata_bytes)
-    name = str(metadata.get("Name") or wheel_path.stem).strip()
-    version = str(metadata.get("Version") or "0").strip()
-    requires_dist = [str(item).strip() for item in metadata.get_all("Requires-Dist") or []]
-    return {"name": name, "version": version, "requires_dist": requires_dist}
-
-
-def _requirement_name(requirement: str) -> str:
-    """Extract dependency package name from Requires-Dist entry."""
-    cleaned = requirement.split(";", 1)[0].strip()
-    stop_chars = [" ", "(", "[", "!", "<", ">", "=", "~", ";"]
-    end = len(cleaned)
-    for char in stop_chars:
-        pos = cleaned.find(char)
-        if pos != -1:
-            end = min(end, pos)
-    return cleaned[:end].strip()
-
-
-def _build_cyclonedx_sbom(
-    *,
-    repo_root: Path,
-    python_exe: str,
-    component_dir: str,
-    repo: str,
-    artifact: Path,
-    sbom_path: Path,
-    root_component_name: str,
-) -> Path:
-    """Generate CycloneDX JSON SBOM for one deployable wheel artifact."""
-    wheel_meta = _read_wheel_metadata(artifact)
-    name = str(wheel_meta["name"])
-    version = str(wheel_meta["version"])
-    bom_ref = f"pkg:pypi/{_normalize_dist_name(name)}@{version}"
-    _ensure_cyclonedx_python_tool(repo_root, python_exe)
-    runtime_requirements = [
-        requirement
-        for requirement in wheel_meta["requires_dist"]
-        if "extra ==" not in requirement.lower()
-    ]
-
-    with tempfile.TemporaryDirectory(prefix="opamp-wheel-sbom-") as temp_dir:
-        temp_root = Path(temp_dir)
-        requirements_path = temp_root / "requirements.txt"
-        requirements_path.write_text(
-            "".join(f"{requirement}\n" for requirement in runtime_requirements),
-            encoding="utf-8",
-        )
-        tool_sbom_path = temp_root / "sbom-tool.json"
-        _run(
-            [
-                python_exe,
-                "-m",
-                "cyclonedx_py",
-                "requirements",
-                str(requirements_path),
-                "--output-format",
-                "JSON",
-                "--spec-version",
-                "1.6",
-                "--output-file",
-                str(tool_sbom_path),
-            ],
-            cwd=repo_root,
-        )
-        sbom = json.loads(tool_sbom_path.read_text(encoding="utf-8"))
-
-    if not isinstance(sbom, dict):
-        raise RuntimeError("CycloneDX generation returned invalid SBOM payload.")
-
-    components_raw = sbom.get("components")
-    if not isinstance(components_raw, list):
-        components_raw = []
-    normalized_components: list[dict[str, Any]] = []
-    seen_refs: set[str] = set()
-    for component in components_raw:
-        if not isinstance(component, dict):
-            continue
-        normalized_component = dict(component)
-        purl = str(normalized_component.get("purl") or "").strip()
-        if purl.startswith("pkg:pypi/"):
-            normalized_component["bom-ref"] = purl
-        component_ref = str(normalized_component.get("bom-ref") or "").strip()
-        if not component_ref or component_ref in seen_refs:
-            continue
-        seen_refs.add(component_ref)
-        normalized_components.append(normalized_component)
-
-    wheel_component = {
-        "type": "library",
-        "name": name,
-        "version": version,
-        "bom-ref": bom_ref,
-        "purl": bom_ref,
-        "hashes": [
-            {
-                "alg": "SHA-256",
-                "content": _sha256(artifact),
-            }
-        ],
-        "properties": [
-            {"name": "opamp.artifact.path", "value": str(artifact)},
-        ],
-    }
-    sbom["components"] = [wheel_component] + [
-        component
-        for component in normalized_components
-        if str(component.get("bom-ref") or "").strip() != bom_ref
-    ]
-
-    metadata = sbom.get("metadata")
-    if not isinstance(metadata, dict):
-        metadata = {}
-    metadata["component"] = {
-        "type": "application",
-        "name": root_component_name,
-        "version": version,
-        "properties": [
-            {"name": "github.repository", "value": repo},
-            {"name": "wheel.name", "value": name},
-            {"name": "component.directory", "value": component_dir},
-        ],
-    }
-    sbom["metadata"] = metadata
-
-    dependencies = sbom.get("dependencies")
-    if not isinstance(dependencies, list):
-        dependencies = []
-    dependencies = [
-        entry
-        for entry in dependencies
-        if isinstance(entry, dict) and str(entry.get("ref") or "").strip() != bom_ref
-    ]
-    dependencies.insert(
-        0,
-        {
-            "ref": bom_ref,
-            "dependsOn": _expected_dependency_refs(list(wheel_meta["requires_dist"])),
-        },
-    )
-    sbom["dependencies"] = dependencies
-
-    sbom_path.parent.mkdir(parents=True, exist_ok=True)
-    sbom_path.write_text(f"{json.dumps(sbom, indent=2)}\n", encoding="utf-8")
-    return sbom_path
-
-
-def _expected_dependency_refs(requires_dist: list[str]) -> list[str]:
-    """Return normalized CycloneDX dependency refs for non-extra requirements."""
-    dep_refs: set[str] = set()
-    for requirement in requires_dist:
-        if "extra ==" in requirement.lower():
-            continue
-        dep_name = _requirement_name(requirement)
-        if dep_name:
-            dep_refs.add(f"pkg:pypi/{_normalize_dist_name(dep_name)}")
-    return sorted(dep_refs)
-
-
-def _property_value(properties: Any, name: str) -> str | None:
-    """Return one CycloneDX property value by key from a properties list."""
-    if not isinstance(properties, list):
-        return None
-    for entry in properties:
-        if not isinstance(entry, dict):
-            continue
-        if str(entry.get("name") or "").strip() != name:
-            continue
-        value = entry.get("value")
-        return str(value).strip() if value is not None else ""
-    return None
-
-
-def _parse_iso8601_utc(value: str) -> datetime | None:
-    """Parse an ISO-8601 timestamp into UTC datetime when possible."""
-    text = str(value or "").strip()
-    if not text:
-        return None
-    if text.endswith("Z"):
-        text = f"{text[:-1]}+00:00"
-    try:
-        parsed = datetime.fromisoformat(text)
-    except ValueError:
-        return None
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed.astimezone(timezone.utc)
-
-
-def _validate_cyclonedx_sbom(
-    *,
-    artifact: Path,
-    sbom_path: Path,
-    root_component_name: str,
-    repo: str,
-) -> None:
-    """Fail the build if a generated SBOM is stale or mismatched to its wheel."""
-    if not artifact.exists():
-        raise RuntimeError(f"SBOM validation failed: wheel artifact not found: {artifact}")
-    if not sbom_path.exists():
-        raise RuntimeError(f"SBOM validation failed: SBOM file not found: {sbom_path}")
-
-    try:
-        sbom = json.loads(sbom_path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        raise RuntimeError(
-            f"SBOM validation failed: invalid JSON in {sbom_path}: {exc}"
-        ) from exc
-    if not isinstance(sbom, dict):
-        raise RuntimeError(f"SBOM validation failed: root JSON must be an object: {sbom_path}")
-
-    wheel_meta = _read_wheel_metadata(artifact)
-    wheel_name = str(wheel_meta["name"])
-    wheel_version = str(wheel_meta["version"])
-    wheel_ref = f"pkg:pypi/{_normalize_dist_name(wheel_name)}@{wheel_version}"
-    wheel_sha = _sha256(artifact)
-    expected_dep_refs = _expected_dependency_refs(list(wheel_meta["requires_dist"]))
-    skew_allowance = timedelta(seconds=1)
-    artifact_mtime_utc = datetime.fromtimestamp(artifact.stat().st_mtime, tz=timezone.utc)
-    sbom_mtime_utc = datetime.fromtimestamp(sbom_path.stat().st_mtime, tz=timezone.utc)
-
-    if sbom_mtime_utc + skew_allowance < artifact_mtime_utc:
-        raise RuntimeError(
-            "SBOM validation failed: SBOM file timestamp is older than wheel artifact; "
-            f"regeneration required ({sbom_path} vs {artifact})."
-        )
-
-    metadata = sbom.get("metadata")
-    if not isinstance(metadata, dict):
-        raise RuntimeError("SBOM validation failed: missing/invalid metadata block.")
-
-    timestamp_utc = _parse_iso8601_utc(str(metadata.get("timestamp") or ""))
-    if timestamp_utc is None:
-        raise RuntimeError(
-            "SBOM validation failed: metadata.timestamp missing or invalid ISO-8601."
-        )
-    if timestamp_utc + skew_allowance < artifact_mtime_utc:
-        raise RuntimeError(
-            "SBOM validation failed: metadata.timestamp predates wheel artifact "
-            f"({timestamp_utc.isoformat()} < {artifact_mtime_utc.isoformat()})."
-        )
-
-    metadata_component = metadata.get("component")
-    if not isinstance(metadata_component, dict):
-        raise RuntimeError("SBOM validation failed: metadata.component is missing.")
-    if str(metadata_component.get("name") or "").strip() != root_component_name:
-        raise RuntimeError(
-            "SBOM validation failed: unexpected metadata.component.name "
-            f"(expected {root_component_name!r})."
-        )
-    if str(metadata_component.get("version") or "").strip() != wheel_version:
-        raise RuntimeError(
-            "SBOM validation failed: metadata.component.version does not match wheel version."
-        )
-    if _property_value(metadata_component.get("properties"), "github.repository") != repo:
-        raise RuntimeError(
-            "SBOM validation failed: metadata github.repository does not match build target."
-        )
-    if _property_value(metadata_component.get("properties"), "wheel.name") != wheel_name:
-        raise RuntimeError("SBOM validation failed: metadata wheel.name does not match wheel.")
-
-    components = sbom.get("components")
-    if not isinstance(components, list):
-        raise RuntimeError("SBOM validation failed: components list is missing/invalid.")
-    wheel_component = None
-    for component in components:
-        if not isinstance(component, dict):
-            continue
-        if str(component.get("bom-ref") or "").strip() == wheel_ref:
-            wheel_component = component
-            break
-    if wheel_component is None:
-        raise RuntimeError(
-            "SBOM validation failed: wheel component entry not found in components."
-        )
-
-    hash_content: str | None = None
-    hashes = wheel_component.get("hashes")
-    if isinstance(hashes, list):
-        for item in hashes:
-            if not isinstance(item, dict):
-                continue
-            if str(item.get("alg") or "").strip().upper() == "SHA-256":
-                value = item.get("content")
-                hash_content = str(value).strip() if value is not None else ""
-                break
-    if hash_content != wheel_sha:
-        raise RuntimeError(
-            "SBOM validation failed: wheel SHA-256 hash in SBOM does not match artifact."
-        )
-
-    expected_path = str(artifact)
-    sbom_artifact_path = _property_value(wheel_component.get("properties"), "opamp.artifact.path")
-    if sbom_artifact_path != expected_path:
-        raise RuntimeError(
-            "SBOM validation failed: wheel artifact path in SBOM does not match built artifact."
-        )
-
-    dependencies = sbom.get("dependencies")
-    if not isinstance(dependencies, list):
-        raise RuntimeError("SBOM validation failed: dependencies list is missing/invalid.")
-    dependency_entry = None
-    for entry in dependencies:
-        if not isinstance(entry, dict):
-            continue
-        if str(entry.get("ref") or "").strip() == wheel_ref:
-            dependency_entry = entry
-            break
-    if dependency_entry is None:
-        raise RuntimeError("SBOM validation failed: dependencies entry for wheel is missing.")
-
-    depends_on = dependency_entry.get("dependsOn")
-    if not isinstance(depends_on, list):
-        raise RuntimeError("SBOM validation failed: dependencies.ref.dependsOn is invalid.")
-    actual_dep_refs = sorted({str(item).strip() for item in depends_on if str(item).strip()})
-    if actual_dep_refs != expected_dep_refs:
-        raise RuntimeError(
-            "SBOM validation failed: dependency refs do not match wheel metadata requirements."
-        )
 
 
 def _github_request(
@@ -547,7 +262,7 @@ def _github_request(
     payload: dict[str, Any] | None = None,
     content_type: str = "application/json",
 ) -> Any:
-    """Issue an authenticated GitHub API request and return parsed JSON (if any)."""
+    """Issue an authenticated GitHub API request and return parsed JSON."""
     data: bytes | None = None
     headers = {
         "Authorization": f"Bearer {token}",
@@ -560,7 +275,7 @@ def _github_request(
 
     req = urllib.request.Request(url, data=data, headers=headers, method=method.upper())
     try:
-        with urllib.request.urlopen(req) as resp:  # nosec B310 - controlled GitHub API URL.
+        with urllib.request.urlopen(req) as resp:  # nosec B310
             raw = resp.read()
             if not raw:
                 return None
@@ -576,7 +291,7 @@ def _github_upload_asset(
     asset_path: Path,
     token: str,
 ) -> Any:
-    """Upload one release asset to GitHub uploads API."""
+    """Upload one release asset to the GitHub uploads API."""
     base_upload_url = upload_url_template.split("{", 1)[0]
     query = urllib.parse.urlencode({"name": asset_path.name})
     url = f"{base_upload_url}?{query}"
@@ -591,7 +306,7 @@ def _github_upload_asset(
     }
     req = urllib.request.Request(url, data=data, headers=headers, method="POST")
     try:
-        with urllib.request.urlopen(req) as resp:  # nosec B310 - controlled GitHub uploads URL.
+        with urllib.request.urlopen(req) as resp:  # nosec B310
             raw = resp.read()
             return json.loads(raw.decode("utf-8"))
     except urllib.error.HTTPError as exc:
@@ -614,7 +329,7 @@ def _release_by_tag(*, repo: str, tag: str, token: str) -> dict[str, Any] | None
         method="GET",
     )
     try:
-        with urllib.request.urlopen(req) as resp:  # nosec B310 - controlled GitHub API URL.
+        with urllib.request.urlopen(req) as resp:  # nosec B310
             return json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         if exc.code == 404:
@@ -683,7 +398,7 @@ def _publish_wheels(
     token: str,
     artifact_paths: list[Path],
 ) -> None:
-    """Create or update one release and upload build artifacts as assets."""
+    """Create or update one release and upload build artefacts as assets."""
     release = _release_by_tag(repo=repo, tag=tag, token=token)
     if release is None:
         print(f"Creating GitHub release {tag} in {repo}...")
@@ -729,11 +444,57 @@ def _load_release_notes(args: argparse.Namespace) -> str:
     return "Automated wheel upload from build_and_publish_wheels.py"
 
 
-def _parse_args() -> argparse.Namespace:
-    """Parse command line options."""
+def _parse_component_keys(raw_components: str) -> list[str]:
+    """Parse and validate selected component keys."""
+    component_keys = [
+        item.strip() for item in str(raw_components or "").split(",") if item.strip()
+    ]
+    if not component_keys:
+        raise ValueError("at least one component must be selected")
+    invalid = [item for item in component_keys if item not in COMPONENT_TARGETS]
+    if invalid:
+        valid_keys = ", ".join(sorted(COMPONENT_TARGETS))
+        raise ValueError(
+            f"unknown component(s): {', '.join(invalid)}; valid values: {valid_keys}"
+        )
+    return component_keys
+
+
+def _resolve_sbom_paths(
+    args: argparse.Namespace,
+    *,
+    repo_root: Path,
+    component_keys: list[str],
+) -> dict[str, Path]:
+    """Resolve SBOM output paths for all selected components."""
+    sbom_paths = {
+        key: (repo_root / COMPONENT_TARGETS[key].default_sbom_relpath).resolve()
+        for key in component_keys
+    }
+    if "provider" in sbom_paths:
+        sbom_paths["provider"] = (repo_root / args.provider_sbom_path).resolve()
+    if "consumer" in sbom_paths:
+        sbom_paths["consumer"] = (repo_root / args.consumer_sbom_path).resolve()
+    for override in args.component_sbom_path:
+        key, separator, raw_path = override.partition("=")
+        if separator != "=" or not key.strip() or not raw_path.strip():
+            raise ValueError(
+                "--component-sbom-path must use KEY=PATH, for example "
+                "catalog=dist/sbom/catalog.cyclonedx.json"
+            )
+        normalized_key = key.strip()
+        if normalized_key not in COMPONENT_TARGETS:
+            raise ValueError(f"unknown component in --component-sbom-path: {normalized_key}")
+        sbom_paths[normalized_key] = (repo_root / raw_path.strip()).resolve()
+    return sbom_paths
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    """Build the command-line parser."""
+    component_help = ", ".join(DEFAULT_COMPONENTS)
     parser = argparse.ArgumentParser(
         description=(
-            "Build wheel artifacts for provider (server) and consumer (agent), "
+            "Build wheel artefacts for independently deployable OpAMP components "
             "and optionally publish them to a GitHub release."
         )
     )
@@ -743,25 +504,36 @@ def _parse_args() -> argparse.Namespace:
         help=f"GitHub repository in owner/name form (default: {DEFAULT_REPO})",
     )
     parser.add_argument(
+        "--components",
+        default=",".join(DEFAULT_COMPONENTS),
+        help=f"Comma-separated component keys to build (default: {component_help})",
+    )
+    parser.add_argument(
         "--dist-root",
         default="dist",
-        help="Artifact root directory (default: dist)",
+        help="Artefact root directory (default: dist)",
     )
     parser.add_argument(
         "--provider-sbom-path",
-        default=DEFAULT_PROVIDER_SBOM_PATH,
+        default=LEGACY_DEFAULT_PROVIDER_SBOM_PATH,
         help=(
             "Provider SBOM output path "
-            f"(default: {DEFAULT_PROVIDER_SBOM_PATH})"
+            f"(default: {LEGACY_DEFAULT_PROVIDER_SBOM_PATH})"
         ),
     )
     parser.add_argument(
         "--consumer-sbom-path",
-        default=DEFAULT_CONSUMER_SBOM_PATH,
+        default=LEGACY_DEFAULT_CONSUMER_SBOM_PATH,
         help=(
             "Consumer SBOM output path "
-            f"(default: {DEFAULT_CONSUMER_SBOM_PATH})"
+            f"(default: {LEGACY_DEFAULT_CONSUMER_SBOM_PATH})"
         ),
+    )
+    parser.add_argument(
+        "--component-sbom-path",
+        action="append",
+        default=[],
+        help="Override one component SBOM path using KEY=PATH",
     )
     parser.add_argument(
         "--manual-path",
@@ -787,6 +559,11 @@ def _parse_args() -> argparse.Namespace:
         "--python",
         default=sys.executable,
         help="Python executable to use for builds (default: current interpreter)",
+    )
+    parser.add_argument(
+        "--no-isolation",
+        action="store_true",
+        help="Pass --no-isolation to python -m build for local/offline builds",
     )
     parser.add_argument(
         "--publish",
@@ -825,92 +602,92 @@ def _parse_args() -> argparse.Namespace:
         default="",
         help="GitHub token (default: env GITHUB_TOKEN or GH_TOKEN)",
     )
-    args = parser.parse_args()
+    return parser
+
+
+def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    """Parse command line options."""
+    parser = _build_parser()
+    args = parser.parse_args(argv)
 
     if args.publish and not args.tag:
         parser.error("--tag is required when --publish is provided")
     if args.release_notes and args.release_notes_file:
         parser.error("use either --release-notes or --release-notes-file, not both")
+    try:
+        args.component_keys = _parse_component_keys(args.components)
+        args.resolved_sbom_paths = _resolve_sbom_paths(
+            args,
+            repo_root=REPO_ROOT,
+            component_keys=args.component_keys,
+        )
+    except ValueError as exc:
+        parser.error(str(exc))
     return args
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     """Entrypoint."""
-    args = _parse_args()
-    repo_root = Path(__file__).resolve().parents[1]
-    dist_root = (repo_root / args.dist_root).resolve()
-    provider_dist = dist_root / "provider"
-    consumer_dist = dist_root / "consumer"
-    manual_output_path = (repo_root / args.manual_path).resolve()
+    args = _parse_args(argv)
+    dist_root = (REPO_ROOT / args.dist_root).resolve()
+    manual_output_path = (REPO_ROOT / args.manual_path).resolve()
 
-    _update_component_versions(repo_root, args.python)
-    _ensure_python_build(repo_root, args.python)
+    _update_component_versions(REPO_ROOT, args.python)
+    _ensure_python_build(REPO_ROOT, args.python)
     if not args.skip_security_checks:
         _run_security_checks(
-            repo_root=repo_root,
+            repo_root=REPO_ROOT,
             python_exe=args.python,
         )
     elif not args.skip_ui_compaction:
         _refresh_provider_ui_compact_assets(
-            repo_root=repo_root,
+            repo_root=REPO_ROOT,
             python_exe=args.python,
         )
+
     manual_pdf: Path | None = None
     if not args.skip_manual:
         manual_pdf = _refresh_pdf_manual(
-            repo_root=repo_root,
+            repo_root=REPO_ROOT,
             python_exe=args.python,
             manual_output_path=manual_output_path,
         )
-    provider_wheel = _build_component_wheel(
-        repo_root=repo_root,
-        python_exe=args.python,
-        component_dir="provider",
-        out_dir=provider_dist,
-    )
-    consumer_wheel = _build_component_wheel(
-        repo_root=repo_root,
-        python_exe=args.python,
-        component_dir="consumer",
-        out_dir=consumer_dist,
-    )
-    provider_sbom_path = _build_cyclonedx_sbom(
-        repo_root=repo_root,
-        python_exe=args.python,
-        component_dir="provider",
-        repo=args.repo,
-        artifact=provider_wheel,
-        sbom_path=(repo_root / args.provider_sbom_path).resolve(),
-        root_component_name="fluent-opamp-provider-deployable-artifact",
-    )
-    consumer_sbom_path = _build_cyclonedx_sbom(
-        repo_root=repo_root,
-        python_exe=args.python,
-        component_dir="consumer",
-        repo=args.repo,
-        artifact=consumer_wheel,
-        sbom_path=(repo_root / args.consumer_sbom_path).resolve(),
-        root_component_name="fluent-opamp-consumer-deployable-artifact",
-    )
-    _validate_cyclonedx_sbom(
-        artifact=provider_wheel,
-        sbom_path=provider_sbom_path,
-        root_component_name="fluent-opamp-provider-deployable-artifact",
-        repo=args.repo,
-    )
-    _validate_cyclonedx_sbom(
-        artifact=consumer_wheel,
-        sbom_path=consumer_sbom_path,
-        root_component_name="fluent-opamp-consumer-deployable-artifact",
-        repo=args.repo,
-    )
-    print("SBOM validation complete.")
 
+    built_wheels: dict[str, Path] = {}
+    built_sboms: dict[str, Path] = {}
+    for component_key in args.component_keys:
+        component = COMPONENT_TARGETS[component_key]
+        wheel_path = _build_component_wheel(
+            repo_root=REPO_ROOT,
+            python_exe=args.python,
+            component=component,
+            out_dir=dist_root / component.dist_dirname,
+            no_isolation=args.no_isolation,
+        )
+        sbom_path = write_wheel_artifact_sbom(
+            repo_root=REPO_ROOT,
+            python_exe=args.python,
+            artifact=wheel_path,
+            sbom_path=args.resolved_sbom_paths[component_key],
+            root_component_name=component.root_component_name,
+            repo=args.repo,
+            component_dir=component.source_dir,
+        )
+        validate_wheel_artifact_sbom(
+            artifact=wheel_path,
+            sbom_path=sbom_path,
+            root_component_name=component.root_component_name,
+            repo=args.repo,
+        )
+        built_wheels[component_key] = wheel_path
+        built_sboms[component_key] = sbom_path
+
+    print("SBOM validation complete.")
     print("Build complete.")
-    print(f"Provider wheel: {provider_wheel}")
-    print(f"Consumer wheel: {consumer_wheel}")
-    print(f"Provider SBOM: {provider_sbom_path}")
-    print(f"Consumer SBOM: {consumer_sbom_path}")
+    for component_key in args.component_keys:
+        component = COMPONENT_TARGETS[component_key]
+        print(f"{component.display_name} wheel: {built_wheels[component_key]}")
+        print(f"{component.display_name} SBOM: {built_sboms[component_key]}")
     if manual_pdf is not None:
         print(f"PDF Manual: {manual_pdf}")
 
@@ -929,6 +706,14 @@ def main() -> int:
         )
 
     notes = _load_release_notes(args)
+    publish_paths = [
+        path
+        for component_key in args.component_keys
+        for path in (built_wheels[component_key], built_sboms[component_key])
+    ]
+    if manual_pdf is not None:
+        publish_paths.append(manual_pdf)
+
     _publish_wheels(
         repo=args.repo,
         tag=args.tag,
@@ -937,15 +722,7 @@ def main() -> int:
         draft=args.draft,
         prerelease=args.prerelease,
         token=token,
-        artifact_paths=(
-            [
-                provider_wheel,
-                consumer_wheel,
-                provider_sbom_path,
-                consumer_sbom_path,
-            ]
-            + ([manual_pdf] if manual_pdf is not None else [])
-        ),
+        artifact_paths=publish_paths,
     )
     print("Publish complete.")
     return 0

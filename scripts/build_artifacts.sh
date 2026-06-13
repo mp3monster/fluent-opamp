@@ -6,6 +6,9 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 DIST_ROOT="${REPO_ROOT}/dist"
 PROVIDER_DIST="${DIST_ROOT}/provider"
 CONSUMER_DIST="${DIST_ROOT}/consumer"
+CATALOG_DIST="${DIST_ROOT}/catalog"
+CLI_DIST="${DIST_ROOT}/cli"
+CONSUMER_SIM_DIST="${DIST_ROOT}/consumer-sim"
 
 if [ -f "${REPO_ROOT}/.venv/bin/activate" ]; then
   # shellcheck disable=SC1091
@@ -36,8 +39,16 @@ echo "Refreshing consolidated PDF manual..."
 "${PYTHON_BIN}" "${REPO_ROOT}/scripts/build_opamp_manual.py" --repo-root "${REPO_ROOT}"
 
 echo "Preparing artifact directories..."
-mkdir -p "${PROVIDER_DIST}" "${CONSUMER_DIST}"
-rm -f "${PROVIDER_DIST}"/* "${CONSUMER_DIST}"/*
+for dist_dir in \
+  "${PROVIDER_DIST}" \
+  "${CONSUMER_DIST}" \
+  "${CATALOG_DIST}" \
+  "${CLI_DIST}" \
+  "${CONSUMER_SIM_DIST}"
+do
+  mkdir -p "${dist_dir}"
+  rm -f "${dist_dir}"/*
+done
 
 echo "Building provider artifacts..."
 "${PYTHON_BIN}" -m build --sdist --wheel --outdir "${PROVIDER_DIST}" "${REPO_ROOT}/provider"
@@ -45,8 +56,23 @@ echo "Building provider artifacts..."
 echo "Building consumer artifacts..."
 "${PYTHON_BIN}" -m build --sdist --wheel --outdir "${CONSUMER_DIST}" "${REPO_ROOT}/consumer"
 
+echo "Building catalog artifacts..."
+"${PYTHON_BIN}" -m build --sdist --wheel --outdir "${CATALOG_DIST}" "${REPO_ROOT}/catalog-service"
+
+echo "Building CLI artifacts..."
+"${PYTHON_BIN}" -m build --sdist --wheel --outdir "${CLI_DIST}" "${REPO_ROOT}/cli"
+
+echo "Building consumer-sim artifacts..."
+"${PYTHON_BIN}" -m build --sdist --wheel --outdir "${CONSUMER_SIM_DIST}" "${REPO_ROOT}/consumer-sim"
+
 echo "Build complete."
 echo "Provider artifacts:"
 ls -1 "${PROVIDER_DIST}"
 echo "Consumer artifacts:"
 ls -1 "${CONSUMER_DIST}"
+echo "Catalog artifacts:"
+ls -1 "${CATALOG_DIST}"
+echo "CLI artifacts:"
+ls -1 "${CLI_DIST}"
+echo "Consumer-sim artifacts:"
+ls -1 "${CONSUMER_SIM_DIST}"
