@@ -18,7 +18,6 @@ Provider code imports:
 
 - `from shared.opamp_config import ...`
 - `from shared.uuid_utils import ...`
-- `from shared.sbom import ...`
 
 When provider was launched in some MCP/client contexts, `shared` could be
 missing from import resolution, leading to:
@@ -42,12 +41,16 @@ Mirror runtime-required changes into:
 
 - `provider/src/shared/`
 
-For standalone MCP package builds, a vendored copy of the shared SBOM helper is
-also kept under:
+SBOM helpers are now kept out of `shared/` so production deployments do not
+carry build-only SBOM logic.
 
-- `mcp/src/shared/sbom.py`
+The canonical repo-side implementation lives under:
+
+- `dev_tools/sbom.py`
+
+For standalone MCP package builds, a vendored copy of that helper is also kept under:
+
+- `mcp/src/opamp_build_tools/sbom.py`
 
 That vendored copy exists only so the packaged `opamp-mcp-config` wheel remains
-self-contained. The canonical implementation lives in:
-
-- `shared/sbom.py`
+self-contained after installation.

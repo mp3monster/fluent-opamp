@@ -267,8 +267,7 @@ function checkSavedOutput(savedJson, latestVersion, config) {
   const issues = [];
   const env = (savedJson && savedJson.config && savedJson.config.env) || {};
   const expectedMetadata = {
-    "_metadata.fluent_bit_version": latestVersion,
-    "_metadata.configuration_version": latestVersion,
+    "_metadata.config_version": latestVersion,
   };
 
   Object.entries(expectedMetadata).forEach(([key, expected]) => {
@@ -391,8 +390,8 @@ async function main() {
         }
 
         await ensurePanelOpenIfCollapsed(page, "#metadata-env-toggle");
-        await addMetadataVariable(page, "fluent_bit_version", latestVersion || "");
-        await addMetadataVariable(page, "configuration_version", latestVersion || "");
+        await addMetadataVariable(page, "config_version", latestVersion || "");
+        await addMetadataVariable(page, "SCM_config_version", `${path.basename(yamlFile, path.extname(yamlFile))}-rev`);
         await addMetadataVariable(page, "configuration_date", todayIsoDate());
 
         result.plugin_count = await annotatePlugins(page, path.basename(yamlFile));

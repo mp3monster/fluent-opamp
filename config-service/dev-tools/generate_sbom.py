@@ -13,6 +13,13 @@
 
 """Generate a CycloneDX SBOM for the standalone config-service package.
 
+Relationship to `dev_tools/sbom.py`:
+- this file is the config-service-specific wrapper that supplies package
+  metadata, output defaults, and git label properties
+- `dev_tools/sbom.py` is the canonical repo-side SBOM implementation shared by
+  developer tooling without putting SBOM logic into the production `shared`
+  package
+
 This script delegates dependency discovery to the open-source `cyclonedx-py`
 tool from the `cyclonedx-bom` package, then applies OpAMP-specific metadata:
 1. root component identity is kept aligned with package metadata (`build_config`)
@@ -26,9 +33,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
-import subprocess
 import sys
-import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -36,44 +41,16 @@ ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = ROOT.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from dev_tools.sbom import (  # noqa: E402
+    build_requirements_application_sbom_payload,
+    ensure_python_package,
+    write_sbom_file,
+)
 
 DEFAULT_OUTPUT = ROOT / "sbom" / "config-service-sbom.cdx.json"
-
-
-def _run(cmd: list[str]) -> None:
-    print(f"+ {' '.join(cmd)}")
-    subprocess.run(cmd, cwd=str(ROOT), check=True)
-
-
-def _ensure_python_package(package_name: str) -> None:
-    probe = subprocess.run(
-        [sys.executable, "-m", "pip", "show", package_name],
-        cwd=str(ROOT),
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        check=False,
-    )
-    if probe.returncode == 0:
-        return
-    print(f"Python package `{package_name}` not found; installing it now...")
-    _run([sys.executable, "-m", "pip", "install", package_name])
-
-
-def _normalize_component_refs(sbom: dict[str, Any]) -> list[str]:
-    components = sbom.get("components")
-    if not isinstance(components, list):
-        sbom["components"] = []
-        return []
-
-    dep_refs: list[str] = []
-    for component in components:
-        if not isinstance(component, dict):
-            continue
-        purl = str(component.get("purl") or "").strip()
-        if purl.startswith("pkg:pypi/"):
-            component["bom-ref"] = purl
-            dep_refs.append(purl)
-    return sorted(set(dep_refs))
 
 
 def _load_version_helper_module() -> Any | None:
@@ -111,91 +88,18 @@ def _resolve_precommit_git_labels() -> dict[str, str]:
     return metadata
 
 
-def _build_with_cyclonedx() -> dict[str, Any]:
-    from build_config import INSTALL_REQUIRES
-
-    with tempfile.TemporaryDirectory(prefix="config-service-sbom-") as temp_dir:
-        temp_root = Path(temp_dir)
-        requirements_path = temp_root / "requirements.txt"
-        requirements_path.write_text(
-            "".join(f"{requirement}\n" for requirement in INSTALL_REQUIRES),
-            encoding="utf-8",
-        )
-        intermediate_output = temp_root / "sbom.json"
-        _run(
-            [
-                sys.executable,
-                "-m",
-                "cyclonedx_py",
-                "requirements",
-                str(requirements_path),
-                "--output-format",
-                "JSON",
-                "--spec-version",
-                "1.6",
-                "--output-file",
-                str(intermediate_output),
-            ]
-        )
-        return json.loads(intermediate_output.read_text(encoding="utf-8"))
-
-
 def build_sbom() -> dict[str, Any]:
-    from build_config import PACKAGE_NAME, PACKAGE_VERSION
+    from build_config import INSTALL_REQUIRES, PACKAGE_NAME, PACKAGE_VERSION
 
-    sbom = _build_with_cyclonedx()
-    dependency_refs = _normalize_component_refs(sbom)
-    root_name = str(PACKAGE_NAME).strip()
-    root_version = str(PACKAGE_VERSION).strip()
-    root_properties = [
-        {"name": name, "value": value}
-        for name, value in sorted(_resolve_precommit_git_labels().items())
-        if value
-    ]
-
-    root_ref = f"pkg:pypi/{root_name}@{root_version}"
-    root_component = {
-        "type": "application",
-        "name": root_name,
-        "version": root_version,
-        "bom-ref": root_ref,
-        "purl": root_ref,
-        "licenses": [{"license": {"id": "Apache-2.0"}}],
-    }
-    if root_properties:
-        root_component["properties"] = root_properties
-
-    metadata = sbom.get("metadata")
-    if not isinstance(metadata, dict):
-        metadata = {}
-    metadata["component"] = root_component
-    sbom["metadata"] = metadata
-
-    components = sbom.get("components")
-    if not isinstance(components, list):
-        components = []
-    components = [component for component in components if isinstance(component, dict)]
-    components = [root_component] + [
-        component
-        for component in components
-        if str(component.get("bom-ref") or "").strip() != root_ref
-    ]
-    sbom["components"] = components
-
-    dependencies = sbom.get("dependencies")
-    if not isinstance(dependencies, list):
-        dependencies = []
-    dependencies = [entry for entry in dependencies if isinstance(entry, dict)]
-    dependencies = [entry for entry in dependencies if str(entry.get("ref") or "").strip() != root_ref]
-    dependencies.insert(
-        0,
-        {
-            "ref": root_ref,
-            "dependsOn": dependency_refs,
-        },
+    return build_requirements_application_sbom_payload(
+        repo_root=REPO_ROOT,
+        python_exe=sys.executable,
+        requirements=list(INSTALL_REQUIRES),
+        root_component_name=str(PACKAGE_NAME).strip(),
+        root_component_version=str(PACKAGE_VERSION).strip(),
+        root_properties=_resolve_precommit_git_labels(),
+        cwd=ROOT,
     )
-    sbom["dependencies"] = dependencies
-    return sbom
 
 
 def main() -> None:
@@ -203,9 +107,12 @@ def main() -> None:
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT, help="Output SBOM path")
     args = parser.parse_args()
 
-    _ensure_python_package("cyclonedx-bom")
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(build_sbom(), indent=2) + "\n", encoding="utf-8")
+    ensure_python_package(
+        repo_root=REPO_ROOT,
+        python_exe=sys.executable,
+        package_name="cyclonedx-bom",
+    )
+    write_sbom_file(build_sbom(), args.output)
 
 
 if __name__ == "__main__":
