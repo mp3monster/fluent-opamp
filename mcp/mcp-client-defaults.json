@@ -1,0 +1,59 @@
+{
+  "server": {
+    "host": "localhost",
+    "port": 8080,
+    "scheme": "http",
+    "sse_path": "/sse"
+  },
+  "deployment": {
+    "mode": "source",
+    "source_server_spec": "provider/src/opamp_provider/mcptool/routes.py:mcpserver",
+    "package_server_spec": "opamp_provider.mcptool.routes:mcpserver",
+    "project": "provider",
+    "with_fastmcp": true,
+    "with_editable": true,
+    "include_repo_editable": true,
+    "pythonpath_paths": [
+      "provider/src",
+      "shared"
+    ],
+    "package_specs": [
+      "opamp-server"
+    ]
+  },
+  "clients": {
+    "claude": {
+      "enabled": true,
+      "name": "OpAMP Server",
+      "config_path": "",
+      "transport": "sse",
+      "remote_command": "mcp-remote"
+    },
+    "codex": {
+      "enabled": true,
+      "name": "opamp-server",
+      "transport": "stdio"
+    },
+    "vscode": {
+      "enabled": true,
+      "name": "opampServer",
+      "config_path": ".vscode/mcp.json",
+      "transport": "stdio"
+    },
+    "librechat": {
+      "enabled": false,
+      "name": "opampServer",
+      "config_path": "librechat.yaml",
+      "transport": "stdio",
+      "title": "OpAMP Server",
+      "description": "OpAMP provider MCP tools"
+    },
+    "gemini": {
+      "enabled": false,
+      "name": "opampServer",
+      "config_path": "",
+      "transport": "stdio",
+      "trust": false
+    }
+  }
+}

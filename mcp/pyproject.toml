@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=82", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "opamp-mcp-config"
+version = "0.4.0"
+description = "Menu-driven MCP client configuration utility for OpAMP"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+authors = [{ name = "Phil Wilkins" }]
+keywords = ["opamp", "mcp", "claude", "codex", "gemini", "librechat"]
+
+[project.optional-dependencies]
+yaml = ["PyYAML>=6.0"]
+dev = [
+  "build>=1.2",
+  "pytest>=8.0",
+]
+
+[project.scripts]
+opamp-mcp-config = "configure_mcp_clients:main"
+
+[project.urls]
+Repository = "https://github.com/mp3monster/fluent-opamp"
+Homepage = "https://htmlpreview.github.io/?https://raw.githubusercontent.com/mp3monster/fluent-opamp/main/github-landingpage/index.html"
+Blog = "https://blog.mp3monster.org/category/technology/fluent-observability/opamp/"
+
+[tool.setuptools]
+py-modules = ["configure_mcp_clients"]
+packages = [
+  "shared",
+  "opamp_build_tools",
+  "opamp_mcp_config",
+  "opamp_mcp_config.targets",
+  "opamp_mcp_config.build_tool",
+]
+
+[tool.setuptools.package-dir]
+shared = "src/shared"
+opamp_build_tools = "src/opamp_build_tools"
+opamp_mcp_config = "src/opamp_mcp_config"
+
+[tool.setuptools.package-data]
+opamp_mcp_config = ["mcp-client-defaults.json"]
