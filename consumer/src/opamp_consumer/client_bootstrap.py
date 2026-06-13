@@ -33,6 +33,7 @@ from urllib.parse import urlsplit, urlunsplit
 from opamp_consumer import config as consumer_config
 from opamp_consumer.config import CFG_AGENT_CONFIG_PATH, ConsumerConfig
 from opamp_consumer.proto import opamp_pb2
+from shared.observability import configure_process_observability
 from shared.opamp_config import UTF8_ENCODING
 
 KEY_AGENT_DESCRIPTION = "agent_description"  # Comment key carrying free-form agent description.
@@ -166,10 +167,6 @@ def load_config_from_cli_args(args: argparse.Namespace) -> ConsumerConfig:
     effective_config_path = consumer_config.get_effective_config_path(
         getattr(args, "config_path", None)
     )
-    logging.getLogger(__name__).info(
-        "using consumer config path: %s",
-        effective_config_path,
-    )
     override_fields = (
         "server_url",
         "server_port",
@@ -186,6 +183,22 @@ def load_config_from_cli_args(args: argparse.Namespace) -> ConsumerConfig:
         config_path=effective_config_path,
         **override_values,
     )
+
+
+def log_runtime_config_path(
+    *,
+    logger: logging.Logger,
+    runtime_name: str,
+    config_path: str | pathlib.Path | None,
+) -> pathlib.Path:
+    """Log the absolute config path for a runtime after logging is configured."""
+    effective_config_path = consumer_config.get_effective_config_path(config_path)
+    logger.info(
+        "using %s config path: %s",
+        runtime_name,
+        effective_config_path,
+    )
+    return effective_config_path
 
 
 def configure_logging_for_config(config: ConsumerConfig) -> logging.Logger:
@@ -210,6 +223,24 @@ def configure_logging_for_config(config: ConsumerConfig) -> logging.Logger:
             _load_logging_config(resolved_log_level_name.upper())
         )
     return logging.getLogger(__name__)
+
+
+def configure_observability_for_config(
+    *,
+    config: ConsumerConfig,
+    default_service_name: str,
+    log_level_name: str | None = None,
+) -> None:
+    """Enable OTLP exporters for one consumer process when configured."""
+    service_name = str(config.service_name or default_service_name).strip() or default_service_name
+    effective_log_level_name = str(
+        log_level_name or config.log_level or consumer_config.DEFAULT_LOG_LEVEL
+    ).strip().upper() or "INFO"
+    configure_process_observability(
+        service_name=service_name,
+        config=config.observability,
+        log_level=getattr(logging, effective_log_level_name, logging.INFO),
+    )
 
 
 def maybe_print_config_help(
@@ -453,6 +484,11 @@ def run_default_client_main(
         args = parser.parse_args()
         config = load_config_from_cli_args(args)
         logger = configure_logging_for_config(config)
+        log_runtime_config_path(
+            logger=logger,
+            runtime_name="consumer",
+            config_path=getattr(args, "config_path", None),
+        )
 
         if maybe_print_config_help(
             args=args,
@@ -467,6 +503,10 @@ def run_default_client_main(
             config=config,
             localhost_base=localhost_base,
             missing_status_port_error="client_status_port not found in Fluent Bit config",
+        )
+        configure_observability_for_config(
+            config=config,
+            default_service_name="opamp-consumer-fluentbit",
         )
 
         logger.debug(msg="setting up OpAMP")

@@ -451,3 +451,26 @@ def test_simulator_test_config_loads_successfully() -> None:
     assert loaded.service_name == "Simulator"
     assert loaded.service_type == consumer_config.SERVICE_TYPE_SIMULATOR
     assert loaded.simulator_responses_path == "./consumer/simulator-responses.example.json"
+
+
+def test_consumer_observability_loads_signal_specific_endpoint(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    """Consumer should load top-level OTLP settings alongside consumer config."""
+    raw = _base_consumer_config()
+    raw["otlp-endpoints"] = {
+        "ALL": "http://collector:4317",
+        "metrics": "http://metrics:4318",
+        "export_interval": 42,
+    }
+    config_path = tmp_path / "opamp.json"
+    config_path.write_text(json.dumps(raw, indent=2), encoding="utf-8")
+    monkeypatch.setenv(consumer_config.ENV_OPAMP_CONFIG_PATH, str(config_path))
+
+    loaded = consumer_config.load_config()
+
+    assert loaded.observability.resolved_logs_endpoint == "http://collector:4317"
+    assert loaded.observability.resolved_metrics_endpoint == "http://metrics:4318"
+    assert loaded.observability.resolved_traces_endpoint == "http://collector:4317"
+    assert loaded.observability.export_interval_seconds == 42

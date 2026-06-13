@@ -40,8 +40,10 @@ from opamp_consumer.abstract_client import (
 )
 from opamp_consumer.client_bootstrap import (
     build_common_cli_parser,
+    configure_observability_for_config,
     configure_logging_for_config,
     load_config_from_cli_args,
+    log_runtime_config_path,
     maybe_print_config_help,
     run_client,
     validate_runtime_server_config,
@@ -736,6 +738,11 @@ def main() -> None:
         args = parser.parse_args()
         config = load_config_from_cli_args(args)
         logger = configure_logging_for_config(config)
+        log_runtime_config_path(
+            logger=logger,
+            runtime_name="consumer",
+            config_path=getattr(args, "config_path", None),
+        )
 
         if maybe_print_config_help(
             args=args,
@@ -749,6 +756,10 @@ def main() -> None:
             config=config,
             localhost_base=LOCALHOST_BASE,
             missing_status_port_error="client_status_port not found in Fluentd config",
+        )
+        configure_observability_for_config(
+            config=config,
+            default_service_name="opamp-consumer-fluentd",
         )
         if config.server_url is None:
             raise ValueError("validated runtime config missing server_url")

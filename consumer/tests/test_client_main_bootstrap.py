@@ -11,6 +11,8 @@
 # limitations under the License.
 
 import json
+import logging
+from pathlib import Path
 
 import opamp_consumer.client_bootstrap as client_bootstrap
 import opamp_consumer.fluentbit_client as client
@@ -135,6 +137,29 @@ def test_load_config_from_cli_args_maps_overrides(monkeypatch) -> None:
         "log_level": "info",
         "full_update_controller": '{"fullResendAfter":10}',
     }
+
+
+def test_log_runtime_config_path_logs_absolute_path(
+    monkeypatch, caplog
+) -> None:
+    """Runtime config-path helper should log the resolved absolute path."""
+    resolved_path = Path("/tmp/consumer-config.json")
+    monkeypatch.setattr(
+        client_bootstrap.consumer_config,
+        "get_effective_config_path",
+        lambda raw_path: resolved_path,
+    )
+    logger = logging.getLogger("consumer-test")
+    caplog.set_level(logging.INFO, logger="consumer-test")
+
+    logged_path = client_bootstrap.log_runtime_config_path(
+        logger=logger,
+        runtime_name="consumer",
+        config_path="consumer/opamp.json",
+    )
+
+    assert logged_path == resolved_path
+    assert f"using consumer config path: {resolved_path}" in caplog.text
 
 
 def test_validate_runtime_server_config_applies_server_port_when_url_has_no_port() -> None:

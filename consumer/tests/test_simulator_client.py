@@ -235,6 +235,54 @@ def test_simulator_checks_process_record_status_and_marks_shuttingdown(
     assert payload["instances"][0]["status"] == "shuttingdown"
 
 
+def test_simulator_main_logs_runtime_config_path(monkeypatch) -> None:
+    """Simulator startup should log the resolved config path after logging setup."""
+    config = ConsumerConfig(
+        server_url="http://localhost:8080",
+        client_status_port=1,
+        service_type="simulator",
+    )
+    args = type("Args", (), {"config_path": "consumer/opamp-simulator.json", "help": True})()
+    captured: dict[str, object] = {}
+
+    class _Parser:
+        def parse_args(self):
+            return args
+
+    monkeypatch.setattr(simulator_client, "build_common_cli_parser", lambda: _Parser())
+    monkeypatch.setattr(simulator_client, "load_config_from_cli_args", lambda _args: config)
+    monkeypatch.setattr(
+        simulator_client,
+        "configure_logging_for_config",
+        lambda _config: logging.getLogger("simulator-test"),
+    )
+
+    def _capture_log_runtime_config_path(*, logger, runtime_name, config_path):
+        captured["logger_name"] = logger.name
+        captured["runtime_name"] = runtime_name
+        captured["config_path"] = config_path
+        return Path("/tmp/opamp-simulator.json")
+
+    monkeypatch.setattr(
+        simulator_client,
+        "log_runtime_config_path",
+        _capture_log_runtime_config_path,
+    )
+    monkeypatch.setattr(
+        simulator_client,
+        "maybe_print_config_help",
+        lambda **_kwargs: True,
+    )
+
+    simulator_client.main()
+
+    assert captured == {
+        "logger_name": "simulator-test",
+        "runtime_name": "simulator",
+        "config_path": "consumer/opamp-simulator.json",
+    }
+
+
 def test_validate_simulator_dev_features_flag_missing_env_logs_and_blocks(
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,

@@ -35,6 +35,7 @@ from shared.opamp_config import (  # noqa: E402 - requires repo-root path adjust
     AgentCapabilities,
     parse_capabilities,
 )
+from shared.observability import ObservabilityConfig, load_observability_config_from_payload
 
 ENV_OPAMP_CONFIG_PATH = "OPAMP_CONFIG_PATH"  # Environment variable overriding config file location.
 DEFAULT_CONFIG_FILENAME = "opamp.json"  # Default configuration filename.
@@ -216,6 +217,7 @@ class ConsumerConfig:
         None
         # Regex used by observer mode to discover a running process by command line.
     )
+    observability: ObservabilityConfig = field(default_factory=ObservabilityConfig)
 
     def __setitem__(self, key, value):
         """Support dict-style assignment by forwarding writes to dataclass attributes.
@@ -253,7 +255,7 @@ def _config_path() -> pathlib.Path:
     env_path = os.environ.get(ENV_OPAMP_CONFIG_PATH)
     logger = logging.getLogger(__name__)
     if env_path:
-        resolved = pathlib.Path(env_path)
+        resolved = pathlib.Path(env_path).expanduser().resolve()
         logger.info("using %s from environment: %s", ENV_OPAMP_CONFIG_PATH, resolved)
         return resolved
 
@@ -264,11 +266,12 @@ def _config_path() -> pathlib.Path:
     )
     for candidate in candidates:
         if candidate.exists():
-            logger.info("using discovered config path: %s", candidate)
-            return candidate
+            resolved = candidate.expanduser().resolve()
+            logger.info("using discovered config path: %s", resolved)
+            return resolved
 
     logger.warning("defaulting config path to %s", candidates[0])
-    return candidates[0]
+    return candidates[0].expanduser().resolve()
 
 
 def get_effective_config_path(
@@ -276,7 +279,7 @@ def get_effective_config_path(
 ) -> pathlib.Path:
     """Return the effective config path used for loading consumer configuration."""
     if config_path is not None:
-        return pathlib.Path(config_path)
+        return pathlib.Path(config_path).expanduser().resolve()
     return _config_path()
 
 
@@ -586,6 +589,7 @@ def load_config() -> ConsumerConfig:
     logger = logging.getLogger(__name__)
     raw = _load_json(_config_path())
     consumer_raw = raw.get(CFG_CONSUMER, {})
+    observability = load_observability_config_from_payload(raw)
     server_url = consumer_raw.get(CFG_SERVER_URL)
     server_port = consumer_raw.get(CFG_SERVER_PORT)
     service_name = consumer_raw.get(CFG_SERVICE_NAME)
@@ -772,6 +776,7 @@ def load_config() -> ConsumerConfig:
         chat_ops_port=int(chat_ops_port) if chat_ops_port is not None else None,
         full_update_controller=full_update_controller,
         full_update_controller_type=str(full_update_controller_type),
+        observability=observability,
     )
 
 
@@ -790,6 +795,7 @@ def load_config_with_overrides(
     logger = logging.getLogger(__name__)
     base_raw = _load_json(config_path or _config_path())
     consumer_raw = dict(base_raw.get(CFG_CONSUMER, {}))
+    observability = load_observability_config_from_payload(base_raw)
 
     resolved_server_url = _resolve_config_value(
         mapping=consumer_raw,
@@ -962,6 +968,7 @@ def load_config_with_overrides(
         full_update_controller_type=str(
             resolved_full_update_controller_type or DEFAULT_FULL_UPDATE_CONTROLLER_TYPE
         ),
+        observability=observability,
     )
 
 
