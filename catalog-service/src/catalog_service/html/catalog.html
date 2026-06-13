@@ -143,6 +143,7 @@ limitations under the License.
       <div><a href="https://opentelemetry.io/docs/specs/opamp/" target="_blank" rel="noopener noreferrer">OpAMP Specification</a> • <a href="http://localhost:8080/doc-set">Latest docs</a></div>
     </footer>
 
+    <script src="__CATALOG_API_JS_PATH__"></script>
     <script>
       (function() {
         function syncHistoryBackButton() {
@@ -164,7 +165,6 @@ limitations under the License.
         window.addEventListener('pageshow', syncHistoryBackButton);
 
         const CATALOG_UI_COLUMN_ORDER_STORAGE_KEY = 'catalog_ui_column_order';
-        const CLIENT_ERRORS_ENDPOINT = '__CATALOG_CLIENT_ERRORS_ENDPOINT__';
         const DEFAULT_UI_REFRESH_SECONDS = 120;
         const CONFIGURED_UI_REFRESH_SECONDS = parseInt('__CATALOG_UI_REFRESH_SECONDS__', 10);
         const UI_REFRESH_SECONDS = Number.isNaN(CONFIGURED_UI_REFRESH_SECONDS) || CONFIGURED_UI_REFRESH_SECONDS <= 0
@@ -176,6 +176,11 @@ limitations under the License.
         const SELECTION_FILTER_BOTH = 'both';
         const SELECTION_FILTER_SELECTED = 'selected';
         const SELECTION_FILTER_UNSELECTED = 'unselected';
+        const api = window.CatalogServiceUiApi.create({
+          routePath: '__CATALOG_ROUTE_PATH__',
+          uiFeaturesPath: '/api/ui/features',
+          clientErrorsEndpoint: '__CATALOG_CLIENT_ERRORS_ENDPOINT__'
+        });
         const COLUMN_LABEL_OVERRIDES = {
           selected: 'selected',
           config_type: 'config type (metadata)',
@@ -198,9 +203,6 @@ limitations under the License.
         };
         let draggingColumnKey = '';
         let skipSortClickForColumn = '';
-        let lastUiErrorFingerprint = '';
-        let lastUiErrorAt = 0;
-        let isReportingUiError = false;
         let isLoadingRows = false;
         let refreshTimer = null;
         const filterInput = document.getElementById('catalogFilter');
@@ -276,19 +278,11 @@ limitations under the License.
           applySelectionButton.textContent = 'Applying...';
           setApplySelectionStatus(`Applying ${selectedRows.length} selected file${selectedRows.length === 1 ? '' : 's'}...`);
           try {
-            const resp = await fetch(selectionCallbackUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                files: selectedRows.map(row => ({
-                  source_path: row.path,
-                })),
-              }),
+            const payload = await api.postSelectionCallback(selectionCallbackUrl, {
+              files: selectedRows.map(row => ({
+                source_path: row.path,
+              })),
             });
-            const payload = await resp.json().catch(() => ({}));
-            if (!resp.ok) {
-              throw new Error(String(payload && payload.error ? payload.error : 'Failed to apply selected files.'));
-            }
             if (window.opener && typeof window.opener.postMessage === 'function') {
               const targetOrigin = new URL(selectionCallbackUrl, window.location.origin).origin;
               window.opener.postMessage(
@@ -501,140 +495,6 @@ limitations under the License.
           });
           values.sort((left, right) => left.localeCompare(right, undefined, { sensitivity: 'base' }));
           return values;
-        }
-
-        function reportUiError(details) {
-          const payload = details && typeof details === 'object' ? details : {};
-          const fingerprint = JSON.stringify({
-            kind: payload.kind || '',
-            message: payload.message || '',
-            source: payload.source || '',
-            path: payload.path || '',
-            line: payload.line || '',
-            column: payload.column || '',
-          });
-          const now = Date.now();
-          if (fingerprint === lastUiErrorFingerprint && now - lastUiErrorAt < 4000) {
-            return;
-          }
-          lastUiErrorFingerprint = fingerprint;
-          lastUiErrorAt = now;
-          if (!isReportingUiError) {
-            isReportingUiError = true;
-            try {
-              console.error(
-                '[Catalog UI Error]',
-                String(payload.kind || 'runtime_error'),
-                String(payload.message || 'Unknown UI error'),
-                payload
-              );
-            } catch (_consoleErr) {
-              // Keep error reporting resilient.
-            }
-            isReportingUiError = false;
-          }
-          fetch(CLIENT_ERRORS_ENDPOINT, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              kind: String(payload.kind || 'runtime_error'),
-              message: String(payload.message || 'Unknown UI error'),
-              source: String(payload.source || 'browser'),
-              path: String(payload.path || window.location.href || ''),
-              stack: payload.stack ? String(payload.stack) : '',
-              line: payload.line === undefined ? null : payload.line,
-              column: payload.column === undefined ? null : payload.column,
-            }),
-            keepalive: true,
-          }).catch(function (err) {
-            if (!isReportingUiError) {
-              isReportingUiError = true;
-              try {
-                console.error(
-                  '[Catalog UI Error] Failed to post UI error to backend:',
-                  err && err.message ? err.message : String(err)
-                );
-              } catch (_consoleErr) {
-                // Avoid error-reporting loops when the backend is unavailable.
-              }
-              isReportingUiError = false;
-            }
-          });
-        }
-
-        function formatConsoleArgs(args) {
-          const parts = [];
-          for (let index = 0; index < args.length; index += 1) {
-            const item = args[index];
-            if (item === undefined) {
-              parts.push('undefined');
-            } else if (item === null) {
-              parts.push('null');
-            } else if (item instanceof Error) {
-              parts.push(item.message || String(item));
-            } else if (typeof item === 'object') {
-              try {
-                parts.push(JSON.stringify(item));
-              } catch (_serializeError) {
-                parts.push(String(item));
-              }
-            } else {
-              parts.push(String(item));
-            }
-          }
-          return parts.join(' ');
-        }
-
-        function installGlobalUiErrorHandlers() {
-          if (!window.__CATALOG_UI_CONSOLE_ERROR_PATCHED__) {
-            window.__CATALOG_UI_CONSOLE_ERROR_PATCHED__ = true;
-            const originalConsoleError = console.error;
-            console.error = function () {
-              const args = Array.prototype.slice.call(arguments);
-              originalConsoleError.apply(console, args);
-              if (isReportingUiError) {
-                return;
-              }
-              reportUiError({
-                kind: 'console_error',
-                message: formatConsoleArgs(args) || 'console.error called',
-                source: 'browser_console',
-                path: window.location.href,
-              });
-            };
-          }
-
-          window.addEventListener('error', function (event) {
-            const error = event && event.error;
-            reportUiError({
-              kind: 'window_error',
-              message: error && error.message ? error.message : String((event && event.message) || 'Unhandled UI error'),
-              source: event && event.filename ? event.filename : 'browser',
-              path: window.location.href,
-              stack: error && error.stack ? error.stack : '',
-              line: event && event.lineno ? event.lineno : null,
-              column: event && event.colno ? event.colno : null,
-            });
-          });
-
-          window.addEventListener('unhandledrejection', function (event) {
-            const reason = event ? event.reason : null;
-            let message = 'Unhandled promise rejection';
-            let stack = '';
-            if (reason && typeof reason === 'object') {
-              message = String(reason.message || message);
-              stack = reason.stack ? String(reason.stack) : '';
-            } else if (reason !== undefined && reason !== null) {
-              message = String(reason);
-            }
-            reportUiError({
-              kind: 'unhandledrejection',
-              message: message,
-              source: 'browser',
-              path: window.location.href,
-              stack: stack,
-            });
-          });
         }
 
         // Render the fixed selection header so checkbox state is always available and non-movable.
@@ -876,12 +736,7 @@ limitations under the License.
         async function loadUiFeatures() {
           if (!featureMenuGroup || !featureMenuSelect) return;
           try {
-            const resp = await fetch('/api/ui/features');
-            if (!resp.ok) {
-              featureMenuGroup.classList.add('hidden');
-              return;
-            }
-            const payload = await resp.json();
+            const payload = await api.getUiFeatures();
             state.uiFeatureItems = Array.isArray(payload.items) ? payload.items : [];
             renderFeatureMenuItems(state.uiFeatureItems);
             const configEditorItem = state.uiFeatureItems.find(item => {
@@ -923,13 +778,7 @@ limitations under the License.
           readonlyOverlay.classList.remove('hidden');
           readonlyOverlay.setAttribute('aria-hidden', 'false');
           try {
-            const target = new URL('__CATALOG_ROUTE_PATH__/api/file-content', window.location.origin);
-            target.searchParams.set('path', path);
-            const resp = await fetch(target.toString());
-            const payload = await resp.json();
-            if (!resp.ok) {
-              throw new Error(String(payload && payload.error ? payload.error : 'Failed to load file'));
-            }
+            const payload = await api.getFileContent(path);
             readonlyText.value = String(payload && payload.text ? payload.text : '');
           } catch (err) {
             readonlyError.textContent = String(err && err.message ? err.message : err);
@@ -982,12 +831,7 @@ limitations under the License.
           if (isLoadingRows) return;
           isLoadingRows = true;
           try {
-            const resp = await fetch('__CATALOG_ROUTE_PATH__/api/files');
-            if (!resp.ok) {
-              summary.textContent = 'Failed to load catalog data';
-              return;
-            }
-            const payload = await resp.json();
+            const payload = await api.getFiles();
             if (options.autoRefresh === true && state.selectedPaths.length > 0) {
               return;
             }
@@ -1066,7 +910,7 @@ limitations under the License.
             closeReadonlyViewer();
           }
         });
-        installGlobalUiErrorHandlers();
+        api.installGlobalUiErrorHandlers();
         syncSelectionActions();
         loadUiFeatures().then(() => loadRows()).then(startCatalogRefreshTimer);
       })();

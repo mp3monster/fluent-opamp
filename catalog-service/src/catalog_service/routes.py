@@ -31,12 +31,14 @@ HTML_DIR = Path(__file__).resolve().parent / "html"
 CATALOG_HTML_PATH = HTML_DIR / "catalog.html"
 CATALOG_HELP_HTML_PATH = HTML_DIR / "catalog_help.html"
 CATALOG_UI_CSS_PATH = HTML_DIR / "catalog_ui.css"
+CATALOG_UI_API_JS_PATH = HTML_DIR / "catalog_ui_api.js"
 CATALOG_UI_LOGO_PATH = HTML_DIR / "opamp_logo.png"
 CATALOG_UI_ICON_PATH = HTML_DIR / "config_editor_icon.png"
 PLACEHOLDER_TITLE = "__CATALOG_TITLE__"
 PLACEHOLDER_ROUTE_PATH = "__CATALOG_ROUTE_PATH__"
 PLACEHOLDER_HELP_PATH = "__CATALOG_HELP_PATH__"
 PLACEHOLDER_CSS_PATH = "__CATALOG_CSS_PATH__"
+PLACEHOLDER_API_JS_PATH = "__CATALOG_API_JS_PATH__"
 PLACEHOLDER_LOGO_PATH = "__CATALOG_LOGO_PATH__"
 PLACEHOLDER_ICON_PATH = "__CATALOG_ICON_PATH__"
 PLACEHOLDER_UI_REFRESH_SECONDS = "__CATALOG_UI_REFRESH_SECONDS__"
@@ -104,6 +106,7 @@ def _catalog_html(
     config: CatalogServiceConfig,
     *,
     css_path: str,
+    api_js_path: str,
     logo_path: str,
     icon_path: str,
     show_provider_ui_link: bool,
@@ -118,6 +121,7 @@ def _catalog_html(
             PLACEHOLDER_ROUTE_PATH: html.escape(config.route_path),
             PLACEHOLDER_HELP_PATH: html.escape(config.help_path),
             PLACEHOLDER_CSS_PATH: html.escape(css_path),
+            PLACEHOLDER_API_JS_PATH: html.escape(api_js_path),
             PLACEHOLDER_LOGO_PATH: html.escape(logo_path),
             PLACEHOLDER_ICON_PATH: html.escape(icon_path),
             PLACEHOLDER_UI_REFRESH_SECONDS: html.escape(str(config.ui_refresh_seconds)),
@@ -152,6 +156,13 @@ def _local_catalog_logo_route_path(route_path: str) -> str:
     if not normalized:
         normalized = "/catalog"
     return f"{normalized}/assets/opamp_logo.png"
+
+
+def _local_catalog_api_js_route_path(route_path: str) -> str:
+    normalized = str(route_path or "").rstrip("/")
+    if not normalized:
+        normalized = "/catalog"
+    return f"{normalized}/assets/catalog_ui_api.js"
 
 
 def _local_catalog_icon_route_path(route_path: str) -> str:
@@ -216,6 +227,10 @@ def register_catalog_routes(
     )
     standalone_mode = str(app.config.get(APP_CONFIG_KEY_MODE) or "").strip().lower() == APP_MODE_STANDALONE
     css_path = _css_path_for_mode(config=config, standalone_mode=standalone_mode)
+    api_js_path = _append_cache_bust_query(
+        _local_catalog_api_js_route_path(config.route_path),
+        source_path=CATALOG_UI_API_JS_PATH,
+    )
     logo_path = _logo_path_for_mode(config=config, standalone_mode=standalone_mode)
     icon_path = _icon_path_for_mode(config=config, standalone_mode=standalone_mode)
     client_errors_endpoint = _client_errors_endpoint_for_mode(
@@ -229,6 +244,7 @@ def register_catalog_routes(
             _catalog_html(
                 config,
                 css_path=css_path,
+                api_js_path=api_js_path,
                 logo_path=logo_path,
                 icon_path=icon_path,
                 show_provider_ui_link=not standalone_mode,
@@ -240,6 +256,12 @@ def register_catalog_routes(
     @app.get(config.help_path)
     async def catalog_help() -> Response:
         return Response(_help_html(config, css_path=css_path), content_type="text/html; charset=utf-8")
+
+    local_api_js_route_path = _local_catalog_api_js_route_path(config.route_path)
+
+    @app.get(local_api_js_route_path)
+    async def catalog_ui_api_js() -> Response:
+        return Response(_read_text_asset(CATALOG_UI_API_JS_PATH), content_type="text/javascript; charset=utf-8")
 
     if standalone_mode:
         local_css_route_path = _local_catalog_css_route_path(config.route_path)

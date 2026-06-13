@@ -61,8 +61,7 @@ async def test_catalog_routes_render_ui_help_and_api(tmp_path: Path) -> None:
         assert ui_resp.status_code == 200
         ui_html = (await ui_resp.get_data()).decode("utf-8")
         assert "Config Catalog" in ui_html
-        assert "/catalog/api/files" in ui_html
-        assert "/catalog/api/file-content" in ui_html
+        assert "/catalog/assets/catalog_ui_api.js" in ui_html
         assert "Selection checkbox state" in ui_html
         assert "Unselected" in ui_html
         assert "config type (metadata)" in ui_html
@@ -91,6 +90,14 @@ async def test_catalog_routes_render_ui_help_and_api(tmp_path: Path) -> None:
         data_resp = await client.get("/catalog/api/files")
         assert data_resp.status_code == 200
         payload = await data_resp.get_json()
+
+        api_js_resp = await client.get("/catalog/assets/catalog_ui_api.js")
+        assert api_js_resp.status_code == 200
+        assert api_js_resp.content_type.startswith("text/javascript")
+        api_js = (await api_js_resp.get_data()).decode("utf-8")
+        assert "window.CatalogServiceUiApi" in api_js
+        assert 'routePath + "/api/files"' in api_js
+        assert 'routePath + "/api/file-content"' in api_js
 
         file_resp = await client.get(
             "/catalog/api/file-content",
@@ -204,6 +211,7 @@ async def test_standalone_catalog_app_exposes_feature_payload(tmp_path: Path, mo
         assert ui_resp.status_code == 200
         ui_html = (await ui_resp.get_data()).decode("utf-8")
         assert '/catalog/assets/catalog_ui.css' in ui_html
+        assert '/catalog/assets/catalog_ui_api.js?v=' in ui_html
         assert '/catalog/assets/opamp_logo.png' in ui_html
         assert '/catalog/assets/config_editor_icon.png' in ui_html
         assert 'data-history-back-button="true"' in ui_html
@@ -214,6 +222,9 @@ async def test_standalone_catalog_app_exposes_feature_payload(tmp_path: Path, mo
         css_resp = await client.get("/catalog/assets/catalog_ui.css")
         assert css_resp.status_code == 200
         assert css_resp.content_type.startswith("text/css")
+        api_js_resp = await client.get("/catalog/assets/catalog_ui_api.js")
+        assert api_js_resp.status_code == 200
+        assert api_js_resp.content_type.startswith("text/javascript")
         logo_resp = await client.get("/catalog/assets/opamp_logo.png")
         assert logo_resp.status_code == 200
         assert logo_resp.content_type.startswith("image/png")
