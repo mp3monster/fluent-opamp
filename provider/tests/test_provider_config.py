@@ -58,6 +58,34 @@ def test_allow_remote_config_defaults_true_when_missing() -> None:
     assert config.allow_remote_config is True
 
 
+def test_allow_mcp_defaults_false_when_missing() -> None:
+    """Verify provider.allow-mcp defaults to disabled when omitted."""
+    root = pathlib.Path(__file__).resolve().parents[2]
+    os.environ[provider_config.ENV_OPAMP_CONFIG_PATH] = str(root / "tests" / "opamp.json")
+    config = provider_config.load_config()
+    assert config.allow_mcp is False
+
+
+def test_allow_mcp_loads_true_from_config(tmp_path) -> None:
+    """Verify provider.allow-mcp is parsed from config."""
+    config_path = tmp_path / "opamp.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "provider": {
+                    "allow-mcp": True,
+                }
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    os.environ[provider_config.ENV_OPAMP_CONFIG_PATH] = str(config_path)
+
+    config = provider_config.load_config()
+    assert config.allow_mcp is True
+
+
 def test_allow_remote_config_loads_false_from_config(tmp_path) -> None:
     """Verify provider.allow-remote-config is parsed from config."""
     config_path = tmp_path / "opamp.json"
@@ -356,3 +384,29 @@ def test_update_comms_thresholds_updates_state_persistence_enabled() -> None:
     )
 
     assert updated.state_persistence.enabled is True
+
+
+def test_provider_observability_loads_all_endpoint_and_interval(tmp_path) -> None:
+    """Verify top-level otlp-endpoints config is parsed for provider runtimes."""
+    config_path = tmp_path / "opamp.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "otlp-endpoints": {
+                    "ALL": "http://collector:4317",
+                    "export_interval": 123,
+                },
+                "provider": {},
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    os.environ[provider_config.ENV_OPAMP_CONFIG_PATH] = str(config_path)
+
+    config = provider_config.load_config()
+
+    assert config.observability.resolved_logs_endpoint == "http://collector:4317"
+    assert config.observability.resolved_metrics_endpoint == "http://collector:4317"
+    assert config.observability.resolved_traces_endpoint == "http://collector:4317"
+    assert config.observability.export_interval_seconds == 123

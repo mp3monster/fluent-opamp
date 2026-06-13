@@ -29,6 +29,7 @@ if str(ROOT_PATH) not in sys.path:
     sys.path.insert(0, str(ROOT_PATH))
 
 from shared.opamp_config import UTF8_ENCODING  # noqa: E402,I001 - requires repo-root path adjustment above
+from shared.observability import ObservabilityConfig, load_observability_config_from_payload
 
 ENV_OPAMP_CONFIG_PATH = "OPAMP_CONFIG_PATH"  # Environment variable overriding provider config file location.
 CFG_PROVIDER = "provider"  # Top-level JSON section name for provider settings.
@@ -43,6 +44,7 @@ CFG_DEFAULT_HEARTBEAT_FREQUENCY = "default_heartbeat_frequency"  # Provider JSON
 CFG_LATEST_DOCS_URL = "latest_docs_url"  # Provider JSON key for Latest docs redirect URL.
 CFG_HUMAN_IN_LOOP_APPROVAL = "human_in_loop_approval"  # Provider JSON key toggling manual agent approval workflow.
 CFG_ALLOW_REMOTE_CONFIG = "allow-remote-config"  # Provider JSON key toggling enhanced remote-config UI and queueing support.
+CFG_ALLOW_MCP = "allow-mcp"  # Provider JSON key toggling Streamable HTTP MCP route exposure at /mcp.
 CFG_OPAMP_USE_AUTHORIZATION = "opamp-use-authorization"  # Provider JSON key controlling OpAMP transport bearer authorization mode.
 CFG_UI_USE_AUTHORIZATION = "ui-use-authorization"  # Provider JSON key controlling non-OpAMP HTTP/WebSocket bearer authorization mode.
 CFG_TLS = "tls"  # Provider JSON key for shared TLS server settings.
@@ -70,6 +72,7 @@ DEFAULT_DEFAULT_HEARTBEAT_FREQUENCY = 30  # Default heartbeat frequency assigned
 DEFAULT_LATEST_DOCS_URL = "https://htmlpreview.github.io/?https://raw.githubusercontent.com/mp3monster/fluent-opamp/main/github-landingpage/index.html"  # Default redirect target for /doc-set.
 DEFAULT_HUMAN_IN_LOOP_APPROVAL = False  # Default behavior leaves human approval workflow disabled.
 DEFAULT_ALLOW_REMOTE_CONFIG = True  # Default behavior enables remote-config UI and related provider flows.
+DEFAULT_ALLOW_MCP = False  # Default behavior leaves /mcp disabled unless explicitly enabled.
 OPAMP_USE_AUTHORIZATION_NONE = "none"  # Disable OpAMP endpoint bearer auth checks.
 OPAMP_USE_AUTHORIZATION_CONFIG_TOKEN = (
     "config-token"  # Validate OpAMP bearer token against OPAMP_AUTH_STATIC_TOKEN.
@@ -120,12 +123,14 @@ class ProviderConfig:
     latest_docs_url: str = DEFAULT_LATEST_DOCS_URL
     human_in_loop_approval: bool = DEFAULT_HUMAN_IN_LOOP_APPROVAL
     allow_remote_config: bool = DEFAULT_ALLOW_REMOTE_CONFIG
+    allow_mcp: bool = DEFAULT_ALLOW_MCP
     opamp_use_authorization: str = DEFAULT_OPAMP_USE_AUTHORIZATION
     ui_use_authorization: str = DEFAULT_UI_USE_AUTHORIZATION
     tls: ProviderTLSConfig | None = None
     state_persistence: ProviderStatePersistenceConfig = field(
         default_factory=ProviderStatePersistenceConfig
     )
+    observability: ObservabilityConfig = field(default_factory=ObservabilityConfig)
 
 
 def resolve_log_level(log_level: str | None) -> int:
@@ -160,8 +165,8 @@ def _config_path() -> pathlib.Path:
 def get_effective_config_path(config_path: str | pathlib.Path | None = None) -> pathlib.Path:
     """Return the effective provider config path used for loading configuration."""
     if config_path is not None:
-        return pathlib.Path(config_path)
-    return _config_path()
+        return pathlib.Path(config_path).expanduser().resolve()
+    return _config_path().expanduser().resolve()
 
 
 def _load_json(path: pathlib.Path) -> dict[str, Any]:
@@ -348,6 +353,7 @@ def load_config() -> ProviderConfig:
     """Load provider config from disk."""
     raw = _load_json(_config_path())
     provider_raw = raw.get(CFG_PROVIDER, {})
+    observability = load_observability_config_from_payload(raw)
     tls_config = _load_provider_tls_config(provider_raw)
     state_persistence_config = _load_state_persistence_config(provider_raw)
     delayed = int(provider_raw.get(CFG_DELAYED_COMMS_SECONDS, DEFAULT_DELAYED_COMMS_SECONDS))
@@ -405,6 +411,13 @@ def load_config() -> ProviderConfig:
             ),
             DEFAULT_ALLOW_REMOTE_CONFIG,
         ),
+        allow_mcp=_as_bool(
+            provider_raw.get(
+                CFG_ALLOW_MCP,
+                DEFAULT_ALLOW_MCP,
+            ),
+            DEFAULT_ALLOW_MCP,
+        ),
         opamp_use_authorization=_normalize_authorization_mode(
             opamp_use_authorization_raw,
             cfg_key=CFG_OPAMP_USE_AUTHORIZATION,
@@ -417,6 +430,7 @@ def load_config() -> ProviderConfig:
         ),
         tls=tls_config,
         state_persistence=state_persistence_config,
+        observability=observability,
     )
 
 
@@ -428,6 +442,7 @@ def load_config_with_overrides(
     """Load provider config with CLI overrides applied."""
     base_raw = _load_json(config_path or _config_path())
     provider_raw = base_raw.get(CFG_PROVIDER, {})
+    observability = load_observability_config_from_payload(base_raw)
     tls_config = _load_provider_tls_config(provider_raw)
     state_persistence_config = _load_state_persistence_config(provider_raw)
     delayed = int(provider_raw.get(CFG_DELAYED_COMMS_SECONDS, DEFAULT_DELAYED_COMMS_SECONDS))
@@ -487,6 +502,13 @@ def load_config_with_overrides(
             ),
             DEFAULT_ALLOW_REMOTE_CONFIG,
         ),
+        allow_mcp=_as_bool(
+            provider_raw.get(
+                CFG_ALLOW_MCP,
+                DEFAULT_ALLOW_MCP,
+            ),
+            DEFAULT_ALLOW_MCP,
+        ),
         opamp_use_authorization=_normalize_authorization_mode(
             opamp_use_authorization_raw,
             cfg_key=CFG_OPAMP_USE_AUTHORIZATION,
@@ -499,6 +521,7 @@ def load_config_with_overrides(
         ),
         tls=tls_config,
         state_persistence=state_persistence_config,
+        observability=observability,
     )
 
 
@@ -606,10 +629,12 @@ def update_comms_thresholds(
         latest_docs_url=CONFIG.latest_docs_url,
         human_in_loop_approval=effective_human_in_loop_approval,
         allow_remote_config=CONFIG.allow_remote_config,
+        allow_mcp=CONFIG.allow_mcp,
         opamp_use_authorization=CONFIG.opamp_use_authorization,
         ui_use_authorization=CONFIG.ui_use_authorization,
         tls=CONFIG.tls,
         state_persistence=persistence,
+        observability=CONFIG.observability,
     )
     set_config(config)
     return config
@@ -629,10 +654,12 @@ def update_default_heartbeat_frequency(*, default_heartbeat_frequency: int) -> P
         latest_docs_url=CONFIG.latest_docs_url,
         human_in_loop_approval=CONFIG.human_in_loop_approval,
         allow_remote_config=CONFIG.allow_remote_config,
+        allow_mcp=CONFIG.allow_mcp,
         opamp_use_authorization=CONFIG.opamp_use_authorization,
         ui_use_authorization=CONFIG.ui_use_authorization,
         tls=CONFIG.tls,
         state_persistence=CONFIG.state_persistence,
+        observability=CONFIG.observability,
     )
     set_config(config)
     return config
@@ -669,6 +696,7 @@ def persist_provider_config(
     provider_raw[CFG_LATEST_DOCS_URL] = str(effective.latest_docs_url)
     provider_raw[CFG_HUMAN_IN_LOOP_APPROVAL] = bool(effective.human_in_loop_approval)
     provider_raw[CFG_ALLOW_REMOTE_CONFIG] = bool(effective.allow_remote_config)
+    provider_raw[CFG_ALLOW_MCP] = bool(effective.allow_mcp)
     provider_raw[CFG_OPAMP_USE_AUTHORIZATION] = str(effective.opamp_use_authorization)
     provider_raw[CFG_UI_USE_AUTHORIZATION] = str(effective.ui_use_authorization)
     provider_raw[CFG_STATE_PERSISTENCE] = {

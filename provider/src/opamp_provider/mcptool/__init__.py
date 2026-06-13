@@ -43,6 +43,7 @@ from opamp_provider.mcptool.routes import mcpserver, mcptool_blueprint
 
 logger = logging.getLogger(__name__)
 ERR_UI_AUTH_CONFIG_INVALID = "invalid ui-use-authorization configuration"
+ERR_MCP_DISABLED = "mcp route is disabled by provider configuration"
 
 
 def register_tool_routes(app: Quart) -> None:
@@ -249,6 +250,28 @@ def register_mcp_transport(
     ) -> None:
         await send({"type": "websocket.close", "code": 1008})
 
+    async def _send_not_found(
+        send: Callable[[dict[str, Any]], Awaitable[None]],
+    ) -> None:
+        payload = json.dumps({"error": ERR_MCP_DISABLED}).encode("utf-8")
+        await send(
+            {
+                "type": "http.response.start",
+                "status": int(HTTPStatus.NOT_FOUND),
+                "headers": [
+                    (b"content-type", b"application/json"),
+                    (b"content-length", str(len(payload)).encode("utf-8")),
+                ],
+            }
+        )
+        await send(
+            {
+                "type": "http.response.body",
+                "body": payload,
+                "more_body": False,
+            }
+        )
+
     async def _dispatch(  # type: ignore[override]
         scope: dict[str, Any],
         receive: Callable[[], Awaitable[dict[str, Any]]],
@@ -272,6 +295,23 @@ def register_mcp_transport(
                     await mcp_asgi_app(scope, receive, send)
                     return
                 if mode == "streamable-http" and _path_matches_prefix(path, normalized_streamable):
+                    if provider_config.CONFIG.allow_mcp is not True:
+                        client_info = scope.get("client")
+                        remote_addr = None
+                        if isinstance(client_info, tuple) and client_info:
+                            remote_addr = client_info[0]
+                        logger.warning(
+                            "declined MCP request because provider.allow-mcp is false: "
+                            "scope_type=%s path=%s remote_addr=%s",
+                            scope_type,
+                            path,
+                            remote_addr or "unknown",
+                        )
+                        if scope_type == "websocket":
+                            await _send_websocket_auth_rejection(send)
+                        else:
+                            await _send_not_found(send)
+                        return
                     decision = _evaluate_ui_scope_auth(scope)
                     if not decision.allowed:
                         if scope_type == "websocket":

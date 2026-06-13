@@ -101,6 +101,7 @@ Example `opamp.json`:
     "default_heartbeat_frequency": 30,
     "latest_docs_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/mp3monster/fluent-opamp/main/github-landingpage/index.html",
     "human_in_loop_approval": false,
+    "allow-mcp": false,
     "opamp-use-authorization": "none",
     "ui-use-authorization": "none",
     "state_persistence": {
@@ -145,6 +146,9 @@ Example `opamp.json`:
 - `provider.human_in_loop_approval` (boolean, optional, default `false`)
   Requires unknown agents to be reviewed in the Pending Approval workflow before they are accepted.
   This setting can be updated in the UI via Global Settings -> Server Settings.
+- `provider.allow-mcp` (boolean, optional, default `false`)
+  Controls whether the Streamable HTTP MCP route at `/mcp` is available.
+  When `false`, `/mcp` and descendants are rejected even if the provider has other MCP transports enabled.
 - `provider.opamp-use-authorization` (string, optional, default `"none"`)
   OpAMP transport authorization mode for `/v1/opamp` HTTP and WebSocket:
   - `none`: no OpAMP bearer-token enforcement.
@@ -155,7 +159,7 @@ Example `opamp.json`:
     `OPAMP_AUTH_JWT_LEEWAY_SECONDS`).
 - `provider.ui-use-authorization` (string, optional, default `"none"`)
   Non-OpAMP authorization mode for HTTP and MCP transport routes (for example `/tool`, `/sse`,
-  `/messages`, `/mcp`, `/api`, `/ui`, `/help`, `/doc-set`):
+  `/messages`, `/mcp` when enabled, `/api`, `/ui`, `/help`, `/doc-set`):
   - `none`: no non-OpAMP bearer-token enforcement.
   - `config-token`: require `Authorization: Bearer <token>` and compare against the
     `UI_AUTH_STATIC_TOKEN` environment variable (this token is not read from `opamp.json`).
@@ -309,6 +313,8 @@ Authorization mode is config-driven and defaults to disabled (`none`) for both s
 
 - `provider.opamp-use-authorization` controls `/v1/opamp` HTTP and WebSocket auth.
 - `provider.ui-use-authorization` controls non-OpAMP HTTP and MCP/WebSocket auth.
+- `provider.allow-mcp=false` keeps direct `/mcp` access disabled even when `/sse` or `/messages`
+  transports remain available.
 - `config-token` mode uses static token env vars:
   - OpAMP: `OPAMP_AUTH_STATIC_TOKEN`
   - Non-OpAMP: `UI_AUTH_STATIC_TOKEN`
@@ -349,8 +355,9 @@ At runtime, provider behavior is:
 
 1. `provider.opamp-use-authorization=idp` enables bearer-token enforcement on `/v1/opamp`.
 2. `provider.ui-use-authorization=idp` enables bearer-token enforcement for non-OpAMP HTTP and MCP/WebSocket routes.
-3. `OPAMP_AUTH_JWT_*` defines OpAMP JWT validation; `UI_AUTH_JWT_*` defines non-OpAMP JWT validation.
-4. Requests without a valid token are rejected (`401`/`403`).
+3. `provider.allow-mcp=false` still blocks `/mcp` even when non-OpAMP auth would otherwise allow it.
+4. `OPAMP_AUTH_JWT_*` defines OpAMP JWT validation; `UI_AUTH_JWT_*` defines non-OpAMP JWT validation.
+5. Requests without a valid token are rejected (`401`/`403`).
 
 See [docs/authentication.md](../docs/authentication.md) for full setup, Keycloak Docker script usage, and MCP token examples.
 

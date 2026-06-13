@@ -60,6 +60,50 @@ def test_server_main_invokes_app(monkeypatch) -> None:
     assert provider_server.app.config["DIAGNOSTIC_MODE"] is False
 
 
+def test_server_main_logs_absolute_provider_config_path(monkeypatch, caplog) -> None:
+    """Provider startup should log the resolved absolute config file path."""
+    called = {}
+    config_path = pathlib.Path("config/opamp.json").resolve()
+    caplog.set_level(logging.INFO)
+
+    def fake_run(*, host: str, port: int) -> None:
+        called["host"] = host
+        called["port"] = port
+
+    def fake_load_config_with_overrides(*, config_path, log_level):
+        called["config_path"] = config_path
+        return ProviderConfig(
+            delayed_comms_seconds=60,
+            significant_comms_seconds=300,
+            webui_port=8080,
+            minutes_keep_disconnected=30,
+            retry_after_seconds=30,
+            client_event_history_size=50,
+            log_level="INFO",
+        )
+
+    monkeypatch.setattr(provider_server.app, "run", fake_run)
+    monkeypatch.setattr(
+        provider_config, "load_config_with_overrides", fake_load_config_with_overrides
+    )
+    monkeypatch.setattr(provider_config, "set_config", lambda _config: None)
+    monkeypatch.setattr(
+        provider_config,
+        "get_effective_config_path",
+        lambda raw_path=None: config_path,
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["server.py", "--config-path", "config/opamp.json"],
+    )
+
+    provider_server.main()
+
+    assert called["config_path"] == config_path
+    assert f"using provider config path: {config_path}" in caplog.text
+
+
 def test_server_main_diagnostic_forces_debug_log_level(monkeypatch) -> None:
     """Verify `--diagnostic` forces DEBUG log-level override and enables diagnostic mode."""
     called = {}

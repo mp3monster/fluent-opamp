@@ -32,6 +32,7 @@ from opamp_provider.state_persistence import (
     resolve_restore_snapshot_path,
     restore_state_snapshot,
 )
+from shared.observability import attach_observability
 
 ENV_PROVIDER_LOGGING_CONFIG_PATH = "OPAMP_PROVIDER_LOGGING_CONFIG"
 DEFAULT_PROVIDER_LOGGING_CONFIG_FILENAME = "provider_logging.json"
@@ -156,7 +157,9 @@ def main() -> None:
     )
     args = parser.parse_args()
     _configure_logging("INFO")
-    effective_config_path = provider_config.get_effective_config_path(args.config_path)
+    effective_config_path = provider_config.get_effective_config_path(
+        args.config_path
+    ).resolve()
     logger = logging.getLogger(__name__)
     logger.info(
         "using provider config path: %s",
@@ -250,6 +253,12 @@ def main() -> None:
 
     resolved_log_level = provider_config.resolve_log_level(config.log_level)
     _configure_logging(resolved_log_level)
+    attach_observability(
+        app,
+        service_name="opamp-provider",
+        config=config.observability,
+        log_level=resolved_log_level,
+    )
     app.config["DIAGNOSTIC_MODE"] = bool(args.diagnostic)
     port = args.port if args.port is not None else config.webui_port
     app.run(

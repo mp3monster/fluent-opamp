@@ -109,7 +109,9 @@ from shared.opamp_config import (
 app = Quart("opamp_server")
 app.config.setdefault("DIAGNOSTIC_MODE", False)
 register_tool_routes(app)
-# Expose both SSE and streamable HTTP so broker MCP JSON-RPC calls to /mcp work.
+# Expose both SSE and streamable HTTP wiring; /mcp itself is still gated at
+# request time by provider.allow-mcp so operators can disable direct streamable
+# MCP access while keeping the bridge code loaded.
 register_mcp_transport(app, transport="both")
 logger = logging.getLogger(__name__)
 tracemalloc.start()

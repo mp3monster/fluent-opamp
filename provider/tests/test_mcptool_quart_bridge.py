@@ -169,6 +169,7 @@ async def test_register_mcp_transport_rejects_unauthorized_streamable_request(
             retry_after_seconds=30,
             client_event_history_size=50,
             log_level="INFO",
+            allow_mcp=True,
             ui_use_authorization=provider_config.OPAMP_USE_AUTHORIZATION_CONFIG_TOKEN,
         )
     )
@@ -240,6 +241,7 @@ async def test_register_mcp_transport_rejects_unauthorized_streamable_websocket(
             retry_after_seconds=30,
             client_event_history_size=50,
             log_level="INFO",
+            allow_mcp=True,
             ui_use_authorization=provider_config.OPAMP_USE_AUTHORIZATION_CONFIG_TOKEN,
         )
     )
@@ -293,6 +295,138 @@ async def test_register_mcp_transport_rejects_unauthorized_streamable_websocket(
     assert asgi_messages
     assert asgi_messages[0]["type"] == "websocket.close"
     assert asgi_messages[0]["code"] == 1008
+
+
+@pytest.mark.asyncio
+async def test_register_mcp_transport_blocks_streamable_http_when_allow_mcp_false() -> None:
+    """Verify /mcp returns 404 and never reaches FastMCP when provider.allow-mcp=false."""
+    original_config = provider_config.CONFIG
+    provider_config.set_config(
+        provider_config.ProviderConfig(
+            delayed_comms_seconds=60,
+            significant_comms_seconds=300,
+            webui_port=8080,
+            minutes_keep_disconnected=30,
+            retry_after_seconds=30,
+            client_event_history_size=50,
+            log_level="INFO",
+            allow_mcp=False,
+        )
+    )
+
+    app = Quart(__name__)
+    calls: list[str] = []
+    asgi_messages: list[dict] = []
+
+    async def fake_streamable_app(scope, _receive, _send):  # noqa: ANN001
+        calls.append(f"streamable:{scope.get('path', '')}")
+
+    class FakeMcpServer:
+        def http_app(self, *, path: str, transport: str):  # noqa: ANN201
+            assert path == "/mcp"
+            assert transport == "streamable-http"
+            return fake_streamable_app
+
+    original_server = mcptool.mcpserver
+    try:
+        mcptool.mcpserver = FakeMcpServer()  # type: ignore[assignment]
+        enabled = mcptool.register_mcp_transport(
+            app,
+            streamable_http_path="/mcp",
+            transport="streamable-http",
+        )
+        assert enabled is True
+
+        async def _noop_receive() -> dict:
+            return {"type": "http.request", "body": b"", "more_body": False}
+
+        async def _capture_send(message: dict) -> None:
+            asgi_messages.append(message)
+
+        await app.asgi_app(
+            {
+                "type": "http",
+                "path": "/mcp",
+                "method": "POST",
+                "headers": [],
+                "client": ("127.0.0.1", 51820),
+            },
+            _noop_receive,
+            _capture_send,
+        )
+    finally:
+        mcptool.mcpserver = original_server  # type: ignore[assignment]
+        provider_config.set_config(original_config)
+
+    assert calls == []
+    assert asgi_messages
+    assert asgi_messages[0]["type"] == "http.response.start"
+    assert asgi_messages[0]["status"] == 404
+
+
+@pytest.mark.asyncio
+async def test_register_mcp_transport_logs_declined_request_when_allow_mcp_false(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Verify declined /mcp requests are logged when provider.allow-mcp=false."""
+    original_config = provider_config.CONFIG
+    provider_config.set_config(
+        provider_config.ProviderConfig(
+            delayed_comms_seconds=60,
+            significant_comms_seconds=300,
+            webui_port=8080,
+            minutes_keep_disconnected=30,
+            retry_after_seconds=30,
+            client_event_history_size=50,
+            log_level="INFO",
+            allow_mcp=False,
+        )
+    )
+
+    app = Quart(__name__)
+
+    async def fake_streamable_app(scope, _receive, _send):  # noqa: ANN001
+        raise AssertionError("streamable MCP app should not be reached when allow_mcp=false")
+
+    class FakeMcpServer:
+        def http_app(self, *, path: str, transport: str):  # noqa: ANN201
+            assert path == "/mcp"
+            assert transport == "streamable-http"
+            return fake_streamable_app
+
+    original_server = mcptool.mcpserver
+    caplog.set_level("WARNING", logger="opamp_provider.mcptool")
+    try:
+        mcptool.mcpserver = FakeMcpServer()  # type: ignore[assignment]
+        enabled = mcptool.register_mcp_transport(
+            app,
+            streamable_http_path="/mcp",
+            transport="streamable-http",
+        )
+        assert enabled is True
+
+        async def _noop_receive() -> dict:
+            return {"type": "http.request", "body": b"", "more_body": False}
+
+        async def _noop_send(_message: dict) -> None:
+            return None
+
+        await app.asgi_app(
+            {
+                "type": "http",
+                "path": "/mcp",
+                "method": "POST",
+                "headers": [],
+                "client": ("127.0.0.1", 51820),
+            },
+            _noop_receive,
+            _noop_send,
+        )
+    finally:
+        mcptool.mcpserver = original_server  # type: ignore[assignment]
+        provider_config.set_config(original_config)
+
+    assert "declined MCP request because provider.allow-mcp is false" in caplog.text
 
 
 def test_register_mcp_transport_rejects_invalid_transport_mode() -> None:
