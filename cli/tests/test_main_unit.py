@@ -793,6 +793,7 @@ def test_detected_behavior_flags_returns_only_enabled_flags(monkeypatch) -> None
 def test_top_level_commands_include_dev_flb_config_only_when_available(monkeypatch) -> None:
     monkeypatch.setattr(cli_main, "_demo_mode_enabled", lambda: False)
     monkeypatch.setattr(cli_main, "_fluentbit_dev_tool_available", lambda: True)
+    monkeypatch.setattr(cli_main, "_mcp_dev_tool_available", lambda: False)
 
     commands = cli_main._top_level_commands()  # type: ignore[attr-defined]
 
@@ -801,6 +802,20 @@ def test_top_level_commands_include_dev_flb_config_only_when_available(monkeypat
     monkeypatch.setattr(cli_main, "_fluentbit_dev_tool_available", lambda: False)
     commands = cli_main._top_level_commands()  # type: ignore[attr-defined]
     assert "dev-flb-config" not in commands
+
+
+def test_top_level_commands_include_dev_mcp_config_only_when_available(monkeypatch) -> None:
+    monkeypatch.setattr(cli_main, "_demo_mode_enabled", lambda: False)
+    monkeypatch.setattr(cli_main, "_fluentbit_dev_tool_available", lambda: False)
+    monkeypatch.setattr(cli_main, "_mcp_dev_tool_available", lambda: True)
+
+    commands = cli_main._top_level_commands()  # type: ignore[attr-defined]
+
+    assert "dev-mcp-config" in commands
+
+    monkeypatch.setattr(cli_main, "_mcp_dev_tool_available", lambda: False)
+    commands = cli_main._top_level_commands()  # type: ignore[attr-defined]
+    assert "dev-mcp-config" not in commands
 
 
 def test_handle_command_routes_dev_flb_config_to_workflow(monkeypatch) -> None:
@@ -814,6 +829,22 @@ def test_handle_command_routes_dev_flb_config_to_workflow(monkeypatch) -> None:
     monkeypatch.setattr(cli_main, "_execute_dev_fluentbit_config_workflow", fake_workflow)
 
     code = cli_main._handle_command("dev-flb-config")  # type: ignore[attr-defined]
+
+    assert code == 0
+    assert called["count"] == 1
+
+
+def test_handle_command_routes_dev_mcp_config_to_workflow(monkeypatch) -> None:
+    called: dict[str, int] = {"count": 0}
+
+    def fake_workflow(*, input_reader=None):  # type: ignore[no-untyped-def]
+        assert input_reader is None
+        called["count"] += 1
+        return 0
+
+    monkeypatch.setattr(cli_main, "_execute_dev_mcp_config_workflow", fake_workflow)
+
+    code = cli_main._handle_command("dev-mcp-config")  # type: ignore[attr-defined]
 
     assert code == 0
     assert called["count"] == 1
@@ -876,4 +907,71 @@ def test_execute_dev_fluentbit_config_workflow_prompts_and_runs_selected_tool(mo
         "--version",
         "5.0.8",
         "--no-schemas",
+    ]
+
+
+def test_execute_dev_mcp_config_workflow_prompts_and_runs_selected_tool(monkeypatch) -> None:
+    monkeypatch.setattr(cli_main, "_dev_features_enabled", lambda: True)
+    monkeypatch.setattr(
+        cli_main,
+        "_mcp_dev_tool_specs",
+        lambda: [
+            {
+                "id": "mcp_client_config",
+                "label": "Configure MCP clients",
+                "description": "Update MCP client settings.",
+                "script_path": "/tmp/configure_mcp_clients.py",
+                "fixed_args": ["--yes"],
+                "arguments": [
+                    {
+                        "name": "clients",
+                        "flag": "--clients",
+                        "prompt": "Enabled clients",
+                        "required": True,
+                        "default": "claude,codex,vscode",
+                    },
+                    {
+                        "name": "server_host",
+                        "flag": "--server-host",
+                        "prompt": "Server host",
+                        "default": "localhost",
+                    },
+                    {
+                        "name": "preview",
+                        "prompt": "Preview only",
+                        "kind": "bool",
+                        "default": False,
+                        "args_when_true": ["--preview"],
+                    },
+                ],
+            }
+        ],
+    )
+
+    prompts = iter(["1", "claude,codex", "broker.local", "y"])
+    captured: dict[str, list[str]] = {"argv": []}
+
+    def fake_reader(_prompt: str) -> str:
+        return next(prompts)
+
+    def fake_run(argv: list[str], **_kwargs) -> subprocess.CompletedProcess[str]:
+        captured["argv"] = list(argv)
+        return subprocess.CompletedProcess(args=argv, returncode=0)
+
+    monkeypatch.setattr(cli_main.subprocess, "run", fake_run)
+
+    code = cli_main._execute_dev_mcp_config_workflow(  # type: ignore[attr-defined]
+        input_reader=fake_reader
+    )
+
+    assert code == 0
+    assert captured["argv"] == [
+        cli_main.sys.executable,
+        "/tmp/configure_mcp_clients.py",
+        "--yes",
+        "--clients",
+        "claude,codex",
+        "--server-host",
+        "broker.local",
+        "--preview",
     ]
