@@ -1,6 +1,6 @@
 {
   "consumer": {
-    "server_url": "http://localhost:8080",
+    "server_url": "http://localhost:8070",
     "client_status_port": 2020,
     "chat_ops_port": 8888,
     "transport": "http",
@@ -29,7 +29,7 @@
   "provider": {
     "delayed_comms_seconds": 60,
     "significant_comms_seconds": 120,
-    "webui_port": 8080,
+    "webui_port": 8070,
     "minutes_keep_disconnected": 5,
     "retryAfterSeconds": 30,
     "client_event_history_size": 50,
@@ -37,6 +37,7 @@
     "default_heartbeat_frequency": 30,
     "latest_docs_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/mp3monster/fluent-opamp/main/github-landingpage/index.html",
     "human_in_loop_approval": false,
+    "allow-mcp": true,
     "allow-remote-config": true,
     "opamp-use-authorization": "none",
     "ui-use-authorization": "none",
