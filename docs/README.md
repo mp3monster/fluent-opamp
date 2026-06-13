@@ -15,6 +15,47 @@ When the provider is running, the UI `Latest docs` links use `http://localhost:8
 That route redirects to the URL configured in `provider.latest_docs_url`, which defaults to the
 published landing-page preview for this documentation set.
 
+## Build and packaging overview
+
+The repository has two main packaging flows:
+
+- `scripts/build_artifacts.sh` / `scripts/build_artifacts.cmd`
+  - builds `sdist` + `wheel` artefacts for:
+    - `provider`
+    - `consumer`
+    - `catalog-service`
+    - `cli`
+    - `consumer-sim`
+- `scripts/build_and_publish_wheels.py`
+  - builds independently deployable wheels
+  - writes a separate CycloneDX SBOM for each selected component
+  - supports subset builds with `--components`
+  - supports GitHub release publication with `--publish`
+  - supports `--no-isolation` for local/offline build environments
+
+Common build output locations:
+
+- `dist/provider/`
+- `dist/consumer/`
+- `dist/catalog/`
+- `dist/cli/`
+- `dist/consumer-sim/`
+- `dist/sbom/`
+- `dist/manual/`
+
+Packaging notes:
+
+- `opamp-cli` is packaged separately from the services it helps operate
+- service/component builds may warn when `opamp-cli` is not present in the workspace or active environment
+- `consumer-sim` can now be packaged and deployed independently as well as used from the source tree
+
+See:
+
+- [Scripts reference](scripts.md)
+- [Component Versioning](dev/component_versioning.md)
+- [Config-service standalone packaging](../config-service/docs/standalone-packaging.md)
+- [MCP scripts and usage](../mcp/README.md#build-pip-install-and-sbom)
+
 ## Minimum required stack
 
 There are two useful definitions of "required":

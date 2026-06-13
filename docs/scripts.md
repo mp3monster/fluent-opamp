@@ -11,7 +11,7 @@ This table lists the helper scripts and their platform-specific names.
 | Render Mermaid `.mmd` to PNG (local wrapper) | `scripts/render_mermaid_png.sh` | n/a |
 | Request server shutdown via API | `scripts/shutdown_opamp_server.sh` | `scripts/shutdown_opamp_server.cmd` |
 | Install repo git hooks path (`core.hooksPath=.githooks`) | `scripts/install_git_hooks.sh` | `scripts/install_git_hooks.cmd` |
-| Build deployable Python artifacts (provider + consumer) | `scripts/build_artifacts.sh` | `scripts/build_artifacts.cmd` |
+| Build deployable Python artifacts (`sdist` + `wheel`) | `scripts/build_artifacts.sh` | `scripts/build_artifacts.cmd` |
 | Build wheel artifacts and optionally publish to GitHub release assets | `scripts/build_and_publish_wheels.py` | `scripts\build_and_publish_wheels.py` |
 | Build consolidated OpAMP PDF manual | `scripts/build_opamp_manual.sh` | `scripts\build_opamp_manual.cmd` |
 | Build compacted provider web UI JavaScript assets (`web_ui_state`, `web_ui_functions`, `web_ui_framework`, `web_ui_bindings`) | `scripts/build_provider_ui_compact_assets.py` | `scripts\build_provider_ui_compact_assets.py` |
@@ -19,6 +19,9 @@ This table lists the helper scripts and their platform-specific names.
 | Configure MCP for Claude Desktop (wrapper) | `mcp/configure-claude-desktop-fastmcp.sh` | `mcp\configure-claude-desktop-fastmcp.ps1` |
 | Configure MCP for ChatGPT/Codex (wrapper) | `mcp/configure-codex-fastmcp.sh` | `mcp\configure-codex-fastmcp.ps1` |
 | Configure MCP for selected clients (canonical script) | `mcp/configure-mcp-clients-fastmcp.sh` | `mcp\configure-mcp-clients-fastmcp.ps1` |
+| Configure MCP clients with guided Python CLI | `python3 mcp/configure_mcp_clients.py` | `python mcp\configure_mcp_clients.py` |
+| Build/install MCP Python CLI wheel and SBOM | `mcp/scripts/build_mcp_config_tool.sh` | `mcp\scripts\build_mcp_config_tool.ps1` / `mcp\scripts\build_mcp_config_tool.cmd` |
+| Remove legacy MCP configure wrappers after Python CLI migration | n/a | `mcp\remove_legacy_mcp_scripts.cmd` |
 
 `configure_keycloak` supports a container readiness-only mode:
 
@@ -37,6 +40,11 @@ That guide includes:
 - script architecture (wrapper vs canonical)
 - how FastMCP is used by ChatGPT/Codex and VS Code clients
 - Claude Desktop remote transport behavior (`mcp-remote`)
+- Python menu-driven setup for Claude, Codex, VS Code, LibreChat, and Gemini
+- MCP Python CLI wheel/sdist build, optional pip install, and CycloneDX SBOM generation
+- safe dry-run cleanup for legacy MCP configure wrappers after migration
+- recommended `opamp-cli` delegation strategy for handing MCP setup conversations to the Python tool
+- source, wheel/package, and current Python environment deployment modes
 - why `provider/uv.lock` is committed for reproducible `uv`-based MCP setup
 - full command-line parameter reference
 - usage and verification examples
@@ -83,6 +91,9 @@ The CLI demo flow supports profile selection by logical name without relying on 
 
 - `provider` -> `dist/provider/`
 - `consumer` -> `dist/consumer/`
+- `catalog-service` -> `dist/catalog/`
+- `cli` -> `dist/cli/`
+- `consumer-sim` -> `dist/consumer-sim/`
 - consolidated manual -> `dist/manual/opamp_manual.pdf`
 
 The scripts:
@@ -113,17 +124,29 @@ scripts\build_artifacts.cmd
 
 ## Wheel Build + GitHub Publish
 
-Use `build_and_publish_wheels.py` to generate wheels for both components:
+Use `build_and_publish_wheels.py` to generate independent wheels for the selected components:
 
 - provider (server) wheel -> `dist/provider/*.whl`
 - consumer (agent) wheel -> `dist/consumer/*.whl`
+- catalog service wheel -> `dist/catalog/*.whl`
+- CLI wheel -> `dist/cli/*.whl`
+- consumer simulator launcher wheel -> `dist/consumer-sim/*.whl`
 - provider deployable artifact SBOM (CycloneDX JSON) -> `dist/sbom/opamp_provider_deployable_artifacts.cyclonedx.json`
 - consumer deployable artifact SBOM (CycloneDX JSON) -> `dist/sbom/opamp_consumer_deployable_artifacts.cyclonedx.json`
+- catalog service deployable artifact SBOM (CycloneDX JSON) -> `dist/sbom/opamp_catalog_service_deployable_artifacts.cyclonedx.json`
+- CLI deployable artifact SBOM (CycloneDX JSON) -> `dist/sbom/opamp_cli_deployable_artifacts.cyclonedx.json`
+- consumer simulator deployable artifact SBOM (CycloneDX JSON) -> `dist/sbom/opamp_consumer_sim_deployable_artifacts.cyclonedx.json`
 
 Build only:
 
 ```bash
 python3 scripts/build_and_publish_wheels.py
+```
+
+Build only a subset:
+
+```bash
+python3 scripts/build_and_publish_wheels.py --components catalog,cli
 ```
 
 The provider wheel build in this flow also warns when `opamp-cli` is not available.
@@ -137,12 +160,14 @@ GITHUB_TOKEN=<token> python3 scripts/build_and_publish_wheels.py --publish --tag
 Optional publish flags:
 
 - `--repo owner/name` to override repository target
+- `--components provider,consumer,catalog,cli,consumer-sim` to choose which artefacts to build
 - `--release-name "..."` to set release title (defaults to tag)
 - `--release-notes "..."` or `--release-notes-file <path>`
 - `--draft`
 - `--prerelease`
 - `--provider-sbom-path <path>` to override provider SBOM output path
 - `--consumer-sbom-path <path>` to override consumer SBOM output path
+- `--component-sbom-path key=path` to override any component SBOM path
 - `--manual-path <path>` to override PDF manual output path
 - `--skip-manual` to skip manual regeneration in this run
 - `--skip-ui-compaction` to skip provider UI JavaScript compaction in this run
@@ -156,7 +181,7 @@ By default, `build_and_publish_wheels.py` regenerates:
   - `web_ui_functions.mini.js`
   - `web_ui_framework.mini.js`
   - `web_ui_bindings.mini.js`
-- provider and consumer deployable-artifact SBOMs (CycloneDX JSON)
+- deployable-artifact SBOMs (CycloneDX JSON) for each selected component
 
 SBOM freshness/integrity enforcement:
 
@@ -186,7 +211,7 @@ Security checks include:
 - this ensures checks run against non-dev asset-selection behavior
 - full process details are documented in [`dev/minification_process.md`](dev/minification_process.md)
 
-When `--publish` is used, the provider wheel, consumer wheel, provider SBOM, consumer SBOM, and generated PDF manual are uploaded as release assets.
+When `--publish` is used, the selected component wheels, their SBOMs, and the generated PDF manual are uploaded as release assets.
 
 ## Mermaid PNG rendering
 

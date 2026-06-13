@@ -13,6 +13,7 @@ existing guide that already explains that part of the configuration in more dept
 | --- | --- | --- |
 | `consumer` | Consumer/client connection, transport, launch, and agent reporting settings | [`consumer/README.md`](../consumer/README.md) |
 | `provider` | Provider/server listener, UI, state, auth, and remote-control settings | [`provider_config_reference.md`](provider_config_reference.md) |
+| `otlp-endpoints` | Shared OTLP logs, metrics, and traces export settings | [`otlp_observability.md`](otlp_observability.md) |
 | `component-entry-points` | Additional Quart features exposed through the server feature menu | [`provider/README.md#web-ui`](../provider/README.md#web-ui) |
 | `opamp.config_catalog` | Catalog UI routes, scan sources, metadata, and help behavior | [`opamp_config_catalog_ui.md`](opamp_config_catalog_ui.md) |
 
@@ -75,6 +76,7 @@ Common fields from the default `config/opamp.json` that are covered there includ
 - `provider.latest_docs_url`
 - `provider.human_in_loop_approval`
 - `provider.allow-remote-config`
+- `provider.allow-mcp`
 - `provider.opamp-use-authorization`
 - `provider.ui-use-authorization`
 - `provider.state_persistence`
@@ -102,6 +104,16 @@ The current default `config/opamp.json` uses this section for:
 When a feature entry is enabled and the target page is hosted inside the provider, the embedded page
 shows `Server Console` and `Back` buttons in its header. In standalone deployments those buttons stay
 hidden.
+
+## `otlp-endpoints`
+
+The `otlp-endpoints` section enables OpenTelemetry OTLP export for supported runtimes.
+
+Use these docs:
+
+- [`otlp_observability.md`](otlp_observability.md) for the shared config shape, precedence rules,
+  and runtime behavior.
+- [`../agent_broker/README.md`](../agent_broker/README.md) for the broker-specific inheritance note.
 
 ## `opamp.config_catalog`
 

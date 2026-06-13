@@ -49,8 +49,9 @@ The provider README still covers the operational startup flow in more detail:
 | `provider.latest_docs_url` | string | `https://htmlpreview.github.io/?https://raw.githubusercontent.com/mp3monster/fluent-opamp/main/github-landingpage/index.html` | `https://htmlpreview.github.io/?https://raw.githubusercontent.com/mp3monster/fluent-opamp/main/github-landingpage/index.html` | No | Redirect target for `GET /doc-set`, which is also the route used by the UI `Latest docs` links. |
 | `provider.human_in_loop_approval` | boolean | `false` | `false` | Yes | Enables the pending-approval workflow for unknown agents. |
 | `provider.allow-remote-config` | boolean | `true` | `true` | No | Enables the enhanced Configuration-tab remote file workflow and allows related remote-config queueing endpoints. |
+| `provider.allow-mcp` | boolean | `false` | `true` | No | Enables direct Streamable HTTP MCP access at `/mcp`. When `false`, `/mcp` requests are rejected even if other MCP transports are available. |
 | `provider.opamp-use-authorization` | string | `none` | `none` | No | Allowed values: `none`, `config-token`, `idp`. Controls OpAMP transport auth on `/v1/opamp`. |
-| `provider.ui-use-authorization` | string | `none` | `none` | No | Allowed values: `none`, `config-token`, `idp`. Controls non-OpAMP auth for `/ui`, `/api`, `/tool`, `/mcp`, and related routes. |
+| `provider.ui-use-authorization` | string | `none` | `none` | No | Allowed values: `none`, `config-token`, `idp`. Controls non-OpAMP auth for `/ui`, `/api`, `/tool`, `/mcp` when enabled, and related routes. |
 
 ## TLS values
 

@@ -2,6 +2,24 @@
 
 Welcome to the Fluent Bit & Fluentd OpAMP implementation docs. This page links to the core guides and outlines where to look for configuration, scripts, and feature notes.
 
+## Build quick map
+
+Use these docs for repository builds and deployable artefacts:
+
+- [Scripts](scripts.md) — repo-wide build, packaging, SBOM, and helper script reference.
+- [Setup README](README.md) — overall component and runtime map.
+- [Component Versioning](dev/component_versioning.md) — how git-derived version metadata is refreshed before packaging.
+- [MCP scripts and usage](../mcp/README.md) — MCP tool wheel, sdist, and SBOM flow.
+- [Standalone Packaging](../config-service/docs/standalone-packaging.md) — standalone config-service packaging and SBOM flow.
+
+Primary repository-wide build outputs now include independent artefacts for:
+
+- `provider`
+- `consumer`
+- `catalog-service`
+- `cli`
+- `consumer-sim`
+
 ## Core guides
 
 - [Setup README](README.md) — full setup and run instructions.
@@ -14,6 +32,7 @@ Welcome to the Fluent Bit & Fluentd OpAMP implementation docs. This page links t
 - The provider-hosted `Latest docs` entry point is `http://localhost:8080/doc-set`, which redirects to the URL configured in `provider.latest_docs_url`.
 - [OpAMP JSON reference map](opamp_json_reference.md) — guide to which docs explain each top-level section of `config/opamp.json`.
 - [Provider config reference](provider_config_reference.md) — dedicated reference for `provider.*` values, defaults, and UI editability.
+- [OTLP observability config](otlp_observability.md) — shared `otlp-endpoints` settings for logs, metrics, and traces export.
 - [OpAMP Config Catalog UI](opamp_config_catalog_ui.md) — configuration-driven catalog index page and help route details.
 - [Self_signed_TLS_setup](self_signed_tls_setup.md) — generate local self-signed cert/key and apply config values for HTTPS testing.
 - [API_gateway_suggested use and requirements](api_gateway_requirements.md) — recommended API gateway controls, internal vs external client profiles, and required auth/route hardening updates.
@@ -57,7 +76,7 @@ Welcome to the Fluent Bit & Fluentd OpAMP implementation docs. This page links t
 - `agent_broker` — optional standalone conversation broker package and docs.
 - `config` — default configuration files (including `opamp.json`).
 - `consumer` — the OpAMP consumer (client) package, tests, and config samples.
-- `dist` — SBOM (Software Bill of Materials) and Wheel files
+- `dist` — generated wheels, source distributions, manuals, and SBOM outputs
 - `docs` — project documentation.
 - `logs` — runtime logs created by scripts.
 - `server-state` — state snapshot folder created when provider state persistence writes snapshots (folder name follows `provider.state_persistence.state_file_prefix` parent path).
@@ -90,4 +109,4 @@ Welcome to the Fluent Bit & Fluentd OpAMP implementation docs. This page links t
 - [detect-secrets](https://github.com/Yelp/detect-secrets) — repository secret scanning during security checks.
 - [pip-audit](https://pypi.org/project/pip-audit/) — Python dependency vulnerability scanning.
 - [esbuild](https://esbuild.github.io/) — JavaScript minification for provider UI compact assets.
-- [CycloneDX](https://cyclonedx.org/) — SBOM format used for generated provider/consumer deployable artifact manifests.
+- [CycloneDX](https://cyclonedx.org/) — SBOM format used for generated deployable artifact manifests.

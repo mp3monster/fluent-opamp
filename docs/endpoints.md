@@ -6,7 +6,8 @@ This document lists the HTTP and WebSocket endpoints exposed by the provider.
 
 Bearer protection is controlled by provider config plus environment-backed secrets/JWT settings:
 
-- `provider.ui-use-authorization` controls non-OpAMP routes (for example `/api`, `/tool`, `/ui`, `/help`, `/doc-set`, `/sse`, `/messages`, `/mcp`).
+- `provider.ui-use-authorization` controls non-OpAMP routes (for example `/api`, `/tool`, `/ui`, `/help`, `/doc-set`, `/sse`, `/messages`, `/mcp` when enabled).
+- `provider.allow-mcp` controls whether `/mcp` is exposed at all. Default is `false`.
 - `provider.opamp-use-authorization` controls OpAMP transport (`/v1/opamp` HTTP and WebSocket).
 - Environment variables provide token/JWT validation settings:
   - OpAMP transport: `OPAMP_AUTH_*`
@@ -98,8 +99,11 @@ Bearer protection notes:
 | --- | --- | --- |
 | GET | `/sse` | FastMCP SSE stream endpoint exposed through Quart (when `mcptool` + FastMCP are available). |
 | POST | `/messages` | FastMCP SSE message endpoint paired with `/sse`. |
-| POST/GET | `/mcp` | FastMCP Streamable HTTP endpoint (when enabled in transport configuration). |
+| POST/GET | `/mcp` | FastMCP Streamable HTTP endpoint (only when `provider.allow-mcp=true`). |
 
 When `provider.ui-use-authorization` is set to `config-token` or `idp`, MCP
 transport endpoints (`/sse`, `/messages`, `/mcp`) require
 `Authorization: Bearer <token>`.
+
+When `provider.allow-mcp=false`, `/mcp` requests are rejected even if `/sse` and
+`/messages` remain available.
