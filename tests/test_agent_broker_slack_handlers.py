@@ -10,6 +10,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Tests for broker Slack command parsing and AI mode handling."""
+
 from __future__ import annotations
 
 import importlib
@@ -46,6 +48,7 @@ handlers = importlib.import_module("opamp_broker.slack.handlers")
 
 
 def test_extract_ai_mode_directive_handles_ai_off_with_and_without_remainder() -> None:
+    """Verifies `AI Off` directives are detected with or without trailing text."""
     assert handlers._extract_ai_mode_directive("AI Off") == (
         handlers.AI_MODE_OFF,
         "",
@@ -57,6 +60,7 @@ def test_extract_ai_mode_directive_handles_ai_off_with_and_without_remainder() -
 
 
 def test_extract_ai_mode_directive_handles_ai_on_and_non_directive_text() -> None:
+    """Verifies `AI On` directives are detected and plain text is left unchanged."""
     assert handlers._extract_ai_mode_directive("AI On, status collector-a") == (
         handlers.AI_MODE_ON,
         "status collector-a",
@@ -68,15 +72,18 @@ def test_extract_ai_mode_directive_handles_ai_on_and_non_directive_text() -> Non
 
 
 def test_normalize_mode_command_text_removes_mentions_and_normalizes_spacing() -> None:
+    """Verifies mode-command parsing ignores mentions and extra whitespace."""
     normalized = handlers._normalize_mode_command_text(" <@U123>   AI   Off  ")
     assert normalized == handlers.AI_MODE_OFF_EXACT_COMMAND
 
 
 def test_ai_off_ack_text_matches_required_response() -> None:
+    """Verifies the default AI-off acknowledgement text stays stable."""
     assert handlers.AI_MODE_OFF_ACK_TEXT == "Affirmative, Dave. I read you."
 
 
 def test_resolve_ai_mode_off_ack_text_uses_configured_value() -> None:
+    """Verifies configured AI-off acknowledgement text overrides the default."""
     configured = handlers._resolve_ai_mode_off_ack_text(
         {
             handlers.MESSAGE_KEY_AI_MODE_OFF_ACK_TEXT: "custom off ack",
@@ -86,11 +93,13 @@ def test_resolve_ai_mode_off_ack_text_uses_configured_value() -> None:
 
 
 def test_resolve_ai_mode_off_ack_text_falls_back_to_default() -> None:
+    """Verifies missing AI-off acknowledgement config falls back to the default text."""
     configured = handlers._resolve_ai_mode_off_ack_text({})
     assert configured == handlers.AI_MODE_OFF_ACK_TEXT
 
 
 def test_build_ai_mode_changed_text_supports_disabled_mode() -> None:
+    """Verifies AI mode change messaging includes the disabled state wording."""
     assert (
         handlers._build_ai_mode_changed_text(handlers.AI_MODE_DISABLED)
         == handlers.AI_MODE_DISABLED_LOCK_TEXT
@@ -98,14 +107,17 @@ def test_build_ai_mode_changed_text_supports_disabled_mode() -> None:
 
 
 def test_disabled_mode_blocks_ui_switches() -> None:
+    """Verifies disabled deployments reject UI requests to switch AI mode."""
     assert handlers._is_ai_mode_ui_switch_allowed(handlers.AI_MODE_DISABLED) is False
 
 
 def test_parse_api_command_requires_leading_slash() -> None:
+    """Verifies strict API command parsing rejects messages without a slash prefix."""
     assert handlers._parse_api_command("api help") is None
 
 
 def test_parse_api_command_supports_help_tools_and_call() -> None:
+    """Verifies the parser accepts the supported help, tools, and call verbs."""
     help_request = handlers._parse_api_command("/opamp help")
     assert help_request is not None
     assert "immediate_response" in help_request
@@ -129,6 +141,7 @@ def test_parse_api_command_supports_help_tools_and_call() -> None:
 
 
 def test_parse_api_command_parses_json_and_rejects_mixed_call_args() -> None:
+    """Verifies `/opamp call` accepts JSON args and rejects mixed arg styles."""
     json_request = handlers._parse_api_command(
         '/opamp call tool_status --json \'{"target":"collector-a"}\'',
     )
@@ -143,12 +156,14 @@ def test_parse_api_command_parses_json_and_rejects_mixed_call_args() -> None:
 
 
 def test_parse_api_command_still_accepts_legacy_opamp_api_prefix() -> None:
+    """Verifies the legacy `/opamp api` prefix still routes through strict parsing."""
     legacy_request = handlers._parse_api_command("/opamp api tools status")
     assert legacy_request is not None
     assert legacy_request["verb"] == handlers.API_VERB_TOOLS
 
 
 def test_register_handlers_does_not_require_action_registration() -> None:
+    """Verifies handler registration works even when Slack actions are unavailable."""
     class _FakeApp:
         def command(self, _name: str) -> Any:
             def _decorator(func: Any) -> Any:

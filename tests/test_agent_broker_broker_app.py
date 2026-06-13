@@ -10,6 +10,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Tests for broker startup, shutdown, and CLI/logging behavior."""
+
 from __future__ import annotations
 
 import asyncio
@@ -329,6 +331,11 @@ async def _run_main_with_fakes(
     monkeypatch.setattr(broker_app, "load_dotenv", lambda: None)
     monkeypatch.setattr(
         broker_app,
+        "get_effective_config_path",
+        lambda _config_path=None: Path("/tmp/broker.ui_responses.json"),
+    )
+    monkeypatch.setattr(
+        broker_app,
         "load_runtime_config",
         lambda _config_path=None: config,
     )
@@ -375,6 +382,7 @@ async def _run_main_with_fakes(
 
 
 def test_main_startup_and_shutdown_flow(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verifies the broker starts core services and shuts them down cleanly."""
     captured = asyncio.run(_run_main_with_fakes(monkeypatch, send_shutdown_goodbye=True))
 
     assert captured["social_collaboration_implementation"] == "slack"
@@ -391,11 +399,16 @@ def test_main_startup_and_shutdown_flow(monkeypatch: pytest.MonkeyPatch) -> None
         {"channel": "C123", "thread_ts": "T123", "text": "shutdown"},
         {"channel": "C456", "thread_ts": "T456", "text": "shutdown"},
     ]
+    assert any(
+        args == ("using broker config path: %s", Path("/tmp/broker.ui_responses.json"))
+        for args, _kwargs in captured["logger"].info_calls
+    )
 
 
 def test_main_continues_when_tool_refresh_fails(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Verifies startup continues even when initial MCP tool discovery fails."""
     captured = asyncio.run(
         _run_main_with_fakes(
             monkeypatch,
@@ -418,6 +431,7 @@ def test_main_continues_when_tool_refresh_fails(
 def test_main_uses_cli_social_collaboration_override(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Verifies the CLI social-collaboration override wins over config values."""
     captured = asyncio.run(
         _run_main_with_fakes(
             monkeypatch,
@@ -430,6 +444,7 @@ def test_main_uses_cli_social_collaboration_override(
 def test_main_sets_disabled_default_ai_mode_when_llm_disabled(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Verifies disabled LLM planning forces sessions into disabled AI mode."""
     captured = asyncio.run(
         _run_main_with_fakes(
             monkeypatch,
@@ -442,6 +457,7 @@ def test_main_sets_disabled_default_ai_mode_when_llm_disabled(
 def test_main_uses_configured_ai_state_off_when_ai_is_ready(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Verifies configured AI mode `off` is respected when AI dependencies are ready."""
     captured = asyncio.run(
         _run_main_with_fakes(
             monkeypatch,
@@ -455,6 +471,7 @@ def test_main_uses_configured_ai_state_off_when_ai_is_ready(
 def test_main_uses_configured_ai_state_disabled_even_when_ai_is_ready(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Verifies configured AI mode `disabled` is preserved even with AI available."""
     captured = asyncio.run(
         _run_main_with_fakes(
             monkeypatch,
@@ -468,6 +485,7 @@ def test_main_uses_configured_ai_state_disabled_even_when_ai_is_ready(
 def test_main_forces_disabled_when_ai_config_incomplete(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Verifies incomplete AI configuration downgrades runtime AI mode to disabled."""
     captured = asyncio.run(
         _run_main_with_fakes(
             monkeypatch,
@@ -481,6 +499,7 @@ def test_main_forces_disabled_when_ai_config_incomplete(
 def test_main_startup_verification_all_success(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Verifies startup verification exits successfully when all checks pass."""
     captured = asyncio.run(
         _run_main_with_fakes(
             monkeypatch,
@@ -498,6 +517,7 @@ def test_main_startup_verification_all_success(
 def test_main_startup_verification_all_failure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Verifies startup verification returns failure when social and AI checks fail."""
     captured = asyncio.run(
         _run_main_with_fakes(
             monkeypatch,
@@ -517,6 +537,7 @@ def test_load_logging_config_uses_file_without_overriding_root_level(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
+    """Verifies file-based logging config preserves the root logger level."""
     logging_path = tmp_path / "broker_logging.json"
     logging_path.write_text(
         json.dumps(
@@ -542,6 +563,7 @@ def test_configure_logging_warns_when_broker_log_level_is_ignored(
     tmp_path: Path,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
+    """Verifies a warning is logged when broker log level is overridden by file config."""
     logging_path = tmp_path / "broker_logging.json"
     logging_path.write_text(
         json.dumps(
@@ -573,6 +595,7 @@ def test_configure_logging_warns_when_broker_log_level_is_ignored(
 def test_build_cli_parser_help_includes_version_details(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Verifies CLI help text includes broker version details and runtime options."""
     monkeypatch.setattr(
         broker_app,
         "load_component_version_info",

@@ -31,6 +31,10 @@ from shared.opamp_config import (
     parse_capabilities,
     resolve_component_callable,
 )
+from shared.observability import (
+    DEFAULT_EXPORT_INTERVAL_SECONDS,
+    load_observability_config_from_payload,
+)
 from shared.packaging_warnings import build_cli_missing_warning
 from shared.uuid_utils import generate_uuid7_bytes
 
@@ -159,3 +163,36 @@ def test_generate_uuid7_bytes_returns_16_bytes() -> None:
 
     assert isinstance(value, bytes)
     assert len(value) == 16
+
+
+def test_load_observability_config_from_payload_applies_all_endpoint_defaults() -> None:
+    config = load_observability_config_from_payload(
+        {
+            "otlp-endpoints": {
+                "ALL": "http://collector:4317",
+            }
+        }
+    )
+
+    assert config.all_endpoint == "http://collector:4317"
+    assert config.resolved_logs_endpoint == "http://collector:4317"
+    assert config.resolved_metrics_endpoint == "http://collector:4317"
+    assert config.resolved_traces_endpoint == "http://collector:4317"
+    assert config.export_interval_seconds == DEFAULT_EXPORT_INTERVAL_SECONDS
+
+
+def test_load_observability_config_from_payload_preserves_signal_overrides() -> None:
+    config = load_observability_config_from_payload(
+        {
+            "otlp-endpoints": {
+                "ALL": "http://collector:4317",
+                "metrics": "http://metrics:4318",
+                "export_interval": 45,
+            }
+        }
+    )
+
+    assert config.resolved_logs_endpoint == "http://collector:4317"
+    assert config.resolved_metrics_endpoint == "http://metrics:4318"
+    assert config.resolved_traces_endpoint == "http://collector:4317"
+    assert config.export_interval_seconds == 45

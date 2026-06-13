@@ -10,6 +10,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Tests for broker planning, graph-node execution, and AI integration helpers."""
+
 from __future__ import annotations
 
 import asyncio
@@ -89,6 +91,7 @@ def _looks_like_json_blob(value: str) -> bool:
 
 
 def test_create_planner_returns_rule_first_without_api_key() -> None:
+    """Verifies planner creation falls back to rule-first mode when no API key is set."""
     api_key_env_var = planner_engine.DEFAULT_AI_SVC_API_KEY_ENV
     os.environ.pop(api_key_env_var, None)
     planner = planner_engine.create_planner(
@@ -98,6 +101,7 @@ def test_create_planner_returns_rule_first_without_api_key() -> None:
 
 
 def test_create_planner_returns_ai_svc_planner_with_api_key() -> None:
+    """Verifies planner creation uses the AI service planner when an API key is available."""
     api_key_env_var = planner_engine.DEFAULT_AI_SVC_API_KEY_ENV
     os.environ[api_key_env_var] = "test-key"
     planner = planner_engine.create_planner(
@@ -117,6 +121,7 @@ def test_create_planner_returns_ai_svc_planner_with_api_key() -> None:
 
 
 def test_create_planner_applies_configured_max_completion_tokens() -> None:
+    """Verifies planner creation applies the configured max completion token limit."""
     api_key_env_var = planner_engine.DEFAULT_AI_SVC_API_KEY_ENV
     os.environ[api_key_env_var] = "test-key"
     planner = planner_engine.create_planner(
@@ -138,6 +143,7 @@ def test_create_planner_applies_configured_max_completion_tokens() -> None:
 
 
 def test_create_planner_returns_rule_first_for_unsupported_provider() -> None:
+    """Verifies unsupported AI providers fall back to the rule-first planner."""
     api_key_env_var = planner_engine.DEFAULT_AI_SVC_API_KEY_ENV
     os.environ[api_key_env_var] = "test-key"
     planner = planner_engine.create_planner(
@@ -158,6 +164,7 @@ def test_create_planner_returns_rule_first_for_unsupported_provider() -> None:
 
 
 def test_create_planner_accepts_openai_compatible_provider_alias() -> None:
+    """Verifies the openai-compatible provider alias resolves to the AI service planner."""
     api_key_env_var = planner_engine.DEFAULT_AI_SVC_API_KEY_ENV
     os.environ[api_key_env_var] = "test-key"
     planner = planner_engine.create_planner(
@@ -178,6 +185,7 @@ def test_create_planner_accepts_openai_compatible_provider_alias() -> None:
 
 
 def test_create_planner_returns_rule_first_for_template_provider() -> None:
+    """Verifies the template provider stays on the rule-first fallback path."""
     api_key_env_var = planner_engine.DEFAULT_AI_SVC_API_KEY_ENV
     os.environ[api_key_env_var] = "test-key"
     planner = planner_engine.create_planner(
@@ -198,6 +206,7 @@ def test_create_planner_returns_rule_first_for_template_provider() -> None:
 
 
 def test_resolve_ai_runtime_settings_supports_structured_prompt_entries() -> None:
+    """Verifies structured prompt entries are flattened into runtime prompt settings."""
     settings = ai_connection_factory.resolve_ai_runtime_settings(
         {
             "planner": {
@@ -236,6 +245,7 @@ def test_resolve_ai_runtime_settings_supports_structured_prompt_entries() -> Non
 def test_load_runtime_config_loads_prompt_text_and_descriptions(
     tmp_path: Path,
 ) -> None:
+    """Verifies runtime config loading imports prompt text and prompt descriptions."""
     prompts_path = tmp_path / "planner_prompts.json"
     prompts_path.write_text(
         json.dumps(
@@ -293,6 +303,7 @@ def test_load_runtime_config_loads_prompt_text_and_descriptions(
 
 
 def test_sanitize_plan_rejects_unknown_tool() -> None:
+    """Verifies plan sanitization removes tool selections that were not discovered."""
     sanitized = planner_engine._sanitize_plan(
         parsed={
             planner_engine.TOOL_NAME_KEY: "tool.not.allowed",
@@ -307,6 +318,7 @@ def test_sanitize_plan_rejects_unknown_tool() -> None:
 
 
 def test_broker_plan_schema_uses_openai_strict_safe_tool_arg_value_types() -> None:
+    """Verifies the planner schema keeps tool arguments in an OpenAI strict-safe string field."""
     tool_args = planner_engine.BROKER_PLAN_JSON_SCHEMA["properties"][
         planner_engine.TOOL_ARGS_KEY
     ]
@@ -314,6 +326,7 @@ def test_broker_plan_schema_uses_openai_strict_safe_tool_arg_value_types() -> No
 
 
 def test_sanitize_plan_parses_tool_args_json_string() -> None:
+    """Verifies plan sanitization converts JSON-encoded tool arguments into a mapping."""
     sanitized = planner_engine._sanitize_plan(
         parsed={
             planner_engine.RESPONSE_TEXT_KEY: "Running status",
@@ -327,6 +340,7 @@ def test_sanitize_plan_parses_tool_args_json_string() -> None:
 
 
 def test_rule_first_planner_lists_tools() -> None:
+    """Verifies the rule-first planner can answer simple tool-list requests."""
     planner = planner_engine.RuleFirstPlanner()
     plan = asyncio.run(
         planner.plan(
@@ -339,6 +353,7 @@ def test_rule_first_planner_lists_tools() -> None:
 
 
 def test_rule_first_planner_describes_tools_with_argument_hints() -> None:
+    """Verifies tool descriptions include argument names, types, and required markers."""
     planner = planner_engine.RuleFirstPlanner()
     plan = asyncio.run(
         planner.plan(
@@ -368,6 +383,7 @@ def test_rule_first_planner_describes_tools_with_argument_hints() -> None:
 
 
 def test_rule_first_planner_allows_direct_tool_name_invocation() -> None:
+    """Verifies the rule-first planner accepts a direct tool name with no arguments."""
     planner = planner_engine.RuleFirstPlanner()
     plan = asyncio.run(
         planner.plan(
@@ -386,6 +402,7 @@ def test_rule_first_planner_allows_direct_tool_name_invocation() -> None:
 
 
 def test_rule_first_planner_allows_direct_tool_name_with_target() -> None:
+    """Verifies the rule-first planner maps a trailing target value into tool arguments."""
     planner = planner_engine.RuleFirstPlanner()
     plan = asyncio.run(
         planner.plan(
@@ -404,6 +421,7 @@ def test_rule_first_planner_allows_direct_tool_name_with_target() -> None:
 
 
 def test_rule_first_planner_parses_direct_tool_key_value_arguments() -> None:
+    """Verifies direct tool calls parse key=value arguments into typed tool inputs."""
     planner = planner_engine.RuleFirstPlanner()
     plan = asyncio.run(
         planner.plan(
@@ -439,6 +457,7 @@ def test_rule_first_planner_parses_direct_tool_key_value_arguments() -> None:
 
 
 def test_rule_first_planner_routes_agent_list_queries_with_filters() -> None:
+    """Verifies agent list requests are routed to the agent tool with parsed filters."""
     planner = planner_engine.RuleFirstPlanner()
     plan = asyncio.run(
         planner.plan(
@@ -469,6 +488,7 @@ def test_rule_first_planner_routes_agent_list_queries_with_filters() -> None:
 
 
 def test_rule_first_planner_supports_direct_tool_camel_case_argument_names() -> None:
+    """Verifies direct tool calls accept camelCase aliases for snake_case arguments."""
     planner = planner_engine.RuleFirstPlanner()
     plan = asyncio.run(
         planner.plan(
@@ -496,6 +516,7 @@ def test_rule_first_planner_supports_direct_tool_camel_case_argument_names() -> 
 
 
 def test_plan_action_uses_only_discovered_tool_names() -> None:
+    """Verifies plan_action rejects planner-selected tools that are not in the registry."""
     tool_registry = _FakeToolRegistry(
         {
             "tool.status": {"name": "tool.status", "description": "status"},
@@ -522,6 +543,7 @@ def test_plan_action_uses_only_discovered_tool_names() -> None:
 
 
 def test_plan_action_accepts_discovered_tool_name() -> None:
+    """Verifies plan_action preserves discovered tool selections and extracted targets."""
     tool_registry = _FakeToolRegistry(
         {
             "tool.status": {"name": "tool.status", "description": "status"},
@@ -548,6 +570,7 @@ def test_plan_action_accepts_discovered_tool_name() -> None:
 
 
 def test_plan_action_passes_conversation_history_to_planner() -> None:
+    """Verifies plan_action forwards conversation history to the planner."""
     tool_registry = _FakeToolRegistry(
         {
             "tool.status": {"name": "tool.status", "description": "status"},
@@ -600,6 +623,7 @@ def test_plan_action_passes_conversation_history_to_planner() -> None:
 
 
 def test_plan_action_confirm_text_uses_planner_result() -> None:
+    """Verifies confirmation requests return the planner-provided confirmation text."""
     tool_registry = _FakeToolRegistry(
         {
             "tool.status": {
@@ -640,6 +664,7 @@ def test_plan_action_confirm_text_uses_planner_result() -> None:
 
 
 def test_plan_action_cancel_text_uses_planner_result() -> None:
+    """Verifies cancellation requests return the planner-provided cancellation text."""
     tool_registry = _FakeToolRegistry(
         {
             "tool.status": {
@@ -680,6 +705,7 @@ def test_plan_action_cancel_text_uses_planner_result() -> None:
 
 
 def test_plan_action_uses_direct_tool_when_api_command_mode_is_enabled() -> None:
+    """Verifies API command mode uses the explicitly parsed tool instead of replanning."""
     tool_registry = _FakeToolRegistry(
         {
             "tool.status": {"name": "tool.status", "description": "status"},
@@ -706,6 +732,7 @@ def test_plan_action_uses_direct_tool_when_api_command_mode_is_enabled() -> None
 
 
 def test_plan_action_rejects_unknown_direct_tool_in_api_command_mode() -> None:
+    """Verifies API command mode rejects direct tool names that are not available."""
     tool_registry = _FakeToolRegistry(
         {
             "tool.status": {"name": "tool.status", "description": "status"},
@@ -731,6 +758,7 @@ def test_plan_action_rejects_unknown_direct_tool_in_api_command_mode() -> None:
 
 
 def test_plan_action_preserves_planner_selected_tool_for_stop_request() -> None:
+    """Verifies stop-style requests can preserve a planner-selected tool when one was supplied."""
     tool_registry = _FakeToolRegistry(
         {
             "tool_otel_agents": {"name": "tool_otel_agents", "description": "list"},
@@ -768,6 +796,7 @@ def test_plan_action_preserves_planner_selected_tool_for_stop_request() -> None:
 
 
 def test_plan_action_stop_request_without_command_tool_keeps_planner_result() -> None:
+    """Verifies stop requests without a command tool keep the planner response text intact."""
     tool_registry = _FakeToolRegistry(
         {
             "tool_otel_agents": {"name": "tool_otel_agents", "description": "list"},
@@ -797,6 +826,7 @@ def test_plan_action_stop_request_without_command_tool_keeps_planner_result() ->
 
 
 def test_plan_action_returns_offline_message_when_mcp_unavailable() -> None:
+    """Verifies plan_action returns the offline message when MCP is unavailable."""
     class _UnavailableToolRegistry:
         def list_names(self) -> list[str]:
             return []
@@ -838,6 +868,7 @@ def test_plan_action_returns_offline_message_when_mcp_unavailable() -> None:
 
 
 def test_plan_action_falls_back_to_rule_first_when_planner_raises() -> None:
+    """Verifies plan_action falls back to rule-first planning when the main planner fails."""
     tool_registry = _FakeToolRegistry(
         {
             "tool.status": {"name": "tool.status", "description": "status"},
@@ -856,6 +887,7 @@ def test_plan_action_falls_back_to_rule_first_when_planner_raises() -> None:
 
 
 def test_execute_or_summarize_returns_offline_message_when_mcp_unavailable() -> None:
+    """Verifies execute_or_summarize returns an offline message when MCP calls cannot run."""
     class _UnavailableToolRegistry:
         async def call_tool(
             self,
@@ -888,6 +920,7 @@ def test_execute_or_summarize_returns_offline_message_when_mcp_unavailable() -> 
 
 
 def test_execute_or_summarize_preserves_plain_text_for_otel_agents() -> None:
+    """Verifies agent-list tool results keep their plain-text summary formatting."""
     class _FakeToolRegistry:
         async def call_tool(
             self,
@@ -916,6 +949,7 @@ def test_execute_or_summarize_preserves_plain_text_for_otel_agents() -> None:
 
 
 def test_execute_or_summarize_preserves_plain_text_for_commands() -> None:
+    """Verifies command execution results keep their concise plain-text summary formatting."""
     class _FakeToolRegistry:
         async def call_tool(
             self,
@@ -948,6 +982,7 @@ def test_execute_or_summarize_preserves_plain_text_for_commands() -> None:
 
 
 def test_execute_or_summarize_executes_tool_even_when_confirmation_flag_present() -> None:
+    """Verifies execute_or_summarize still runs the selected tool when confirmation is already satisfied."""
     class _ConfirmToolRegistry:
         async def call_tool(
             self,
@@ -990,6 +1025,7 @@ def test_execute_or_summarize_executes_tool_even_when_confirmation_flag_present(
 
 
 def test_execute_or_summarize_does_not_use_command_catalog_for_confirmation() -> None:
+    """Verifies confirmation handling does not depend on command catalog metadata."""
     class _ConfirmToolRegistry:
         async def call_tool(
             self,
@@ -1030,6 +1066,7 @@ def test_execute_or_summarize_does_not_use_command_catalog_for_confirmation() ->
 
 
 def test_execute_or_summarize_applies_ai_formatter_when_available() -> None:
+    """Verifies AI formatting is used for tool output when a formatter-capable planner is available."""
     class _FakeToolRegistry:
         async def call_tool(
             self,
@@ -1088,6 +1125,7 @@ def test_execute_or_summarize_applies_ai_formatter_when_available() -> None:
 
 
 def test_execute_or_summarize_calls_formatter_with_keyword_arguments() -> None:
+    """Verifies tool-output formatting is invoked with the expected keyword arguments."""
     class _FakeToolRegistry:
         async def call_tool(
             self,
@@ -1136,6 +1174,7 @@ def test_execute_or_summarize_calls_formatter_with_keyword_arguments() -> None:
 
 
 def test_execute_or_summarize_supports_multi_step_replanning() -> None:
+    """Verifies execution can replan through multiple tool steps before returning a final response."""
     class _FakePlanner:
         def __init__(self) -> None:
             self.calls = 0
@@ -1236,6 +1275,7 @@ def test_execute_or_summarize_supports_multi_step_replanning() -> None:
 
 
 def test_execute_or_summarize_does_not_replan_in_api_command_mode() -> None:
+    """Verifies API command mode skips multi-step replanning after a tool call."""
     class _FailIfCalledPlanner:
         async def plan(
             self,
@@ -1289,6 +1329,7 @@ def test_execute_or_summarize_does_not_replan_in_api_command_mode() -> None:
 
 
 def test_summarize_mapping_excludes_component_health_field() -> None:
+    """Verifies summary rendering omits noisy component-health fields."""
     summary = nodes._summarize_mapping(
         {
             "status": "healthy",
@@ -1307,6 +1348,7 @@ def test_summarize_mapping_excludes_component_health_field() -> None:
 
 
 def test_summarize_agents_payload_renders_transposed_summary_table() -> None:
+    """Verifies agent payload summaries include the transposed attribute-by-agent table."""
     payload = {
         "total": 2,
         "agents": [
@@ -1343,6 +1385,7 @@ def test_summarize_agents_payload_renders_transposed_summary_table() -> None:
 
 
 def test_render_agents_summary_table_aligns_and_truncates_cells() -> None:
+    """Verifies rendered agent summary tables align columns and truncate oversized cells."""
     very_long_label = "agent-with-a-very-very-long-identifier-for-testing"
     very_long_host = "host-name-that-is-unusually-long-and-should-be-truncated"
     table = nodes._render_agents_summary_table(
@@ -1374,6 +1417,7 @@ def test_render_agents_summary_table_aligns_and_truncates_cells() -> None:
 
 
 def test_render_agent_short_rich_text_includes_only_present_identity_values() -> None:
+    """Verifies the short agent renderer includes only identity fields that are present."""
     agent = {
         "client_id": "abc123",
         "remote_addr": "10.0.0.10",
@@ -1395,6 +1439,7 @@ def test_render_agent_short_rich_text_includes_only_present_identity_values() ->
 
 
 def test_render_agent_long_rich_text_uses_openapi_descriptions_when_available() -> None:
+    """Verifies the long agent renderer includes OpenAPI field descriptions when available."""
     agent = {
         "client_id": "agent-001",
         "agent_description": (
@@ -1426,6 +1471,7 @@ def test_render_agent_long_rich_text_uses_openapi_descriptions_when_available() 
 def test_verify_ai_svc_connection_uses_connection_factory(
     monkeypatch: Any,
 ) -> None:
+    """Verifies AI service verification is delegated through the connection factory."""
     captured: dict[str, Any] = {}
 
     class _FakeConnection:
@@ -1466,6 +1512,7 @@ def test_verify_ai_svc_connection_uses_connection_factory(
 
 
 def test_verify_ai_svc_connection_template_provider_is_not_ok() -> None:
+    """Verifies the template AI provider reports a non-OK verification result."""
     result = asyncio.run(
         ai_svc_planner.verify_ai_svc_connection(
             model="gpt-5.4",
@@ -1482,6 +1529,7 @@ def test_verify_ai_svc_connection_template_provider_is_not_ok() -> None:
 def test_openai_verify_connection_retries_on_output_limit_error(
     monkeypatch: Any,
 ) -> None:
+    """Verifies OpenAI-compatible verification retries with a larger token limit after an output-limit error."""
     api_key_env_var = planner_engine.DEFAULT_AI_SVC_API_KEY_ENV
     os.environ[api_key_env_var] = "test-key"
     captured_max_tokens: list[int] = []
@@ -1593,6 +1641,7 @@ def test_openai_verify_connection_retries_on_output_limit_error(
 def test_openai_request_includes_provider_error_details_on_http_failure(
     monkeypatch: Any,
 ) -> None:
+    """Verifies planner request failures include provider error details in the raised exception."""
     api_key_env_var = planner_engine.DEFAULT_AI_SVC_API_KEY_ENV
     os.environ[api_key_env_var] = "test-key"
 
@@ -1674,6 +1723,7 @@ def test_openai_request_includes_provider_error_details_on_http_failure(
 
 
 def test_ai_svc_planner_includes_conversation_history_in_prompt() -> None:
+    """Verifies AI planner requests include prior conversation history in the prompt payload."""
     captured: dict[str, Any] = {}
 
     class _FakeConnection:
@@ -1746,6 +1796,7 @@ def test_ai_svc_planner_includes_conversation_history_in_prompt() -> None:
 
 
 def test_ai_svc_planner_formats_tool_response_for_slack() -> None:
+    """Verifies AI planner formatting requests build the Slack-specific response payload."""
     captured: dict[str, Any] = {}
 
     class _FakeConnection:

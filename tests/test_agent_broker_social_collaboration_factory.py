@@ -10,6 +10,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Tests for broker social collaboration adapter selection."""
+
 from __future__ import annotations
 
 import importlib
@@ -73,6 +75,7 @@ slack_adapter_module = importlib.import_module(
 
 
 def test_factory_builds_slack_adapter(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verifies the factory returns a Slack adapter for the `slack` implementation."""
     sentinel = object()
     fake_builder = Mock(return_value=sentinel)
     monkeypatch.setattr(
@@ -88,5 +91,6 @@ def test_factory_builds_slack_adapter(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_factory_rejects_unknown_implementation() -> None:
+    """Verifies unsupported social collaboration implementations raise an error."""
     with pytest.raises(ValueError, match="unsupported social collaboration implementation"):
         factory.create_social_collaboration_adapter("teams")

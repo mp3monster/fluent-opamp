@@ -10,6 +10,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Tests for broker session state defaults and AI mode transitions."""
+
 from __future__ import annotations
 
 import asyncio
@@ -26,6 +28,7 @@ session_manager_module = importlib.import_module("opamp_broker.session.manager")
 
 
 def test_session_manager_defaults_ai_enabled_to_true() -> None:
+    """Verifies new sessions default to AI mode on."""
     manager = session_manager_module.SessionManager()
     session = asyncio.run(
         manager.upsert(
@@ -41,6 +44,7 @@ def test_session_manager_defaults_ai_enabled_to_true() -> None:
 
 
 def test_session_manager_applies_ai_mode_per_client_across_threads() -> None:
+    """Verifies one client's AI mode is reused across that client's threads only."""
     manager = session_manager_module.SessionManager()
 
     first_session = asyncio.run(
@@ -85,6 +89,7 @@ def test_session_manager_applies_ai_mode_per_client_across_threads() -> None:
 
 
 def test_session_manager_can_default_to_disabled_mode_and_blocks_ai_enabled_toggle() -> None:
+    """Verifies disabled-by-default sessions ignore later AI enable requests."""
     manager = session_manager_module.SessionManager(
         default_ai_mode=session_manager_module.AI_MODE_DISABLED
     )
