@@ -29,7 +29,7 @@ The documentation includes background such as the implementation philosophies th
 - [docs/consumer_client_diagrams.md](docs/consumer_client_diagrams.md) — rendered consumer client diagrams with walkthrough notes.
 - [docs/provider_server_diagrams.md](docs/provider_server_diagrams.md) — rendered provider/server diagrams with architecture walkthrough notes.
 - [docs/features.md](docs/features.md) — feature notes and design direction.
-- [mcp/README.md](mcp/README.md) — MCP setup wrappers/canonical script behavior, FastMCP client role, command-line parameters, and verification.
+- [mcp/README.md](mcp/README.md) — MCP setup Python entry points, wrapper script layout, FastMCP client role, command-line parameters, and verification.
 - [docs/scripts.md](docs/scripts.md) — script reference table by platform.
 - [docs/dev/component_versioning.md](docs/dev/component_versioning.md) — git-derived component version metadata, help/UI exposure, and hook/build integration.
 - [cli/README.md](cli/README.md) — CLI launcher/orchestration usage and local operator workflows.
@@ -54,6 +54,33 @@ components listed below:
 When used, these components run as separate processes or supporting services
 with their own startup/shutdown flow and configuration.
 
+## Build and packaging
+
+The repository supports independent deployable Python artefacts for:
+
+- `provider`
+- `consumer`
+- `catalog-service`
+- `cli`
+- `consumer-sim`
+
+The main build entry points are:
+
+- `scripts/build_artifacts.sh`
+- `scripts/build_artifacts.cmd`
+  - build `sdist` + `wheel` outputs into `dist/`
+- `scripts/build_and_publish_wheels.py`
+  - builds per-component wheels
+  - writes per-component CycloneDX SBOMs
+  - supports subset builds via `--components`
+  - supports GitHub release publication via `--publish`
+
+For the full build matrix and output paths, start with:
+
+- `docs/scripts.md`
+- `docs/README.md`
+- `docs/dev/component_versioning.md`
+
 ## Folder summary
 
 - `agent_broker` — optional standalone conversation broker package and docs.
@@ -63,7 +90,7 @@ with their own startup/shutdown flow and configuration.
 - `config-service` — optional editor/config validation service package and docs.
 - `consumer` — the OpAMP consumer (client) package, tests, and config samples.
 - `consumer-sim` — optional simulator launcher utilities and docs.
-- `dist` — SBOM and Wheel files.
+- `dist` — generated wheels, source distributions, manuals, and SBOMs.
 - `docs` — project documentation.
 - `logs` — runtime logs created by scripts.
 - `proto` — protobuf definitions and generated artifacts.
