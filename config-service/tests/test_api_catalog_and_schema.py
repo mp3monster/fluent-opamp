@@ -98,6 +98,7 @@ async def test_health_and_versions() -> None:
     assert "/config-service/ui/assets/config_ui_plugins.js" in ui_html
     assert "/config-service/ui/assets/config_ui_sections.js" in ui_html
     assert "/config-service/ui/assets/config_ui_env.js" in ui_html
+    assert "/config-service/ui/assets/config_ui_api.js" in ui_html
     assert "/config-service/ui/assets/config_ui.js" in ui_html
     assert 'id="validation-include-toggle"' in ui_html
     assert 'id="dry-run-btn"' in ui_html

@@ -205,13 +205,18 @@ async def test_raw_config_view_dialog_is_present_in_ui() -> None:
 async def test_ui_save_script_defaults_fluentbit_saves_to_yaml() -> None:
     app = create_app(mode="standalone")
     client = app.test_client()
-    response = await client.get("/config-service/ui/assets/config_ui.js")
-    assert response.status_code == 200
-    script = (await response.get_data()).decode("utf-8")
-    assert '.yaml' in script
-    assert 'description: "Fluent Bit configuration"' in script
-    assert '"text/yaml": [".yaml", ".yml"]' in script
-    assert 'fetchJson(API_BASE + "/render/yaml/" + encodeURIComponent(state.doc.version) + currentApiQuery()' in script
+    ui_script_response = await client.get("/config-service/ui/assets/config_ui.js")
+    assert ui_script_response.status_code == 200
+    ui_script = (await ui_script_response.get_data()).decode("utf-8")
+    assert '.yaml' in ui_script
+    assert 'description: "Fluent Bit configuration"' in ui_script
+    assert '"text/yaml": [".yaml", ".yml"]' in ui_script
+
+    api_script_response = await client.get("/config-service/ui/assets/config_ui_api.js")
+    assert api_script_response.status_code == 200
+    api_script = (await api_script_response.get_data()).decode("utf-8")
+    assert 'apiBase + "/render/yaml/" + encodeURIComponent(version)' in api_script
+    assert 'buildConfigTypeQuery(configType, "fluentbit")' in api_script
 
 @pytest.mark.asyncio
 async def test_validate_save_toggle_is_present_in_ui() -> None:
@@ -291,11 +296,16 @@ async def test_ui_routes_disable_cache_in_dev_mode(monkeypatch: pytest.MonkeyPat
     assert "/config-service/ui/assets/config_ui_plugins.js?v=" in html
     assert "/config-service/ui/assets/config_ui_sections.js?v=" in html
     assert "/config-service/ui/assets/config_ui_env.js?v=" in html
+    assert "/config-service/ui/assets/config_ui_api.js?v=" in html
     assert "/config-service/ui/assets/config_ui.js?v=" in html
 
     asset = await client.get("/config-service/ui/assets/config_ui.js")
     assert asset.status_code == 200
     assert asset.headers["Cache-Control"] == "no-store, no-cache, must-revalidate, max-age=0"
+
+    api_asset = await client.get("/config-service/ui/assets/config_ui_api.js")
+    assert api_asset.status_code == 200
+    assert api_asset.headers["Cache-Control"] == "no-store, no-cache, must-revalidate, max-age=0"
 
 @pytest.mark.asyncio
 async def test_ui_prepare_file_extracts_header_metadata_and_line_map() -> None:

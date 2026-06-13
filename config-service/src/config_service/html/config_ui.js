@@ -15,8 +15,7 @@
 (function () {
   "use strict";
 
-  // Central runtime constants for storage and API integration.
-  var API_BASE = "/config-service/api/v1";
+  // Central runtime constants for storage and UI persistence.
   var LAST_FILE_COOKIE = "config_service_last_opened_name";
   var LAST_DOC_STORAGE = "config_service_last_opened_doc";
   var LAST_DOC_SOURCE_PATH_STORAGE = "config_service_last_opened_source_path";
@@ -26,9 +25,6 @@
   var PARSER_FORMATS = [];
   var serviceOptionsLoadInFlight = null;
   var dryRunAvailabilityRequestSerial = 0;
-  var lastUiErrorFingerprint = "";
-  var lastUiErrorAt = 0;
-  var isReportingUiError = false;
 
   function normalizedCollapsedSectionSet() {
     var raw = window.__CONFIG_SERVICE_UI_COLLAPSED_SECTIONS__;
@@ -96,6 +92,10 @@
     dryRunAvailable: false,
     dryRunCapability: null,
   };
+  var api = window.ConfigServiceUiApi.create({
+    apiBase: "/config-service/api/v1",
+    uiFeaturesPath: "/api/ui/features",
+  });
   (function applyInitialPanelCollapseConfig() {
     var collapsed = normalizedCollapsedSectionSet();
     var has = function (key) {
@@ -265,166 +265,6 @@
     rawConfigText: document.getElementById("raw-config-text"),
     rawConfigClose: document.getElementById("raw-config-close"),
   };
-
-  function fetchJson(url, options) {
-    // Normalize API responses: throw for non-2xx and keep payload details.
-    return fetch(url, options || {}).then(function (resp) {
-      return resp.text().then(function (text) {
-        var data = {};
-        try {
-          data = text ? JSON.parse(text) : {};
-        } catch (_parseError) {
-          data = { error: text };
-        }
-        if (!resp.ok) {
-          var err = new Error(
-            data.error ||
-            (Array.isArray(data.errors) && data.errors.length > 0 && data.errors[0].message) ||
-            JSON.stringify(data)
-          );
-          err.payload = data;
-          err.status = resp.status;
-          throw err;
-        }
-        return data;
-      });
-    });
-  }
-
-  function reportUiError(details) {
-    // Deduplicate bursts of identical client errors to avoid telemetry spam.
-    var payload = details && typeof details === "object" ? details : {};
-    var fingerprint = JSON.stringify({
-      kind: payload.kind || "",
-      message: payload.message || "",
-      source: payload.source || "",
-      path: payload.path || "",
-      line: payload.line || "",
-      column: payload.column || "",
-    });
-    var now = Date.now();
-    if (fingerprint === lastUiErrorFingerprint && now - lastUiErrorAt < 4000) {
-      return;
-    }
-    lastUiErrorFingerprint = fingerprint;
-    lastUiErrorAt = now;
-    if (!isReportingUiError) {
-      isReportingUiError = true;
-      try {
-        console.error(
-          "[Config Editor Error]",
-          String(payload.kind || "runtime_error"),
-          String(payload.message || "Unknown UI error"),
-          payload
-        );
-      } catch (_consoleErr) {
-        // Keep error reporting resilient.
-      }
-      isReportingUiError = false;
-    }
-    fetch(API_BASE + "/client-errors", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        kind: String(payload.kind || "runtime_error"),
-        message: String(payload.message || "Unknown UI error"),
-        source: String(payload.source || "browser"),
-        path: String(payload.path || window.location.href || ""),
-        stack: payload.stack ? String(payload.stack) : "",
-        line: payload.line === undefined ? null : payload.line,
-        column: payload.column === undefined ? null : payload.column,
-      }),
-      keepalive: true,
-    }).catch(function (err) {
-      if (!isReportingUiError) {
-        isReportingUiError = true;
-        try {
-          console.error(
-            "[Config Editor Error] Failed to post UI error to backend:",
-            err && err.message ? err.message : String(err)
-          );
-        } catch (_consoleErr) {
-          // Avoid error-reporting loops when the backend is unavailable.
-        }
-        isReportingUiError = false;
-      }
-    });
-  }
-
-  function formatConsoleArgs(args) {
-    var parts = [];
-    for (var index = 0; index < args.length; index += 1) {
-      var item = args[index];
-      if (item === undefined) {
-        parts.push("undefined");
-      } else if (item === null) {
-        parts.push("null");
-      } else if (item instanceof Error) {
-        parts.push(item.message || String(item));
-      } else if (typeof item === "object") {
-        try {
-          parts.push(JSON.stringify(item));
-        } catch (_serializeError) {
-          parts.push(String(item));
-        }
-      } else {
-        parts.push(String(item));
-      }
-    }
-    return parts.join(" ");
-  }
-
-  function installGlobalUiErrorHandlers() {
-    if (!window.__CONFIG_SERVICE_UI_CONSOLE_ERROR_PATCHED__) {
-      window.__CONFIG_SERVICE_UI_CONSOLE_ERROR_PATCHED__ = true;
-      var originalConsoleError = console.error;
-      console.error = function () {
-        var args = Array.prototype.slice.call(arguments);
-        originalConsoleError.apply(console, args);
-        if (isReportingUiError) {
-          return;
-        }
-        reportUiError({
-          kind: "console_error",
-          message: formatConsoleArgs(args) || "console.error called",
-          source: "browser_console",
-          path: window.location.href,
-        });
-      };
-    }
-
-    window.addEventListener("error", function (event) {
-      var error = event && event.error;
-      reportUiError({
-        kind: "window_error",
-        message: error && error.message ? error.message : String((event && event.message) || "Unhandled UI error"),
-        source: event && event.filename ? event.filename : "browser",
-        path: window.location.href,
-        stack: error && error.stack ? error.stack : "",
-        line: event && event.lineno ? event.lineno : null,
-        column: event && event.colno ? event.colno : null,
-      });
-    });
-
-    window.addEventListener("unhandledrejection", function (event) {
-      var reason = event ? event.reason : null;
-      var message = "Unhandled promise rejection";
-      var stack = "";
-      if (reason && typeof reason === "object") {
-        message = String(reason.message || message);
-        stack = reason.stack ? String(reason.stack) : "";
-      } else if (reason !== undefined && reason !== null) {
-        message = String(reason);
-      }
-      reportUiError({
-        kind: "unhandledrejection",
-        message: message,
-        source: "browser",
-        path: window.location.href,
-        stack: stack,
-      });
-    });
-  }
 
   function setCookie(name, value) {
     // Session cookie: intentionally omit expires/max-age so persistence ends
@@ -600,12 +440,7 @@
     var requestSerial = dryRunAvailabilityRequestSerial + 1;
     dryRunAvailabilityRequestSerial = requestSerial;
     el.dryRunBtn.disabled = true;
-    return fetchJson(
-      API_BASE +
-        "/agent-validation/availability/" +
-        encodeURIComponent(selectedVersion) +
-        currentApiQuery()
-    )
+    return api.getDryRunAvailability(selectedVersion, state.configType)
       .then(function (payload) {
         if (requestSerial !== dryRunAvailabilityRequestSerial) {
           return payload;
@@ -1238,7 +1073,7 @@
 
   function loadVersionsForType(configType, preferredVersion) {
     var normalizedType = normalizeConfigType(configType, "fluentbit");
-    return fetchJson(API_BASE + "/versions?config_type=" + encodeURIComponent(normalizedType)).then(function (data) {
+    return api.getVersions(normalizedType).then(function (data) {
       var versions = Array.isArray(data.versions) ? data.versions.slice() : [];
       state.versions = versions;
       var currentPreferred = preferredVersion || state.selectedVersion || "";
@@ -1536,14 +1371,10 @@
 
   function buildSaveBlob() {
     if (state.configType === "fluentd") {
-      return fetchJson(API_BASE + "/render/fluentd/" + encodeURIComponent(state.doc.version), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          config: state.doc.config,
-          annotations: state.doc.annotations || {},
-          include_config_header: true,
-        }),
+      return api.renderFluentd(state.doc.version, {
+        config: state.doc.config,
+        annotations: state.doc.annotations || {},
+        include_config_header: true,
       }).then(function (result) {
         var renderedText = String(result.rendered_output || result.text || "");
         return {
@@ -1552,17 +1383,13 @@
         };
       });
     }
-    return fetchJson(API_BASE + "/render/yaml/" + encodeURIComponent(state.doc.version) + currentApiQuery(), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        config: state.doc.config,
-        annotations: state.doc.annotations || {},
-        included_documents: state.includedDocuments || [],
-        include_comments: true,
-        render_included_files: false,
-        include_config_header: true,
-      }),
+    return api.renderYaml(state.doc.version, state.configType, {
+      config: state.doc.config,
+      annotations: state.doc.annotations || {},
+      included_documents: state.includedDocuments || [],
+      include_comments: true,
+      render_included_files: false,
+      include_config_header: true,
     }).then(function (result) {
       var renderedText = String(result.rendered_output || result.yaml || "");
       return {
@@ -1581,7 +1408,7 @@
   }
 
   function reportBrowserSaveMechanism(mode, fileName) {
-    reportUiError({
+    api.reportUiError({
       kind: "browser_save_mechanism_used",
       source: "config_service_ui_save",
       message: "Browser save mechanism used via " + String(mode || "unknown") + " for " + String(fileName || "config"),
@@ -1621,23 +1448,6 @@
       });
   }
 
-  function currentApiQuery() {
-    var configType = normalizeConfigType(state.configType, "fluentbit");
-    return "?config_type=" + encodeURIComponent(configType);
-  }
-
-  function prepareFileForLoad(text, fileName, configTypeHint) {
-    return fetchJson(API_BASE + "/ui/prepare-file", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        text: String(text || ""),
-        file_name: String(fileName || ""),
-        config_type: String(configTypeHint || ""),
-      }),
-    });
-  }
-
   function renderFeatureMenuItems(items) {
     if (!el.featureMenuGroup || !el.featureMenuSelect) {
       return;
@@ -1672,16 +1482,10 @@
     if (!el.featureMenuGroup || !el.featureMenuSelect) {
       return Promise.resolve();
     }
-    return fetch("/api/ui/features")
-      .then(function (resp) {
-        if (!resp.ok) {
-          el.featureMenuGroup.classList.add("hidden");
-          return null;
-        }
-        return resp.json();
-      })
+    return api.getUiFeatures()
       .then(function (payload) {
         if (!payload) {
+          el.featureMenuGroup.classList.add("hidden");
           return;
         }
         var items = Array.isArray(payload.items) ? payload.items : [];
@@ -1728,14 +1532,7 @@
     if (!normalizedSourcePath) {
       return Promise.resolve(false);
     }
-    return fetchJson(API_BASE + "/ui/load-source-file", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        source_path: normalizedSourcePath,
-        config_type: state.configType,
-      }),
-    })
+    return api.loadSourceFile(normalizedSourcePath, state.configType)
       .then(function (payload) {
         var fileName = String(payload.file_name || "").trim();
         var text = String(payload.text || "");
@@ -1767,7 +1564,7 @@
     var normalizedName = String(fileName || "").trim() || "config";
     var normalizedDisplay = String(selectedDisplay || "").trim() || normalizedName;
     state.currentSourcePath = String(sourcePath || "").trim();
-    return prepareFileForLoad(text, normalizedName, state.configType).then(function (preparedFile) {
+    return api.prepareFileForLoad(text, normalizedName, state.configType).then(function (preparedFile) {
       if (/\.json$/i.test(normalizedName)) {
         var parsed = JSON.parse(preparedFile.body || "");
         state.doc = parsed;
@@ -1821,11 +1618,7 @@
         state.sourceLineMap = preparedFile.source_line_map || {};
         return loadVersionsForType(state.configType, preparedFile.version || state.selectedVersion)
           .then(function () {
-            return fetchJson(API_BASE + "/parse/fluentbit/" + encodeURIComponent(state.selectedVersion), {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ text: preparedFile.body || "" }),
-            });
+            return api.parseFluentbit(state.selectedVersion, { text: preparedFile.body || "" });
           })
           .then(function (result) {
             state.doc = {
@@ -1869,11 +1662,7 @@
       setCookie(LAST_FILE_COOKIE, normalizedName);
       return loadVersionsForType(state.configType, preparedFile.version || state.selectedVersion)
         .then(function () {
-          return fetchJson(API_BASE + "/parse/fluentd/" + encodeURIComponent(state.selectedVersion), {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text: preparedFile.body || "" }),
-          });
+          return api.parseFluentd(state.selectedVersion, { text: preparedFile.body || "" });
         })
         .then(function (result) {
           state.doc = {
@@ -1972,11 +1761,7 @@
       include_config_header: true,
       profile: "strict",
     };
-    return fetchJson(API_BASE + "/validate/" + encodeURIComponent(state.doc.version) + currentApiQuery(), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    })
+    return api.validateDocument(state.doc.version, state.configType, payload)
       .then(function (result) {
         renderValidationState(result);
         if (result && result.saved) {
@@ -3244,7 +3029,7 @@ function renderPlugins() {
     try {
       renderFn();
     } catch (err) {
-      reportUiError({
+      api.reportUiError({
         kind: "render_error",
         message: "Failed rendering section '" + String(name || "unknown") + "': " + String((err && err.message) || err),
         source: "config_ui.js",
@@ -3272,11 +3057,7 @@ function renderPlugins() {
       state.compiledSchema = null;
       return Promise.resolve(null);
     }
-    return fetchJson(API_BASE + "/schema/" + encodeURIComponent(version) + currentApiQuery(), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ strict: false }),
-    })
+    return api.getSchema(version, state.configType, { strict: false })
       .then(function (payload) {
         state.compiledSchema = payload && payload.schema ? payload.schema : null;
         return state.compiledSchema;
@@ -3288,7 +3069,7 @@ function renderPlugins() {
   }
 
   function loadCatalog(version) {
-    return fetchJson(API_BASE + "/catalog/" + encodeURIComponent(version) + currentApiQuery()).then(function (catalog) {
+    return api.getCatalog(version, state.configType).then(function (catalog) {
       state.catalog = catalog;
       state.catalogLoaded = true;
       return loadRuntimeSchema(version).then(function () {
@@ -3348,11 +3129,7 @@ function renderPlugins() {
         return Promise.reject(new Error("Service options unavailable."));
       }
       var queryType = queryCandidates[index];
-      var url = API_BASE + "/service-options/" + encodeURIComponent(version);
-      if (queryType) {
-        url += "?config_type=" + encodeURIComponent(queryType);
-      }
-      return fetchJson(url)
+      return api.getServiceOptions(version, queryType)
         .then(function (payload) {
           var parsed = parseServiceOptionsPayload(payload);
           if (parsed.length > 0) {
@@ -3473,11 +3250,7 @@ function renderPlugins() {
         return Promise.reject(new Error("Parser options unavailable."));
       }
       var queryType = queryCandidates[index];
-      var url = API_BASE + "/parser-options/" + encodeURIComponent(version);
-      if (queryType) {
-        url += "?config_type=" + encodeURIComponent(queryType);
-      }
-      return fetchJson(url)
+      return api.getParserOptions(version, queryType)
         .then(function (payload) {
           var parsed = parseParserFormatsPayload(payload);
           if (parsed.length > 0) {
@@ -3954,14 +3727,7 @@ function renderPlugins() {
           merge_includes_for_validation: Boolean(state.mergeIncludesForValidation),
           profile: "strict",
         };
-        fetchJson(
-          API_BASE + "/agent-validation/dry-run/" + encodeURIComponent(state.doc.version) + currentApiQuery(),
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(dryRunPayload),
-          }
-        )
+        api.runDryRun(state.doc.version, state.configType, dryRunPayload)
           .then(function (result) {
             var messages = Array.isArray(result && result.messages) ? result.messages : [];
             if (result && result.ok) {
@@ -4014,19 +3780,14 @@ function renderPlugins() {
         include_comments: true,
         render_included_files: Boolean(state.renderIncludesForRender),
       };
-      var endpoint = state.configType === "fluentd"
-        ? API_BASE + "/render/fluentd/" + encodeURIComponent(state.doc.version)
-        : API_BASE + "/render/yaml/" + encodeURIComponent(state.doc.version) + currentApiQuery();
       if (state.renderIncludesForRender && (!Array.isArray(state.includedDocuments) || state.includedDocuments.length === 0)) {
         setStatusMessage("Include rendering is enabled, but no included files are loaded in memory.");
       }
       state.yamlCollapsed = false;
       updateResultPanels();
-      fetchJson(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      })
+      (state.configType === "fluentd"
+        ? api.renderFluentd(state.doc.version, payload)
+        : api.renderYaml(state.doc.version, state.configType, payload))
         .then(function (result) {
           var renderedOutput = String(
             result.rendered_output ||
@@ -4045,7 +3806,7 @@ function renderPlugins() {
   }
 
   function init() {
-    installGlobalUiErrorHandlers();
+    api.installGlobalUiErrorHandlers();
     applyCssOverrides();
     repopulateServiceOptionSelect();
     repopulateParserFormatSelect();
@@ -4057,7 +3818,7 @@ function renderPlugins() {
     initEvents();
     fetchUiFeatureMenu();
 
-    fetchJson(API_BASE + "/health")
+    api.getHealth()
       .then(function (health) {
         state.readOnly = Boolean(health.read_only);
         updateReadOnlyState();
@@ -4068,7 +3829,7 @@ function renderPlugins() {
         setValidationText(String(err));
       });
 
-    fetchJson(API_BASE + "/issue-codes")
+    api.getIssueCodes()
       .then(function (payload) {
         state.issueCodeMap = (payload && payload.codes) || {};
       })
