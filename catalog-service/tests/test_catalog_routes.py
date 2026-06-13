@@ -18,6 +18,7 @@ Test-case reference: catalog-service/docs/TEST_CASES.md
 from __future__ import annotations
 
 from http import HTTPStatus
+import json
 from pathlib import Path
 
 import pytest
@@ -25,6 +26,7 @@ from quart import Quart
 
 from catalog_service.auth_integration import UIAuthResult
 from catalog_service.config import CatalogServiceConfig, CatalogSource
+from catalog_service.app import APP_EXTENSION_INDEX_SERVICE, create_app
 from catalog_service.routes import register_catalog_routes
 from catalog_service.service import CatalogFileIndexService
 
@@ -101,6 +103,49 @@ async def test_catalog_routes_render_ui_help_and_api(tmp_path: Path) -> None:
     assert payload["rows"][0]["filename"] == "sample.yaml"
     assert file_payload["filename"] == "sample.yaml"
     assert "config_type=fluentbit" in file_payload["text"]
+
+
+@pytest.mark.asyncio
+async def test_catalog_app_starts_and_stops_background_refresh_with_lifecycle(tmp_path: Path) -> None:
+    source_dir = tmp_path / "catalog"
+    source_dir.mkdir(parents=True, exist_ok=True)
+    (source_dir / "sample.yaml").write_text("service:\n  flush: 1\n", encoding="utf-8")
+
+    config_path = tmp_path / "catalog-service.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "component-entry-points": {
+                    "quart": [
+                        {
+                            "entry_point": "catalog_service.app:register_catalog_component",
+                            "label": "Config Catalog",
+                            "url": "/catalog",
+                            "enabled": True,
+                        }
+                    ]
+                },
+                "opamp": {
+                    "config_catalog": {
+                        "enabled": True,
+                        "sources": [{"folder": "catalog", "extensions": [".yaml"]}],
+                        "ui_refresh_seconds": 1,
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    app = create_app(mode="standalone", config_path=str(config_path))
+    service = app.extensions[APP_EXTENSION_INDEX_SERVICE]
+    assert service._background_refresh_thread is None
+
+    async with app.test_app():
+        assert service._background_refresh_thread is not None
+        assert service._background_refresh_thread.is_alive() is True
+
+    assert service._background_refresh_thread is None
 
 
 @pytest.mark.asyncio
@@ -305,6 +350,98 @@ async def test_standalone_catalog_app_exposes_config_service_feature_when_config
         "Config Editor",
     ]
     assert "config_service.opamp_integration:register_config_service_feature" in ui_html
+
+
+@pytest.mark.asyncio
+async def test_embedded_config_service_validate_save_uses_catalog_runtime_sources(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_path = tmp_path / "catalog-service.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "component-entry-points": {
+                    "quart": [
+                        {
+                            "entry_point": "catalog_service.app:register_catalog_component",
+                            "label": "Config Catalog",
+                            "url": "/catalog",
+                            "enabled": True,
+                        },
+                        {
+                            "entry_point": "config_service.opamp_integration:register_config_service_feature",
+                            "label": "Config Editor",
+                            "url": "/config-service/ui",
+                            "enabled": True,
+                        },
+                    ]
+                },
+                "opamp": {
+                    "config_catalog": {
+                        "enabled": True,
+                        "menu_label": "Config Catalog",
+                        "route_path": "/catalog",
+                        "help_path": "/catalog/help",
+                        "ui_base_css_path": "/config-service/ui/assets/config_ui.css",
+                        "web_port": 8090,
+                        "sources": [
+                            {
+                                "folder": "catalog",
+                                "extensions": [".yaml"],
+                            }
+                        ],
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    source_dir = tmp_path / "catalog"
+    source_dir.mkdir(parents=True, exist_ok=True)
+    target_path = source_dir / "sample.yaml"
+    target_path.write_text("pipeline:\n  inputs: []\n", encoding="utf-8")
+
+    monkeypatch.setenv("CATALOG_SERVICE_CONFIG_PATH", str(config_path))
+    monkeypatch.delenv("CONFIG_TOOL_CONFIG_PATH", raising=False)
+    monkeypatch.delenv("OPAMP_CONFIG_PATH", raising=False)
+
+    from catalog_service.app import create_app
+
+    app = create_app(mode="standalone", config_path=str(config_path))
+    async with app.test_client() as client:
+        response = await client.post(
+            "/config-service/api/v1/validate/5.0.4?config_type=fluentbit",
+            json={
+                "config": {
+                    "service": {"flush": 1},
+                    "pipeline": {
+                        "inputs": [
+                            {
+                                "name": "forward",
+                                "buffer_chunk_size": 1024,
+                                "buffer_max_size": 2048,
+                                "port": 24224,
+                            }
+                        ],
+                        "outputs": [{"name": "null", "match": "*"}],
+                    },
+                },
+                "annotations": {},
+                "save_on_success": True,
+                "save_source_path": str(target_path),
+                "include_config_header": True,
+            },
+        )
+        assert response.status_code == 200
+        body = await response.get_json()
+
+    assert body["ok"] is True
+    assert body["saved"] is True
+    assert body["save_path"] == str(target_path.resolve())
+    saved_text = target_path.read_text(encoding="utf-8")
+    assert "# config-service: config_type=fluentbit" in saved_text
+    assert "pipeline:" in saved_text
 
 
 @pytest.mark.asyncio

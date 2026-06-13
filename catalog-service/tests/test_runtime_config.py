@@ -29,6 +29,7 @@ from catalog_service.runtime_config import (
     ENV_CATALOG_SERVICE_CONFIG_PATH,
     resolve_component_entries,
     resolve_component_entry_points,
+    resolve_observability_config,
     resolve_web_port,
 )
 
@@ -192,3 +193,36 @@ def test_runtime_config_omits_config_service_entry_when_not_configured(
     assert [entry.entry_point for entry in entries] == [
         "catalog_service.app:register_catalog_component"
     ]
+
+
+def test_runtime_config_loads_observability_from_root_payload(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    config_path = tmp_path / "catalog-service.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "otlp-endpoints": {
+                    "ALL": "http://collector:4317",
+                    "traces": "http://traces:4320",
+                    "export_interval": 90,
+                },
+                "opamp": {
+                    "config_catalog": {
+                        "enabled": True,
+                        "sources": [{"folder": "configs", "extensions": [".yaml"]}],
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv(ENV_CATALOG_SERVICE_CONFIG_PATH, str(config_path))
+
+    config = resolve_observability_config()
+
+    assert config.resolved_logs_endpoint == "http://collector:4317"
+    assert config.resolved_metrics_endpoint == "http://collector:4317"
+    assert config.resolved_traces_endpoint == "http://traces:4320"
+    assert config.export_interval_seconds == 90

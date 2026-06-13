@@ -23,6 +23,7 @@ if str(ROOT_PATH) not in sys.path:
     sys.path.insert(0, str(ROOT_PATH))
 
 from shared.opamp_config import CFG_COMPONENT_ENTRY_POINTS_QUART, ComponentEntryPoint, resolve_component_entry_points_from_payload
+from shared.observability import ObservabilityConfig, load_observability_config_from_payload
 
 from catalog_service.config import (
     catalog_component_entry_from_payload,
@@ -111,3 +112,9 @@ def resolve_web_port(config_path: str | None = None) -> int:
     if config.web_port:
         return _coerce_port(config.web_port, DEFAULT_CATALOG_SERVICE_WEB_PORT)
     return DEFAULT_CATALOG_SERVICE_WEB_PORT
+
+
+def resolve_observability_config(config_path: str | None = None) -> ObservabilityConfig:
+    """Return normalized OTLP endpoint settings for catalog-service."""
+    config = load_catalog_service_config(config_path=get_effective_config_path(config_path))
+    return load_observability_config_from_payload(config.raw_payload)

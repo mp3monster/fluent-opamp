@@ -1,5 +1,7 @@
 // Test-case reference: catalog-service/docs/TEST_CASES.md
 // Detailed browser scenarios: catalog-service/docs/TEST_CASES.md
+import fs from "node:fs/promises";
+import path from "node:path";
 import { expect, test } from "@playwright/test";
 
 const WITH_CONFIG_SERVICE = "with-config-service";
@@ -59,6 +61,106 @@ test("freestanding catalog row click opens config-service editor when configured
   await expect(page.locator("#open-file-display")).toHaveValue("freestanding-fluentbit.yaml");
 });
 
+test("catalog-opened config saves through validate-and-save without browser download", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== WITH_CONFIG_SERVICE);
+
+  const tempSourcePath = path.resolve(
+    "ui-tests",
+    "fixtures",
+    "with-config-service",
+    "catalog",
+    "playwright-catalog-server-save-" + String(process.pid || "pid") + "-" + String(testInfo.retry) + ".yaml"
+  );
+  await fs.writeFile(
+    tempSourcePath,
+    [
+      "# catalog-backed save test",
+      "service:",
+      "  flush: 1",
+      "pipeline:",
+      "  inputs:",
+      "    - name: forward",
+      "      buffer_chunk_size: 1024",
+      "      buffer_max_size: 2048",
+      "      port: 24224",
+      "  outputs:",
+      "    - name: null",
+      "      match: '*'",
+      "",
+    ].join("\n"),
+    "utf-8"
+  );
+
+  await openCatalog(page);
+  await page.locator("#catalogBody tr", { hasText: path.basename(tempSourcePath) }).first().click();
+  await expect(page).toHaveURL(/\/config-service\/ui/);
+  await expect(page.locator("#open-file-display")).toHaveValue(path.basename(tempSourcePath));
+
+  const downloadOccurred = page.waitForEvent("download", { timeout: 1500 })
+    .then(() => true)
+    .catch(() => false);
+  const validateResponsePromise = page.waitForResponse((response) => {
+    return response.url().includes("/config-service/api/v1/validate/") && response.request().method() === "POST";
+  });
+
+  await page.locator("#save-config").click();
+  const validateResponse = await validateResponsePromise;
+  expect(validateResponse.ok()).toBeTruthy();
+  const validatePayload = await validateResponse.json();
+
+  expect(validatePayload.saved).toBeTruthy();
+  expect(String(validatePayload.save_path || "")).toContain(path.basename(tempSourcePath));
+  expect(await downloadOccurred).toBeFalsy();
+  await expect(page.locator("#status-message")).toContainText("Saved validated configuration");
+
+  const saved = await fs.readFile(tempSourcePath, "utf-8");
+  expect(saved).toContain("# config-service: config_type=fluentbit");
+  expect(saved).toContain("pipeline:");
+  await fs.rm(tempSourcePath, { force: true });
+});
+
+test("freestanding catalog row click does not show stale config-service state before source load completes", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== WITH_CONFIG_SERVICE);
+
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      "config_service_last_opened_doc",
+      JSON.stringify({
+        version: "5.0.4",
+        configType: "fluentbit",
+        config: {
+          service: { flush: 99 },
+          pipeline: { inputs: [], filters: [], outputs: [] },
+        },
+        annotations: {},
+      }),
+    );
+    localStorage.setItem("config_service_last_header_comments", "stale header");
+    document.cookie = "config_service_last_opened_name=stale-config.yaml; path=/";
+  });
+
+  let releaseSourceLoad;
+  const sourceLoadGate = new Promise((resolve) => {
+    releaseSourceLoad = resolve;
+  });
+
+  await page.route("**/config-service/api/v1/ui/load-source-file", async (route) => {
+    await sourceLoadGate;
+    await route.continue();
+  });
+
+  await openCatalog(page);
+  await page.locator("#catalogBody tr", { hasText: "freestanding-fluentd.yaml" }).first().click();
+  await expect(page).toHaveURL(/\/config-service\/ui\?source_path=/);
+  await expect(page.getByRole("heading", { name: "Config Service" })).toBeVisible();
+  await expect(page.locator("#open-file-display")).toHaveValue("");
+
+  releaseSourceLoad();
+
+  await expect(page.locator("#open-file-display")).toHaveValue("freestanding-fluentd.yaml");
+  await expect(page.locator("#config-type-select")).toHaveValue("fluentd");
+});
+
 test("freestanding catalog falls back to readonly viewer when config-service is not configured", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== WITHOUT_CONFIG_SERVICE);
   await openCatalog(page);
@@ -92,6 +194,14 @@ test("column filters for config type engine and version are discovered-value dro
   await expect(configTypeFilter.locator("option")).toContainText(["All", "fluentbit", "fluentd"]);
   await expect(engineFilter.locator("option")).toContainText(["All", "fluentbit", "fluentd"]);
   await expect(versionFilter.locator("option")).toContainText(["All", "1.16", "5.0.4"]);
+});
+
+test("catalog table renders config_version metadata when present", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== WITH_CONFIG_SERVICE);
+  await openCatalog(page);
+
+  await expect(page.locator("#catalogHeaderRow th")).toContainText(["config_version"]);
+  await expect(page.locator("#catalogBody")).toContainText("freestanding-demo-42");
 });
 
 test("dropdown column filters reduce rows using discovered values", async ({ page }, testInfo) => {

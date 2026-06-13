@@ -18,6 +18,7 @@ Provider code imports:
 
 - `from shared.opamp_config import ...`
 - `from shared.uuid_utils import ...`
+- `from shared.sbom import ...`
 
 When provider was launched in some MCP/client contexts, `shared` could be
 missing from import resolution, leading to:
@@ -30,10 +31,23 @@ the built provider wheel artifact and in source-based launches that set
 
 ## Sync note
 
-`shared/` remains the source of truth. If you update:
+`shared/` remains the source of truth.
+
+Provider runtime vendoring currently applies to:
 
 - `shared/opamp_config.py`
 - `shared/uuid_utils.py`
 
-mirror the same changes into `provider/src/shared/` to keep provider runtime
-and artifacts aligned.
+Mirror runtime-required changes into:
+
+- `provider/src/shared/`
+
+For standalone MCP package builds, a vendored copy of the shared SBOM helper is
+also kept under:
+
+- `mcp/src/shared/sbom.py`
+
+That vendored copy exists only so the packaged `opamp-mcp-config` wheel remains
+self-contained. The canonical implementation lives in:
+
+- `shared/sbom.py`

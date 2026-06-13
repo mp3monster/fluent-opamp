@@ -10,6 +10,8 @@ It covers unit tests, route-level tests, runtime-config tests, and the freestand
   - Verifies catalog scanning discovers files and extracts header metadata when present.
 - `test_catalog_service_refreshes_metadata_when_file_changes`
   - Verifies cached catalog metadata is rebuilt when a watched file's size or modification time changes.
+- `test_catalog_service_background_refresh_updates_cache_without_ui_scan`
+  - Verifies backend refresh keeps the cached payload up to date even when no UI-triggered scan is running.
 - `test_catalog_service_ignores_non_matching_extensions`
   - Verifies only configured file extensions are included in the catalog.
 - `test_catalog_service_reads_only_allowed_files`
@@ -18,6 +20,8 @@ It covers unit tests, route-level tests, runtime-config tests, and the freestand
 ### `catalog-service/tests/test_catalog_routes.py`
 - `test_catalog_routes_render_ui_help_and_api`
   - Verifies the main UI route, help route, API route, and configured UI refresh interval are served.
+- `test_catalog_app_starts_and_stops_background_refresh_with_lifecycle`
+  - Verifies backend refresh starts with the app lifespan and stops cleanly on shutdown.
 - `test_catalog_routes_require_auth_when_standalone_auth_rejects`
   - Verifies standalone auth rejection blocks access.
 - `test_catalog_routes_skip_embedded_auth_gate`

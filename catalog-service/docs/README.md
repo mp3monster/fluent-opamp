@@ -12,3 +12,4 @@ Current docs:
 Packaging note:
 - standalone `catalog-service` wheel builds warn when the separate `opamp-cli` component is not available
 - the CLI is not bundled into the catalog-service wheel and should be installed/deployed independently when needed
+- repository-wide wheel and SBOM builds are documented in `../../docs/scripts.md`

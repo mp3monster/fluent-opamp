@@ -26,6 +26,7 @@ ROOT_PATH = Path(__file__).resolve().parents[3]
 if str(ROOT_PATH) not in sys.path:
     sys.path.insert(0, str(ROOT_PATH))
 
+from shared.observability import attach_observability
 from shared.opamp_config import ComponentEntryPoint, register_component_entry_points
 
 from catalog_service.auth_integration import evaluate_ui_http_auth
@@ -35,6 +36,7 @@ from catalog_service.runtime_config import (
     ENV_CATALOG_SERVICE_CONFIG_PATH,
     get_effective_config_path,
     resolve_component_entries,
+    resolve_observability_config,
     resolve_web_port,
 )
 from catalog_service.service import CatalogFileIndexService
@@ -43,6 +45,7 @@ APP_CONFIG_KEY_MODE = "CATALOG_SERVICE_MODE"
 APP_EXTENSION_MENU_ITEMS = "catalog_service:ui_menu_items"
 APP_EXTENSION_REGISTERED_ENTRY_POINTS = "catalog_service:registered_entry_points"
 APP_EXTENSION_CONFIG_PATH = "catalog_service:config_path"
+APP_EXTENSION_INDEX_SERVICE = "catalog_service:index_service"
 HEADER_AUTHORIZATION = "Authorization"
 HEADER_WWW_AUTHENTICATE = "WWW-Authenticate"
 MENU_ITEM_KEY_ENTRY_POINT = "entry_point"
@@ -143,6 +146,23 @@ def register_catalog_component(app: Quart) -> None:
         repo_root=repo_root,
         config=config,
     )
+    app.extensions[APP_EXTENSION_INDEX_SERVICE] = service
+
+    @app.before_serving
+    async def start_catalog_background_refresh() -> None:
+        """Start backend catalog refresh independent of UI polling state."""
+        service.start_background_refresh(interval_seconds=float(config.ui_refresh_seconds))
+        app.logger.info(
+            "catalog background refresh enabled route_path=%s interval_seconds=%s",
+            config.route_path,
+            config.ui_refresh_seconds,
+        )
+
+    @app.after_serving
+    async def stop_catalog_background_refresh() -> None:
+        """Stop backend catalog refresh when the app shuts down."""
+        service.stop_background_refresh()
+
     register_catalog_routes(app=app, config=config, service=service)
     app.logger.info(
         "catalog component registered mode=%s config_path=%s route_path=%s help_path=%s repo_root=%s source_count=%s",
@@ -196,6 +216,13 @@ def create_app(*, mode: str = "standalone", config_path: str | None = None) -> Q
     )
     app.extensions[APP_EXTENSION_REGISTERED_ENTRY_POINTS] = registered_entry_points
     app.extensions[APP_EXTENSION_MENU_ITEMS] = _menu_items_from_entries(configured_entries)
+    if mode == "standalone":
+        attach_observability(
+            app,
+            service_name="catalog-service",
+            config=resolve_observability_config(str(effective_config_path)),
+            log_level=logging.INFO,
+        )
 
     @app.get("/api/ui/features")
     async def ui_features() -> Response:

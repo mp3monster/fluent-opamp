@@ -18,17 +18,14 @@ import datetime
 import io
 import logging
 import pathlib
-import re
 import threading
 from dataclasses import dataclass
 
 from catalog_service.config import CatalogServiceConfig, CatalogSource
+from catalog_service.config_metadata import KEY_CONFIG_TYPE, extract_inline_metadata
 from catalog_service.config_classifiers import CompositeConfigClassifier
 
 LOGGER = logging.getLogger(__name__)
-HEADER_LINE_PATTERN = re.compile(r"^\s*(?:#|//|;)\s?(.*)$")
-METADATA_PATTERN = re.compile(r"^config-service:\s*([A-Za-z0-9_.-]+)\s*=\s*(.*?)\s*$")
-KEY_CONFIG_TYPE = "config_type"
 ROW_KEY_FOLDER = "folder"
 ROW_KEY_FILENAME = "filename"
 ROW_KEY_PATH = "path"
@@ -44,7 +41,7 @@ FileSignature = tuple[int, int]
 
 @dataclass(frozen=True)
 class CatalogRow:
-    """One indexed catalog file row with extracted header metadata."""
+    """One indexed catalog file row with extracted catalog metadata."""
 
     folder: str
     filename: str
@@ -54,7 +51,7 @@ class CatalogRow:
 
 
 class CatalogFileIndexService:
-    """Scans configured folders and extracts top-comment config metadata."""
+    """Scans configured folders and extracts catalog metadata."""
 
     def __init__(self, *, repo_root: pathlib.Path, config: CatalogServiceConfig) -> None:
         self.repo_root = pathlib.Path(repo_root).resolve()
@@ -63,7 +60,9 @@ class CatalogFileIndexService:
         self._lock = threading.RLock()
         self._file_signatures: dict[str, FileSignature] = {}
         self._cached_payload: dict[str, object] | None = None
-        
+        self._background_refresh_stop = threading.Event()
+        self._background_refresh_thread: threading.Thread | None = None
+
         LOGGER.debug("CatalogFileIndexService initd")
 
     def scan(self) -> dict[str, object]:
@@ -80,6 +79,52 @@ class CatalogFileIndexService:
             self._cached_payload = payload
             LOGGER.debug("CatalogFileIndexService.scan - change found")                
             return payload
+
+    def cached_payload(self) -> dict[str, object] | None:
+        """Return the currently cached payload without forcing a filesystem rescan."""
+        with self._lock:
+            return self._cached_payload
+
+    def start_background_refresh(self, *, interval_seconds: float) -> None:
+        """Keep the cached payload warm even when no UI request is currently polling."""
+        refresh_interval = float(interval_seconds)
+        if refresh_interval <= 0:
+            raise ValueError("interval_seconds must be greater than zero")
+
+        with self._lock:
+            if self._background_refresh_thread is not None and self._background_refresh_thread.is_alive():
+                return
+            self._background_refresh_stop.clear()
+            self._background_refresh_thread = threading.Thread(
+                target=self._background_refresh_loop,
+                args=(refresh_interval,),
+                name="catalog-file-index-refresh",
+                daemon=True,
+            )
+            self._background_refresh_thread.start()
+        LOGGER.info("catalog background refresh started interval_seconds=%s", refresh_interval)
+
+    def stop_background_refresh(self, *, join_timeout_seconds: float = 2.0) -> None:
+        """Stop the background cache refresh loop when the hosting app shuts down."""
+        with self._lock:
+            thread = self._background_refresh_thread
+            self._background_refresh_stop.set()
+        if thread is not None and thread.is_alive():
+            thread.join(timeout=max(float(join_timeout_seconds), 0.0))
+        with self._lock:
+            if self._background_refresh_thread is thread:
+                self._background_refresh_thread = None
+        LOGGER.info("catalog background refresh stopped")
+
+    def _background_refresh_loop(self, interval_seconds: float) -> None:
+        """Refresh the cached payload on a fixed backend cadence independent of the UI."""
+        while self._background_refresh_stop.is_set() is not True:
+            try:
+                self.scan()
+            except Exception:
+                LOGGER.exception("catalog background refresh scan failed")
+            if self._background_refresh_stop.wait(interval_seconds):
+                break
 
     def _build_payload(self) -> dict[str, object]:
         """Scan configured sources and build the table-ready payload."""
@@ -179,7 +224,7 @@ class CatalogFileIndexService:
         except OSError:
             return metadata
 
-        metadata.update(self._extract_header_metadata(text))
+        metadata.update(extract_inline_metadata(text))
         classification = self.classifier.classify(io.StringIO(text))
         if classification is not None:
             metadata.setdefault(KEY_CONFIG_TYPE, classification.config_type)
@@ -201,24 +246,3 @@ class CatalogFileIndexService:
                 continue
             return True
         return False
-
-    def _extract_header_metadata(self, text: str) -> dict[str, str]:
-        metadata: dict[str, str] = {}
-
-        for raw_line in text.splitlines():
-            if not raw_line.strip():
-                if metadata:
-                    break
-                continue
-            header_match = HEADER_LINE_PATTERN.match(raw_line)
-            if not header_match:
-                break
-            comment_text = str(header_match.group(1) or "").strip()
-            meta_match = METADATA_PATTERN.match(comment_text)
-            if not meta_match:
-                continue
-            key = str(meta_match.group(1) or "").strip()
-            value = str(meta_match.group(2) or "").strip()
-            if key:
-                metadata[key] = value
-        return metadata
