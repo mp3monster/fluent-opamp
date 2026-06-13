@@ -43,6 +43,16 @@ cd config-service
 python3 -m build --wheel
 ```
 
+Repository-wide coordinated packaging alternative:
+
+```bash
+python3 scripts/build_and_publish_wheels.py --components provider,consumer,catalog,cli,consumer-sim
+```
+
+Use the standalone command above when you only want the `config-service` wheel.
+Use the repository-wide builder when you want the coordinated deployable artefacts
+and SBOMs for the main independently deployed components.
+
 During wheel creation, the packaging flow checks whether the OpAMP CLI is available.
 If the CLI cannot be detected in the workspace or as an installed distribution, the build prints
 a warning because the CLI is packaged separately as `opamp-cli` and may need to be installed or
@@ -95,6 +105,10 @@ From repository root:
 python3 config-service/dev-tools/generate_sbom.py
 ```
 The script ensures `cyclonedx-bom` is available and uses `cyclonedx-py` for SBOM generation.
+
+This SBOM flow is specific to `config-service`. The repository-wide wheel publisher
+uses the developer-tool helper under `dev_tools/sbom.py` for the main deployable
+component SBOM generation.
 
 Output:
 1. `config-service/sbom/config-service-sbom.cdx.json`

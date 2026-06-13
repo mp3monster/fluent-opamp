@@ -10,6 +10,39 @@ async function expandIfHidden(page, inputSelector, toggleSelector) {
   await expect(page.locator(inputSelector)).toBeVisible();
 }
 
+async function booleanFieldRowLayout(page, rowLocator) {
+  return rowLocator.evaluate((row) => {
+    const label = row.querySelector("label");
+    const checkbox = row.querySelector('input[type="checkbox"]');
+    const actions = row.querySelector(".field-row-actions");
+    const buttons = Array.from(actions ? actions.querySelectorAll("button") : []).map((button) => {
+      const rect = button.getBoundingClientRect();
+      return {
+        width: rect.width,
+        left: rect.left,
+        right: rect.right,
+      };
+    });
+    const rowRect = row.getBoundingClientRect();
+    const labelRect = label ? label.getBoundingClientRect() : null;
+    const checkboxRect = checkbox ? checkbox.getBoundingClientRect() : null;
+    const actionsRect = actions ? actions.getBoundingClientRect() : null;
+    return {
+      rowWidth: rowRect.width,
+      hasLabel: Boolean(labelRect),
+      hasCheckbox: Boolean(checkboxRect),
+      hasActions: Boolean(actionsRect),
+      labelRight: labelRect ? labelRect.right : 0,
+      checkboxLeft: checkboxRect ? checkboxRect.left : 0,
+      checkboxWidth: checkboxRect ? checkboxRect.width : 0,
+      actionsLeft: actionsRect ? actionsRect.left : 0,
+      actionsWidth: actionsRect ? actionsRect.width : 0,
+      buttonWidths: buttons.map((button) => button.width),
+      buttonLefts: buttons.map((button) => button.left),
+    };
+  });
+}
+
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     Object.defineProperty(window, "showSaveFilePicker", {
@@ -69,6 +102,72 @@ test("console errors are posted to the server client-errors endpoint", async ({ 
   expect(request).toBeTruthy();
 });
 
+test("browser download save fallback is posted to the server client-errors endpoint", async ({ page }) => {
+  await page.getByRole("button", { name: "New Configuration" }).click();
+
+  const clientErrorRequestPromise = page.waitForRequest((request) => {
+    if (!request.url().includes("/config-service/api/v1/client-errors")) {
+      return false;
+    }
+    if (request.method() !== "POST") {
+      return false;
+    }
+    const body = request.postData() || "";
+    return body.includes("browser_save_mechanism_used") && body.includes("anchor-download");
+  });
+
+  const [request, download] = await Promise.all([
+    clientErrorRequestPromise,
+    page.waitForEvent("download"),
+    page.locator("#save-config").click(),
+  ]);
+
+  expect(request).toBeTruthy();
+  expect(download.suggestedFilename()).toContain("config-service-fluentbit-");
+});
+
+test("save prompts for a browser save location when no backend source path exists", async ({ page }) => {
+  await page.evaluate(() => {
+    window.__playwrightShowSaveFilePickerCalls = 0;
+    window.showSaveFilePicker = async () => {
+      window.__playwrightShowSaveFilePickerCalls += 1;
+      return {
+        name: "chosen-by-picker.yaml",
+        async createWritable() {
+          return {
+            async write() {},
+            async close() {},
+          };
+        },
+      };
+    };
+  });
+
+  await page.getByRole("button", { name: "New Configuration" }).click();
+
+  const downloadOccurred = page.waitForEvent("download", { timeout: 1500 })
+    .then(() => true)
+    .catch(() => false);
+  const clientErrorRequestPromise = page.waitForRequest((request) => {
+    if (!request.url().includes("/config-service/api/v1/client-errors")) {
+      return false;
+    }
+    if (request.method() !== "POST") {
+      return false;
+    }
+    const body = request.postData() || "";
+    return body.includes("browser_save_mechanism_used") && body.includes("showSaveFilePicker");
+  });
+
+  await page.locator("#save-config").click();
+
+  const request = await clientErrorRequestPromise;
+  expect(request).toBeTruthy();
+  expect(await downloadOccurred).toBeFalsy();
+  await expect(page.locator("#status-message")).toContainText("Saved configuration as chosen-by-picker.yaml");
+  expect(await page.evaluate(() => window.__playwrightShowSaveFilePickerCalls)).toBe(1);
+});
+
 test("plugin panel visibility stays mode-consistent when switching config type", async ({ page }) => {
   await expect(page.locator("#add-plugin-panel")).toBeVisible();
   await expect(page.locator("#labels-panel")).toBeHidden();
@@ -96,6 +195,48 @@ test("plugin field help tooltip does not include raw URLs", async ({ page }) => 
   expect(title).toBeTruthy();
   expect(title).not.toContain("http://");
   expect(title).not.toContain("https://");
+});
+
+test("boolean plugin field keeps checkbox left and row actions right aligned", async ({ page }) => {
+  await page.locator("#plugin-section").selectOption("inputs");
+  await page.locator("#plugin-name").selectOption("prometheus_remote_write");
+  await page.getByRole("button", { name: "Add Plugin" }).click();
+
+  const pluginCard = page.locator(".plugin-card").filter({ hasText: "prometheus_remote_write" }).first();
+  await expect(pluginCard).toBeVisible();
+
+  const boolRow = pluginCard.locator(".field-row").filter({ has: page.locator('label:text-is("tag_from_uri")') }).first();
+  await expect(boolRow).toBeVisible();
+
+  const layout = await booleanFieldRowLayout(page, boolRow);
+  expect(layout.hasLabel).toBe(true);
+  expect(layout.hasCheckbox).toBe(true);
+  expect(layout.hasActions).toBe(true);
+  expect(layout.checkboxLeft).toBeGreaterThan(layout.labelRight);
+  expect(layout.actionsLeft).toBeGreaterThan(layout.checkboxLeft + layout.checkboxWidth);
+  expect(layout.actionsWidth).toBeLessThan(layout.rowWidth * 0.5);
+  expect(layout.buttonWidths.length).toBeGreaterThan(0);
+  expect(layout.buttonWidths.every((width) => width <= 40)).toBe(true);
+});
+
+test("boolean plugin field action buttons stay compact after toggling the checkbox", async ({ page }) => {
+  await page.locator("#plugin-section").selectOption("inputs");
+  await page.locator("#plugin-name").selectOption("prometheus_remote_write");
+  await page.getByRole("button", { name: "Add Plugin" }).click();
+
+  const pluginCard = page.locator(".plugin-card").filter({ hasText: "prometheus_remote_write" }).first();
+  const boolRow = pluginCard.locator(".field-row").filter({ has: page.locator('label:text-is("tag_from_uri")') }).first();
+  const checkbox = boolRow.locator('input[type="checkbox"]').first();
+
+  await checkbox.check();
+  const checkedLayout = await booleanFieldRowLayout(page, boolRow);
+  expect(checkedLayout.buttonWidths.every((width) => width <= 40)).toBe(true);
+  expect(checkedLayout.actionsLeft).toBeGreaterThan(checkedLayout.checkboxLeft + checkedLayout.checkboxWidth);
+
+  await checkbox.uncheck();
+  const uncheckedLayout = await booleanFieldRowLayout(page, boolRow);
+  expect(uncheckedLayout.buttonWidths.every((width) => width <= 40)).toBe(true);
+  expect(uncheckedLayout.actionsLeft).toBeGreaterThan(uncheckedLayout.checkboxLeft + uncheckedLayout.checkboxWidth);
 });
 
 test("loading partial Fluent Bit YAML shows loaded sections, status warning, and validation issue lines", async ({
@@ -138,10 +279,18 @@ test("metadata keys are separated from normal environment variables when loading
   const fixturePath = path.resolve("ui-tests/fixtures/fluentbit-metadata-env.yaml");
   await page.locator("#open-file").setInputFiles(fixturePath);
 
-  await expect(page.locator("#env-list")).toContainText("LOG_LEVEL");
-  await expect(page.locator("#env-list")).not.toContainText("_metadata.config_version");
-  await expect(page.locator("#metadata-env-list")).toContainText("config_version");
-  await expect(page.locator("#metadata-env-list")).toContainText("configuration_date");
+  await expect.poll(async () => page.locator("#env-list input").evaluateAll((nodes) => nodes.map((node) => node.value))).toContain("LOG_LEVEL");
+  const envInputValues = await page.locator("#env-list input").evaluateAll((nodes) => nodes.map((node) => node.value));
+  const metadataInputValues = await page
+    .locator("#metadata-env-list input")
+    .evaluateAll((nodes) => nodes.map((node) => node.value));
+
+  expect(envInputValues).not.toContain("_metadata.config_version");
+  expect(metadataInputValues).toContain("config_version");
+  expect(metadataInputValues).toContain("SCM_config_version");
+  expect(metadataInputValues).toContain("configuration_date");
+  expect(metadataInputValues).toContain("config_type");
+  expect(metadataInputValues).toContain("SCM_source_name");
 });
 
 test("metadata keys can be added and are saved with the _metadata prefix", async ({ page }) => {
@@ -151,7 +300,7 @@ test("metadata keys can be added and are saved with the _metadata prefix", async
   await page.locator("#metadata-env-value-input").fill("platform-observability");
   await page.getByRole("button", { name: "Add Metadata Variable" }).click();
 
-  await page.locator("#metadata-env-key-input").fill("config_version");
+  await page.locator("#metadata-env-key-input").fill("SCM_config_version");
   await page.locator("#metadata-env-value-input").fill("v-next");
   await page.getByRole("button", { name: "Add Metadata Variable" }).click();
 
@@ -162,30 +311,8 @@ test("metadata keys can be added and are saved with the _metadata prefix", async
   const saved = await fs.readFile((await download.path()) || "", "utf-8");
 
   expect(saved).toContain('"_metadata.team_owner": "platform-observability"');
-  expect(saved).toContain('"_metadata.config_version": "v-next"');
+  expect(saved).toContain('"_metadata.SCM_config_version": "v-next"');
   expect(saved).not.toContain('"_.metadata.');
-});
-
-test("header comments are written first when saving with environment variables", async ({ page }) => {
-  await page.getByRole("button", { name: "New Configuration" }).click();
-  await expandIfHidden(page, "#header-comments-input", "#header-comments-toggle");
-  await page.locator("#header-comments-input").fill("Owned by Team A\\nValidated before deploy");
-  await expandIfHidden(page, "#env-key-input", "#env-toggle");
-
-  await page.locator("#env-key-input").fill("ENV_NAME");
-  await page.locator("#env-value-input").fill("prod");
-  await page.getByRole("button", { name: "Add Environment Variable" }).click();
-
-  const [download] = await Promise.all([
-    page.waitForEvent("download"),
-    page.locator("#save-config").click(),
-  ]);
-  const saved = await fs.readFile((await download.path()) || "", "utf-8");
-
-  expect(saved).toContain("// Owned by Team A");
-  expect(saved).toContain("// Validated before deploy");
-  expect(saved).toContain('"ENV_NAME": "prod"');
-  expect(saved.indexOf("// Owned by Team A")).toBeLessThan(saved.indexOf('"ENV_NAME": "prod"'));
 });
 
 test("view raw opens a read-only resizable text dialog", async ({ page }) => {
@@ -259,17 +386,56 @@ test("save uses server-side validate-and-save for server-backed files", async ({
   await fs.rm(tempSourcePath, { force: true });
 });
 
-test("header comments are prepended to rendered configuration output", async ({ page }) => {
-  await page.getByRole("button", { name: "New Configuration" }).click();
-  await page.locator("#header-comments-toggle").click();
-  await page.locator("#header-comments-input").fill("Owned by Team A\\nValidated before deploy");
+test("server-backed save still uses backend validation after page reload", async ({ page }, testInfo) => {
+  const tempSourcePath = path.resolve(
+    "test-configs",
+    "playwright-server-backed-reload-save-" + String(process.pid || "pid") + "-" + String(testInfo.retry) + ".yaml"
+  );
+  await fs.writeFile(
+    tempSourcePath,
+    [
+      "# server-backed reload save test",
+      "service:",
+      "  flush: 1",
+      "pipeline:",
+      "  inputs:",
+      "    - name: forward",
+      "      buffer_chunk_size: 1024",
+      "      buffer_max_size: 2048",
+      "      port: 24224",
+      "  outputs:",
+      "    - name: null",
+      "      match: '*'",
+      "",
+    ].join("\n"),
+    "utf-8"
+  );
 
-  await page.locator("#env-key-input").fill("ENV_NAME");
-  await page.locator("#env-value-input").fill("prod");
-  await page.getByRole("button", { name: "Add Environment Variable" }).click();
+  await page.goto("/config-service/ui?source_path=" + encodeURIComponent(tempSourcePath));
+  await expect(page.locator("#status-message")).toContainText("Loaded configuration file");
+  await page.reload();
+  await expect(page.locator("#open-file-display")).toHaveValue(path.basename(tempSourcePath));
+  await expect(page.locator("#status-message")).toContainText("Loaded configuration file");
 
-  await page.getByRole("button", { name: "Render" }).click();
+  const downloadOccurred = page.waitForEvent("download", { timeout: 1500 })
+    .then(() => true)
+    .catch(() => false);
+  const validateRequestPromise = page.waitForRequest((request) => {
+    return request.url().includes("/config-service/api/v1/validate/") && request.method() === "POST";
+  });
+  const validateResponsePromise = page.waitForResponse((response) => {
+    return response.url().includes("/config-service/api/v1/validate/") && response.request().method() === "POST";
+  });
 
-  await expect(page.locator("#yaml-output")).toContainText("# Owned by Team A");
-  await expect(page.locator("#yaml-output")).toContainText("# Validated before deploy");
+  await page.locator("#save-config").click();
+  const validateRequest = await validateRequestPromise;
+  const validateResponse = await validateResponsePromise;
+  const validatePayload = await validateResponse.json();
+  const validateBody = validateRequest.postDataJSON();
+
+  expect(validateBody.save_on_success).toBeTruthy();
+  expect(String(validateBody.save_source_path || "")).toContain("playwright-server-backed-reload-save-");
+  expect(await downloadOccurred).toBeFalsy();
+  expect(Boolean(validatePayload.saved) || Boolean(validatePayload.save_declined)).toBeTruthy();
+  await fs.rm(tempSourcePath, { force: true });
 });

@@ -1,8 +1,11 @@
 # imported from integration test
 env:
   LOG_LEVEL: info
-  _metadata.config_version: cfg-001
+  _metadata.config_version: 5.0.4
+  _metadata.SCM_config_version: cfg-001
   _metadata.configuration_date: 2026-05-01
+  _metadata.config_type: Fluentbit
+  _metadata.SCM_source_name: ui-test-fixture
 service:
   flush: 1
 pipeline:

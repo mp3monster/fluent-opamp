@@ -131,6 +131,50 @@ async def test_ui_collapsed_sections_injected_from_config(monkeypatch: pytest.Mo
     assert '"rendered_configuration"' in html
 
 @pytest.mark.asyncio
+async def test_ui_save_as_toggle_injected_from_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    config_path = tmp_path / "config-service.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "config-tool": {
+                    "ui_show_save_as": True,
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv(ENV_CONFIG_TOOL_CONFIG_PATH, str(config_path))
+    monkeypatch.delenv("CONFIG_SERVICE_UI_SHOW_SAVE_AS", raising=False)
+    app = create_app(mode="standalone")
+    client = app.test_client()
+    ui = await client.get("/config-service/ui")
+    assert ui.status_code == 200
+    html = (await ui.get_data()).decode("utf-8")
+    assert "window.__CONFIG_SERVICE_UI_SHOW_SAVE_AS__ = true;" in html
+
+@pytest.mark.asyncio
+async def test_ui_save_as_toggle_defaults_to_hidden(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    config_path = tmp_path / "config-service.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "config-tool": {
+                    "read_only": False,
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv(ENV_CONFIG_TOOL_CONFIG_PATH, str(config_path))
+    monkeypatch.delenv("CONFIG_SERVICE_UI_SHOW_SAVE_AS", raising=False)
+    app = create_app(mode="standalone")
+    client = app.test_client()
+    ui = await client.get("/config-service/ui")
+    assert ui.status_code == 200
+    html = (await ui.get_data()).decode("utf-8")
+    assert "window.__CONFIG_SERVICE_UI_SHOW_SAVE_AS__ = false;" in html
+
+@pytest.mark.asyncio
 async def test_upstream_servers_section_is_present_in_ui() -> None:
     app = create_app(mode="standalone")
     client = app.test_client()
@@ -158,6 +202,18 @@ async def test_raw_config_view_dialog_is_present_in_ui() -> None:
     assert ">Close</button>" in html
 
 @pytest.mark.asyncio
+async def test_ui_save_script_defaults_fluentbit_saves_to_yaml() -> None:
+    app = create_app(mode="standalone")
+    client = app.test_client()
+    response = await client.get("/config-service/ui/assets/config_ui.js")
+    assert response.status_code == 200
+    script = (await response.get_data()).decode("utf-8")
+    assert '.yaml' in script
+    assert 'description: "Fluent Bit configuration"' in script
+    assert '"text/yaml": [".yaml", ".yml"]' in script
+    assert 'fetchJson(API_BASE + "/render/yaml/" + encodeURIComponent(state.doc.version) + currentApiQuery()' in script
+
+@pytest.mark.asyncio
 async def test_validate_save_toggle_is_present_in_ui() -> None:
     app = create_app(mode="standalone")
     client = app.test_client()
@@ -179,6 +235,7 @@ async def test_config_service_help_page_served() -> None:
     assert "Color Use" in html
     assert "Route" in html
     assert "Processors" in html
+    assert "writes rendered YAML output" in html
 
 @pytest.mark.asyncio
 async def test_metadata_env_help_page_served() -> None:
@@ -189,7 +246,7 @@ async def test_metadata_env_help_page_served() -> None:
     html = (await response.get_data()).decode("utf-8")
     assert "Additional Metadata" in html
     assert "Preset Metadata Options" in html
-    assert 'id="header-comments"' in html
+    assert "Header Comments" not in html
 
 @pytest.mark.asyncio
 async def test_top_level_help_link_is_rendered() -> None:
@@ -268,7 +325,7 @@ async def test_ui_prepare_file_extracts_header_metadata_and_line_map() -> None:
     assert body["ok"] is True
     assert body["config_type"] == "fluentbit"
     assert body["version"] == "5.0.4"
-    assert body["header_comments"] == "Owned by Team A"
+    assert body["header_comments"] == ""
     assert body["body"].startswith("pipeline:")
     assert body["source_line_map"]["$.pipeline"] >= 1
 

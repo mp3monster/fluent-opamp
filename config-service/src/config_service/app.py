@@ -30,13 +30,17 @@ from config_service.agent_validation.service import ExternalAgentValidationServi
 from config_service.auth_integration import evaluate_ui_http_auth
 from config_service.routes.api import create_api_blueprint
 from config_service.runtime_config import (
+    APP_EXTENSION_CONFIG_PATH,
     ENV_CONFIG_TOOL_CONFIG_PATH,
+    get_effective_config_path,
     resolve_component_entry_points,
     resolve_log_level_name,
+    resolve_observability_config,
     resolve_read_only,
     resolve_ui_base_css_path,
     resolve_ui_collapsed_sections,
     resolve_ui_css_overrides,
+    resolve_ui_show_save_as,
     resolve_web_port,
 )
 from config_service.services.catalog_service import CatalogService
@@ -56,6 +60,7 @@ from shared.opamp_config import (
     ComponentEntryPoint,
     register_component_entry_points as shared_register_component_entry_points,
 )
+from shared.observability import attach_observability
 
 APP_CONFIG_KEY_MODE = "CONFIG_SERVICE_MODE"
 APP_CONFIG_KEY_READ_ONLY = "CONFIG_SERVICE_READ_ONLY"
@@ -202,6 +207,10 @@ def register_ui_component(app: Quart) -> None:
             json.dumps(resolve_ui_collapsed_sections()),
         )
         rendered = rendered.replace(
+            "__CONFIG_SERVICE_UI_SHOW_SAVE_AS_VALUE__",
+            "true" if resolve_ui_show_save_as() else "false",
+        )
+        rendered = rendered.replace(
             "__CONFIG_SERVICE_UI_BASE_CSS_PATH__",
             _append_suffix(base_css_path, asset_suffix),
         )
@@ -265,9 +274,11 @@ def register_ui_component(app: Quart) -> None:
 def create_app(*, mode: str = "standalone") -> Quart:
     _configure_logging()
     app = Quart(__name__)
+    effective_config_path = get_effective_config_path().resolve()
     app.config[APP_CONFIG_KEY_MODE] = mode
-    app.config[APP_CONFIG_KEY_READ_ONLY] = resolve_read_only()
-    app.logger.setLevel(getattr(logging, resolve_log_level_name(), logging.INFO))
+    app.config[APP_CONFIG_KEY_READ_ONLY] = resolve_read_only(str(effective_config_path))
+    app.extensions[APP_EXTENSION_CONFIG_PATH] = str(effective_config_path)
+    app.logger.setLevel(getattr(logging, resolve_log_level_name(str(effective_config_path)), logging.INFO))
 
     repo_root = _config_service_root()
     provider_src = repo_root.parent / "provider" / "src"
@@ -299,7 +310,9 @@ def create_app(*, mode: str = "standalone") -> Quart:
         fluentbit_yaml_config_service=fluentbit_yaml_config_service,
         fluentd_config_service=fluentd_config_service,
     )
-    external_agent_validation_service = ExternalAgentValidationService.from_runtime_config()
+    external_agent_validation_service = ExternalAgentValidationService.from_runtime_config(
+        str(effective_config_path)
+    )
 
     app.extensions[EXT_CATALOG_SERVICE] = catalog_service
     app.extensions[EXT_RULES_REGISTRY_SERVICE] = rules_registry_service
@@ -315,6 +328,18 @@ def create_app(*, mode: str = "standalone") -> Quart:
     app.extensions[EXT_FLUENTD_CONFIG_SERVICE] = fluentd_config_service
     app.extensions[EXT_INCLUDE_DOCUMENT_SERVICE] = include_document_service
     app.extensions[EXT_EXTERNAL_AGENT_VALIDATION_SERVICE] = external_agent_validation_service
+
+    if mode == "standalone":
+        attach_observability(
+            app,
+            service_name="config-service",
+            config=resolve_observability_config(str(effective_config_path)),
+            log_level=getattr(
+                logging,
+                resolve_log_level_name(str(effective_config_path)),
+                logging.INFO,
+            ),
+        )
 
     if mode == "standalone":
         @app.before_request

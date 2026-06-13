@@ -30,14 +30,25 @@ When the editor runs standalone, those provider-navigation buttons are hidden.
 
 ## Save behavior
 1. `New Configuration` clears the current open-file display.
-2. `Save` reuses the current file handle when the browser provides one.
-3. `Save As` always prompts for a new file target.
-4. Saved files include top-of-file header comments for:
+2. `Save` writes back through the backend only when the editor already has a trusted server-side source path for the current document.
+3. If no trusted backend source path exists, `Save` forces the browser save-location picker instead of trying to invent or reuse a filesystem path for the backend.
+4. `Save As` always prompts for a new browser-managed file target.
+5. Fluent Bit saves write rendered YAML (`.yaml` by default), not the internal JSON editor model.
+6. Fluentd saves write rendered `.conf` text.
+7. Saved files include top-of-file config-service metadata comments for:
    1. configuration type
    2. configuration version
-5. When a saved file is reopened, the UI reads those header comments first and updates type/version selection before loading the rest of the document.
-6. If the saved version is no longer available, the UI selects the next supported mapped version after that value. If there is no later mapped version, it uses the highest available version.
-7. `View Raw` opens the same text representation the editor would save in a read-only, resizable dialog with scroll bars for large files.
+8. Free-form header comments are currently disabled and are not loaded or written by the editor.
+9. If the saved version is no longer available, the UI selects the next supported mapped version after that value. If there is no later mapped version, it uses the highest available version.
+10. `View Raw` opens the same text representation the editor would save in a read-only, resizable dialog with scroll bars for large files.
+
+## Browser picker path limitations
+1. A normal browser file picker does not give the application a trustworthy full local filesystem path for later backend writes.
+2. Browsers intentionally hide or sanitize that information, so path-like values from file inputs must not be treated as safe save targets.
+3. Relying on browser-supplied path fragments for backend save operations would create a trust boundary problem and could open the door to path injection or unintended file writes.
+4. To mitigate that risk, the editor only uses backend validate-and-save when the source path came from a trusted server-side load flow.
+5. When a file was loaded through the browser picker or created from scratch, the editor does not populate `currentSourcePath` from browser input alone.
+6. In that case, `Save` now opens the browser save-location picker so the user still chooses where the file goes, but the backend is not asked to trust or reuse a fake local path.
 
 ## File loading behavior
 1. Fluent Bit files are loaded from YAML (`.yaml` / `.yml`).

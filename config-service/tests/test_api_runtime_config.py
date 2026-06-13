@@ -32,9 +32,12 @@ from config_service.runtime_config import (
     ENV_CONFIG_TOOL_CONFIG_PATH,
     resolve_component_entry_points,
     resolve_log_level_name,
+    resolve_observability_config,
     resolve_read_only,
+    resolve_save_ignore_validation,
     resolve_ui_base_css_path,
     resolve_ui_collapsed_sections,
+    resolve_ui_show_save_as,
     resolve_validation_agent_entries,
     resolve_web_port,
 )
@@ -168,6 +171,63 @@ def test_resolve_ui_collapsed_sections_defaults_to_empty_when_missing(tmp_path: 
     monkeypatch.setenv(ENV_CONFIG_TOOL_CONFIG_PATH, str(config_path))
     assert resolve_ui_collapsed_sections() == []
 
+def test_resolve_ui_show_save_as_from_config_tool(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    config_path = tmp_path / "config-service.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "config-tool": {"ui_show_save_as": True},
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv(ENV_CONFIG_TOOL_CONFIG_PATH, str(config_path))
+    monkeypatch.delenv("CONFIG_SERVICE_UI_SHOW_SAVE_AS", raising=False)
+    assert resolve_ui_show_save_as() is True
+
+def test_resolve_ui_show_save_as_env_overrides_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    config_path = tmp_path / "config-service.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "config-tool": {"ui_show_save_as": False},
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv(ENV_CONFIG_TOOL_CONFIG_PATH, str(config_path))
+    monkeypatch.setenv("CONFIG_SERVICE_UI_SHOW_SAVE_AS", "true")
+    assert resolve_ui_show_save_as() is True
+
+def test_resolve_save_ignore_validation_supports_requested_key(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    config_path = tmp_path / "config-service.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "config-tool": {"save-ingore-validation": True},
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv(ENV_CONFIG_TOOL_CONFIG_PATH, str(config_path))
+    monkeypatch.delenv("CONFIG_SERVICE_SAVE_IGNORE_VALIDATION", raising=False)
+    monkeypatch.delenv("CONFIG_SERVICE_SAVE_INGORE_VALIDATION", raising=False)
+    assert resolve_save_ignore_validation() is True
+
+def test_resolve_save_ignore_validation_env_overrides_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    config_path = tmp_path / "config-service.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "config-tool": {"save-ingore-validation": False},
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv(ENV_CONFIG_TOOL_CONFIG_PATH, str(config_path))
+    monkeypatch.setenv("CONFIG_SERVICE_SAVE_IGNORE_VALIDATION", "true")
+    assert resolve_save_ignore_validation() is True
+
 def test_resolve_validation_agent_entries_from_config_tool(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     config_path = tmp_path / "config-service.json"
     config_path.write_text(
@@ -225,3 +285,30 @@ def test_create_app_applies_resolved_log_level(tmp_path: Path, monkeypatch: pyte
     app = create_app(mode="standalone")
 
     assert app.logger.level == logging.DEBUG
+
+
+def test_resolve_observability_config_from_root_payload(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_path = tmp_path / "config-service.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "otlp-endpoints": {
+                    "ALL": "http://collector:4317",
+                    "logs": "http://logs:4319",
+                    "export_interval": 75,
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv(ENV_CONFIG_TOOL_CONFIG_PATH, str(config_path))
+
+    config = resolve_observability_config()
+
+    assert config.resolved_logs_endpoint == "http://logs:4319"
+    assert config.resolved_metrics_endpoint == "http://collector:4317"
+    assert config.resolved_traces_endpoint == "http://collector:4317"
+    assert config.export_interval_seconds == 75

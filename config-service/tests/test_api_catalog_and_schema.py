@@ -107,7 +107,7 @@ async def test_health_and_versions() -> None:
     assert 'id="metadata-env-panel"' in ui_html
     assert "Additional Metadata" in ui_html
     assert ui_html.index('id="metadata-env-panel"') < ui_html.index('id="service-panel"')
-    assert 'id="header-comments-input"' in ui_html
+    assert 'id="header-comments-input"' not in ui_html
 
     logo = await client.get("/config-service/ui/assets/opamp_logo.png")
     assert logo.status_code == 200

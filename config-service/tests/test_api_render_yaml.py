@@ -355,7 +355,6 @@ async def test_render_yaml_returns_backend_composed_rendered_output() -> None:
                     "outputs": [{"name": "stdout"}],
                 },
             },
-            "header_comments": "Owned by Team A\nValidated before deploy",
             "render_included_files": True,
             "included_documents": [
                 {
@@ -376,7 +375,7 @@ async def test_render_yaml_returns_backend_composed_rendered_output() -> None:
     assert response.status_code == 200
     body = await response.get_json()
     assert body["ok"] is True
-    assert body["rendered_output"].startswith("# Owned by Team A\n# Validated before deploy\n")
+    assert not body["rendered_output"].startswith("# Owned by Team A")
     assert "# Included file: child.yaml" in body["rendered_output"]
 
 @pytest.mark.asyncio
@@ -394,7 +393,6 @@ async def test_render_yaml_can_include_config_service_header_in_rendered_output(
                     "outputs": [{"name": "stdout"}],
                 },
             },
-            "header_comments": "Owned by Team A",
             "include_config_header": True,
         },
     )
@@ -402,5 +400,5 @@ async def test_render_yaml_can_include_config_service_header_in_rendered_output(
     body = await response.get_json()
     assert body["ok"] is True
     assert body["rendered_output"].startswith(
-        "# Owned by Team A\n# config-service: config_type=fluentbit\n# config-service: version=5.0.4\n"
+        "# config-service: config_type=fluentbit\n# config-service: version=5.0.4\n"
     )

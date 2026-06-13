@@ -88,12 +88,8 @@ Current test catalog (`config-service/ui-tests/config-ui.spec.js`):
     - Verifies `_metadata.*` keys are shown in metadata panel, not normal env panel.
 11. `metadata keys can be added and are saved with the _metadata prefix`
     - Verifies metadata add/edit/save path and key normalization.
-12. `header comments are written first when saving with environment variables`
-    - Verifies save output includes header comments before config body.
-13. `view raw opens a read-only resizable text dialog`
+12. `view raw opens a read-only resizable text dialog`
     - Verifies raw save text opens in a read-only dialog with a single close action and resizable, scrollable layout.
-14. `header comments are prepended to rendered configuration output`
-    - Verifies rendered output in UI includes header comments at top.
 
 Quick listing command:
 
@@ -160,10 +156,10 @@ From repository root:
 config-service/dev-tools/run_ui_quality_checks_in_container.sh
 ```
 
-To run only the metadata/header-comments scenarios:
+To run only the metadata scenarios:
 
 ```bash
-config-service/dev-tools/run_ui_quality_checks_in_container.sh -g "metadata|header comments"
+config-service/dev-tools/run_ui_quality_checks_in_container.sh -g "metadata"
 ```
 
 This runner:

@@ -15,6 +15,15 @@
 (function (global) {
   "use strict";
 
+  var metadataOptionsConfig = global.ConfigServiceMetadataOptions || {};
+  var fallbackMetadataOptions = [
+    { key: "config_version", label: "Configuration Version", preset: "selectedVersion" },
+    { key: "configuration_date", label: "Configuration Date", preset: "currentDate" },
+    { key: "SCM_config_version", label: "SCM Configuration Version", preset: "none" },
+    { key: "config_type", label: "Configuration Type", preset: "configType", valueOptions: ["Fluentbit", "fluentd"] },
+    { key: "SCM_source_name", label: "SCM Source Name", preset: "none" },
+  ];
+
   function create(deps) {
     // Dedicated environment-variable renderer/editor.
     // Metadata variables are treated as a separate view but share storage.
@@ -25,10 +34,37 @@
     var isReadOnlyMode = deps.isReadOnlyMode;
     var parseServiceValue = deps.parseServiceValue;
 
-    var METADATA_PREFIX = "_metadata.";
-    var DEFAULT_METADATA_OPTION_FLUENT_BIT_VERSION = "fluent_bit_version";
-    var DEFAULT_METADATA_OPTION_CONFIGURATION_DATE = "configuration_date";
-    var DEFAULT_METADATA_OPTION_CONFIGURATION_VERSION = "config_version";
+    var METADATA_PREFIX = String(metadataOptionsConfig.METADATA_PREFIX || "_metadata.");
+    var metadataOptions = Array.isArray(metadataOptionsConfig.OPTIONS) && metadataOptionsConfig.OPTIONS.length
+      ? metadataOptionsConfig.OPTIONS
+      : fallbackMetadataOptions;
+
+    function metadataOptionForKey(rawKey) {
+      var key = normalizeMetadataKeyInput(rawKey);
+      if (typeof metadataOptionsConfig.getOption === "function") {
+        return metadataOptionsConfig.getOption(key);
+      }
+      return metadataOptions.find(function (option) {
+        return String(option && option.key) === key;
+      }) || null;
+    }
+
+    function renderMetadataKeyOptions() {
+      if (!el.metadataEnvKeyOptions) {
+        return;
+      }
+      el.metadataEnvKeyOptions.innerHTML = "";
+      metadataOptions.forEach(function (metadataOption) {
+        if (!metadataOption || !metadataOption.key) {
+          return;
+        }
+        var option = document.createElement("option");
+        option.value = String(metadataOption.key);
+        option.label = String(metadataOption.label || metadataOption.key);
+        option.textContent = String(metadataOption.label || metadataOption.key);
+        el.metadataEnvKeyOptions.appendChild(option);
+      });
+    }
 
     function envEntries() {
       return Object.entries((state.doc && state.doc.config && state.doc.config.env) || {});
@@ -138,27 +174,39 @@
 
     function metadataPresetForKey(rawKey) {
       var key = normalizeMetadataKeyInput(rawKey);
+      var metadataOption = metadataOptionForKey(key);
       var selectedVersion = String((state.doc && state.doc.version) || state.selectedVersion || "").trim();
+      var selectedConfigType = String(state.configType || "").trim();
       var today = new Date().toISOString().slice(0, 10);
-      if (key === DEFAULT_METADATA_OPTION_FLUENT_BIT_VERSION) {
+      if (!metadataOption) {
+        return null;
+      }
+      if (metadataOption.preset === "selectedVersion") {
         return {
           key: key,
           defaultValue: selectedVersion,
           valueOptions: Array.isArray(state.versions) ? state.versions.map(String) : [],
         };
       }
-      if (key === DEFAULT_METADATA_OPTION_CONFIGURATION_DATE) {
+      if (metadataOption.preset === "currentDate") {
         return {
           key: key,
           defaultValue: today,
           valueOptions: [today],
         };
       }
-      if (key === DEFAULT_METADATA_OPTION_CONFIGURATION_VERSION) {
+      if (metadataOption.preset === "configType") {
         return {
           key: key,
-          defaultValue: selectedVersion,
-          valueOptions: selectedVersion ? [selectedVersion] : [],
+          defaultValue: selectedConfigType === "fluentd" ? "fluentd" : "Fluentbit",
+          valueOptions: Array.isArray(metadataOption.valueOptions) ? metadataOption.valueOptions.slice() : [],
+        };
+      }
+      if (Array.isArray(metadataOption.valueOptions) && metadataOption.valueOptions.length) {
+        return {
+          key: key,
+          defaultValue: "",
+          valueOptions: metadataOption.valueOptions.slice(),
         };
       }
       return null;
@@ -284,6 +332,8 @@
 
     function bindEvents() {
       // Bind add/edit handlers once per control (guarded via dataset flags).
+      renderMetadataKeyOptions();
+
       if (el.addEnvField && el.addEnvField.dataset.boundEnvHandler !== "true") {
         el.addEnvField.addEventListener("click", function () {
           ensureDoc();
@@ -336,6 +386,7 @@
 
     function renderEnv() {
       ensureDoc();
+      renderMetadataKeyOptions();
       renderNormalEnv();
       renderMetadataEnv();
     }

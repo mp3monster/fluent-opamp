@@ -163,8 +163,8 @@ class ValidationAgentRegistry:
         return cls(entries)
 
     @classmethod
-    def from_runtime_config(cls) -> ValidationAgentRegistry:
-        return cls.from_config_payload(resolve_validation_agent_entries())
+    def from_runtime_config(cls, config_path: str | None = None) -> ValidationAgentRegistry:
+        return cls.from_config_payload(resolve_validation_agent_entries(config_path))
 
     def resolve(
         self,
@@ -227,8 +227,8 @@ class ExternalAgentValidationService:
         }
 
     @classmethod
-    def from_runtime_config(cls) -> ExternalAgentValidationService:
-        return cls(ValidationAgentRegistry.from_runtime_config())
+    def from_runtime_config(cls, config_path: str | None = None) -> ExternalAgentValidationService:
+        return cls(ValidationAgentRegistry.from_runtime_config(config_path))
 
     def _adapter_for_entry(self, entry: ValidationAgentEntry) -> AgentValidationAdapter:
         adapter_key = _normalize_text(entry.adapter_key).lower()

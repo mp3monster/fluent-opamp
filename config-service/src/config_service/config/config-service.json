@@ -17,6 +17,7 @@
       "rendered_configuration",
       "metadata_environment_variables"
     ],
+    "save-ingore-validation": true,
     "read_only": false,
     "agent_validation": {
       "entries": []

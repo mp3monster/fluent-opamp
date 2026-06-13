@@ -199,13 +199,12 @@ async def test_render_fluentd_returns_backend_composed_rendered_output() -> None
                 "service": {"log_level": "info"},
                 "pipeline": {"inputs": [], "filters": [], "outputs": []},
             },
-            "header_comments": "Owned by Team A",
         },
     )
     assert response.status_code == 200
     body = await response.get_json()
     assert body["ok"] is True
-    assert body["rendered_output"].startswith("# Owned by Team A\n")
+    assert body["rendered_output"] == body["text"]
 
 @pytest.mark.asyncio
 async def test_render_fluentd_can_include_config_service_header_in_rendered_output() -> None:
@@ -219,7 +218,6 @@ async def test_render_fluentd_can_include_config_service_header_in_rendered_outp
                 "service": {"log_level": "info"},
                 "pipeline": {"inputs": [], "filters": [], "outputs": []},
             },
-            "header_comments": "Owned by Team A",
             "include_config_header": True,
         },
     )
@@ -227,6 +225,5 @@ async def test_render_fluentd_can_include_config_service_header_in_rendered_outp
     body = await response.get_json()
     assert body["ok"] is True
     assert body["rendered_output"].startswith(
-        "# Owned by Team A\n# config-service: config_type=fluentd\n# config-service: version=1.19\n"
+        "# config-service: config_type=fluentd\n# config-service: version=1.19\n"
     )
-

@@ -19,7 +19,7 @@
   var API_BASE = "/config-service/api/v1";
   var LAST_FILE_COOKIE = "config_service_last_opened_name";
   var LAST_DOC_STORAGE = "config_service_last_opened_doc";
-  var LAST_HEADER_COMMENTS_STORAGE = "config_service_last_header_comments";
+  var LAST_DOC_SOURCE_PATH_STORAGE = "config_service_last_opened_source_path";
   var CUSTOM_SERVICE_OPTION = "__custom__";
   var HEADER_PREFIX = "config-service";
   var SERVICE_OPTIONS = [];
@@ -93,8 +93,6 @@
     saveOnValidate: false,
     renderIncludesForRender: false,
     metadataPanelCollapsed: false,
-    headerCommentsPanelCollapsed: true,
-    headerComments: "",
     dryRunAvailable: false,
     dryRunCapability: null,
   };
@@ -115,7 +113,6 @@
     state.labelsPanelCollapsed = has("labels");
     state.workersPanelCollapsed = has("workers");
     state.validationCollapsed = has("validation");
-    state.headerCommentsPanelCollapsed = has("header_comments");
     state.yamlCollapsed = has("rendered_configuration") || has("rendered");
   })();
 
@@ -164,6 +161,10 @@
     });
   }
 
+  function saveAsEnabled() {
+    return Boolean(window.__CONFIG_SERVICE_UI_SHOW_SAVE_AS__ === true);
+  }
+
   // Cache DOM lookups once during startup.
   // We intentionally keep this flat so render/event code can reference
   // stable element handles without repeated selector queries.
@@ -179,10 +180,6 @@
     newConfig: document.getElementById("new-config"),
     versionSelect: document.getElementById("version-select"),
     configTypeSelect: document.getElementById("config-type-select"),
-    headerCommentsToggle: document.getElementById("header-comments-toggle"),
-    headerCommentsBody: document.getElementById("header-comments-body"),
-    headerCommentsInput: document.getElementById("header-comments-input"),
-    headerCommentsHelpToggle: document.getElementById("header-comments-help-toggle"),
     pluginSection: document.getElementById("plugin-section"),
     pluginName: document.getElementById("plugin-name"),
     pluginHelpToggle: document.getElementById("plugin-help-toggle"),
@@ -223,6 +220,7 @@
     metadataEnvList: document.getElementById("metadata-env-list"),
     metadataEnvHelpToggle: document.getElementById("metadata-env-help-toggle"),
     metadataEnvKeyInput: document.getElementById("metadata-env-key-input"),
+    metadataEnvKeyOptions: document.getElementById("metadata-env-key-options"),
     metadataEnvValueInput: document.getElementById("metadata-env-value-input"),
     metadataEnvValueOptions: document.getElementById("metadata-env-value-options"),
     addMetadataEnvField: document.getElementById("add-metadata-env-field"),
@@ -514,6 +512,11 @@
     }
     state.currentFileDisplay = "";
     state.currentSourcePath = "";
+    try {
+      localStorage.removeItem(LAST_DOC_SOURCE_PATH_STORAGE);
+    } catch (_err) {
+      // Ignore storage failures and keep the in-memory state authoritative.
+    }
     if (el.openFileDisplay) {
       el.openFileDisplay.value = "";
     }
@@ -552,7 +555,6 @@
       configType: state.configType,
       version: state.doc.version || state.selectedVersion,
       config: state.doc.config,
-      headerComments: state.headerComments || "",
     });
   }
 
@@ -635,6 +637,7 @@
     el.newConfig.disabled = readOnly;
     el.saveConfig.disabled = readOnly;
     el.saveAsConfig.disabled = readOnly;
+    el.saveAsConfig.hidden = !saveAsEnabled();
     el.configTypeSelect.disabled = readOnly || hasConfiguredContent();
     el.versionSelect.disabled = readOnly || !Array.isArray(state.versions) || state.versions.length === 0;
     el.addServiceField.disabled = readOnly;
@@ -669,9 +672,6 @@
     }
     if (el.addUpstreamServerGroup) {
       el.addUpstreamServerGroup.disabled = readOnly;
-    }
-    if (el.headerCommentsInput) {
-      el.headerCommentsInput.disabled = readOnly;
     }
     if (el.validationIncludeToggle) {
       el.validationIncludeToggle.disabled = false;
@@ -760,35 +760,6 @@
     return uiHelpers.prependConfigHeader(text, configType, version, commentPrefix);
   }
 
-  function normalizeHeaderCommentLines(text) {
-    var normalizedText = String(text || "")
-      .replace(/\r\n/g, "\n")
-      .replace(/\\r\\n/g, "\n")
-      .replace(/\\n/g, "\n");
-    var lines = normalizedText.split("\n");
-    while (lines.length > 0 && lines[0].trim() === "") {
-      lines.shift();
-    }
-    while (lines.length > 0 && lines[lines.length - 1].trim() === "") {
-      lines.pop();
-    }
-    return lines;
-  }
-
-  function prependHeaderComments(text, commentPrefix) {
-    var lines = normalizeHeaderCommentLines(state.headerComments || "");
-    if (lines.length === 0) {
-      return String(text || "");
-    }
-    var prefix = commentPrefix || "#";
-    var headerBlock = lines
-      .map(function (line) {
-        return line.trim() === "" ? prefix : prefix + " " + line;
-      })
-      .join("\n");
-    return headerBlock + "\n" + String(text || "");
-  }
-
   function pluginGroups() {
     if (!state.catalog || !state.catalog.plugins) {
       return { inputs: {}, filters: {}, outputs: {} };
@@ -832,9 +803,6 @@
     // contract expected by render/save/validate logic.
     if (!state.doc) {
       state.doc = emptyDoc(state.selectedVersion, state.configType);
-    }
-    if (typeof state.headerComments !== "string") {
-      state.headerComments = "";
     }
     state.configType = normalizeConfigType(state.configType, "fluentbit");
     state.doc.configType = normalizeConfigType(state.doc.configType || state.configType, state.configType);
@@ -1019,18 +987,17 @@
     return true;
   }
 
-  function normalizedHeaderComments(value) {
-    return normalizeHeaderCommentLines(value || "").join("\n");
-  }
-
   function saveDoc() {
     if (!state.doc) {
       return;
     }
     refreshConfigurationDateMetadata();
-    state.headerComments = normalizedHeaderComments(state.headerComments);
     localStorage.setItem(LAST_DOC_STORAGE, JSON.stringify(state.doc));
-    localStorage.setItem(LAST_HEADER_COMMENTS_STORAGE, state.headerComments || "");
+    if (state.currentSourcePath) {
+      localStorage.setItem(LAST_DOC_SOURCE_PATH_STORAGE, state.currentSourcePath);
+    } else {
+      localStorage.removeItem(LAST_DOC_SOURCE_PATH_STORAGE);
+    }
     if (state.preserveSourceLineMapOnce) {
       state.preserveSourceLineMapOnce = false;
     } else {
@@ -1216,10 +1183,6 @@
     if (el.parsersBody && el.parsersToggle) {
       el.parsersBody.classList.toggle("is-collapsed", state.parsersPanelCollapsed);
       el.parsersToggle.textContent = state.parsersPanelCollapsed ? "Open" : "Collapse";
-    }
-    if (el.headerCommentsBody && el.headerCommentsToggle) {
-      el.headerCommentsBody.classList.toggle("is-collapsed", state.headerCommentsPanelCollapsed);
-      el.headerCommentsToggle.textContent = state.headerCommentsPanelCollapsed ? "Open" : "Collapse";
     }
     if (el.pluginsBody && el.pluginsToggle) {
       el.pluginsBody.classList.toggle("is-collapsed", state.pluginsPanelCollapsed);
@@ -1521,11 +1484,14 @@
       if (state.configType === "fluentd") {
         return /\.conf$/i.test(base) ? base : base.replace(/\.[^.]+$/, "") + ".conf";
       }
-      return /\.json$/i.test(base) ? base : base + ".json";
+      if (/\.ya?ml$/i.test(base)) {
+        return base;
+      }
+      return /\.[^.]+$/.test(base) ? base.replace(/\.[^.]+$/, "") + ".yaml" : base + ".yaml";
     }
     var version = String((state.doc && state.doc.version) || state.selectedVersion || "config").replace(/[^\w.-]+/g, "-");
     var configType = String((state.doc && state.doc.configType) || state.configType || "fluentbit").replace(/[^\w.-]+/g, "-");
-    return "config-service-" + configType + "-" + version + (state.configType === "fluentd" ? ".conf" : ".json");
+    return "config-service-" + configType + "-" + version + (state.configType === "fluentd" ? ".conf" : ".yaml");
   }
 
   function downloadBlob(fileName, blob) {
@@ -1560,9 +1526,9 @@
     }
     return [
       {
-        description: "Config Service JSON document",
+        description: "Fluent Bit configuration",
         accept: {
-          "application/json": [".json"],
+          "text/yaml": [".yaml", ".yml"],
         },
       },
     ];
@@ -1576,7 +1542,6 @@
         body: JSON.stringify({
           config: state.doc.config,
           annotations: state.doc.annotations || {},
-          header_comments: normalizedHeaderComments(state.headerComments || ""),
           include_config_header: true,
         }),
       }).then(function (result) {
@@ -1587,11 +1552,23 @@
         };
       });
     }
-    var jsonText = prependConfigHeader(JSON.stringify(state.doc, null, 2), state.configType, state.doc.version, "//");
-    jsonText = prependHeaderComments(jsonText, "//");
-    return Promise.resolve({
-      blob: new Blob([jsonText], { type: "application/json" }),
-      text: jsonText,
+    return fetchJson(API_BASE + "/render/yaml/" + encodeURIComponent(state.doc.version) + currentApiQuery(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        config: state.doc.config,
+        annotations: state.doc.annotations || {},
+        included_documents: state.includedDocuments || [],
+        include_comments: true,
+        render_included_files: false,
+        include_config_header: true,
+      }),
+    }).then(function (result) {
+      var renderedText = String(result.rendered_output || result.yaml || "");
+      return {
+        blob: new Blob([renderedText], { type: "text/yaml" }),
+        text: renderedText,
+      };
     });
   }
 
@@ -1600,6 +1577,15 @@
       return writable.write(blob).then(function () {
         return writable.close();
       });
+    });
+  }
+
+  function reportBrowserSaveMechanism(mode, fileName) {
+    reportUiError({
+      kind: "browser_save_mechanism_used",
+      source: "config_service_ui_save",
+      message: "Browser save mechanism used via " + String(mode || "unknown") + " for " + String(fileName || "config"),
+      path: window.location.href,
     });
   }
 
@@ -1736,29 +1722,32 @@
     }
   }
 
-  function configServiceOpenSourcePath() {
-    var current = new URL(window.location.href);
-    var sourcePath = requestedSourcePathFromLocation();
-    if (!sourcePath) {
+  function loadConfigurationFromServerPath(sourcePath, options) {
+    var settings = options && typeof options === "object" ? options : {};
+    var normalizedSourcePath = String(sourcePath || "").trim();
+    if (!normalizedSourcePath) {
       return Promise.resolve(false);
     }
     return fetchJson(API_BASE + "/ui/load-source-file", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        source_path: sourcePath,
+        source_path: normalizedSourcePath,
         config_type: state.configType,
       }),
     })
       .then(function (payload) {
         var fileName = String(payload.file_name || "").trim();
         var text = String(payload.text || "");
-        var resolvedSourcePath = String(payload.source_path || sourcePath || "").trim();
+        var resolvedSourcePath = String(payload.source_path || normalizedSourcePath || "").trim();
         return loadConfigurationTextFromSource(text, fileName, fileName, resolvedSourcePath);
       })
       .then(function () {
-        current.searchParams.delete("source_path");
-        window.history.replaceState({}, "", current.pathname + current.search + current.hash);
+        if (settings.clearLocationSourcePath === true) {
+          var current = new URL(window.location.href);
+          current.searchParams.delete("source_path");
+          window.history.replaceState({}, "", current.pathname + current.search + current.hash);
+        }
         return true;
       })
       .catch(function (err) {
@@ -1768,12 +1757,17 @@
       });
   }
 
+  function configServiceOpenSourcePath() {
+    return loadConfigurationFromServerPath(requestedSourcePathFromLocation(), {
+      clearLocationSourcePath: true,
+    });
+  }
+
   function loadConfigurationTextFromSource(text, fileName, selectedDisplay, sourcePath) {
     var normalizedName = String(fileName || "").trim() || "config";
     var normalizedDisplay = String(selectedDisplay || "").trim() || normalizedName;
     state.currentSourcePath = String(sourcePath || "").trim();
     return prepareFileForLoad(text, normalizedName, state.configType).then(function (preparedFile) {
-      state.headerComments = normalizedHeaderComments(preparedFile.header_comments || "");
       if (/\.json$/i.test(normalizedName)) {
         var parsed = JSON.parse(preparedFile.body || "");
         state.doc = parsed;
@@ -1915,10 +1909,16 @@
       .then(function (result) {
         if ((forcePrompt || state.saveFileHandle || shouldPromptForSaveLocation()) && typeof window.showSaveFilePicker === "function") {
           var handlePromise = !forcePrompt && state.saveFileHandle
-            ? Promise.resolve(state.saveFileHandle)
+            ? Promise.resolve(state.saveFileHandle).then(function (handle) {
+                reportBrowserSaveMechanism("file-system-access-handle", fileName);
+                return handle;
+              })
             : window.showSaveFilePicker({
                 suggestedName: fileName,
                 types: pickerTypesForCurrentConfig(),
+              }).then(function (handle) {
+                reportBrowserSaveMechanism("showSaveFilePicker", fileName);
+                return handle;
               });
           return handlePromise.then(function (handle) {
             state.saveFileHandle = handle;
@@ -1932,6 +1932,7 @@
           });
         }
 
+        reportBrowserSaveMechanism("anchor-download", fileName);
         downloadBlob(fileName, result.blob);
         state.currentFileName = fileName;
         setOpenFileDisplay(fileName);
@@ -1968,7 +1969,6 @@
       merge_includes_for_validation: Boolean(state.mergeIncludesForValidation),
       save_on_success: saveOnSuccess,
       save_source_path: state.currentSourcePath || "",
-      header_comments: normalizedHeaderComments(state.headerComments || ""),
       include_config_header: true,
       profile: "strict",
     };
@@ -2292,7 +2292,9 @@
       row.appendChild(input);
     }
 
-    row.appendChild(createFieldHelpButton(field, false));
+    var actions = document.createElement("div");
+    actions.className = "field-row-actions";
+    actions.appendChild(createFieldHelpButton(field, false));
 
     if (options.commentTarget && options.commentFieldName) {
       var commentToggle = createCommentToggleButton(
@@ -2301,20 +2303,21 @@
         options.commentFieldName,
         "comment editor for " + options.commentFieldName
       );
-      commentToggle.classList.add("right-align");
-      row.appendChild(commentToggle);
+      actions.appendChild(commentToggle);
     }
 
     if (options.optional && typeof options.onRemove === "function") {
       var removeBtn = document.createElement("button");
       removeBtn.type = "button";
       removeBtn.textContent = "-";
-      removeBtn.className = "icon-remove right-align";
+      removeBtn.className = "icon-remove";
       removeBtn.title = "Remove attribute";
       removeBtn.disabled = isReadOnlyMode();
       removeBtn.addEventListener("click", options.onRemove);
-      row.appendChild(removeBtn);
+      actions.appendChild(removeBtn);
     }
+
+    row.appendChild(actions);
 
     block.appendChild(row);
     if (options.commentTarget && options.commentFieldName) {
@@ -3237,16 +3240,6 @@ function renderPlugins() {
     }
   }
 
-  function renderHeaderComments() {
-    if (!el.headerCommentsInput) {
-      return;
-    }
-    var normalized = normalizedHeaderComments(state.headerComments || "");
-    if (el.headerCommentsInput.value !== normalized) {
-      el.headerCommentsInput.value = normalized;
-    }
-  }
-
   function safeRenderSection(name, renderFn) {
     try {
       renderFn();
@@ -3263,7 +3256,6 @@ function renderPlugins() {
 
   function renderAll() {
     // Global rerender entry point; this ordering keeps cross-panel state stable.
-    safeRenderSection("header_comments", renderHeaderComments);
     safeRenderSection("service", renderService);
     safeRenderSection("environment_variables", renderEnv);
     safeRenderSection("plugins", renderPlugins);
@@ -3526,7 +3518,6 @@ function renderPlugins() {
 
     el.newConfig.addEventListener("click", function () {
       state.doc = emptyDoc(state.selectedVersion, state.configType);
-      state.headerComments = "";
       state.includedDocuments = [];
       state.mergeIncludesForValidation = false;
       state.saveOnValidate = false;
@@ -3547,6 +3538,7 @@ function renderPlugins() {
     });
 
     el.browseFile.addEventListener("click", function () {
+      el.openFile.value = "";
       el.openFile.click();
     });
 
@@ -3558,7 +3550,7 @@ function renderPlugins() {
         });
         return;
       }
-      triggerConfigDownload();
+      triggerConfigDownload(true);
     });
 
     el.saveAsConfig.addEventListener("click", function () {
@@ -3633,13 +3625,6 @@ function renderPlugins() {
       });
     }
 
-    if (el.headerCommentsToggle) {
-      el.headerCommentsToggle.addEventListener("click", function () {
-        state.headerCommentsPanelCollapsed = !state.headerCommentsPanelCollapsed;
-        updateSectionPanels();
-      });
-    }
-
     if (el.metadataEnvHelpToggle) {
       el.metadataEnvHelpToggle.addEventListener("click", function () {
         window.open("/config-service/ui/docs/metadata-env", "_blank", "noopener,noreferrer");
@@ -3655,21 +3640,6 @@ function renderPlugins() {
         }
         window.open(schemaDef.reference, "_blank", "noopener,noreferrer");
       });
-    }
-
-    if (el.headerCommentsHelpToggle) {
-      el.headerCommentsHelpToggle.addEventListener("click", function () {
-        window.open("/config-service/ui/docs/metadata-env#header-comments", "_blank", "noopener,noreferrer");
-      });
-    }
-
-    if (el.headerCommentsInput) {
-      var syncHeaderCommentsFromInput = function () {
-        state.headerComments = normalizedHeaderComments(el.headerCommentsInput.value || "");
-        saveDoc();
-      };
-      el.headerCommentsInput.addEventListener("input", syncHeaderCommentsFromInput);
-      el.headerCommentsInput.addEventListener("change", syncHeaderCommentsFromInput);
     }
 
     el.versionSelect.addEventListener("change", function () {
@@ -4037,17 +4007,12 @@ function renderPlugins() {
         setStatusMessage("Load or create a configuration before rendering.");
         return;
       }
-      var currentHeaderComments = normalizedHeaderComments(
-        (el.headerCommentsInput && el.headerCommentsInput.value) || state.headerComments || ""
-      );
-      state.headerComments = currentHeaderComments;
       var payload = {
         config: state.doc.config,
         annotations: state.doc.annotations || {},
         included_documents: Array.isArray(state.includedDocuments) ? state.includedDocuments : [],
         include_comments: true,
         render_included_files: Boolean(state.renderIncludesForRender),
-        header_comments: currentHeaderComments,
       };
       var endpoint = state.configType === "fluentd"
         ? API_BASE + "/render/fluentd/" + encodeURIComponent(state.doc.version)
@@ -4118,10 +4083,6 @@ function renderPlugins() {
           clearOpenFileSelection();
           state.currentFileName = "";
           state.doc = null;
-          state.headerComments = "";
-          if (el.headerCommentsInput) {
-            el.headerCommentsInput.value = "";
-          }
           return configServiceOpenSourcePath().then(function (opened) {
             if (opened) {
               return true;
@@ -4135,26 +4096,26 @@ function renderPlugins() {
         }
 
         var cookieDoc = localStorage.getItem(LAST_DOC_STORAGE);
-        var cookieHeaderComments = localStorage.getItem(LAST_HEADER_COMMENTS_STORAGE);
         var cookieName = getCookie(LAST_FILE_COOKIE);
         if (cookieDoc && cookieName) {
           try {
             var parsed = JSON.parse(cookieDoc);
             state.doc = parsed;
-            state.headerComments = normalizedHeaderComments(cookieHeaderComments || "");
             state.configType = normalizeConfigType(parsed.configType || "fluentbit", "fluentbit");
             state.currentFileName = cookieName;
+            state.currentSourcePath = String(
+              localStorage.getItem(LAST_DOC_SOURCE_PATH_STORAGE) || ""
+            ).trim();
             setOpenFileDisplay(/^new-\d+$/i.test(cookieName) ? "" : cookieName);
           } catch (_storedDocumentParseError) {
             clearCookie(LAST_FILE_COOKIE);
             localStorage.removeItem(LAST_DOC_STORAGE);
-            localStorage.removeItem(LAST_HEADER_COMMENTS_STORAGE);
+            localStorage.removeItem(LAST_DOC_SOURCE_PATH_STORAGE);
           }
         }
 
         if (!state.doc) {
           state.doc = emptyDoc(state.selectedVersion, state.configType);
-          state.headerComments = normalizedHeaderComments(cookieHeaderComments || "");
         }
 
         ensureDoc();

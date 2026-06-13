@@ -45,24 +45,15 @@ limitations under the License.
         <h2>Preset Metadata Options</h2>
         <p>The panel uses a selectable/creatable metadata key field so you can choose defaults or type custom keys.</p>
         <ol>
-          <li><strong>Fluent Bit Version</strong>: key <code>fluent_bit_version</code>, value selected from configured versions.</li>
+          <li><strong>Configuration Version</strong>: key <code>config_version</code>, value selected from configured versions.</li>
           <li><strong>Configuration Date</strong>: key <code>configuration_date</code>, automatically set to the current date when edited.</li>
-          <li><strong>Configuration Version</strong>: key <code>config_version</code> (aligned with pre-commit/webhook naming).</li>
+          <li><strong>SCM Configuration Version</strong>: key <code>SCM_config_version</code>, intended for your source-controlled config revision.</li>
+          <li><strong>Configuration Type</strong>: key <code>config_type</code>, preset to <code>Fluentbit</code> or <code>fluentd</code>.</li>
+          <li><strong>SCM Source Name</strong>: key <code>SCM_source_name</code>, for the source repository or source identifier.</li>
         </ol>
         <p>You can also add any custom metadata key/value pair.</p>
       </section>
 
-      <section class="panel" id="header-comments">
-        <h2>Header Comments</h2>
-        <p>
-          Header comments let you maintain free-text notes at the top of a saved file. The editor shows plain text
-          without comment markers, and the correct comment prefix is restored on save:
-          <code>#</code> for Fluent Bit / Fluentd text and <code>//</code> for JSON documents.
-        </p>
-        <p>
-          Existing top-of-file comments are loaded into this field when a configuration is opened.
-        </p>
-      </section>
     </main>
 
     <footer class="footer">

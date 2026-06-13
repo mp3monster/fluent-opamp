@@ -298,7 +298,6 @@ Supported `ui_collapsed_sections` values:
 8. `workers`
 9. `validation`
 10. `rendered_configuration` (alias: `rendered`)
-11. `header_comments`
 
 Read-only mode:
 1. Set `config-tool.read_only` to `true` to disable editing and save actions in the UI.

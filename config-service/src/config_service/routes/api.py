@@ -35,7 +35,7 @@ from config_service.models.contracts import (
     UiPrepareFileRequest,
     ValidateRequest,
 )
-from config_service.runtime_config import get_effective_config_path
+from config_service.runtime_config import get_effective_config_path, resolve_save_ignore_validation
 
 APP_ENABLE_DEV_FEATURES_ENV = "APP_ENABLE_DEV_FEATURES"
 LOGGER = logging.getLogger(__name__)
@@ -729,10 +729,12 @@ def create_api_blueprint() -> Blueprint:
             profile=req.profile,
             parser_definition=parser_definition,
         )
-        if req.save_on_success and result.get(KEY_OK) is not True:
+        save_ignore_validation = req.save_on_success and resolve_save_ignore_validation()
+        should_save = req.save_on_success and (result.get(KEY_OK) is True or save_ignore_validation)
+        if req.save_on_success and result.get(KEY_OK) is not True and not save_ignore_validation:
             result[KEY_SAVE_DECLINED] = True
             result[KEY_SAVE_MESSAGE] = "Validation failed; file was not saved."
-        if req.save_on_success and result.get(KEY_OK) is True:
+        if should_save:
             target_path = _allowed_catalog_save_target(req.save_source_path)
             if target_path is None:
                 return _validation_save_error(
@@ -761,14 +763,19 @@ def create_api_blueprint() -> Blueprint:
                 )
             result[KEY_SAVED] = True
             result[KEY_SAVE_PATH] = str(target_path)
-            result[KEY_SAVE_MESSAGE] = f"Saved validated configuration to {target_path.name}."
+            if result.get(KEY_OK) is True:
+                result[KEY_SAVE_MESSAGE] = f"Saved validated configuration to {target_path.name}."
+            else:
+                result[KEY_SAVE_MESSAGE] = (
+                    f"Saved configuration with validation errors to {target_path.name}."
+                )
         current_app.logger.info(
             "config validation completed version=%s config_type=%s ok=%s",
             version,
             config_type,
             result.get(KEY_OK),
         )
-        return jsonify(result), HTTPStatus.OK if result.get(KEY_OK) else HTTPStatus.BAD_REQUEST
+        return jsonify(result), HTTPStatus.OK if result.get(KEY_OK) or result.get(KEY_SAVED) else HTTPStatus.BAD_REQUEST
 
     @bp.get("/agent-validation/availability/<version>")
     async def agent_validation_availability(version: str) -> Any:

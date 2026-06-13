@@ -358,8 +358,11 @@ async def test_parse_and_render_fluentbit_yaml_metadata_env_round_trips() -> Non
     sample_yaml = """
 env:
   LOG_LEVEL: info
-  _metadata.config_version: cfg-123
+  _metadata.config_version: 5.0.4
+  _metadata.SCM_config_version: cfg-123
   _metadata.configuration_date: 2026-05-09
+  _metadata.config_type: Fluentbit
+  _metadata.SCM_source_name: parse-test
 pipeline:
   inputs:
     - name: random
@@ -375,10 +378,13 @@ pipeline:
     assert parse_resp.status_code == 200
     parse_body = await parse_resp.get_json()
     assert parse_body["config"]["env"]["LOG_LEVEL"] == "info"
-    assert parse_body["config"]["env"]["_metadata.config_version"] == "cfg-123"
+    assert str(parse_body["config"]["env"]["_metadata.config_version"]) == "5.0.4"
+    assert parse_body["config"]["env"]["_metadata.SCM_config_version"] == "cfg-123"
     parsed_date_value = str(parse_body["config"]["env"]["_metadata.configuration_date"])
     assert "2026" in parsed_date_value
     assert "09" in parsed_date_value
+    assert parse_body["config"]["env"]["_metadata.config_type"] == "Fluentbit"
+    assert parse_body["config"]["env"]["_metadata.SCM_source_name"] == "parse-test"
 
     render_resp = await client.post(
         "/config-service/api/v1/render/yaml/5.0.4?config_type=fluentbit",
@@ -387,8 +393,11 @@ pipeline:
     assert render_resp.status_code == 200
     render_body = await render_resp.get_json()
     rendered_yaml = render_body["yaml"]
-    assert "_metadata.config_version: cfg-123" in rendered_yaml
+    assert "_metadata.config_version: 5.0.4" in rendered_yaml
+    assert "_metadata.SCM_config_version: cfg-123" in rendered_yaml
     assert "_metadata.configuration_date:" in rendered_yaml
+    assert "_metadata.config_type: Fluentbit" in rendered_yaml
+    assert "_metadata.SCM_source_name: parse-test" in rendered_yaml
 
 @pytest.mark.asyncio
 async def test_parse_fluentbit_yaml_reports_invalid_env_section_type() -> None:

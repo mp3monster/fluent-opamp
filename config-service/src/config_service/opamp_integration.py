@@ -18,7 +18,8 @@ from pathlib import Path
 from quart import Quart
 
 from config_service.agent_validation.service import ExternalAgentValidationService
-from config_service.app import register_api_component, register_ui_component
+from config_service.app import APP_CONFIG_KEY_READ_ONLY, register_api_component, register_ui_component
+from config_service.runtime_config import APP_EXTENSION_CONFIG_PATH, get_effective_config_path, resolve_read_only
 from config_service.services.catalog_service import CatalogService
 from config_service.services.fluentbit_yaml_config_service import FluentBitYamlConfigService
 from config_service.services.fluentd_config_service import FluentdConfigService
@@ -38,6 +39,13 @@ def register_config_service_feature(opamp_app: Quart) -> None:
     """Mount config-service routes/services into an existing OpAMP Quart app."""
     module_dir = Path(__file__).resolve().parent
     repo_root = module_dir.parent if (module_dir.parent / "config").is_dir() else module_dir
+    configured_path = str(
+        opamp_app.extensions.get(APP_EXTENSION_CONFIG_PATH)
+        or opamp_app.extensions.get("catalog_service:config_path")
+        or get_effective_config_path()
+    ).strip()
+    effective_config_path = Path(configured_path).resolve()
+    opamp_app.extensions[APP_EXTENSION_CONFIG_PATH] = str(effective_config_path)
     catalog_service = CatalogService(repo_root / "config" / "catalog-registry.json")
     catalog_service.load_all_catalogs()
     service_definition_service = ServiceDefinitionService(
@@ -57,7 +65,9 @@ def register_config_service_feature(opamp_app: Quart) -> None:
         fluentbit_yaml_config_service=fluentbit_yaml_config_service,
         fluentd_config_service=fluentd_config_service,
     )
-    external_agent_validation_service = ExternalAgentValidationService.from_runtime_config()
+    external_agent_validation_service = ExternalAgentValidationService.from_runtime_config(
+        str(effective_config_path)
+    )
 
     opamp_app.extensions["config_service:catalog_service"] = catalog_service
     opamp_app.extensions["config_service:rules_registry_service"] = rules_registry_service
@@ -92,6 +102,7 @@ def register_config_service_feature(opamp_app: Quart) -> None:
     opamp_app.extensions["include_document_service"] = include_document_service
     opamp_app.extensions["external_agent_validation_service"] = external_agent_validation_service
     opamp_app.config["CONFIG_SERVICE_MODE"] = "embedded"
+    opamp_app.config[APP_CONFIG_KEY_READ_ONLY] = resolve_read_only(str(effective_config_path))
 
     register_api_component(opamp_app)
     register_ui_component(opamp_app)

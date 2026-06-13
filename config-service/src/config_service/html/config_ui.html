@@ -22,6 +22,7 @@ limitations under the License.
     <script>
       window.__CONFIG_SERVICE_UI_CSS_OVERRIDES__ = __CONFIG_SERVICE_UI_CSS_OVERRIDES_VALUE__;
       window.__CONFIG_SERVICE_UI_COLLAPSED_SECTIONS__ = __CONFIG_SERVICE_UI_COLLAPSED_SECTIONS_VALUE__;
+      window.__CONFIG_SERVICE_UI_SHOW_SAVE_AS__ = __CONFIG_SERVICE_UI_SHOW_SAVE_AS_VALUE__;
     </script>
     <link rel="stylesheet" href="__CONFIG_SERVICE_UI_BASE_CSS_PATH__" />
   </head>
@@ -77,7 +78,7 @@ limitations under the License.
 
           <button id="new-config" type="button">New Configuration</button>
           <button id="save-config" type="button">Save</button>
-          <button id="save-as-config" type="button">Save As</button>
+          <button id="save-as-config" type="button" hidden>Save As</button>
           <button id="view-raw-config" type="button">View Raw</button>
         </div>
 
@@ -95,31 +96,6 @@ limitations under the License.
             <select id="version-select"></select>
           </label>
         </div>
-        </div>
-        <div class="section-head">
-          <div>
-            <h3>Header Comments</h3>
-          </div>
-          <div class="plugin-actions">
-            <button
-              id="header-comments-help-toggle"
-              type="button"
-              class="icon-help"
-              title="Optional top-of-file comments. The UI omits comment markers and writes them back when saving."
-              aria-label="Open header comments help in a new tab"
-            >?</button>
-            <button id="header-comments-toggle" type="button">Open</button>
-          </div>
-        </div>
-        <div id="header-comments-body" class="is-collapsed">
-          <label>
-            Header Comments
-            <textarea
-              id="header-comments-input"
-              rows="3"
-              placeholder="Created by Team A&#10;Change summary..."
-            ></textarea>
-          </label>
         </div>
       </section>
 
@@ -161,11 +137,7 @@ limitations under the License.
                   list="metadata-env-key-options"
                   placeholder="config_version"
                 />
-                <datalist id="metadata-env-key-options">
-                  <option value="fluent_bit_version">Fluent Bit Version</option>
-                  <option value="configuration_date">Configuration Date</option>
-                  <option value="config_version">Configuration Version</option>
-                </datalist>
+                <datalist id="metadata-env-key-options"></datalist>
               </label>
               <label>
                 Value
@@ -478,6 +450,7 @@ limitations under the License.
     <script src="/config-service/ui/assets/config_ui_comments.js__CONFIG_SERVICE_UI_ASSET_SUFFIX__"></script>
     <script src="/config-service/ui/assets/config_ui_plugins.js__CONFIG_SERVICE_UI_ASSET_SUFFIX__"></script>
     <script src="/config-service/ui/assets/config_ui_sections.js__CONFIG_SERVICE_UI_ASSET_SUFFIX__"></script>
+    <script src="/config-service/ui/assets/config_ui_metadata.js__CONFIG_SERVICE_UI_ASSET_SUFFIX__"></script>
     <script src="/config-service/ui/assets/config_ui_env.js__CONFIG_SERVICE_UI_ASSET_SUFFIX__"></script>
     <script src="/config-service/ui/assets/config_ui.js__CONFIG_SERVICE_UI_ASSET_SUFFIX__"></script>
   </body>

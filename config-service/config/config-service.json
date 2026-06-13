@@ -18,6 +18,7 @@
       "service",
       "rendered_configuration"
     ],
+    "save-ingore-validation": true,
     "read_only": false,
     "agent_validation": {
       "entries": [

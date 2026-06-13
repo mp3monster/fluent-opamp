@@ -50,10 +50,18 @@ def _valid_fluentbit_payload() -> dict[str, object]:
     }
 
 
-def _write_catalog_config(config_path: Path, source_folder: str = "catalog") -> None:
+def _write_catalog_config(
+    config_path: Path,
+    source_folder: str = "catalog",
+    *,
+    save_ignore_validation: bool = False,
+) -> None:
     config_path.write_text(
         json.dumps(
             {
+                "config-tool": {
+                    "save-ingore-validation": save_ignore_validation,
+                },
                 "opamp": {
                     "config_catalog": {
                         "enabled": True,
@@ -76,6 +84,7 @@ async def test_validate_can_save_valid_catalog_file(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
+    """Valid catalog saves should write the rendered Fluent Bit config to disk."""
     config_path = tmp_path / "config-service.json"
     _write_catalog_config(config_path)
     source_dir = tmp_path / "catalog"
@@ -116,6 +125,7 @@ async def test_validate_declines_save_when_validation_fails(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
+    """Validation errors should block save requests when override is disabled."""
     config_path = tmp_path / "config-service.json"
     _write_catalog_config(config_path)
     source_dir = tmp_path / "catalog"
@@ -161,10 +171,65 @@ async def test_validate_declines_save_when_validation_fails(
 
 
 @pytest.mark.asyncio
+async def test_validate_saves_when_override_enabled_even_if_validation_fails(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Save override should persist files even when validation reports errors."""
+    config_path = tmp_path / "config-service.json"
+    _write_catalog_config(config_path, save_ignore_validation=True)
+    source_dir = tmp_path / "catalog"
+    source_dir.mkdir()
+    target_path = source_dir / "broken-but-saved.yaml"
+    original_text = "unchanged: true\n"
+    target_path.write_text(original_text, encoding="utf-8")
+    monkeypatch.setenv(ENV_CONFIG_TOOL_CONFIG_PATH, str(config_path))
+
+    app = create_app(mode="standalone")
+    client = app.test_client()
+    payload = {
+        "config": {
+            "pipeline": {
+                "inputs": [
+                    {
+                        "name": "forward",
+                        "buffer_chunk_size": 1024,
+                        "buffer_max_size": 2048,
+                        "port": "${BAD PORT}",
+                    }
+                ],
+                "filters": [],
+                "outputs": [{"name": "null", "match": "*"}],
+            }
+        },
+        "profile": "strict",
+        "save_on_success": True,
+        "save_source_path": str(target_path),
+    }
+
+    response = await client.post(
+        "/config-service/api/v1/validate/5.0.4?config_type=fluentbit",
+        json=payload,
+    )
+
+    assert response.status_code == 200
+    body = await response.get_json()
+    assert body["ok"] is False
+    assert body["saved"] is True
+    assert body["save_path"] == str(target_path.resolve())
+    assert body.get("save_declined") is not True
+    assert body["save_message"] == f"Saved configuration with validation errors to {target_path.name}."
+    saved_text = target_path.read_text(encoding="utf-8")
+    assert saved_text != original_text
+    assert '"${BAD PORT}"' in saved_text
+
+
+@pytest.mark.asyncio
 async def test_validate_rejects_save_outside_catalog_source(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
+    """Server-side save requests should be rejected outside approved catalog roots."""
     config_path = tmp_path / "config-service.json"
     _write_catalog_config(config_path)
     (tmp_path / "catalog").mkdir()
@@ -194,6 +259,7 @@ async def test_validate_rejects_save_outside_catalog_source(
 
 @pytest.mark.asyncio
 async def test_validate_accepts_builtin_and_custom_parser_references() -> None:
+    """Parser validation should allow both built-in and locally declared parser names."""
     app = create_app(mode="standalone")
     client = app.test_client()
 
@@ -237,6 +303,7 @@ async def test_validate_accepts_builtin_and_custom_parser_references() -> None:
 
 @pytest.mark.asyncio
 async def test_validate_accepts_env_placeholders_for_integer_and_number_fields() -> None:
+    """Numeric fields should accept well-formed environment placeholder values."""
     app = create_app(mode="standalone")
     client = app.test_client()
 
@@ -282,6 +349,7 @@ async def test_validate_accepts_env_placeholders_for_integer_and_number_fields()
 
 @pytest.mark.asyncio
 async def test_validate_rejects_invalid_env_placeholders_for_integer_and_number_fields() -> None:
+    """Malformed environment placeholders should fail numeric field validation."""
     app = create_app(mode="standalone")
     client = app.test_client()
 
@@ -328,6 +396,7 @@ async def test_validate_rejects_invalid_env_placeholders_for_integer_and_number_
 
 @pytest.mark.asyncio
 async def test_validate_accepts_time_values_as_integer_or_smhd_suffix() -> None:
+    """Time fields should accept integers and Fluent Bit style unit suffixes."""
     app = create_app(mode="standalone")
     client = app.test_client()
 
@@ -364,6 +433,7 @@ async def test_validate_accepts_time_values_as_integer_or_smhd_suffix() -> None:
 
 @pytest.mark.asyncio
 async def test_validate_rejects_invalid_time_value_format() -> None:
+    """Unsupported time formats should be reported as invalid type errors."""
     app = create_app(mode="standalone")
     client = app.test_client()
 
@@ -399,6 +469,7 @@ async def test_validate_rejects_invalid_time_value_format() -> None:
 
 @pytest.mark.asyncio
 async def test_validate_rejects_invalid_size_value_format() -> None:
+    """Size-typed fields should reject values that do not match the size pattern."""
     app = create_app(mode="standalone")
     client = app.test_client()
 
@@ -431,6 +502,7 @@ async def test_validate_rejects_invalid_size_value_format() -> None:
 
 @pytest.mark.asyncio
 async def test_validate_route_output_reference_and_enablement() -> None:
+    """Route validation should warn on unknown destinations and disabled routing."""
     app = create_app(mode="standalone")
     client = app.test_client()
 
@@ -481,6 +553,7 @@ async def test_validate_route_output_reference_and_enablement() -> None:
 
 @pytest.mark.asyncio
 async def test_validate_rejects_unknown_parser_reference_and_duplicate_parser_name() -> None:
+    """Parser validation should warn on missing references and duplicate parser names."""
     app = create_app(mode="standalone")
     client = app.test_client()
 
@@ -527,6 +600,7 @@ async def test_validate_rejects_unknown_parser_reference_and_duplicate_parser_na
 
 @pytest.mark.asyncio
 async def test_fluentbit_processors_validate_and_render() -> None:
+    """Processor blocks should validate cleanly and appear in rendered YAML/schema output."""
     app = create_app(mode="standalone")
     client = app.test_client()
 
@@ -603,6 +677,7 @@ async def test_fluentbit_processors_validate_and_render() -> None:
 
 @pytest.mark.asyncio
 async def test_validate_accepts_valid_upstream_servers() -> None:
+    """Well-formed upstream server groups should not produce upstream validation errors."""
     app = create_app(mode="standalone")
     client = app.test_client()
 
@@ -647,6 +722,7 @@ async def test_validate_accepts_valid_upstream_servers() -> None:
 
 @pytest.mark.asyncio
 async def test_validate_reports_invalid_upstream_servers() -> None:
+    """Invalid upstream server groups should report duplicate, type, and field issues."""
     app = create_app(mode="standalone")
     client = app.test_client()
 
@@ -705,6 +781,7 @@ async def test_validate_reports_invalid_upstream_servers() -> None:
 
 @pytest.mark.asyncio
 async def test_validate_requires_match_or_match_regex_when_both_fields_exist() -> None:
+    """Outputs should require at least one selector when match fields are supported."""
     app = create_app(mode="standalone")
     client = app.test_client()
 
@@ -731,6 +808,7 @@ async def test_validate_requires_match_or_match_regex_when_both_fields_exist() -
 
 @pytest.mark.asyncio
 async def test_validate_accepts_match_or_match_regex_when_either_is_present() -> None:
+    """Providing either `match` or `match_regex` should satisfy selector validation."""
     app = create_app(mode="standalone")
     client = app.test_client()
 
@@ -755,6 +833,7 @@ async def test_validate_accepts_match_or_match_regex_when_either_is_present() ->
 
 @pytest.mark.asyncio
 async def test_lua_code_validation_returns_normalized_errors() -> None:
+    """Lua syntax failures should be normalized into API-friendly validation errors."""
     app = create_app(mode="standalone")
     client = app.test_client()
 
@@ -788,6 +867,7 @@ async def test_lua_code_validation_returns_normalized_errors() -> None:
 
 @pytest.mark.asyncio
 async def test_sql_code_validation_returns_normalized_errors() -> None:
+    """SQL syntax failures should be normalized into API-friendly validation errors."""
     app = create_app(mode="standalone")
     client = app.test_client()
 
@@ -827,6 +907,7 @@ async def test_sql_code_validation_returns_normalized_errors() -> None:
     assert "SQL syntax error" in sql_errors[0]["message"]
 
 def test_lua_code_adapter_uses_context_for_code_type_without_language_rule() -> None:
+    """Lua adapter should infer code validation from field data type when rules omit language."""
     from config_service.rule_engine.adapters.lua_code import LuaCodeSyntaxAdapter
     from config_service.rule_engine.base import RuleContext
 
@@ -871,6 +952,7 @@ def test_lua_code_adapter_uses_context_for_code_type_without_language_rule() -> 
     assert issues[0]["code"] in {"lua_syntax_error", "lua_parser_unavailable"}
 
 def test_sql_code_adapter_uses_context_for_code_type_without_language_rule() -> None:
+    """SQL adapter should infer code validation from processor field data type metadata."""
     from config_service.rule_engine.adapters.sql_code import SqlCodeSyntaxAdapter
     from config_service.rule_engine.base import RuleContext
 
@@ -932,6 +1014,7 @@ def test_sql_code_adapter_uses_context_for_code_type_without_language_rule() -> 
 
 
 def test_builtin_data_type_adapter_logs_unhappy_path(caplog: pytest.LogCaptureFixture) -> None:
+    """Builtin adapter should log and exit cleanly when pipeline structure is invalid."""
     from config_service.rule_engine.adapters.builtin import DataTypeEnforcementAdapter
     from config_service.rule_engine.base import RuleContext
 
@@ -953,6 +1036,7 @@ def test_builtin_data_type_adapter_logs_unhappy_path(caplog: pytest.LogCaptureFi
 
 
 def test_lua_code_adapter_logs_unhappy_path(caplog: pytest.LogCaptureFixture) -> None:
+    """Lua adapter should log parser failures along its unhappy validation path."""
     from config_service.rule_engine.adapters.lua_code import LuaCodeSyntaxAdapter
     from config_service.rule_engine.base import RuleContext
 
@@ -993,6 +1077,7 @@ def test_lua_code_adapter_logs_unhappy_path(caplog: pytest.LogCaptureFixture) ->
 
 
 def test_sql_code_adapter_logs_unhappy_path(caplog: pytest.LogCaptureFixture) -> None:
+    """SQL adapter should log parser failures along its unhappy validation path."""
     from config_service.rule_engine.adapters.sql_code import SqlCodeSyntaxAdapter
     from config_service.rule_engine.base import RuleContext
 

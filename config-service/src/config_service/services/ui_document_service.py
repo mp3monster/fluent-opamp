@@ -123,7 +123,7 @@ class UiDocumentService:
         while header_comment_lines and header_comment_lines[-1].strip() == "":
             header_comment_lines.pop()
 
-        meta[KEY_HEADER_COMMENTS] = "\n".join(header_comment_lines)
+        meta[KEY_HEADER_COMMENTS] = ""
         meta[KEY_BODY] = "\n".join(lines[body_start:])
         return meta
 
@@ -164,7 +164,7 @@ class UiDocumentService:
         version: str = "",
         comment_prefix: str = "#",
     ) -> str:
-        """Compose final UI output including headers and included-file blocks."""
+        """Compose final UI output including config metadata and included-file blocks."""
         rendered_output = str(main_rendered or "")
         if include_loaded_files:
             include_items = included_files if isinstance(included_files, list) else []
@@ -182,7 +182,7 @@ class UiDocumentService:
                 version=version,
                 comment_prefix=comment_prefix,
             )
-        return self.prepend_header_comments(rendered_output, header_comments, comment_prefix=comment_prefix)
+        return rendered_output
 
     def build_source_line_map(self, text: str, config_type: str, file_name: str) -> dict[str, int]:
         """Build a best-effort source-path to line-number lookup for editor UX."""
