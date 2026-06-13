@@ -6,7 +6,7 @@ Detailed schema/parameter reference:
 
 - `consumer-sim/consumer_instances.md`
 - `consumer-sim/simulator_design.md` (design intent and server-testing focus)
-- `consumer-sim/consumer_instances.schema.json` (machine-readable JSON schema)
+- `consumer-sim/config/consumer_instances.schema.json` (machine-readable JSON schema)
 
 ## Production Scope
 
@@ -22,6 +22,13 @@ python consumer-sim/src/consumer_sim_launcher.py start
 python consumer-sim/src/consumer_sim_launcher.py stop
 python consumer-sim/src/consumer_sim_launcher.py --help
 python consumer-sim/src/consumer_sim_launcher.py --version
+```
+
+Packaged installation entrypoint:
+
+```bash
+opamp-consumer-sim start
+opamp-consumer-sim stop
 ```
 
 The launcher accepts one positional argument only: `start` or `stop`.
@@ -50,18 +57,23 @@ python consumer-sim\src\consumer_sim_launcher.py start
 
 Default config file path:
 
-- `consumer-sim/consumer_instances.json`
+- `consumer-sim/config/consumer_instances.json`
+
+Installed package default config path:
+
+- Linux/macOS: `~/.config/opamp/consumer-sim/consumer_instances.json`
+- Windows: `%APPDATA%\opamp\consumer-sim\consumer_instances.json`
 
 Override via environment variable:
 
 - `CONSUMER_SIM_CONFIG=/path/to/file.json`
 
-The default `consumer-sim/consumer_instances.json` includes simulator instance definitions only.
+The default `consumer-sim/config/consumer_instances.json` includes simulator instance definitions only.
 
 ## What `start` does
 
 1. Reads the launch config (`instances` list).
-1. Validates launch config against `consumer-sim/consumer_instances.schema.json`.
+1. Validates launch config against `consumer-sim/config/consumer_instances.schema.json`.
 1. If schema validation fails, launcher exits immediately with a fatal message that includes config path, schema path, and validation issue locations.
 1. Removes stale `OpAMPSupervisor.signal` files from each instance working directory.
 1. Launches each consumer with:
@@ -71,6 +83,7 @@ The default `consumer-sim/consumer_instances.json` includes simulator instance d
 1. Logs each launch to console with instance name, PID, working directory, and full command.
 1. Writes launcher state (including process IDs) to:
    - `consumer-sim/runtime/launcher_state.json` (or `state_file` from config)
+   - installed package fallback: user state area under `opamp/consumer-sim/runtime/launcher_state.json`
 1. Exits after all instances are launched.
 
 ## What `stop` does

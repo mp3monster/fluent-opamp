@@ -1,10 +1,9 @@
 {
-  "state_file": "runtime/launcher_state.json",
   "instances": [
     {
       "name": "consumer-simulator-1",
       "entrypoint": "simulator",
-      "config_path": "../consumer/opamp-simulator.json",
+      "config_path": "../../consumer/opamp-simulator.json",
       "overrides": {
         "heartbeat-frequency": 20,
         "log-level": "INFO",
@@ -19,7 +18,7 @@
     {
       "name": "consumer-simulator-2",
       "entrypoint": "simulator",
-      "config_path": "../consumer/opamp-simulator.json",
+      "config_path": "../../consumer/opamp-simulator.json",
       "overrides": {
         "heartbeat-frequency": 10,
         "log-level": "INFO",
@@ -30,11 +29,11 @@
       "env": {
         "OPAMP_SERVER_URL": "http://localhost:8080"
       }
-      },
-      {
+    },
+    {
       "name": "consumer-simulator-3",
       "entrypoint": "simulator",
-      "config_path": "../consumer/opamp-simulator.json",
+      "config_path": "../../consumer/opamp-simulator.json",
       "overrides": {
         "heartbeat-frequency": 12,
         "log-level": "INFO",
@@ -44,7 +43,7 @@
       },
       "env": {
         "OPAMP_SERVER_URL": "http://localhost:8080"
-      }      
+      }
     }
   ]
 }

@@ -1,0 +1,49 @@
+{
+  "instances": [
+    {
+      "name": "consumer-simulator-1",
+      "entrypoint": "simulator",
+      "config_path": "../../consumer/opamp-simulator.json",
+      "overrides": {
+        "heartbeat-frequency": 20,
+        "log-level": "INFO",
+        "agent-additional-params": [
+          "{\"service_instance_uid\":\"sim-launcher-01\",\"client_version\":\"2.0.0\",\"config_version\":\"cfg-launcher-001\"}"
+        ]
+      },
+      "env": {
+        "OPAMP_SERVER_URL": "http://localhost:8080"
+      }
+    },
+    {
+      "name": "consumer-simulator-2",
+      "entrypoint": "simulator",
+      "config_path": "../../consumer/opamp-simulator.json",
+      "overrides": {
+        "heartbeat-frequency": 10,
+        "log-level": "INFO",
+        "agent-additional-params": [
+          "{\"service_instance_uid\":\"sim-launcher-02\",\"client_version\":\"Fluent Bit 4.2.1 (Community Edition)\",\"config_version\":\"cfg-launcher-001\"}"
+        ]
+      },
+      "env": {
+        "OPAMP_SERVER_URL": "http://localhost:8080"
+      }
+    },
+    {
+      "name": "consumer-simulator-3",
+      "entrypoint": "simulator",
+      "config_path": "../../consumer/opamp-simulator.json",
+      "overrides": {
+        "heartbeat-frequency": 12,
+        "log-level": "INFO",
+        "agent-additional-params": [
+          "{\"service_instance_uid\":\"sim-launcher-03\",\"client_version\":\"Fluentd 1.1.19\",\"config_version\":\"cfg-launcher-001\"}"
+        ]
+      },
+      "env": {
+        "OPAMP_SERVER_URL": "http://localhost:8080"
+      }
+    }
+  ]
+}

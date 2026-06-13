@@ -1,17 +1,17 @@
-# `consumer_instances.json` Reference
+# `config/consumer_instances.json` Reference
 
-This document describes all supported parameters in `consumer-sim/consumer_instances.json`.
+This document describes all supported parameters in `consumer-sim/config/consumer_instances.json`.
 
 ## File Location
 
-- Default file: `consumer-sim/consumer_instances.json`
+- Default file: `consumer-sim/config/consumer_instances.json`
 - Override file path with env var: `CONSUMER_SIM_CONFIG=/path/to/file.json`
-- JSON schema: `consumer-sim/consumer_instances.schema.json`
+- JSON schema: `consumer-sim/config/consumer_instances.schema.json`
 
 ## JSON Schema Validation
 
 On `start`, launcher validates the config file against
-`consumer-sim/consumer_instances.schema.json` before launching any process.
+`consumer-sim/config/consumer_instances.schema.json` before launching any process.
 
 - Validation failure is fatal and startup is aborted.
 - Error output includes:
@@ -23,7 +23,7 @@ On `start`, launcher validates the config file against
 
 ```json
 {
-  "state_file": "runtime/launcher_state.json",
+  "state_file": "../runtime/launcher_state.json",
   "instances": []
 }
 ```
@@ -32,7 +32,7 @@ On `start`, launcher validates the config file against
 
 | Field | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `state_file` | string | No | `consumer-sim/runtime/launcher_state.json` | Path to launcher runtime state file (stores PID/process-group data for `stop`). Relative paths resolve from the folder containing `consumer_instances.json`. |
+| `state_file` | string | No | `consumer-sim/runtime/launcher_state.json` | Path to launcher runtime state file (stores PID/process-group data for `stop`). Relative paths resolve from the folder containing `config/consumer_instances.json`; the source-tree equivalent is typically `../runtime/launcher_state.json`. |
 | `instances` | array[object] | Yes (for `start`) | N/A | List of consumer instance launch definitions. Must be a non-empty array for `start`. |
 
 ## `instances[]` Schema
@@ -54,7 +54,7 @@ Each object in `instances` supports the fields below.
 
 - `state_file`, `config_path`, `agent_config_path`, `working_dir`:
   - Absolute paths are used as-is.
-  - Relative paths are resolved from the directory containing `consumer_instances.json`.
+  - Relative paths are resolved from the directory containing `config/consumer_instances.json`.
 
 ## Built-In `entrypoint` Values
 
@@ -105,13 +105,13 @@ Simulator metadata pass-through example using one JSON object:
 
 ```json
 {
-  "state_file": "runtime/launcher_state.json",
+  "state_file": "../runtime/launcher_state.json",
   "instances": [
     {
       "name": "consumer-simulator-1",
       "entrypoint": "simulator",
-      "config_path": "../consumer/opamp-simulator.json",
-      "agent_config_path": "../consumer/fluent-bit.yaml",
+      "config_path": "../../consumer/opamp-simulator.json",
+      "agent_config_path": "../../consumer/fluent-bit.yaml",
       "overrides": {
         "heartbeat-frequency": 20,
         "log-level": "INFO",

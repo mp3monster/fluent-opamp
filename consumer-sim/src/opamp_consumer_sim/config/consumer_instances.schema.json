@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mp3monster.org/schemas/consumer_instances.schema.json",
+  "title": "Consumer Simulator Launcher Configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "instances"
+  ],
+  "properties": {
+    "state_file": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Optional runtime launcher state file path."
+    },
+    "instances": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/instance"
+      }
+    }
+  },
+  "$defs": {
+    "stringOrStringArray": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      ]
+    },
+    "instance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "config_path"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "entrypoint": {
+          "type": "string",
+          "enum": [
+            "simulator"
+          ]
+        },
+        "command": {
+          "$ref": "#/$defs/stringOrStringArray"
+        },
+        "config_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "agent_config_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "overrides": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "env": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "working_dir": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

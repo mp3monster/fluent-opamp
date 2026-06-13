@@ -17,7 +17,7 @@ Usage:
     python consumer-sim/src/consumer_sim_launcher.py stop
 
 Configuration file path defaults to:
-`consumer-sim/consumer_instances.json`
+`consumer-sim/config/consumer_instances.json`
 
 Set `CONSUMER_SIM_CONFIG` to override configuration file path.
 """
@@ -37,6 +37,16 @@ import time
 from typing import Any
 
 from component_version import component_version_text
+from opamp_consumer_sim.resources import (
+    CONFIG_FILENAME,
+    SCHEMA_FILENAME,
+    ensure_user_default_config,
+    read_packaged_text,
+    source_component_root,
+    source_resource_path,
+    source_repo_root,
+    user_state_root,
+)
 
 try:
     from jsonschema import Draft202012Validator as JSON_SCHEMA_VALIDATOR
@@ -78,7 +88,6 @@ GRACEFUL_SHUTDOWN_WAIT_SECONDS = 90.0
 TERMINATE_WAIT_SECONDS = 5.0
 POLL_INTERVAL_SECONDS = 0.25
 SEMAPHORE_FILENAME = "OpAMPSupervisor.signal"
-SCHEMA_FILENAME = "consumer_instances.schema.json"
 
 
 def _is_windows() -> bool:
@@ -87,14 +96,12 @@ def _is_windows() -> bool:
 SIGKILL_SIGNAL = getattr(signal, "SIGKILL", signal.SIGTERM)
 
 
-def _repo_root() -> pathlib.Path:
-    """Return repository root derived from this module path."""
-    return pathlib.Path(__file__).resolve().parents[2]
-
-
 def _default_config_path() -> pathlib.Path:
     """Return default launcher configuration path."""
-    return _repo_root() / "consumer-sim" / "consumer_instances.json"
+    config_path = source_resource_path(CONFIG_FILENAME)
+    if config_path is not None:
+        return config_path
+    return ensure_user_default_config()
 
 
 def _resolve_launcher_config_path() -> pathlib.Path:
@@ -103,11 +110,6 @@ def _resolve_launcher_config_path() -> pathlib.Path:
     if override:
         return pathlib.Path(override).expanduser().resolve()
     return _default_config_path()
-
-
-def _launcher_schema_path() -> pathlib.Path:
-    """Return launcher JSON schema file path."""
-    return (_repo_root() / "consumer-sim" / SCHEMA_FILENAME).resolve()
 
 
 def _json_path(path_parts: list[Any]) -> str:
@@ -158,15 +160,16 @@ def _validate_payload_against_schema(
             "Install Python package 'jsonschema' before running consumer-sim."
         )
 
-    schema_path = _launcher_schema_path()
-    if not schema_path.is_file():
-        raise RuntimeError(
-            "FATAL: launcher schema file is missing. "
-            f"Expected schema at: {schema_path}"
-        )
-
+    schema_path = pathlib.Path(f"<package:{SCHEMA_FILENAME}>")
     try:
-        schema_payload = json.loads(schema_path.read_text(encoding="utf-8"))
+        source_schema_path = source_resource_path(SCHEMA_FILENAME)
+        if source_schema_path is not None:
+            schema_path = source_schema_path
+            schema_text = schema_path.read_text(encoding="utf-8")
+        else:
+            schema_path = pathlib.Path(f"<package:{SCHEMA_FILENAME}>")
+            schema_text = read_packaged_text(SCHEMA_FILENAME)
+        schema_payload = json.loads(schema_text)
     except (OSError, ValueError, TypeError) as exc:
         raise RuntimeError(
             "FATAL: launcher schema file is unreadable or invalid JSON. "
@@ -224,7 +227,10 @@ def _state_file_path(
         resolved = _resolve_path(payload.get(KEY_STATE_FILE), base_dir=base_dir)
         if resolved is not None:
             return resolved
-    return (_repo_root() / "consumer-sim" / "runtime" / "launcher_state.json").resolve()
+    component_root = source_component_root()
+    if component_root is not None:
+        return (component_root / "runtime" / "launcher_state.json").resolve()
+    return (user_state_root() / "runtime" / "launcher_state.json").resolve()
 
 
 def _build_entrypoint_command(entrypoint: str) -> list[str]:
@@ -330,7 +336,7 @@ def _build_instance_command(
 
     working_dir = _resolve_path(instance.get(KEY_WORKING_DIR), base_dir=base_dir)
     if working_dir is None:
-        working_dir = _repo_root()
+        working_dir = source_repo_root() or pathlib.Path.cwd().resolve()
 
     return name, command, working_dir
 
@@ -338,23 +344,24 @@ def _build_instance_command(
 def _build_process_environment(
     instance: dict[str, Any],
     *,
-    repo_root: pathlib.Path,
+    repo_root: pathlib.Path | None,
     process_record_file: pathlib.Path,
     instance_name: str,
 ) -> dict[str, str]:
     """Build environment for launched consumer process."""
     env = os.environ.copy()
 
-    pythonpath_entries = [
-        str(repo_root / "consumer" / "src"),
-        str(repo_root),
-    ]
-    existing_pythonpath = str(env.get("PYTHONPATH", "") or "").strip()
-    if existing_pythonpath:
-        pythonpath_entries.append(existing_pythonpath)
-    env["PYTHONPATH"] = os.pathsep.join(
-        entry for entry in pythonpath_entries if entry.strip()
-    )
+    if repo_root is not None:
+        pythonpath_entries = [
+            str(repo_root / "consumer" / "src"),
+            str(repo_root),
+        ]
+        existing_pythonpath = str(env.get("PYTHONPATH", "") or "").strip()
+        if existing_pythonpath:
+            pythonpath_entries.append(existing_pythonpath)
+        env["PYTHONPATH"] = os.pathsep.join(
+            entry for entry in pythonpath_entries if entry.strip()
+        )
 
     raw_env = instance.get(KEY_ENV, {})
     if not isinstance(raw_env, dict):
@@ -549,7 +556,7 @@ def _start_instances(config_path: pathlib.Path) -> None:  # pylint: disable=too-
 
     launched: list[dict[str, Any]] = []
     base_dir = config_path.parent
-    repo_root = _repo_root()
+    repo_root = source_repo_root()
 
     try:
         for index, raw_instance in enumerate(raw_instances, start=1):
@@ -788,7 +795,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
             "Start or stop batches of OpAMP consumer instances defined in "
-            "consumer-sim/consumer_instances.json. "
+            "consumer-sim/config/consumer_instances.json. "
             f"Version: {version_text}"
         )
     )

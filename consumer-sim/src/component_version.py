@@ -18,8 +18,13 @@ import json
 from pathlib import Path
 from typing import Any
 
+from opamp_consumer_sim.resources import (
+    VERSION_FILENAME,
+    read_packaged_text,
+    source_resource_path,
+)
+
 COMPONENT_NAME = "consumer-sim"
-_VERSION_FILE_PATH = Path(__file__).resolve().parents[1] / "version.json"
 _UNKNOWN_VALUE = "unknown"
 
 
@@ -39,7 +44,12 @@ def load_component_version_info() -> dict[str, str]:
     """Load version metadata from component JSON file with safe fallback."""
     fallback = _fallback_payload()
     try:
-        payload: Any = json.loads(_VERSION_FILE_PATH.read_text(encoding="utf-8"))
+        version_path = source_resource_path(VERSION_FILENAME)
+        if version_path is not None:
+            payload_text = version_path.read_text(encoding="utf-8")
+        else:
+            payload_text = read_packaged_text(VERSION_FILENAME)
+        payload: Any = json.loads(payload_text)
     except (OSError, ValueError, TypeError):
         return fallback
     if not isinstance(payload, dict):

@@ -26,7 +26,7 @@ The simulator uses the existing consumer architecture with a dedicated
 Key components:
 - `consumer/src/opamp_consumer/simulator_client.py`
 - `consumer-sim/src/consumer_sim_launcher.py`
-- `consumer-sim/consumer_instances.json`
+- `consumer-sim/config/consumer_instances.json`
 
 The launcher starts many simulator instances, each with its own process, config,
 and metadata overrides, so the provider stores them as independent agents.
@@ -98,7 +98,7 @@ With this split we can:
 ## Lifecycle Model
 
 Start:
-- launcher reads `consumer_instances.json`
+- launcher reads `config/consumer_instances.json`
 - spawns one simulator process per entry
 - records PID/process metadata in launcher state file
 
@@ -115,7 +115,7 @@ This keeps cleanup reliable and avoids stale state on partial failures.
 
 ## Typical Usage Pattern
 
-1. Define many simulator instances in `consumer-sim/consumer_instances.json`.
+1. Define many simulator instances in `consumer-sim/config/consumer_instances.json`.
 2. Give each instance distinct metadata JSON in `agent-additional-params`.
 3. Run the simulator directly or use the CLI demo-consumer flow.
 4. Exercise server UI/API/tooling against the simulated population.
