@@ -1,6 +1,6 @@
 {
   "consumer": {
-    "server_url": "http://localhost:8070",
+    "server_url": "http://localhost:8080",
     "client_status_port": 2020,
     "chat_ops_port": 8888,
     "transport": "http",
@@ -29,7 +29,7 @@
   "provider": {
     "delayed_comms_seconds": 60,
     "significant_comms_seconds": 120,
-    "webui_port": 8070,
+    "webui_port": 8080,
     "minutes_keep_disconnected": 5,
     "retryAfterSeconds": 30,
     "client_event_history_size": 50,
