@@ -19,19 +19,16 @@ published landing-page preview for this documentation set.
 
 The repository has two main packaging flows:
 
-- `scripts/build_artifacts.sh` / `scripts/build_artifacts.cmd`
-  - builds `sdist` + `wheel` artefacts for:
-    - `provider`
-    - `consumer`
-    - `catalog-service`
-    - `cli`
-    - `consumer-sim`
-- `scripts/build_and_publish_wheels.py`
+- `python dev-tools/main.py build artefact all`
+  - builds per-component `sdist` + `wheel` artefacts
+- `python dev-tools/main.py build release-assets`
   - builds independently deployable wheels
   - writes a separate CycloneDX SBOM for each selected component
   - supports subset builds with `--components`
   - supports GitHub release publication with `--publish`
   - supports `--no-isolation` for local/offline build environments
+- `python scripts/security_checks.py`
+  - compatibility wrapper for the full repository security gate
 
 Common build output locations:
 
@@ -51,7 +48,7 @@ Packaging notes:
 
 See:
 
-- [Scripts reference](scripts.md)
+- [Scripts reference](../scripts/README.md)
 - [Component Versioning](dev/component_versioning.md)
 - [Config-service standalone packaging](../config-service/docs/standalone-packaging.md)
 - [MCP scripts and usage](../mcp/README.md#build-pip-install-and-sbom)
@@ -325,7 +322,7 @@ See:
 - `mcp/` - MCP client helper scripts and configuration wrappers
 - `proto/` - protobuf definitions
 - `provider/` - required server package
-- `scripts/` - shared helper and packaging scripts
+- `scripts/` - compatibility wrappers and low-level operational helper scripts
 - `shared/` - internal shared Python utilities
 - `tests/` - repository-level tests and container scenarios
 

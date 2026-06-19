@@ -70,6 +70,6 @@ Build/package scripts refresh component version metadata before producing artifa
 
 - `scripts/build_artifacts.sh`
 - `scripts/build_artifacts.cmd`
-- `scripts/build_and_publish_wheels.py`
+- `python dev-tools/main.py build release-assets`
 - `agent_broker/scripts/package.sh`
 - `agent_broker/scripts/package.ps1`

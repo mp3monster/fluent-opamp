@@ -21,11 +21,11 @@ file:
 - `web_ui_framework.mini.js`
 - `web_ui_bindings.mini.js`
 
-## Build script
+## Build command
 
 The canonical minification entry point is:
 
-- `scripts/build_provider_ui_compact_assets.py`
+- `python dev-tools/main.py build ui-compaction`
 
 It uses `npx esbuild --minify --legal-comments=none` and writes deterministic
 output files next to the source assets.
@@ -34,19 +34,19 @@ The canonical asset list is shared in:
 
 - `provider/src/opamp_provider/ui_assets.py`
 
-Both provider runtime and the minification script read from that shared module so
+Both provider runtime and the minification command read from that shared module so
 the asset set stays aligned.
 
 Manual usage:
 
 ```bash
-python3 scripts/build_provider_ui_compact_assets.py --repo-root .
+python3 dev-tools/main.py --repo-root . build ui-compaction
 ```
 
 Clean-only usage:
 
 ```bash
-python3 scripts/build_provider_ui_compact_assets.py --repo-root . --clean-only
+python3 dev-tools/main.py --repo-root . build ui-compaction --clean-only
 ```
 
 ## Runtime selection behavior
@@ -87,7 +87,7 @@ standard artifact build path.
 
 ### Wheel build and publish flow
 
-`scripts/build_and_publish_wheels.py` refreshes the provider UI compact assets
+`python dev-tools/main.py build release-assets` refreshes the provider UI compact assets
 before building wheels unless `--skip-ui-compaction` is supplied.
 
 ## Consistency expectation

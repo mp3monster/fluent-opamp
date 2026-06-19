@@ -1,16 +1,16 @@
 # Self-Signed TLS Certificate Setup
 
-This guide shows how to use `scripts/generate_self_signed_tls_cert.py` to:
+This guide shows how to use the developer CLI certificate helper to:
 
 1. install required Python dependency (`cryptography`), and
 2. generate a self-signed TLS certificate and private key for local provider HTTPS testing.
 
-## Script Location
+## CLI Location
 
-- Script: `scripts/generate_self_signed_tls_cert.py`
-- Help: `python scripts/generate_self_signed_tls_cert.py --help`
+- Command: `python dev-tools/main.py certificate generate`
+- Help: `python dev-tools/main.py certificate generate --help`
 
-The script `--help` output points to this document.
+The command `--help` output points to this document.
 
 ## What The Script Generates
 
@@ -29,19 +29,19 @@ Default SAN values:
 Linux/macOS:
 
 ```bash
-python3 scripts/generate_self_signed_tls_cert.py
+python3 dev-tools/main.py certificate generate
 ```
 
 Windows (cmd or PowerShell):
 
 ```powershell
-python scripts/generate_self_signed_tls_cert.py
+python dev-tools/main.py certificate generate
 ```
 
 ## Common Options
 
 ```bash
-python3 scripts/generate_self_signed_tls_cert.py \
+python3 dev-tools/main.py certificate generate \
   --cert-file certs/provider-server.pem \
   --key-file certs/provider-server-key.pem \
   --common-name localhost \
@@ -55,7 +55,7 @@ python3 scripts/generate_self_signed_tls_cert.py \
 If dependency auto-install is not desired:
 
 ```bash
-python3 scripts/generate_self_signed_tls_cert.py --skip-dependency-install
+python3 dev-tools/main.py certificate generate --skip-dependency-install
 ```
 
 ## Configuration Updates Required
@@ -99,6 +99,16 @@ Also ensure the consumer URL in the same file uses HTTPS:
 }
 ```
 
+You can also apply the `provider.tls` block with the developer CLI:
+
+```bash
+python3 dev-tools/main.py certificate ensure-provider-config \
+  --config-file config/opamp.json \
+  --cert-file certs/provider-server.pem \
+  --key-file certs/provider-server-key.pem \
+  --trust-anchor-mode none
+```
+
 ## 2) Fluentd Consumer Config (`consumer/opamp-fluentd.json`)
 
 Set:
@@ -131,7 +141,7 @@ Use `verify_server=false` for local development only.
 
 ## Recommended Development-Only Pattern
 
-1. Generate the self-signed certificate/key with the script.
+1. Generate the self-signed certificate/key with the developer CLI.
 2. Enable provider TLS using the generated files.
 3. Point consumer `server_url` to `https://...`.
 4. Disable client CA verification for local self-signed usage (`consumer.tls.verify_server=false`).

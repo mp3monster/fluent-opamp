@@ -1,10 +1,10 @@
 {
   "component": "consumer",
-  "effective_label": "v0.5.11",
-  "generated_at_utc": "2026-06-19T15:28:01+00:00",
-  "git_commit": "57b08123f571",
-  "git_commit_date": "2026-06-19T13:32:03+01:00",
-  "git_commit_date_friendly": "19 Jun 2026 13:32:03 UTC+01:00",
+  "effective_label": "v0.5.12",
+  "generated_at_utc": "2026-06-19T15:32:20+00:00",
+  "git_commit": "88e919096b26",
+  "git_commit_date": "2026-06-19T16:27:58+01:00",
+  "git_commit_date_friendly": "19 Jun 2026 16:27:58 UTC+01:00",
   "git_label": "v0.5",
-  "version": "v0.5.11 57b08123f571 (19 Jun 2026 13:32:03 UTC+01:00)"
+  "version": "v0.5.12 88e919096b26 (19 Jun 2026 16:27:58 UTC+01:00)"
 }

@@ -80,6 +80,7 @@ In the code base, this is often referred to as the consumer.
 * Share namespace when running in a K8s deployment
 * Configuration refinements to manage beats / Elastic Stack OSS
 * Enhance agent observability so that it can be incorporated into the observed agent monitoring for the ***observer*** deployment (.i.e process discovery rather than process launch) using the `consumer.processDetectionRegex` 
+* Root page (e.g. localhost:8080) provides a redirect button (or buttons) for each of the services available. If no other components deployed then directs to correct URL
 
 
 
@@ -112,6 +113,7 @@ The config editor and its tools can be used to edit Fluent Bit and Fluentd confi
 - Improve the validation feedback
 - Look at how we could provide a more visual representation of the configuration
 - Consider incorporating a classic to YAML capability - integrate the utility previously built?
+- Root page (e.g. localhost:8080) provides a redirect button (or buttons) for each of the services available. If no other components deployed then directs to correct URL
 
 ##### Catalog
 
@@ -119,6 +121,7 @@ The catalog component will look into all the defined locations and retrieve the 
 
 - Use the catalog to select the configurations for the remote deployment task on the main server 
 - Interact with Git as a catalog source
+- Root page (e.g. localhost:8080) provides a redirect button (or buttons) for each of the services available. If no other components deployed then directs to correct URL
 
 
 
@@ -133,13 +136,27 @@ The broker provides the interoperability layer with social channels and Agents w
 
 ### Configuration Editor (Configuration Service)
 * Extended testing to ensure all plugins are correctly configured
+
 * Extend the validation techniques (so we can provide a proper URL validation)
+
 * Evaluate extensibility so we could provide structure to support (in priority order):
-* * OTel standard collector
-* * Elastic stack / beats
-* Validation of nested Include dependencies
+
+  * OTel standard collector
+  * Elastic stack / beats
+
+* Validation additional rules:
+
+  * If one attribute is set, then so should others e.g. oath.validate is true, then oauth2.issuer needs to be set
+  * Validator for IPs so we can confirm IPv4 is correct - needs consideration - confirm whether Fluent Bit will handle hostname/DNS as alternate to IP?
+  * duration validation as some fields allow you to express the value as n seconds, n minutes e.g. input fluent-bit-metrics
+
 * Take into account custom plugins
+
 * Extend the number of versions that we have configuration definitions
+
+* Optimize the configuration further, so that data types can infer validation rules e.g. an enum has an infered validation of  using called_enum_options, boolean can infer the boolean options
+
+  
 
 
 
@@ -158,7 +175,12 @@ To reduce the number of scripts, we have a CLI utility, that functions as a conv
 - In dev mode  use it to trigger package/deploy processes
 
   
+  
+  
 
 ### Others
 
-- Consolidate SBom script - more than one place has Python logic to support. 
+- Dev tool util:
+  - create wheel files
+  - incorporates app version into the provider and consumer
+  - validates the configuration files for the configurations
