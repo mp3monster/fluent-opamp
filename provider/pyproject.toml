@@ -16,7 +16,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "opamp-server"
-version = "0.4.0"
+version = "0.4.1"
 description = "OpAMP Server - upstream source https://github.com/mp3monster/fluent-opamp "
 readme = "README.md"
 requires-python = ">=3.10"
@@ -91,6 +91,18 @@ ignore = ["E501"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["opamp_provider", "shared"]
+
+[tool.hatch.build]
+exclude = [
+  ".coverage",
+  ".pytest_cache/**",
+  ".ruff_cache/**",
+  ".venv/**",
+  "node_modules/**",
+  "test-results/**",
+  "ui-tests/node_modules/**",
+  "**/__pycache__/**",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/opamp_provider", "src/shared"]

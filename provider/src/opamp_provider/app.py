@@ -15,10 +15,8 @@
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import json
 import logging
-import mimetypes
 import os
 import pathlib
 import re
@@ -79,12 +77,11 @@ from opamp_provider.opamp_protocol import (
     provider_authorization_mode_to_auth_mode as protocol_provider_authorization_mode_to_auth_mode,
 )
 from opamp_provider.proto import opamp_pb2
-from opamp_provider.remote_config_offer import (
-    RemoteConfigOfferCommand,
+from opamp_provider.remote_config_schema import (
     config_editor_validation_available,
-    normalize_ui_remote_config_file_specs,
-    normalize_ui_remote_config_selection_specs,
-    validate_ui_remote_config_files,
+    normalize_remote_config_file_specs,
+    normalize_remote_config_selection_specs,
+    validate_remote_config_files,
 )
 from opamp_provider.state import STORE, ClientRecord
 from opamp_provider.state_persistence import (
@@ -94,6 +91,7 @@ from opamp_provider.state_persistence import (
 )
 from opamp_provider.transport import decode_message, encode_message
 from opamp_provider.ui_assets import mini_filename
+from shared.agent_remote_config import build_agent_remote_config
 from shared.opamp_config import (
     OPAMP_HTTP_PATH,
     OPAMP_TRANSPORT_HEADER_NONE,
@@ -451,73 +449,6 @@ def _diagnostic_mode_enabled() -> bool:
     return bool(app.config.get("DIAGNOSTIC_MODE", False))
 
 
-def _resolve_remote_config_content_type(
-    *,
-    content_type: object,
-    source_path: pathlib.Path,
-) -> str | None:
-    """Return explicit or inferred content type for one remote-config file."""
-    explicit = str(content_type or "").strip()
-    if explicit:
-        return explicit
-    suffix = source_path.suffix.lower()
-    if suffix in {".yaml", ".yml"}:
-        return "application/x-yaml"
-    if suffix == ".json":
-        return "application/json"
-    if suffix == ".xml":
-        return "application/xml"
-    guessed, _encoding = mimetypes.guess_type(str(source_path))
-    return guessed
-
-
-def _read_remote_config_file_specs(
-    files_payload: object,
-) -> list[dict[str, str | bytes | None]]:
-    """Normalize a list of file path inputs for test AgentRemoteConfig construction."""
-    if not isinstance(files_payload, list) or not files_payload:
-        raise ValueError("files must be a non-empty list")
-
-    file_specs: list[dict[str, str | bytes | None]] = []
-    for item in files_payload:
-        if isinstance(item, str):
-            source_path = pathlib.Path(item).expanduser()
-            target_name = source_path.name
-            content_type = None
-        elif isinstance(item, dict):
-            raw_source_path = item.get("source_path") or item.get("path")
-            if not raw_source_path:
-                raise ValueError("each file item requires source_path")
-            source_path = pathlib.Path(str(raw_source_path)).expanduser()
-            target_name = str(
-                item.get("target_name")
-                or item.get("target_path")
-                or item.get("filename")
-                or source_path.name
-            ).strip()
-            content_type = item.get("content_type")
-        else:
-            raise ValueError("each file item must be a string path or object")
-
-        if not target_name:
-            raise ValueError("target file name cannot be blank")
-        if not source_path.is_file():
-            raise ValueError(f"source file does not exist: {source_path}")
-
-        file_specs.append(
-            {
-                "source_path": str(source_path.resolve()),
-                "target_name": target_name,
-                "content_type": _resolve_remote_config_content_type(
-                    content_type=content_type,
-                    source_path=source_path,
-                ),
-                "body": source_path.read_bytes(),
-            }
-        )
-    return file_specs
-
-
 def _client_supports_remote_config(client: ClientRecord) -> bool:
     """Return whether a client has announced remote-config acceptance capability."""
     return CLIENT_REMOTE_CONFIG_CAPABILITY in client.capabilities
@@ -547,26 +478,6 @@ def _serialize_client_record_for_api(record: ClientRecord) -> dict[str, object]:
         provider_remote_config_enabled and remote_config_capability_reported
     )
     return payload
-
-
-def _build_agent_remote_config_from_specs(
-    file_specs: list[dict[str, str | bytes | None]],
-    *,
-    include_hash: bool,
-) -> opamp_pb2.AgentRemoteConfig:
-    """Construct an AgentRemoteConfig payload from normalized file specs."""
-    remote_config = opamp_pb2.AgentRemoteConfig()
-    for file_spec in file_specs:
-        target_name = str(file_spec["target_name"])
-        config_file = remote_config.config.config_map[target_name]
-        config_file.body = bytes(file_spec["body"] or b"")
-        content_type = str(file_spec["content_type"] or "").strip()
-        if content_type:
-            config_file.content_type = content_type
-    if include_hash:
-        serialized = remote_config.config.SerializeToString(deterministic=True)
-        remote_config.config_hash = hashlib.sha256(serialized).digest()
-    return remote_config
 
 
 def _coerce_bool_setting(value: object, *, key: str) -> bool:
@@ -2413,7 +2324,7 @@ async def accept_remote_config_selection(client_id: str) -> Response:
         return jsonify({"error": "client not found"}), HTTPStatus.NOT_FOUND
 
     try:
-        selection_specs = normalize_ui_remote_config_selection_specs(payload.get("files"))
+        selection_specs = normalize_remote_config_selection_specs(payload.get("files"))
     except ValueError as exc:
         logger.warning(
             "remote config selection validation failed client_id=%s error=%s",
@@ -2478,12 +2389,12 @@ async def queue_remote_config_offer(client_id: str) -> Response:
         )
 
     try:
-        file_specs = normalize_ui_remote_config_file_specs(payload.get("files"))
+        file_specs = normalize_remote_config_file_specs(payload.get("files"))
         include_hash = _coerce_bool_setting(
             payload.get("include_hash", True),
             key="include_hash",
         )
-        validation_results = validate_ui_remote_config_files(
+        validation_results = validate_remote_config_files(
             file_specs,
             app_extensions=app.extensions,
             validation_payload=payload.get("validation"),
@@ -2496,14 +2407,9 @@ async def queue_remote_config_offer(client_id: str) -> Response:
         )
         return jsonify({"error": str(exc)}), HTTPStatus.BAD_REQUEST
 
-    command = RemoteConfigOfferCommand(
-        key_values={
-            "client_id": client_id,
-            "file_count": str(len(file_specs)),
-        }
-    )
-    remote_config = command.build_remote_config(
-        file_specs,
+    remote_config = build_agent_remote_config(
+        opamp_pb2.AgentRemoteConfig(),
+        [file_spec.to_agent_config_map_entry() for file_spec in file_specs],
         include_hash=include_hash,
     )
     remote_config_bytes = remote_config.SerializeToString()
@@ -2557,7 +2463,7 @@ async def build_test_remote_config(client_id: str) -> Response:
     if not payload:
         return jsonify({"error": "payload is required"}), HTTPStatus.BAD_REQUEST
     try:
-        file_specs = _read_remote_config_file_specs(payload.get("files"))
+        file_specs = normalize_remote_config_file_specs(payload.get("files"))
         include_hash = _coerce_bool_setting(
             payload.get("include_hash", True),
             key="include_hash",
@@ -2569,8 +2475,9 @@ async def build_test_remote_config(client_id: str) -> Response:
     except ValueError as exc:
         return jsonify({"error": str(exc)}), HTTPStatus.BAD_REQUEST
 
-    remote_config = _build_agent_remote_config_from_specs(
-        file_specs,
+    remote_config = build_agent_remote_config(
+        opamp_pb2.AgentRemoteConfig(),
+        [file_spec.to_agent_config_map_entry() for file_spec in file_specs],
         include_hash=include_hash,
     )
     record = STORE.set_pending_remote_config(
@@ -2587,10 +2494,10 @@ async def build_test_remote_config(client_id: str) -> Response:
                 "diagnostic_enabled": True,
                 "files": [
                     {
-                        "source_path": str(file_spec["source_path"]),
-                        "target_name": str(file_spec["target_name"]),
-                        "content_type": str(file_spec["content_type"] or ""),
-                        "size_bytes": len(bytes(file_spec["body"] or b"")),
+                        "source_path": str(file_spec.source_path),
+                        "target_name": file_spec.target_name,
+                        "content_type": file_spec.content_type,
+                        "size_bytes": file_spec.size_bytes,
                     }
                     for file_spec in file_specs
                 ],
