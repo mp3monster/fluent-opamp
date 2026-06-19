@@ -46,7 +46,7 @@ python3 -m build --wheel
 Repository-wide coordinated packaging alternative:
 
 ```bash
-python3 scripts/build_and_publish_wheels.py --components provider,consumer,catalog,cli,consumer-sim
+python3 dev-tools/main.py build release-assets --components provider,consumer,catalog-service,cli,consumer-sim
 ```
 
 Use the standalone command above when you only want the `config-service` wheel.

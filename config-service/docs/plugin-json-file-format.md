@@ -149,17 +149,36 @@ Common forms include:
 | --- | --- | --- |
 | `boolean` | `{ "kind": "boolean" }` | Enforces boolean values. |
 | `integer` | `{ "kind": "integer" }` | Documents integer intent in source metadata. |
+| `list` | `{ "kind": "list" }` | Documents that the field is list-shaped, typically paired with `data_type: "list"` for array-backed fields such as Fluentd `chunk_keys` or CSV `fields`. |
 | `range` | `{ "kind": "range", "min": 0, "max": 10 }` | Enforces numeric bounds. |
 | `regex` | `{ "kind": "regex", "pattern": "..." }` | Enforces a pattern. |
 | `regex_string` | `{ "kind": "regex_string", "pattern": "..." }` | String-specific regex validation. |
+| `duration` | `{ "kind": "duration" }` | Enforces compact duration strings such as `250ms`, `5s`, `1m`, or `2h` using `^\\d+(ns|us|ms|s|m|h|d)?$`. |
 | `size` | `{ "kind": "size" }` | Enforces Fluent Bit size strings such as `32k` or `10M`; see https://docs.fluentbit.io/manual/administration/configuring-fluent-bit#unit-sizes |
 | `enum` | `{ "kind": "enum", "values": [...] }` | Documents allowed values, usually paired with `called_enum_options`. |
+
+Example duration field:
+
+```json
+{
+  "name": "scrape_interval",
+  "required": false,
+  "description": "The interval to scrape metrics from the target.",
+  "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/nginx#configuration-parameters",
+  "default": "5s",
+  "data_type": "duration",
+  "validation_rule": {
+    "kind": "duration"
+  }
+}
+```
 
 Important nuance:
 
 1. Not every `validation_rule` becomes a native JSON Schema keyword.
 2. Runtime schema compilation mainly carries forward `type`, `description`, `enum`, `default`, and `x-*` metadata.
 3. Backend semantic validation and rule adapters enforce the richer rule set.
+4. Some rule kinds such as `list` are currently descriptive catalog metadata rather than a dedicated standalone rule-adapter branch.
 
 ## Generated runtime schema shard files
 Typical examples:
