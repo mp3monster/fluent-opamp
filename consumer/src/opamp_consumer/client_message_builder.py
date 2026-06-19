@@ -15,12 +15,26 @@
 from __future__ import annotations
 
 import logging
+import mimetypes
+import pathlib
 import re
 import time
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
+
+from shared.agent_remote_config import AgentConfigMapFileEntry, build_agent_remote_config
 
 from opamp_consumer.proto import opamp_pb2
 from opamp_consumer.reporting_flag import ReportingFlag
+
+EFFECTIVE_CONFIG_CAPABILITY_NAME = "ReportsEffectiveConfig"
+JSON_SUFFIXES = {".json"}
+XML_SUFFIXES = {".xml"}
+YAML_SUFFIXES = {".yaml", ".yml"}
+JSON_CONTENT_TYPE = "application/json"
+XML_CONTENT_TYPE = "application/xml"
+YAML_CONTENT_TYPE = "application/x-yaml"
+TEXT_PLAIN_CONTENT_TYPE = "text/plain"
 
 
 def populate_agent_to_server(
@@ -29,6 +43,8 @@ def populate_agent_to_server(
     msg: opamp_pb2.AgentToServer,
     get_agent_description: Callable[[], opamp_pb2.AgentDescription],
     get_agent_capabilities: Callable[[], int],
+    is_capability_allowed: Callable[[str], bool],
+    get_configuration_files: Callable[[], list[str]],
     get_custom_capabilities_payload: Callable[[], opamp_pb2.CustomCapabilities],
     populate_agent_to_server_health: Callable[
         [opamp_pb2.AgentToServer], opamp_pb2.AgentToServer
@@ -56,7 +72,85 @@ def populate_agent_to_server(
     if data.reporting_flags[ReportingFlag.REPORT_HEALTH]:
         msg = populate_agent_to_server_health(msg)
         data.reporting_flags[ReportingFlag.REPORT_HEALTH] = False
+
+    if is_capability_allowed(EFFECTIVE_CONFIG_CAPABILITY_NAME):
+        msg = populate_agent_to_server_effective_config(
+            msg=msg,
+            configuration_files=get_configuration_files(),
+        )
     return msg
+
+
+def populate_agent_to_server_effective_config(
+    *,
+    msg: opamp_pb2.AgentToServer,
+    configuration_files: list[str],
+) -> opamp_pb2.AgentToServer:
+    """Populate AgentToServer.effective_config from local configuration files."""
+    logger = logging.getLogger(__name__)
+    msg.ClearField("effective_config")
+    file_entries = _read_effective_config_entries(configuration_files)
+    if not file_entries:
+        logger.warning(
+            "effective_config generation skipped because no readable configuration files were found"
+        )
+        return msg
+
+    remote_config = build_agent_remote_config(
+        opamp_pb2.AgentRemoteConfig(),
+        file_entries,
+        include_hash=False,
+    )
+    msg.effective_config.config_map.CopyFrom(remote_config.config)
+    logger.info(
+        "generated effective_config payload file_count=%s files=%s",
+        len(file_entries),
+        ", ".join(file_entry.target_name for file_entry in file_entries),
+    )
+    return msg
+
+
+def _read_effective_config_entries(
+    configuration_files: list[str],
+) -> list[AgentConfigMapFileEntry]:
+    """Read local config files into shared AgentConfigMap entry records."""
+    logger = logging.getLogger(__name__)
+    file_entries: list[AgentConfigMapFileEntry] = []
+    for raw_path in configuration_files:
+        normalized_path = str(raw_path or "").strip()
+        if not normalized_path:
+            continue
+        source_path = pathlib.Path(normalized_path)
+        try:
+            body = source_path.read_bytes()
+        except OSError as error:
+            logger.warning(
+                "failed to read effective_config source file path=%s error=%s",
+                normalized_path,
+                error,
+            )
+            continue
+        file_entries.append(
+            AgentConfigMapFileEntry(
+                target_name=normalized_path,
+                body=body,
+                content_type=_resolve_effective_config_content_type(source_path),
+            )
+        )
+    return file_entries
+
+
+def _resolve_effective_config_content_type(source_path: pathlib.Path) -> str:
+    """Infer a stable config content type from a local configuration file path."""
+    suffix = source_path.suffix.lower()
+    if suffix in JSON_SUFFIXES:
+        return JSON_CONTENT_TYPE
+    if suffix in XML_SUFFIXES:
+        return XML_CONTENT_TYPE
+    if suffix in YAML_SUFFIXES:
+        return YAML_CONTENT_TYPE
+    guessed_type, _ = mimetypes.guess_type(source_path.name)
+    return guessed_type or TEXT_PLAIN_CONTENT_TYPE
 
 
 def populate_agent_to_server_health(

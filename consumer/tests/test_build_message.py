@@ -10,16 +10,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import opamp_consumer.fluentbit_client as client
 import pytest
+from shared.opamp_config import UTF8_ENCODING
+
+import opamp_consumer.fluentbit_client as client
 from opamp_consumer.config import ConsumerConfig
+from opamp_consumer.config_metadata import (
+    CONFIG_METADATA_KEY_AGENT_DESCRIPTION,
+    CONFIG_METADATA_KEY_SERVICE_INSTANCE_ID,
+)
 from opamp_consumer.fluentbit_client import (
     build_minimal_agent,
     load_agent_config,
     resolve_service_instance_id_template,
 )
-
-from shared.opamp_config import UTF8_ENCODING
 
 
 def test_build_minimal_agent() -> None:
@@ -61,6 +65,7 @@ Flush 1
     assert config.agent_http_port == 2020
     assert config.agent_http_listen == "0.0.0.0"
     assert config.agent_http_server == "On"
+    assert config.agent_config_text is not None
 
 
 def test_resolve_service_instance_id_template_tokens(monkeypatch) -> None:
@@ -142,3 +147,43 @@ HTTP_Port not_a_number
 
     with pytest.raises(ValueError):
         load_agent_config(config)
+
+
+def test_fluentbit_client_get_config_metadata_reads_supported_comment_fields(
+    tmp_path,
+) -> None:
+    """Fluent Bit metadata extractor should expose structured config metadata."""
+    sample_path = tmp_path / "fluent-bit.conf"
+    sample_path.write_text(
+        """
+# agent_description = test-agent
+# config_version = 2026.04.10
+# service_instance_id: abcdef1234567890
+# SCM_source_name: git
+# version: 3.2.1
+[SERVICE]
+HTTP_Server On
+""",
+        encoding=UTF8_ENCODING,
+    )
+    config = ConsumerConfig(
+        server_url="http://localhost",
+        agent_config_path=str(sample_path),
+        agent_additional_params=[],
+        heartbeat_frequency=30,
+        agent_capabilities=0,
+        log_level="debug",
+    )
+    instance = client.OpAMPClient("http://localhost", config)
+
+    metadata = instance.get_config_metadata()
+
+    assert metadata.config_version == "2026.04.10"
+    assert metadata.SCM_source_name == "git"
+    assert metadata.version == "3.2.1"
+    assert metadata.config_type == "Fluentbit"
+    assert "[SERVICE]" in metadata.config_data
+    assert metadata.additional_metadata == {
+        CONFIG_METADATA_KEY_AGENT_DESCRIPTION: "test-agent",
+        CONFIG_METADATA_KEY_SERVICE_INSTANCE_ID: "abcdef1234567890",
+    }

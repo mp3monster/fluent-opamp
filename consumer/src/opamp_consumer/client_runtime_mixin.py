@@ -46,7 +46,7 @@ def _normalize_process_tracking(value: str | None) -> str:
 class _BaseClientProcessLifecycle:
     """Shared lifecycle helper behavior used by process-tracking implementations."""
 
-    def __init__(self, owner: "ClientRuntimeMixin") -> None:
+    def __init__(self, owner: ClientRuntimeMixin) -> None:
         self._owner = owner
 
     def launch_agent_process(self) -> bool:
@@ -371,7 +371,6 @@ class ClientRuntimeMixin:
                 logger.error("Heartbeat loop interrupted by shutdown signal")
                 raise
             except Exception as loop_error:  # pylint: disable=broad-exception-caught
-                await self._send_disconnect_with_timeout()
                 logger.exception(
                     "Heartbeat loop recovered from unexpected cycle error: %s",
                     loop_error,

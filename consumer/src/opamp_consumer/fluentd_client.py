@@ -40,15 +40,22 @@ from opamp_consumer.abstract_client import (
 )
 from opamp_consumer.client_bootstrap import (
     build_common_cli_parser,
-    configure_observability_for_config,
     configure_logging_for_config,
+    configure_observability_for_config,
     load_config_from_cli_args,
     log_runtime_config_path,
+    maybe_print_cli_config,
     maybe_print_config_help,
     run_client,
     validate_runtime_server_config,
 )
 from opamp_consumer.config import CFG_AGENT_CONFIG_PATH, ConsumerConfig
+from opamp_consumer.config_metadata import (
+    CONFIG_METADATA_KEY_AGENT_DESCRIPTION,
+    CONFIG_METADATA_KEY_SERVICE_INSTANCE_ID,
+    ConfigMetadata,
+)
+from opamp_consumer.fluentd_config_metadata import extract_fluentd_config_metadata
 from opamp_consumer.proto import opamp_pb2
 from opamp_consumer.reporting_flag import ReportingFlag
 
@@ -484,17 +491,23 @@ def load_fluentd_config(config: consumer_config.ConsumerConfig) -> ConsumerConfi
     if not path:
         raise ValueError(f"{CFG_AGENT_CONFIG_PATH} is not set")
 
-    with open(path, encoding=consumer_config.UTF8_ENCODING) as handle:
-        lines = handle.readlines()
+    metadata = extract_fluentd_config_metadata(path)
+    if metadata.config_data:
+        config.agent_config_text = metadata.config_data
+    if metadata.config_version:
+        config.config_version = metadata.config_version
 
-    for raw_line in lines:
-        stripped_line = raw_line.strip()
-        if not stripped_line:
-            continue
+    agent_description = metadata.additional_metadata.get(
+        CONFIG_METADATA_KEY_AGENT_DESCRIPTION
+    )
+    if agent_description:
+        config.agent_description = agent_description
 
-        comment_match = _COMMENT_KV.match(raw_line)
-        if comment_match is not None:
-            _apply_fluentd_comment(config, logger, comment_match)
+    service_instance_id = metadata.additional_metadata.get(
+        CONFIG_METADATA_KEY_SERVICE_INSTANCE_ID
+    )
+    if service_instance_id:
+        config.service_instance_id = service_instance_id
 
     bind, port = find_monitor_agent_source_bind_and_port(path)
     if bind is not None:
@@ -543,6 +556,7 @@ class FluentdOpAMPClient(AbstractOpAMPClient):
     SUPPORTED_AGENT_CAPABILITY_NAMES = (
         *consumer_config.MANDATORY_AGENT_CAPABILITY_NAMES,
         "AcceptsRemoteConfig",
+        "ReportsEffectiveConfig",
         "ReportsHeartbeat",
     )
 
@@ -555,6 +569,10 @@ class FluentdOpAMPClient(AbstractOpAMPClient):
     def get_custom_handler_folder(self) -> pathlib.Path:
         """Return the default handler folder used by the Fluentd client."""
         return pathlib.Path(__file__).resolve().parent / "custom_handlers"
+
+    def get_config_metadata(self) -> ConfigMetadata:
+        """Return structured metadata extracted from the active Fluentd config."""
+        return extract_fluentd_config_metadata(self.config.agent_config_path)
 
     def _monitor_agent_host(self) -> str:
         """Return monitor_agent host used by Fluentd status/version requests.
@@ -736,6 +754,8 @@ def main() -> None:
         tracemalloc.start()
         parser = build_common_cli_parser()
         args = parser.parse_args()
+        if maybe_print_cli_config(args=args):
+            return
         config = load_config_from_cli_args(args)
         logger = configure_logging_for_config(config)
         log_runtime_config_path(

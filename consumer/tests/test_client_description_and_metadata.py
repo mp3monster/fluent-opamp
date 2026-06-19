@@ -13,17 +13,25 @@
 import opamp_consumer.abstract_client as abstract_client
 import opamp_consumer.fluentbit_client as client
 from opamp_consumer.config import ConsumerConfig
+from opamp_consumer.config_metadata import ConfigMetadata
 from opamp_consumer.fluentbit_client import (
     HOST_META_KEY_HOSTNAME,
     HOST_META_KEY_MAC_ADDRESS,
     HOST_META_KEY_OS_TYPE,
     HOST_META_KEY_OS_VERSION,
-    KEY_FLUENTBIT_VERSION,
     KEY_SERVICE_INSTANCE_ID,
     KEY_SERVICE_NAME,
     KEY_SERVICE_NAMESPACE,
     KEY_SERVICE_VERSION,
 )
+
+
+class _FallbackMetadataClient(client.AbstractOpAMPClient):
+    """Minimal concrete client used to exercise metadata fallback behavior."""
+
+    def get_custom_handler_folder(self):
+        """Return the default custom-handler folder for fallback tests."""
+        return client.pathlib.Path(client.__file__).resolve().parent / "custom_handlers"
 
 
 def _set_config(agent_capabilities) -> None:
@@ -45,7 +53,7 @@ def test_get_agent_description_includes_config_and_version(monkeypatch) -> None:
     """Include configured service info and assert version name includes Fluent Bit."""
     _set_config(["ReportsStatus"])
     instance = client.OpAMPClient("http://localhost")
-    instance.data.last_heartbeat_results[KEY_FLUENTBIT_VERSION] = "3.0.0 (classic)"
+    instance.data.agent_version = "3.0.0 (classic)"
 
     monkeypatch.setattr(
         instance,
@@ -121,3 +129,42 @@ def test_get_host_metadata_includes_mac_address(monkeypatch) -> None:
         HOST_META_KEY_HOSTNAME: "edge-02",
         HOST_META_KEY_MAC_ADDRESS: "aa:bb:cc:dd:ee:ff",
     }
+
+
+def test_abstract_client_get_config_metadata_warns_when_not_overridden(
+    caplog,
+) -> None:
+    """Abstract client fallback should warn and return an empty metadata object."""
+    caplog.set_level("WARNING")
+    _set_config(["ReportsStatus"])
+    instance = _FallbackMetadataClient("http://localhost")
+
+    metadata = instance.get_config_metadata()
+
+    assert metadata == ConfigMetadata()
+    assert "config metadata extraction is not implemented" in caplog.text
+
+
+def test_abstract_client_get_configuration_files_returns_agent_config_path() -> None:
+    """Base configuration file list should default to the primary agent config path."""
+    _set_config(["ReportsStatus"])
+    instance = _FallbackMetadataClient("http://localhost")
+
+    assert instance.get_configuration_files() == ["unused"]
+
+
+def test_abstract_client_get_configuration_files_omits_empty_path() -> None:
+    """Base configuration file list should be empty when no config path is set."""
+    config = ConsumerConfig(
+        server_url="http://localhost",
+        agent_config_path=None,
+        agent_additional_params=[],
+        heartbeat_frequency=30,
+        agent_capabilities=["ReportsStatus"],
+        log_level="debug",
+        service_name="Fluentbit",
+        service_namespace="FluentBitNS",
+    )
+    instance = _FallbackMetadataClient("http://localhost", config)
+
+    assert instance.get_configuration_files() == []

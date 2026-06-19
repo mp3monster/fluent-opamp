@@ -23,8 +23,9 @@ import sys
 import time
 import traceback
 import tracemalloc
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any
 
 from opamp_consumer import config as consumer_config
 from opamp_consumer.abstract_client import (
@@ -38,17 +39,24 @@ from opamp_consumer.abstract_client import (
 )
 from opamp_consumer.client_bootstrap import (
     build_common_cli_parser,
-    configure_observability_for_config,
     configure_logging_for_config,
+    configure_observability_for_config,
     load_config_from_cli_args,
     log_runtime_config_path,
+    maybe_print_cli_config,
     maybe_print_config_help,
     run_client,
     validate_runtime_server_config,
 )
 from opamp_consumer.config import ConsumerConfig
+from opamp_consumer.config_metadata import (
+    CONFIG_METADATA_KEY_SERVICE_INSTANCE_ID,
+    CONFIG_METADATA_KEY_SERVICE_INSTANCE_UID,
+    ConfigMetadata,
+)
 from opamp_consumer.exceptions import AgentException
 from opamp_consumer.proto import anyvalue_pb2, opamp_pb2
+from opamp_consumer.simulator_config_metadata import extract_simulator_config_metadata
 
 SIMULATOR_ACTION_ACCEPT = "accept"  # Action indicating the default handler should run.
 SIMULATOR_ACTION_IGNORE = "ignore"  # Action indicating the request should be ignored.
@@ -57,9 +65,9 @@ SIMULATOR_REQUEST_FALLBACK_KEY = "*"  # Optional catch-all request key in simula
 SIMULATOR_CONFIG_RESPONSES_KEY = "responses"
 # Optional top-level key wrapping scripted response lists.
 SIMULATOR_VALUE_AGENT_TYPE = "simulator"  # service.type value exposed by simulator client.
-SIMULATOR_METADATA_SERVICE_INSTANCE_UID = "service_instance_uid"
+SIMULATOR_METADATA_SERVICE_INSTANCE_UID = CONFIG_METADATA_KEY_SERVICE_INSTANCE_UID
 # JSON key for simulator service instance id passed via --agent-additional-params.
-SIMULATOR_METADATA_SERVICE_INSTANCE_ID = "service_instance_id"
+SIMULATOR_METADATA_SERVICE_INSTANCE_ID = CONFIG_METADATA_KEY_SERVICE_INSTANCE_ID
 # Alternate JSON key for simulator service instance id.
 SIMULATOR_METADATA_CLIENT_VERSION = "client_version"
 # JSON key for simulator client version override.
@@ -246,60 +254,6 @@ def _load_scripted_responses(path: str) -> dict[str, list[ScriptedResponse]]:
     return normalized
 
 
-def _parse_simulator_metadata(
-    additional_params: list[str] | None,
-) -> dict[str, str]:
-    """Parse simulator metadata JSON passed through --agent-additional-params.
-
-    Expected payload shape:
-        {"service_instance_uid":"...", "client_version":"...", "config_version":"..."}
-    """
-    if not additional_params:
-        return {}
-    raw_tokens = [str(value).strip() for value in additional_params if str(value).strip()]
-    if not raw_tokens:
-        return {}
-
-    payload_candidates: list[str] = []
-    if len(raw_tokens) == 1:
-        payload_candidates.append(raw_tokens[0])
-    else:
-        payload_candidates.append(" ".join(raw_tokens))
-        payload_candidates.extend(raw_tokens)
-
-    payload_dict: dict[str, Any] | None = None
-    for payload_text in payload_candidates:
-        try:
-            parsed_payload = json.loads(payload_text)
-        except json.JSONDecodeError:
-            continue
-        if isinstance(parsed_payload, dict):
-            payload_dict = parsed_payload
-            break
-
-    if payload_dict is None:
-        logging.getLogger(__name__).warning(
-            "simulator expected JSON object in --agent-additional-params but got: %s",
-            raw_tokens,
-        )
-        return {}
-
-    result: dict[str, str] = {}
-    for key in (
-        SIMULATOR_METADATA_SERVICE_INSTANCE_UID,
-        SIMULATOR_METADATA_SERVICE_INSTANCE_ID,
-        SIMULATOR_METADATA_CLIENT_VERSION,
-        SIMULATOR_METADATA_CONFIG_VERSION,
-    ):
-        value = payload_dict.get(key)
-        if value is None:
-            continue
-        normalized = str(value).strip()
-        if normalized:
-            result[key] = normalized
-    return result
-
-
 class SimulatorOpAMPClient(AbstractOpAMPClient):
     """Concrete OpAMP client using scripted responses for server requests."""
 
@@ -310,6 +264,7 @@ class SimulatorOpAMPClient(AbstractOpAMPClient):
     SUPPORTED_AGENT_CAPABILITY_NAMES = (
         *consumer_config.MANDATORY_AGENT_CAPABILITY_NAMES,
         "AcceptsRemoteConfig",
+        "ReportsEffectiveConfig",
         "ReportsHeartbeat",
     )
 
@@ -328,20 +283,22 @@ class SimulatorOpAMPClient(AbstractOpAMPClient):
         self._scripted_indexes = {
             key: 0 for key in self._scripted_responses
         }
-        self._simulator_metadata = _parse_simulator_metadata(
+        self._simulator_metadata = extract_simulator_config_metadata(
             self.config.agent_additional_params
         )
-        self._simulator_client_version = self._simulator_metadata.get(
-            SIMULATOR_METADATA_CLIENT_VERSION
-        )
-        service_instance_id = self._simulator_metadata.get(
+        self._simulator_client_version = self._simulator_metadata.version
+        service_instance_id = self._simulator_metadata.additional_metadata.get(
             SIMULATOR_METADATA_SERVICE_INSTANCE_UID
-        ) or self._simulator_metadata.get(SIMULATOR_METADATA_SERVICE_INSTANCE_ID)
+        ) or self._simulator_metadata.additional_metadata.get(
+            SIMULATOR_METADATA_SERVICE_INSTANCE_ID
+        )
         if service_instance_id:
             self.config.service_instance_id = service_instance_id
-        config_version = self._simulator_metadata.get(SIMULATOR_METADATA_CONFIG_VERSION)
+        config_version = self._simulator_metadata.config_version
         if config_version:
             self.config.config_version = config_version
+        if self._simulator_metadata.config_data:
+            self.config.agent_config_text = self._simulator_metadata.config_data
         if self._simulator_client_version:
             self.data.agent_version = self._simulator_client_version
         process_record_file = str(
@@ -361,6 +318,10 @@ class SimulatorOpAMPClient(AbstractOpAMPClient):
     def get_custom_handler_folder(self) -> pathlib.Path:
         """Return simulator custom handler folder path."""
         return pathlib.Path(__file__).resolve().parent / "custom_handlers"
+
+    def get_config_metadata(self) -> ConfigMetadata:
+        """Return structured metadata extracted from simulator CLI metadata JSON."""
+        return extract_simulator_config_metadata(self.config.agent_additional_params)
 
     def launch_agent_process(self) -> bool:
         """No-op launch for simulator mode."""
@@ -557,14 +518,14 @@ class SimulatorOpAMPClient(AbstractOpAMPClient):
             )
 
     def handle_error_response(self, error_response: opamp_pb2.ServerErrorResponse) -> None:
-        base = super(SimulatorOpAMPClient, self)
+        base = super()
         self._handle_scripted_request(
             REQUEST_ERROR_RESPONSE,
             lambda: base.handle_error_response(error_response),
         )
 
     def handle_remote_config(self, remote_config: opamp_pb2.AgentRemoteConfig) -> None:
-        base = super(SimulatorOpAMPClient, self)
+        base = super()
         self._handle_scripted_request(
             REQUEST_REMOTE_CONFIG,
             lambda: base.handle_remote_config(remote_config),
@@ -573,7 +534,7 @@ class SimulatorOpAMPClient(AbstractOpAMPClient):
     def handle_connection_settings(
         self, connection_settings: opamp_pb2.ConnectionSettingsOffers
     ) -> None:
-        base = super(SimulatorOpAMPClient, self)
+        base = super()
         self._handle_scripted_request(
             REQUEST_CONNECTION_SETTINGS,
             lambda: base.handle_connection_settings(connection_settings),
@@ -582,21 +543,21 @@ class SimulatorOpAMPClient(AbstractOpAMPClient):
     def handle_packages_available(
         self, packages_available: opamp_pb2.PackagesAvailable
     ) -> None:
-        base = super(SimulatorOpAMPClient, self)
+        base = super()
         self._handle_scripted_request(
             REQUEST_PACKAGES_AVAILABLE,
             lambda: base.handle_packages_available(packages_available),
         )
 
     def handle_flags(self, flags: int) -> None:
-        base = super(SimulatorOpAMPClient, self)
+        base = super()
         self._handle_scripted_request(
             REQUEST_FLAGS,
             lambda: base.handle_flags(flags),
         )
 
     def handle_capabilities(self, capabilities: int) -> None:
-        base = super(SimulatorOpAMPClient, self)
+        base = super()
         self._handle_scripted_request(
             REQUEST_CAPABILITIES,
             lambda: base.handle_capabilities(capabilities),
@@ -605,14 +566,14 @@ class SimulatorOpAMPClient(AbstractOpAMPClient):
     def handle_agent_identification(
         self, agent_identification: opamp_pb2.AgentIdentification
     ) -> None:
-        base = super(SimulatorOpAMPClient, self)
+        base = super()
         self._handle_scripted_request(
             REQUEST_AGENT_IDENTIFICATION,
             lambda: base.handle_agent_identification(agent_identification),
         )
 
     def handle_command(self, command: opamp_pb2.ServerToAgentCommand) -> None:
-        base = super(SimulatorOpAMPClient, self)
+        base = super()
         self._handle_scripted_request(
             REQUEST_COMMAND,
             lambda: base.handle_command(command),
@@ -621,14 +582,14 @@ class SimulatorOpAMPClient(AbstractOpAMPClient):
     def handle_custom_capabilities(
         self, custom_capabilities: opamp_pb2.CustomCapabilities
     ) -> None:
-        base = super(SimulatorOpAMPClient, self)
+        base = super()
         self._handle_scripted_request(
             REQUEST_CUSTOM_CAPABILITIES,
             lambda: base.handle_custom_capabilities(custom_capabilities),
         )
 
     def handle_custom_message(self, custom_message: opamp_pb2.CustomMessage) -> None:
-        base = super(SimulatorOpAMPClient, self)
+        base = super()
         self._handle_scripted_request(
             REQUEST_CUSTOM_MESSAGE,
             lambda: base.handle_custom_message(custom_message),
@@ -641,6 +602,8 @@ def main() -> None:
         tracemalloc.start()
         parser = build_common_cli_parser()
         args = parser.parse_args()
+        if maybe_print_cli_config(args=args):
+            return
         config = load_config_from_cli_args(args)
         logger = configure_logging_for_config(config)
         log_runtime_config_path(

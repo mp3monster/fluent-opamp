@@ -20,6 +20,9 @@ from pathlib import Path
 import opamp_consumer.client_mixins as client_mixins
 import opamp_consumer.fluentd_client as fluentd_client
 from opamp_consumer.config import ConsumerConfig
+from opamp_consumer.config_metadata import (
+    CONFIG_METADATA_KEY_SERVICE_INSTANCE_ID,
+)
 from opamp_consumer.fluentbit_client import KEY_SERVICE_TYPE, KEY_SERVICE_VERSION
 from opamp_consumer.proto import opamp_pb2
 
@@ -117,6 +120,7 @@ def test_load_fluentd_config_parses_monitor_agent_settings(tmp_path: Path) -> No
     assert loaded.server_url == "http://127.0.0.1"
     assert loaded.service_instance_id == "fluentd-instance"
     assert loaded.config_version == "fd-1.2.3"
+    assert loaded.agent_config_text is not None
 
 
 def test_find_monitor_agent_source_bind_and_port_ignores_non_monitor_sources(
@@ -229,6 +233,43 @@ sources:
     assert loaded.agent_http_server == "on"
     assert loaded.server_url == "http://127.0.0.1"
     assert loaded.service_instance_id == "fluentd-yaml-instance"
+
+
+def test_fluentd_client_get_config_metadata_reads_supported_comment_fields(
+    tmp_path: Path,
+) -> None:
+    """Fluentd metadata extractor should expose structured config metadata."""
+    config_path = tmp_path / "fluentd.conf"
+    config_path.write_text(
+        """
+# service_instance_id: fluentd-instance
+# config_version: fd-1.2.3
+# SCM_source_name: svn
+# version: 1.16.7
+<source>
+  @type monitor_agent
+  bind 127.0.0.1
+  port 24220
+</source>
+        """.strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    instance = fluentd_client.FluentdOpAMPClient(
+        "http://localhost",
+        _test_config(agent_config_path=str(config_path)),
+    )
+
+    metadata = instance.get_config_metadata()
+
+    assert metadata.config_version == "fd-1.2.3"
+    assert metadata.SCM_source_name == "svn"
+    assert metadata.version == "1.16.7"
+    assert metadata.config_type == "fluentd"
+    assert "<source>" in metadata.config_data
+    assert metadata.additional_metadata[CONFIG_METADATA_KEY_SERVICE_INSTANCE_ID] == (
+        "fluentd-instance"
+    )
 
 
 def test_load_fluentd_config_overrides_server_url_host_with_bind(tmp_path: Path) -> None:

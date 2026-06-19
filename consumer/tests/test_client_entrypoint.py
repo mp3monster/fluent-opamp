@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 
 import pytest
+
 from opamp_consumer.client import main as entrypoint_main
 from opamp_consumer.config import ConsumerConfig
 
@@ -65,3 +66,29 @@ def test_entrypoint_rejects_unknown_service_type(monkeypatch) -> None:
 
     with pytest.raises(ValueError, match="unsupported consumer.service_type"):
         entrypoint_main()
+
+
+def test_entrypoint_cli_config_exits_before_routing(monkeypatch) -> None:
+    """Top-level entrypoint should honor cli-config before service routing."""
+    import opamp_consumer.client as entry_module
+
+    args = argparse.Namespace(cli_config=True, config_path="consumer/opamp.json")
+    monkeypatch.setattr(
+        entry_module,
+        "_parse_args_for_routing",
+        lambda: args,
+    )
+    monkeypatch.setattr(
+        entry_module,
+        "maybe_print_cli_config",
+        lambda *, args: args is not None,
+    )
+    monkeypatch.setattr(
+        entry_module,
+        "load_config_from_cli_args",
+        lambda _args: (_ for _ in ()).throw(
+            AssertionError("config should not be loaded when --cli-config is used")
+        ),
+    )
+
+    entrypoint_main()

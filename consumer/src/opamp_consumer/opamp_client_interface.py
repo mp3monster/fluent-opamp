@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
+from opamp_consumer.config_metadata import ConfigMetadata
 from opamp_consumer.proto import opamp_pb2
 
 
@@ -87,6 +88,14 @@ class OpAMPClientInterface(ABC):
         self, instance_uid: bytes | str | None = None
     ) -> opamp_pb2.AgentDescription:
         """Build and return AgentDescription metadata for outbound OpAMP payloads."""
+
+    @abstractmethod
+    def get_config_metadata(self) -> ConfigMetadata:
+        """Build and return structured config metadata for the active client config."""
+
+    @abstractmethod
+    def get_configuration_files(self) -> list[str]:
+        """Return the local configuration file paths managed by this client."""
 
     @abstractmethod
     def get_agent_capabilities(self) -> int:

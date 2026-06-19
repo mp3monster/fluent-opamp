@@ -19,7 +19,10 @@ import logging
 from pathlib import Path
 
 import pytest
+
+from opamp_consumer import simulator_client
 from opamp_consumer.config import ConsumerConfig
+from opamp_consumer.config_metadata import CONFIG_METADATA_KEY_SERVICE_INSTANCE_UID
 from opamp_consumer.exceptions import AgentException
 from opamp_consumer.fluentbit_client import (
     KEY_SERVICE_INSTANCE_ID,
@@ -27,7 +30,6 @@ from opamp_consumer.fluentbit_client import (
     KEY_SERVICE_VERSION,
 )
 from opamp_consumer.proto import opamp_pb2
-from opamp_consumer import simulator_client
 from opamp_consumer.simulator_client import SimulatorOpAMPClient
 
 
@@ -191,6 +193,73 @@ def test_simulator_metadata_json_supports_split_tokens(tmp_path: Path) -> None:
 
     assert identifying[KEY_SERVICE_INSTANCE_ID] == "sim-uid-02"
     assert identifying[KEY_SERVICE_VERSION] == "6.1.0"
+
+
+def test_simulator_get_config_metadata_maps_payload_fields(tmp_path: Path) -> None:
+    """Simulator metadata should map JSON fields into the shared dataclass."""
+    responses_path = _write_simulator_responses(
+        tmp_path=tmp_path,
+        payload={"responses": {"command": ["accept"]}},
+    )
+    metadata_payload = json.dumps(
+        {
+            "service_instance_uid": "sim-uid-03",
+            "version": "7.2.0",
+            "config_version": "cfg-v9",
+            "config_data": "simulated=true",
+            "SCM_source_name": "git",
+            "SCM_config_version": "commit-123",
+            "additional_metadata": {"environment": "dev"},
+        }
+    )
+    instance = SimulatorOpAMPClient(
+        "http://localhost:8080",
+        _build_simulator_config(
+            responses_path=responses_path,
+            additional_params=[metadata_payload],
+        ),
+    )
+
+    metadata = instance.get_config_metadata()
+
+    assert metadata.config_version == "cfg-v9"
+    assert metadata.config_data == "simulated=true"
+    assert metadata.SCM_source_name == "git"
+    assert metadata.SCM_config_version == "commit-123"
+    assert metadata.version == "7.2.0"
+    assert metadata.config_type == "simulator"
+    assert metadata.additional_metadata == {
+        CONFIG_METADATA_KEY_SERVICE_INSTANCE_UID: "sim-uid-03",
+        "environment": "dev",
+    }
+
+
+def test_simulator_get_config_metadata_logs_warning_for_invalid_payload(
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Invalid simulator metadata payloads should warn and return an empty dataclass."""
+    caplog.set_level("WARNING")
+    responses_path = _write_simulator_responses(
+        tmp_path=tmp_path,
+        payload={"responses": {"command": ["accept"]}},
+    )
+    instance = SimulatorOpAMPClient(
+        "http://localhost:8080",
+        _build_simulator_config(
+            responses_path=responses_path,
+            additional_params=["not-json"],
+        ),
+    )
+
+    metadata = instance.get_config_metadata()
+
+    assert metadata.config_version == ""
+    assert metadata.config_data == ""
+    assert metadata.SCM_source_name == ""
+    assert metadata.version == ""
+    assert metadata.additional_metadata == {}
+    assert "simulator expected JSON object in --agent-additional-params" in caplog.text
 
 
 def test_simulator_checks_process_record_status_and_marks_shuttingdown(

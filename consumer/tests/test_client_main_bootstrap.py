@@ -75,6 +75,61 @@ def test_common_parser_accepts_canonical_agent_args() -> None:
     assert parsed.agent_additional_params == ["quiet-mode"]
 
 
+def test_common_parser_accepts_cli_config_flag() -> None:
+    """Shared parser should recognize the cli-config early-exit flag."""
+    parser = client_bootstrap.build_common_cli_parser()
+
+    parsed = parser.parse_args(["--cli-config"])
+
+    assert parsed.cli_config is True
+
+
+def test_main_cli_config_prints_config_file_and_skips_client(
+    monkeypatch,
+    capsys,
+    tmp_path,
+) -> None:
+    """`--cli-config` should pretty-print the resolved config file and exit early."""
+    config_path = tmp_path / "opamp.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "consumer": {
+                    "server_url": "http://localhost",
+                    "agent_config_path": "consumer/fluent-bit.yaml",
+                    "agent_additional_params": [],
+                    "heartbeat_frequency": 30,
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        client,
+        "OpAMPClient",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("OpAMPClient should not be created for --cli-config")
+        ),
+    )
+    monkeypatch.setattr(
+        client.sys,
+        "argv",
+        ["fluentbit_client.py", "--cli-config", "--config-path", str(config_path)],
+    )
+
+    client.main()
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload == {
+        "consumer": {
+            "agent_additional_params": [],
+            "agent_config_path": "consumer/fluent-bit.yaml",
+            "heartbeat_frequency": 30,
+            "server_url": "http://localhost",
+        }
+    }
+
+
 def test_load_config_from_cli_args_maps_overrides(monkeypatch) -> None:
     """Config loader should map parsed CLI args into override keyword arguments."""
     parser = client_bootstrap.build_common_cli_parser()

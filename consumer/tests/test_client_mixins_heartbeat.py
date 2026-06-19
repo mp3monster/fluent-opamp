@@ -115,7 +115,7 @@ def test_heartbeat_loop_recovers_after_unexpected_send_error() -> None:
 
     assert harness.send_calls == 2
     assert harness.handle_calls == 1
-    assert harness.disconnect_calls == 1
+    assert harness.disconnect_calls == 0
     assert harness.data.last_heartbeat_results == {"health": "ok"}
     assert harness.data.last_heartbeat_http_codes == {"health": "200"}
 
@@ -131,6 +131,31 @@ def test_heartbeat_loop_recovers_after_unexpected_poll_error() -> None:
 
     assert harness.send_calls == 2
     assert harness.handle_calls == 2
+    assert harness.disconnect_calls == 0
+    assert harness.data.last_heartbeat_results == {"health": "ok"}
+    assert harness.data.last_heartbeat_http_codes == {"health": "200"}
+
+
+def test_heartbeat_loop_recovers_after_unexpected_handler_error() -> None:
+    """Unexpected reply-handler failures should log/reset state and continue polling."""
+    harness = _HeartbeatLoopHarness(
+        send_outcomes=["ok", "ok"],
+    )
+    original_handler = harness._handle_server_to_agent
+    handler_outcomes = [RuntimeError("handler exploded"), True]
+
+    def _handle(reply: opamp_pb2.ServerToAgent) -> bool:
+        outcome = handler_outcomes.pop(0)
+        if isinstance(outcome, Exception):
+            raise outcome
+        return original_handler(reply)
+
+    harness._handle_server_to_agent = _handle
+
+    asyncio.run(harness._heartbeat_loop(port=2020))
+
+    assert harness.send_calls == 2
+    assert harness.handle_calls == 1
     assert harness.disconnect_calls == 0
     assert harness.data.last_heartbeat_results == {"health": "ok"}
     assert harness.data.last_heartbeat_http_codes == {"health": "200"}

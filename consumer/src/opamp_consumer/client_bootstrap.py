@@ -30,11 +30,13 @@ import uuid
 from collections.abc import Callable
 from urllib.parse import urlsplit, urlunsplit
 
+from opamp_consumer.agent_config_exception import AgentConfigException
+from shared.observability import configure_process_observability
+from shared.opamp_config import UTF8_ENCODING
+
 from opamp_consumer import config as consumer_config
 from opamp_consumer.config import CFG_AGENT_CONFIG_PATH, ConsumerConfig
 from opamp_consumer.proto import opamp_pb2
-from shared.observability import configure_process_observability
-from shared.opamp_config import UTF8_ENCODING
 
 KEY_AGENT_DESCRIPTION = "agent_description"  # Comment key carrying free-form agent description.
 KEY_CONFIG_VERSION_COMMENT = (
@@ -133,6 +135,12 @@ def build_common_cli_parser(
     """Build the shared consumer CLI parser."""
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("-h", "--help", action="store_true")
+    parser.add_argument(
+        "--cli-config",
+        dest="cli_config",
+        action="store_true",
+        help="print the resolved consumer CLI config file in pretty JSON format and exit",
+    )
     parser.add_argument(*config_path_args, dest="config_path", type=str)
     parser.add_argument("--server-url", type=str)
     parser.add_argument("--server-port", type=int)
@@ -154,6 +162,19 @@ def build_common_cli_parser(
         help='JSON string for full update controller (for example {"fullResendAfter":1})',
     )
     return parser
+
+
+def maybe_print_cli_config(*, args: argparse.Namespace) -> bool:
+    """Print the resolved CLI config file as pretty JSON when requested."""
+    if not bool(getattr(args, "cli_config", False)):
+        return False
+    effective_config_path = consumer_config.get_effective_config_path(
+        getattr(args, "config_path", None)
+    )
+    payload = json.loads(effective_config_path.read_text(encoding=UTF8_ENCODING))
+    print(json.dumps(payload, indent=2, sort_keys=True))
+    return True
+
 
 def load_config_from_cli_args(args: argparse.Namespace) -> ConsumerConfig:
     """Load consumer config using values parsed by `build_common_cli_parser`.
@@ -482,6 +503,8 @@ def run_default_client_main(
         tracemalloc.start()
         parser = build_common_cli_parser()
         args = parser.parse_args()
+        if maybe_print_cli_config(args=args):
+            return
         config = load_config_from_cli_args(args)
         logger = configure_logging_for_config(config)
         log_runtime_config_path(
@@ -525,8 +548,11 @@ def run_default_client_main(
         print("... bzzzz keyboard\n %s", keyboard_interrupt)
     except SystemExit as system_exit:
         print("... bzzzz brutal exit\n %s", system_exit)
-    except Exception:
+    except AgentConfigException as conf_err:
+        print ("Shutting down due to missing config value - %s", conf_err.get_missing_config_name())
+    except Exception as err:
         print("... bzzzzzzzzzzz")
+        print (err)
 
 
 def run_default_client_program_entrypoint(

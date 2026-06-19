@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import logging
 import pathlib
@@ -23,6 +22,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from defusedxml import ElementTree as xml_etree
+from shared.agent_remote_config import calculate_agent_config_map_hash
 
 from opamp_consumer.proto import opamp_pb2
 from opamp_consumer.remote_agent_config_content_type_error import (
@@ -87,8 +87,7 @@ class CommonConfigHandler:
     @staticmethod
     def calculate_config_hash(config: opamp_pb2.AgentConfigMap) -> bytes:
         """Return a SHA-256 digest for the deterministic serialized config map."""
-        serialized = config.SerializeToString(deterministic=True)
-        return hashlib.sha256(serialized).digest()
+        return calculate_agent_config_map_hash(config)
 
     @staticmethod
     def _validate_remote_config_hash(remote_config: opamp_pb2.AgentRemoteConfig) -> None:

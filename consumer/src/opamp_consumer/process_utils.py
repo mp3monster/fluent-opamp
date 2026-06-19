@@ -66,6 +66,9 @@ class ProcessUtils:
         for process in psutil_module.process_iter(attrs=["pid", "name", "cmdline"]):
             try:
                 info: dict[str, Any] = process.info
+                # Keep this match text aligned with the dev-only `opamp-cli`
+                # PID lookup workflow so the CLI preview reflects observer-mode
+                # process detection.
                 cmdline = info.get("cmdline") or []
                 if isinstance(cmdline, list):
                     text = " ".join(str(item) for item in cmdline)

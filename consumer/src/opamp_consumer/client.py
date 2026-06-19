@@ -32,6 +32,7 @@ from opamp_consumer import config as consumer_config
 from opamp_consumer.client_bootstrap import (
     build_common_cli_parser,
     load_config_from_cli_args,
+    maybe_print_cli_config,
 )
 from opamp_consumer.config import (
     SERVICE_TYPE_FLUENTBIT,
@@ -50,6 +51,8 @@ def _parse_args_for_routing() -> argparse.Namespace:
 def main() -> None:
     """Route to the concrete consumer entrypoint selected by `consumer.service_type`."""
     args = _parse_args_for_routing()
+    if maybe_print_cli_config(args=args):
+        return
     config = load_config_from_cli_args(args)
     consumer_config.set_config(config)
     service_type = str(config.service_type or SERVICE_TYPE_FLUENTBIT).strip().lower()

@@ -28,6 +28,7 @@ ROOT_PATH = pathlib.Path(__file__).resolve().parents[3]
 if str(ROOT_PATH) not in sys.path:
     sys.path.insert(0, str(ROOT_PATH))
 
+from opamp_consumer.agent_config_exception import AgentConfigException
 from shared.opamp_config import (  # noqa: E402 - requires repo-root path adjustment above
     AGENT_CAPABILITIES_MAP,
     NAME_UNSPECIFIED_AGENT_CAPABILITY,
@@ -368,7 +369,7 @@ def _validate_optional_file_path(*, path_value: str | None, cfg_key: str) -> str
         return None
     path = pathlib.Path(normalized_path)
     if not path.exists() or not path.is_file():
-        raise ValueError(f"{cfg_key} must reference an existing file")
+        raise AgentConfigException(f"{cfg_key} must reference an existing file", cfg_key)
     return normalized_path
 
 
@@ -554,7 +555,7 @@ def _validate_process_detection_regex(value: Any) -> str | None:
     try:
         re.compile(normalized)
     except re.error as err:
-        raise ValueError(
+        raise AgentConfigException(
             f"{CFG_CONSUMER}.{CFG_PROCESS_DETECTION_REGEX} must be a valid regex: {err}"
         ) from err
     return normalized
@@ -567,7 +568,7 @@ def _validate_process_tracking_configuration(
 ) -> None:
     """Validate cross-field process-tracking config constraints."""
     if process_tracking == PROCESS_TRACKING_OBSERVER and not process_detection_regex:
-        raise ValueError(
+        raise AgentConfigException(
             f"{CFG_CONSUMER}.{CFG_PROCESS_DETECTION_REGEX} is required when "
             f"{CFG_CONSUMER}.{CFG_PROCESS_TRACKING}=observer"
         )
@@ -578,7 +579,7 @@ def _validate_heartbeat_frequency(value: Any) -> int:
     if value is None:
         return 30
     if not isinstance(value, int) or value < 0:
-        raise ValueError(
+        raise AgentConfigException(
             f"{CFG_CONSUMER}.{CFG_HEARTBEAT_FREQUENCY} must be a non-negative integer"
         )
     return value
@@ -635,7 +636,7 @@ def load_config() -> ConsumerConfig:
         service_type == SERVICE_TYPE_SIMULATOR
         and not simulator_responses_path
     ):
-        raise ValueError(
+        raise AgentConfigException(
             f"{CFG_CONSUMER}.{CFG_SIMULATOR_RESPONSES_PATH} is required when "
             f"{CFG_CONSUMER}.{CFG_SERVICE_TYPE}={SERVICE_TYPE_SIMULATOR}"
         )
@@ -658,7 +659,7 @@ def load_config() -> ConsumerConfig:
     if heartbeat_frequency is None:
         heartbeat_frequency = 30
     if heartbeat_frequency == 0:
-        raise ValueError(
+        raise AgentConfigException(
             f"{CFG_CONSUMER}.{CFG_HEARTBEAT_FREQUENCY} must be a non-negative integer"
         )
 
@@ -911,17 +912,23 @@ def load_config_with_overrides(
         resolved_service_type == SERVICE_TYPE_SIMULATOR
         and not resolved_simulator_responses_path
     ):
-        raise ValueError(
+        raise AgentConfigException(
             f"{CFG_CONSUMER}.{CFG_SIMULATOR_RESPONSES_PATH} is required when "
-            f"{CFG_CONSUMER}.{CFG_SERVICE_TYPE}={SERVICE_TYPE_SIMULATOR}"
+            f"{CFG_CONSUMER}.{CFG_SERVICE_TYPE}={SERVICE_TYPE_SIMULATOR}",
+            CFG_SIMULATOR_RESPONSES_PATH
         )
 
     if not resolved_agent_config_path:
-        raise ValueError(f"{CFG_CONSUMER}.{CFG_AGENT_CONFIG_PATH} is required")
+        raise AgentConfigException(f"{CFG_CONSUMER}.{CFG_AGENT_CONFIG_PATH} is required")
     if resolved_additional_params is None:
-        raise ValueError(f"{CFG_CONSUMER}.{CFG_AGENT_ADDITIONAL_PARAMS} is required")
+        raise AgentConfigException(
+            f"{CFG_CONSUMER}.{CFG_AGENT_ADDITIONAL_PARAMS} is required", CFG_AGENT_ADDITIONAL_PARAMS
+        )
     if not isinstance(resolved_additional_params, list):
-        raise ValueError(f"{CFG_CONSUMER}.{CFG_AGENT_ADDITIONAL_PARAMS} must be a list")
+        raise AgentConfigException(
+            f"{CFG_CONSUMER}.{CFG_AGENT_ADDITIONAL_PARAMS} must be a list",
+            CFG_AGENT_ADDITIONAL_PARAMS,
+        )
     resolved_heartbeat_frequency = _validate_heartbeat_frequency(
         resolved_heartbeat_frequency
     )

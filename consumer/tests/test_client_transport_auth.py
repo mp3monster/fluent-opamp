@@ -24,7 +24,7 @@ from opamp_consumer.proto import opamp_pb2
 from opamp_consumer.transport import encode_message
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-TLS_CERT_SCRIPT = REPO_ROOT / "scripts" / "generate_self_signed_tls_cert.py"
+TLS_CERT_SCRIPT = REPO_ROOT / "dev-tools" / "main.py"
 
 
 def _server_reply_payload(instance_uid: bytes) -> bytes:
@@ -59,6 +59,12 @@ def _generate_self_signed_cert(cert_file: Path, key_file: Path) -> None:
         [
             sys.executable,
             str(TLS_CERT_SCRIPT),
+            "--repo-root",
+            str(REPO_ROOT),
+            "--python",
+            sys.executable,
+            "certificate",
+            "generate",
             "--skip-dependency-install",
             "--force",
             "--common-name",
@@ -75,6 +81,7 @@ def _generate_self_signed_cert(cert_file: Path, key_file: Path) -> None:
             "365",
         ],
         check=True,
+        cwd=str(REPO_ROOT),
     )
 
 

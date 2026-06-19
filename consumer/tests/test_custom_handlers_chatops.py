@@ -16,6 +16,7 @@ import logging
 from typing import cast
 
 from opamp_consumer.config import ConsumerConfig
+from opamp_consumer.config_metadata import ConfigMetadata
 from opamp_consumer.custom_handlers.chatops_command import ChatOpsCommand
 from opamp_consumer.fluentbit_client import OpAMPClientData
 from opamp_consumer.opamp_client_interface import OpAMPClientInterface
@@ -100,6 +101,13 @@ class _FakeOpAMPClient(OpAMPClientInterface):
         self, instance_uid: bytes | str | None = None
     ) -> opamp_pb2.AgentDescription:
         return opamp_pb2.AgentDescription()
+
+    def get_config_metadata(self) -> ConfigMetadata:
+        """Return empty config metadata for ChatOps handler tests."""
+        return ConfigMetadata()
+
+    def get_configuration_files(self) -> list[str]:
+        return []
 
     def get_agent_capabilities(self) -> int:
         return 0

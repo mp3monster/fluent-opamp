@@ -65,6 +65,7 @@ from opamp_consumer.client_transport_auth_mixin import (
 )
 from opamp_consumer.component_version import component_version_text
 from opamp_consumer.config import ConsumerConfig
+from opamp_consumer.config_metadata import ConfigMetadata
 from opamp_consumer.custom_handlers import build_factory_lookup, create_handler  # noqa: F401
 from opamp_consumer.full_update_controller import (
     AlwaysSend,
@@ -91,7 +92,6 @@ TRANSPORT_WEBSOCKET = _TRANSPORT_WEBSOCKET  # Re-exported transport selector for
 ENV_OPAMP_TOKEN = _ENV_OPAMP_TOKEN  # Re-exported env-var token key for compatibility.
 HEADER_AUTHORIZATION = _HEADER_AUTHORIZATION  # Re-exported auth header key for compatibility.
 AUTH_RETRY_STATUS_CODES = _AUTH_RETRY_STATUS_CODES  # Re-exported status codes for compatibility.
-KEY_FLUENTBIT_VERSION = "fluentbit_version"  # Result key for version response.
 KEY_SERVICE_INSTANCE_ID_COMMENT = "service_instance_id"  # Comment key for service instance ID.
 KEY_SERVICE_NAME = "service.name"  # Agent description service name key.
 KEY_SERVICE_NAMESPACE = "service.namespace"  # Agent description service namespace key.
@@ -145,7 +145,7 @@ class OpAMPClientData:
     observed_process_pid: int | None = None
     process_lock: threading.RLock = field(default_factory=threading.RLock, repr=False)
     logFLB = False
-    agent_type_name: str = "Fluent Bit"
+    agent_type_name: str = "Agent"
     agent_version: str = ""
     reporting_flags: dict[ReportingFlag, bool] = field(
         default_factory=lambda: {flag: True for flag in ReportingFlag}
@@ -199,6 +199,7 @@ class AbstractOpAMPClient(
             config=config,
             base_url=base_url.rstrip("/"),
         )
+        self.data.agent_type_name = getattr(self, "_value_agent_type", "Agent")
         self.data.full_update_controller = self._create_full_update_controller()
         self._custom_handler_folder = self.get_custom_handler_folder()
         self._custom_handler_lookup = build_factory_lookup(
@@ -401,6 +402,8 @@ class AbstractOpAMPClient(
             msg=msg,
             get_agent_description=self.get_agent_description,
             get_agent_capabilities=self.get_agent_capabilities,
+            is_capability_allowed=self.is_capability_allowed,
+            get_configuration_files=self.get_configuration_files,
             get_custom_capabilities_payload=self.get_custom_capabilities_payload,
             populate_agent_to_server_health=self._populate_agent_to_server_health,
         )
@@ -422,7 +425,13 @@ class AbstractOpAMPClient(
         desc = opamp_pb2.AgentDescription()
         service_name = self.config.service_name
         service_namespace = self.config.service_namespace
-        fluentbit_version = self.data.agent_type_name + " - " + self.data.agent_version
+        agent_type_name = str(self.data.agent_type_name or "").strip()
+        agent_version = str(self.data.agent_version or "").strip()
+        service_version = ""
+        if agent_type_name and agent_version:
+            service_version = f"{agent_type_name} - {agent_version}"
+        elif agent_version:
+            service_version = agent_version
         metadata = self.get_host_metadata()
 
         if service_name:
@@ -456,7 +465,7 @@ class AbstractOpAMPClient(
         desc.identifying_attributes.append(
             anyvalue_pb2.KeyValue(
                 key=KEY_SERVICE_TYPE,
-                value=anyvalue_pb2.AnyValue(string_value="Fluent Bit"),
+                value=anyvalue_pb2.AnyValue(string_value=agent_type_name),
             )
         )
 
@@ -483,11 +492,11 @@ class AbstractOpAMPClient(
                 )
             )
 
-        if fluentbit_version:
+        if service_version:
             desc.identifying_attributes.append(
                 anyvalue_pb2.KeyValue(
                     key=KEY_SERVICE_VERSION,
-                    value=anyvalue_pb2.AnyValue(string_value=fluentbit_version),
+                    value=anyvalue_pb2.AnyValue(string_value=service_version),
                 )
             )
         else:
@@ -496,6 +505,31 @@ class AbstractOpAMPClient(
         logger.debug("Agent description is :%s", desc)
 
         return desc
+
+    def get_config_metadata(self) -> ConfigMetadata:
+        """Return empty config metadata for clients without extraction support.
+
+        Returns:
+            Empty `ConfigMetadata` when the concrete client does not override
+            config metadata extraction behavior.
+        """
+        logging.getLogger(__name__).warning(
+            "config metadata extraction is not implemented for client class %s",
+            self.__class__.__name__,
+        )
+        return ConfigMetadata()
+
+    def get_configuration_files(self) -> list[str]:
+        """Return configuration file paths managed by this client.
+
+        Returns:
+            Single-item list containing `agent_config_path` when configured,
+            otherwise an empty list.
+        """
+        path = str(self.config.agent_config_path or "").strip()
+        if not path:
+            return []
+        return [path]
 
     def get_agent_capabilities(self) -> int:
         """Implements `OpAMPClientInterface.get_agent_capabilities`.

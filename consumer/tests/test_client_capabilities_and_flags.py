@@ -153,6 +153,76 @@ def test_get_agent_capabilities_enables_remote_config_when_configured() -> None:
     assert instance.is_capability_allowed("AcceptsPackages") is False
 
 
+def test_get_agent_capabilities_enables_effective_config_when_configured() -> None:
+    """Configured effective-config reporting should be enabled when supported."""
+    _set_config(["ReportsEffectiveConfig"])
+    instance = client.OpAMPClient("http://localhost")
+
+    mask = instance.get_agent_capabilities()
+
+    assert mask == (
+        AGENT_CAPABILITIES_MAP["ReportsStatus"]
+        | AGENT_CAPABILITIES_MAP["AcceptsRestartCommand"]
+        | AGENT_CAPABILITIES_MAP["ReportsHealth"]
+        | AGENT_CAPABILITIES_MAP["ReportsEffectiveConfig"]
+    )
+    assert instance.is_capability_allowed("ReportsEffectiveConfig") is True
+
+
+def test_populate_agent_to_server_includes_effective_config_when_enabled(
+    tmp_path,
+    caplog,
+) -> None:
+    """Effective config should be attached when the reporting capability is enabled."""
+    config_path = tmp_path / "effective.yaml"
+    config_path.write_text("service:\n  flush: 1\n", encoding="utf-8")
+    config = ConsumerConfig(
+        server_url="http://localhost",
+        agent_config_path=str(config_path),
+        agent_additional_params=[],
+        heartbeat_frequency=30,
+        agent_capabilities=["ReportsEffectiveConfig"],
+        log_level="debug",
+        service_name="Fluentbit",
+        service_namespace="FluentBitNS",
+    )
+    instance = client.OpAMPClient("http://localhost", config)
+    message = opamp_pb2.AgentToServer()
+    caplog.set_level(logging.INFO)
+
+    populated = instance._populate_agent_to_server(message)
+
+    config_map = populated.effective_config.config_map.config_map
+    assert str(config_path) in config_map
+    assert config_map[str(config_path)].body == b"service:\n  flush: 1\n"
+    assert config_map[str(config_path)].content_type == "application/x-yaml"
+    assert "generated effective_config payload" in caplog.text
+
+
+def test_populate_agent_to_server_omits_effective_config_when_not_enabled(
+    tmp_path,
+) -> None:
+    """Effective config should be omitted when the reporting capability is disabled."""
+    config_path = tmp_path / "effective.yaml"
+    config_path.write_text("service:\n  flush: 1\n", encoding="utf-8")
+    config = ConsumerConfig(
+        server_url="http://localhost",
+        agent_config_path=str(config_path),
+        agent_additional_params=[],
+        heartbeat_frequency=30,
+        agent_capabilities=None,
+        log_level="debug",
+        service_name="Fluentbit",
+        service_namespace="FluentBitNS",
+    )
+    instance = client.OpAMPClient("http://localhost", config)
+    message = opamp_pb2.AgentToServer()
+
+    populated = instance._populate_agent_to_server(message)
+
+    assert not populated.HasField("effective_config")
+
+
 def test_write_config_file_preserves_previous_file_when_enabled(tmp_path) -> None:
     """A replaced config should be renamed with the required preserved postfix."""
     _set_config(None, preserve_previous_config=True)

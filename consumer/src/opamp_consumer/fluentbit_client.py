@@ -29,7 +29,6 @@ from opamp_consumer.abstract_client import (
     HOST_META_KEY_MAC_ADDRESS,
     HOST_META_KEY_OS_TYPE,
     HOST_META_KEY_OS_VERSION,
-    KEY_FLUENTBIT_VERSION,
     KEY_HEALTH,
     KEY_SERVICE_INSTANCE_ID,
     KEY_SERVICE_INSTANCE_ID_COMMENT,
@@ -66,7 +65,13 @@ from opamp_consumer.client_bootstrap import (
     run_client as _bootstrap_run_client,
 )
 from opamp_consumer.config import ConsumerConfig
+from opamp_consumer.config_metadata import (
+    CONFIG_METADATA_KEY_AGENT_DESCRIPTION,
+    CONFIG_METADATA_KEY_SERVICE_INSTANCE_ID,
+    ConfigMetadata,
+)
 from opamp_consumer.custom_handlers import build_factory_lookup, create_handler  # noqa: F401
+from opamp_consumer.fluentbit_config_metadata import extract_fluentbit_config_metadata
 from opamp_consumer.full_update_controller import AlwaysSend, SentCount, TimeSend
 from opamp_consumer.proto import opamp_pb2
 from opamp_consumer.reporting_flag import ReportingFlag
@@ -82,7 +87,6 @@ __all__ = [
     "HOST_META_KEY_HOSTNAME",
     "HOST_META_KEY_OS_TYPE",
     "HOST_META_KEY_OS_VERSION",
-    "KEY_FLUENTBIT_VERSION",
     "KEY_HEALTH",
     "KEY_SERVICE_INSTANCE_ID",
     "KEY_SERVICE_INSTANCE_ID_COMMENT",
@@ -136,12 +140,21 @@ class OpAMPClient(AbstractOpAMPClient):
     SUPPORTED_AGENT_CAPABILITY_NAMES = (
         *consumer_config.MANDATORY_AGENT_CAPABILITY_NAMES,
         "AcceptsRemoteConfig",
+        "ReportsEffectiveConfig",
         "ReportsHeartbeat",
     )
 
     def get_custom_handler_folder(self) -> pathlib.Path:
         """Return the default handler folder used by the Fluent Bit client."""
         return pathlib.Path(__file__).resolve().parent / "custom_handlers"
+
+    def get_config_metadata(self) -> ConfigMetadata:
+        """Return structured metadata extracted from the active Fluent Bit config."""
+        return extract_fluentbit_config_metadata(
+            self.config.agent_config_path,
+            resolve_service_instance_id_template_fn=resolve_service_instance_id_template,
+        )
+
 
 def resolve_service_instance_id_template(value: str | None) -> str | None:
     """Resolve service_instance_id tokens for Fluent Bit-style config comments.
@@ -163,6 +176,27 @@ def load_agent_config(config: ConsumerConfig) -> ConsumerConfig:
     Why implementation-specific: this uses the Fluent Bit HTTP/comment config
     conventions handled by the default bootstrap parser.
     """
+    metadata = extract_fluentbit_config_metadata(
+        config.agent_config_path,
+        resolve_service_instance_id_template_fn=resolve_service_instance_id_template,
+    )
+    if metadata.config_data:
+        config.agent_config_text = metadata.config_data
+    if metadata.config_version:
+        config.config_version = metadata.config_version
+
+    agent_description = metadata.additional_metadata.get(
+        CONFIG_METADATA_KEY_AGENT_DESCRIPTION
+    )
+    if agent_description:
+        config.agent_description = agent_description
+
+    service_instance_id = metadata.additional_metadata.get(
+        CONFIG_METADATA_KEY_SERVICE_INSTANCE_ID
+    )
+    if service_instance_id:
+        config.service_instance_id = service_instance_id
+
     return _bootstrap_load_agent_config(
         config,
         resolve_service_instance_id_template_fn=resolve_service_instance_id_template,
