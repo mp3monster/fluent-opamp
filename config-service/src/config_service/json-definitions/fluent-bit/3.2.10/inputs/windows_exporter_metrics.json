@@ -7,11 +7,10 @@
       "required": false,
       "description": "The rate at which metrics are collected from the host operating system",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
-      "default": "5 seconds",
+      "default": "5s",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -52,7 +51,6 @@
       "required": false,
       "description": "Specify the WHERE clause for retrieving service metrics.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
-      "default": "NULL",
       "data_type": "string",
       "validation_rule": null
     },
@@ -61,24 +59,16 @@
       "required": false,
       "description": "Specify the key value pairs for the include condition for the WHERE clause of service metrics.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
-      "default": "NULL",
-      "data_type": "list",
-      "validation_rule": {
-        "kind": "list",
-        "delimiter": ","
-      }
+      "data_type": "string",
+      "validation_rule": null
     },
     {
       "name": "we.service.exclude",
       "required": false,
       "description": "Specify the key value pairs for the exclude condition for the WHERE clause of service metrics.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
-      "default": "NULL",
-      "data_type": "list",
-      "validation_rule": {
-        "kind": "list",
-        "delimiter": ","
-      }
+      "data_type": "string",
+      "validation_rule": null
     },
     {
       "name": "we.process.allow_process_regex",
@@ -96,7 +86,6 @@
       "required": false,
       "description": "Specify the regex for process metrics to prevent collection of/ignore.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
-      "default": "NULL",
       "data_type": "string",
       "validation_rule": {
         "kind": "regex_string"
@@ -107,11 +96,10 @@
       "required": false,
       "description": "The rate in seconds at which cpu metrics are collected from the host operating system.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
-      "default": "0 seconds",
+      "default": "0s",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -119,11 +107,10 @@
       "required": false,
       "description": "The rate in seconds at which net metrics are collected from the host operating system.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
-      "default": "0 seconds",
+      "default": "0s",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -131,11 +118,10 @@
       "required": false,
       "description": "The rate in seconds at which logical_disk metrics are collected from the host operating system.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
-      "default": "0 seconds",
+      "default": "0s",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -143,11 +129,10 @@
       "required": false,
       "description": "The rate in seconds at which cs metrics are collected from the host operating system.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
-      "default": "0 seconds",
+      "default": "0s",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -155,11 +140,10 @@
       "required": false,
       "description": "The rate in seconds at which os metrics are collected from the host operating system.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
-      "default": "0 seconds",
+      "default": "0s",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -167,11 +151,10 @@
       "required": false,
       "description": "The rate in seconds at which thermalzone metrics are collected from the host operating system.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
-      "default": "0 seconds",
+      "default": "0s",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -179,11 +162,10 @@
       "required": false,
       "description": "The rate in seconds at which cpu_info metrics are collected from the host operating system.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
-      "default": "0 seconds",
+      "default": "0s",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -191,11 +173,10 @@
       "required": false,
       "description": "The rate in seconds at which logon metrics are collected from the host operating system.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
-      "default": "0 seconds",
+      "default": "0s",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -203,11 +184,10 @@
       "required": false,
       "description": "The rate in seconds at which system metrics are collected from the host operating system.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
-      "default": "0 seconds",
+      "default": "0s",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -215,11 +195,10 @@
       "required": false,
       "description": "The rate in seconds at which service metrics are collected from the host operating system.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
-      "default": "0 seconds",
+      "default": "0s",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -227,11 +206,10 @@
       "required": false,
       "description": "The rate in seconds at which memory metrics are collected from the host operating system.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
-      "default": "0 seconds",
+      "default": "0s",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -239,11 +217,10 @@
       "required": false,
       "description": "The rate in seconds at which paging_file metrics are collected from the host operating system.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
-      "default": "0 seconds",
+      "default": "0s",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -251,19 +228,17 @@
       "required": false,
       "description": "The rate in seconds at which process metrics are collected from the host operating system.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
-      "default": "0 seconds",
+      "default": "0s",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
-      }
+        "kind": "duration"}
     },
     {
       "name": "metrics",
       "required": false,
       "description": "To specify which metrics are collected from the host operating system.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration",
-      "default": "\"cpu,cpu_info,os,net,logical_disk,cs,thermalzone,logon,system,service\"",
+      "default": "cpu,cpu_info,os,net,logical_disk,cs,thermalzone,logon,system,service",
       "data_type": "string",
       "validation_rule": null
     },

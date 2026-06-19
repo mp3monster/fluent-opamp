@@ -15,7 +15,7 @@
       "required": false,
       "description": "The bitrate for the communication, e.g: 9600, 38400, 115200, etc",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/serial-interface#configuration-parameters",
-      "data_type": "string",
+      "data_type": "integer",
       "validation_rule": null
     },
     {
@@ -49,8 +49,8 @@
       "required": false,
       "description": "Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs).",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/serial-interface#configuration-parameters",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "boolean",
+      "validation_rule": {"kind": "boolean"}
     },
     {
       "name": "tag",

@@ -4,7 +4,7 @@
   "fields": [
     {
       "name": "file",
-      "required": false,
+      "required": true,
       "description": "Absolute path to the target file, e.g: /proc/uptime",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/head#configuration-parameters",
       "data_type": "string",
@@ -27,19 +27,17 @@
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/head#configuration-parameters",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
       "name": "interval_nsec",
       "required": false,
-      "description": "Polling interval (nanosecond).",
+      "description": "Polling interval (nanoseconds).",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/head#configuration-parameters",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -48,6 +46,7 @@
       "description": "If enabled, filepath is appended to each records.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/head#configuration-parameters",
       "data_type": "boolean",
+      "default": "false",
       "validation_rule": {
         "kind": "boolean"
       }
@@ -58,6 +57,7 @@
       "description": "Rename a key.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/head#configuration-parameters",
       "data_type": "string",
+      "default": "head",
       "validation_rule": null
     },
     {
@@ -65,8 +65,11 @@
       "required": false,
       "description": "Line number to read.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/head#configuration-parameters",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "integer",
+      "validation_rule": {
+        "kind" : "range",
+        "min": "1"
+      }
     },
     {
       "name": "split_line",
@@ -83,8 +86,10 @@
       "required": false,
       "description": "Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs).",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/head#configuration-parameters",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
     },
     {
       "name": "tag",

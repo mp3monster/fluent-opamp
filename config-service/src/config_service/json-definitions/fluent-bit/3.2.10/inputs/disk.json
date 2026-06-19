@@ -17,7 +17,7 @@
     {
       "name": "interval_nsec",
       "required": false,
-      "description": "Polling interval (nanosecond).",
+      "description": "Polling interval (nanoseconds).",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/disk-io-metrics#configuration-parameters",
       "default": 0,
       "data_type": "integer",

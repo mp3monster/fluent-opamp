@@ -28,9 +28,10 @@
       "required": false,
       "description": "Set the eBPF trace to enable (for example, trace_bind, trace_malloc, trace_signal, trace_tcp, trace_vfs).",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/ebpf#configuration-parameters",
-      "data_type": "boolean",
+      "data_type": "string",
       "validation_rule": {
-        "kind": "boolean"
+        "kind": "enum",
+        "values": ["trace_signal", "trace_malloc", "trace_bind", "trace_tcp", "trace_vfs"]
       }
     },
     {

@@ -67,7 +67,6 @@
       "required": false,
       "description": "Regex of chips to exclude for the hwmon collector.",
       "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/node-exporter-metrics#configuration-parameters",
-      "default": "Not set by default.",
       "data_type": "string",
       "validation_rule": null
     },
@@ -76,7 +75,6 @@
       "required": false,
       "description": "Regex of chips to include for the hwmon collector.",
       "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/node-exporter-metrics#configuration-parameters",
-      "default": "Not set by default.",
       "data_type": "string",
       "validation_rule": null
     },
@@ -97,7 +95,6 @@
       "required": false,
       "description": "Regex of sensors to exclude for the hwmon collector.",
       "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/node-exporter-metrics#configuration-parameters",
-      "default": "Not set by default.",
       "data_type": "string",
       "validation_rule": null
     },
@@ -106,7 +103,6 @@
       "required": false,
       "description": "Regex of sensors to include for the hwmon collector.",
       "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/node-exporter-metrics#configuration-parameters",
-      "default": "Not set by default.",
       "data_type": "string",
       "validation_rule": null
     },
@@ -223,7 +219,6 @@
       "required": false,
       "description": "Specify path or directory to collect textfile metrics from the host operating system.",
       "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/node-exporter-metrics#configuration-parameters",
-      "default": "Not set by default.",
       "data_type": "string",
       "validation_rule": null
     },
@@ -294,9 +289,7 @@
       "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/node-exporter-metrics#configuration-parameters",
       "default": "^(ram\\",
       "data_type": "string",
-      "validation_rule": {
-        "kind": "regex_string"
-      }
+      "validation_rule": null
     },
     {
       "name": "filesystem.ignore_filesystem_type_regex",
@@ -305,9 +298,7 @@
       "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/node-exporter-metrics#configuration-parameters",
       "default": "^(autofs\\",
       "data_type": "string",
-      "validation_rule": {
-        "kind": "regex_string"
-      }
+      "validation_rule": null
     },
     {
       "name": "filesystem.ignore_mount_point_regex",
@@ -316,16 +307,14 @@
       "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/node-exporter-metrics#configuration-parameters",
       "default": "^/(dev\\",
       "data_type": "string",
-      "validation_rule": {
-        "kind": "regex_string"
-      }
+      "validation_rule": null
     },
     {
       "name": "metrics",
       "required": false,
       "description": "Specify which metrics are collected from the host operating system.",
       "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/node-exporter-metrics#configuration-parameters",
-      "default": "\"cpu,cpufreq,meminfo,diskstats,filesystem,uname,stat,time,loadavg,vmstat,netdev,netstat,sockstat,filefd,systemd,nvme,thermal_zone,hwmon\"",
+      "default": "cpu,cpufreq,meminfo,diskstats,filesystem,uname,stat,time,loadavg,vmstat,netdev,netstat,sockstat,filefd,systemd,nvme,thermal_zone,hwmon",
       "data_type": "string",
       "validation_rule": null
     },
@@ -375,9 +364,7 @@
       "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/node-exporter-metrics#configuration-parameters",
       "default": ".+\\\\.(automount\\",
       "data_type": "string",
-      "validation_rule": {
-        "kind": "regex_string"
-      }
+      "validation_rule": null
     },
     {
       "name": "systemd_include_pattern",
@@ -386,9 +373,7 @@
       "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/node-exporter-metrics#configuration-parameters",
       "default": "Not applied unless explicitly set.",
       "data_type": "string",
-      "validation_rule": {
-        "kind": "regex_string"
-      }
+      "validation_rule": null
     },
     {
       "name": "systemd_include_service_task_metrics",
@@ -425,7 +410,7 @@
     },
     {
       "name": "tag",
-      "required": false,
+      "required": true,
       "description": "Tag assigned to records emitted by this input plugin.",
       "reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
       "data_type": "string",

@@ -22,7 +22,7 @@
       "data_type": "list",
       "validation_rule": {
         "kind": "list",
-        "delimiter": ","
+        "delimiter": " "
       }
     },
     {
@@ -33,7 +33,7 @@
       "data_type": "list",
       "validation_rule": {
         "kind": "list",
-        "delimiter": ","
+        "delimiter": " "
       }
     },
     {

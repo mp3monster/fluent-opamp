@@ -81,5 +81,5 @@
       "Default"
     ]
   },
-  "description": "| Key | Description | Default | | ----------------- | ------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | | scrape\\_interval | Interval between each scrape of podman data (in seconds) | 30 | | scrape\\_on\\_start | Should this plugin scrape podman data after it is started | false | | path.config | Custom path to podman containers configuration file | /var/lib/containers/storage/overlay-containers/containers.json | | path.sysfs | Custom path to sysfs subsystem directory | /sys/fs/cgroup | | path.procfs | Custom path to proc subsystem directory | /proc | | threaded | Indicates whether to run this input in its own thread."
+  "description": "Monitoring of podman"
 }

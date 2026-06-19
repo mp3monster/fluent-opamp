@@ -21,7 +21,7 @@
       },
       {
         "pointer": "/docker",
-        "file": "inputs/docker.json"
+        "file": "inputs/docker_metrics.json"
       },
       {
         "pointer": "/docker_events",

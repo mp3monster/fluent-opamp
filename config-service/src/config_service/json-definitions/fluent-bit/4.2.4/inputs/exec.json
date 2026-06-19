@@ -8,16 +8,15 @@
       "description": "Size of the buffer.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/exec#configuration-parameters",
       "default": 4096,
-      "data_type": "integer",
+      "data_type": "size",
       "validation_rule": {
-        "kind": "range",
-        "min": 0
+        "kind": "size"
       }
     },
     {
       "name": "command",
       "required": false,
-      "description": "The command to execute, passed to [popen](https://man7.org/linux/man-pages/man3/popen.3.html) without any additional escaping or processing.",
+      "description": "The command to execute, passed to popen without any additional escaping or processing.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/exec#configuration-parameters",
       "data_type": "string",
       "validation_rule": null

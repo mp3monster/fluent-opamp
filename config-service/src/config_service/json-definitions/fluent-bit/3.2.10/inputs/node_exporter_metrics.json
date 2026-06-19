@@ -7,11 +7,10 @@
       "required": false,
       "description": "The rate at which metrics are collected from the host operating system",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
-      "default": "5 seconds",
+      "default": "5s",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -37,11 +36,10 @@
       "required": false,
       "description": "The rate in seconds at which cpu metrics are collected from the host operating system.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
-      "default": "0 seconds",
+      "default": "0s",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -49,11 +47,10 @@
       "required": false,
       "description": "The rate in seconds at which cpufreq metrics are collected from the host operating system.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
-      "default": "0 seconds",
+      "default": "0s",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -61,10 +58,10 @@
       "required": false,
       "description": "The rate in seconds at which meminfo metrics are collected from the host operating system.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
-      "default": "0 seconds",
-      "data_type": "integer",
+      "default": "0s",
+      "data_type": "duration",
       "validation_rule": {
-        "kind": "integer"
+        "kind": "duration"
       }
     },
     {
@@ -72,11 +69,10 @@
       "required": false,
       "description": "The rate in seconds at which diskstats metrics are collected from the host operating system.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
-      "default": "0 seconds",
+      "default": "0s",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -84,11 +80,10 @@
       "required": false,
       "description": "The rate in seconds at which filesystem metrics are collected from the host operating system.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
-      "default": "0 seconds",
+      "default": "0s",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -96,11 +91,10 @@
       "required": false,
       "description": "The rate in seconds at which uname metrics are collected from the host operating system.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
-      "default": "0 seconds",
+      "default": "0s",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -108,11 +102,10 @@
       "required": false,
       "description": "The rate in seconds at which stat metrics are collected from the host operating system.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
-      "default": "0 seconds",
+      "default": "0s",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -120,11 +113,10 @@
       "required": false,
       "description": "The rate in seconds at which time metrics are collected from the host operating system.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
-      "default": "0 seconds",
+      "default": "0s",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -132,11 +124,10 @@
       "required": false,
       "description": "The rate in seconds at which loadavg metrics are collected from the host operating system.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
-      "default": "0 seconds",
+      "default": "0s",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -144,11 +135,10 @@
       "required": false,
       "description": "The rate in seconds at which vmstat metrics are collected from the host operating system.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
-      "default": "0 seconds",
+      "default": "0s",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -156,23 +146,21 @@
       "required": false,
       "description": "The rate in seconds at which thermal_zone metrics are collected from the host operating system.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
-      "default": "0 seconds",
+      "default": "0s",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
-      }
+        "kind": "duration"
+       }
     },
     {
       "name": "collector.filefd.scrape_interval",
       "required": false,
       "description": "The rate in seconds at which filefd metrics are collected from the host operating system.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
-      "default": "0 seconds",
+      "default": "0s",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -180,11 +168,10 @@
       "required": false,
       "description": "The rate in seconds at which nvme metrics are collected from the host operating system.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
-      "default": "0 seconds",
+      "default": "0s",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -192,11 +179,10 @@
       "required": false,
       "description": "The rate in seconds at which system level of process metrics are collected from the host operating system.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
-      "default": "0 seconds",
+      "default": "0s",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -204,7 +190,7 @@
       "required": false,
       "description": "To specify which metrics are collected from the host operating system.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
-      "default": "\"cpu,cpufreq,meminfo,diskstats,filesystem,uname,stat,time,loadavg,vmstat,netdev,filefd\"",
+      "default": "cpu,cpufreq,meminfo,diskstats,filesystem,uname,stat,time,loadavg,vmstat,netdev,filefd",
       "data_type": "string",
       "validation_rule": null
     },
@@ -215,9 +201,7 @@
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
       "default": "\\`^/(dev",
       "data_type": "string",
-      "validation_rule": {
-        "kind": "regex_string"
-      }
+      "validation_rule": null
     },
     {
       "name": "filesystem.ignore_filesystem_type_regex",
@@ -226,9 +210,7 @@
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
       "default": "\\`^(autofs",
       "data_type": "string",
-      "validation_rule": {
-        "kind": "regex_string"
-      }
+      "validation_rule": null
     },
     {
       "name": "diskstats.ignore_device_regex",
@@ -237,9 +219,7 @@
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
       "default": "\\`^(ram",
       "data_type": "string",
-      "validation_rule": {
-        "kind": "regex_string"
-      }
+      "validation_rule": null
     },
     {
       "name": "systemd_service_restart_metrics",
@@ -281,9 +261,7 @@
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
       "default": "It is not applied unless explicitly set",
       "data_type": "string",
-      "validation_rule": {
-        "kind": "regex_string"
-      }
+      "validation_rule": null
     },
     {
       "name": "systemd_exclude_pattern",
@@ -292,9 +270,7 @@
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration",
       "default": "\\`.+\\\\.(automount",
       "data_type": "string",
-      "validation_rule": {
-        "kind": "regex_string"
-      }
+      "validation_rule": null
     },
     {
       "name": "tag",

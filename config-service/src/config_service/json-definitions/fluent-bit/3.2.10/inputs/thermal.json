@@ -7,10 +7,11 @@
       "required": false,
       "description": "Polling interval (seconds).",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/thermal#configuration-parameters",
-      "data_type": "duration",
+      "data_type": "integer",
+      "default": 1,
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "range",
+        "min":0
       }
     },
     {
@@ -18,10 +19,10 @@
       "required": false,
       "description": "Polling interval (nanoseconds).",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/thermal#configuration-parameters",
-      "data_type": "duration",
+      "data_type": "integer",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "range",
+        "min": 0
       }
     },
     {

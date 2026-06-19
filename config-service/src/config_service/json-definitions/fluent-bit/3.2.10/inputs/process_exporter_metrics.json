@@ -7,11 +7,10 @@
       "required": false,
       "description": "The rate at which metrics are collected.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/process-exporter-metrics#configuration",
-      "default": "5 seconds",
+      "default": "5s",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -30,9 +29,7 @@
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/process-exporter-metrics#configuration",
       "default": "It is applied for all process unless explicitly set. Default is `.+`.",
       "data_type": "string",
-      "validation_rule": {
-        "kind": "regex_string"
-      }
+      "validation_rule": null
     },
     {
       "name": "process_exclude_pattern",
@@ -41,9 +38,7 @@
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/process-exporter-metrics#configuration",
       "default": "It is not applied unless explicitly set. Default is `NULL`.",
       "data_type": "string",
-      "validation_rule": {
-        "kind": "regex_string"
-      }
+      "validation_rule": null
     },
     {
       "name": "metrics",

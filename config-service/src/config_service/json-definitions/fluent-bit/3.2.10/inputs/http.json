@@ -59,12 +59,13 @@
       "required": false,
       "description": "It allows to set successful response code.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/http#configuration-parameters",
-      "default": 201,
-      "data_type": "integer",
+      "default": "201",
+      "data_type": "enum",
       "validation_rule": {
-        "kind": "range",
-        "min": 0
-      }
+        "kind": "enum",
+        "values" : ["200", "201", "204"]
+      },
+      "called_enum_options": ["200", "201", "204"]
     },
     {
       "name": "success_header",
@@ -103,5 +104,5 @@
       "default"
     ]
   },
-  "description": "| Key | Description | default | | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------- | | listen | The address to listen on | 0.0.0.0 | | port | The port for Fluent Bit to listen on | 9880 | | tag\\_key | Specify the key name to overwrite a tag."
+  "description":  "Fluent Bit input plugin: HTTP."
 }

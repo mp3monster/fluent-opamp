@@ -50,7 +50,8 @@
       "data_type": "integer",
       "validation_rule": {
         "kind": "range",
-        "min": 0
+        "min": 0,
+        "max": 2777
       }
     },
     {
@@ -77,9 +78,9 @@
       "required": false,
       "description": "Specify the maximum buffer size to receive a Syslog message.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/syslog#configuration-parameters",
-      "data_type": "integer",
+      "data_type": "size",
       "validation_rule": {
-        "kind": "integer"
+        "kind": "size"
       }
     },
     {

@@ -46,10 +46,9 @@
       "description": "Specify the maximum buffer memory size used to receive a Forward message.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/forward#configuration-parameters",
       "default": 6144000,
-      "data_type": "integer",
+      "data_type": "size",
       "validation_rule": {
-        "kind": "range",
-        "min": 0
+        "kind": "size"
       }
     },
     {
@@ -58,10 +57,9 @@
       "description": "By default the buffer to store the incoming Forward messages, do not allocate the maximum memory allowed, instead it allocate memory when is required.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/forward#configuration-parameters",
       "default": 1024000,
-      "data_type": "integer",
+      "data_type": "size",
       "validation_rule": {
-        "kind": "range",
-        "min": 0
+        "kind": "size"
       }
     },
     {

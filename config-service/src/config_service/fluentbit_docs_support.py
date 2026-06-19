@@ -690,7 +690,7 @@ def infer_field_payload(name: str, description: str, default: Any, *, raw_defaul
             validation_rule = {"kind": "size"}
         elif DURATION_PATTERN.fullmatch(str(raw_default).strip()) or " nanosecond " in f" {desc_lower} ":
             data_type = "duration"
-            validation_rule = {"kind": "regex", "pattern": r"^\d+(ns|us|ms|s|m|h|d)?$"}
+            validation_rule = {"kind": "duration"}
         elif raw_default_lower in {"true", "false"}:
             data_type = "boolean"
             validation_rule = {"kind": "boolean"}

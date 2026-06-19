@@ -41,8 +41,8 @@
       "description": "Ingested record will be marked as a metric record rather than a log record.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/statsd#configuration-parameters-a-hrefconfig-idconfiga",
       "default": "off",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "boolean",
+      "validation_rule": {"kind": "boolean"}
     },
     {
       "name": "tag",

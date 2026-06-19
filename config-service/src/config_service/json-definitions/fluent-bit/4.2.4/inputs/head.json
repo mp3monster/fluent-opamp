@@ -19,15 +19,14 @@
       "description": "Buffer size to read the file.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/head#configuration-parameters",
       "default": 256,
-      "data_type": "integer",
+      "data_type": "size",
       "validation_rule": {
-        "kind": "range",
-        "min": 0
+        "kind": "size"
       }
     },
     {
       "name": "file",
-      "required": false,
+      "required": true,
       "description": "Absolute path to the target file.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/head#configuration-parameters",
       "data_type": "string",

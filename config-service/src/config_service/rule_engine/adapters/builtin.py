@@ -50,6 +50,7 @@ RULE_KIND_RANGE = "range"
 RULE_KIND_REGEX = "regex"
 RULE_KIND_REGEX_STRING = "regex_string"
 RULE_KIND_BOOLEAN = "boolean"
+RULE_KIND_DURATION = "duration"
 RULE_KIND_SIZE = "size"
 DATA_TYPE_STRING = "string"
 DATA_TYPE_TIME = "time"
@@ -69,6 +70,7 @@ LOGGER = logging.getLogger(__name__)
 # Fluent Bit size literals follow the upstream unit-size rules:
 # https://docs.fluentbit.io/manual/administration/configuring-fluent-bit#unit-sizes
 SIZE_VALUE_PATTERN = re.compile(r"^\d+([KMGTP]i?[Bb]?|[KMGTP])?$")
+DURATION_VALUE_PATTERN = re.compile(r"^\d+(ns|us|ms|s|m|h|d)?$")
 
 
 def _iter_pipeline_plugins(config: dict[str, Any]):
@@ -450,6 +452,18 @@ class ValidationRuleConstraintsAdapter(RuleAdapter):
                     if pattern and re.fullmatch(pattern, value) is None:
                         LOGGER.warning("regex mismatch path=%s pattern=%s", path, pattern)
                         issues.append(_issue("regex_mismatch", path, f"Value for '{key}' does not match required pattern."))
+
+                # Canonical duration-value branch using compact time suffixes.
+                elif kind == RULE_KIND_DURATION and isinstance(value, str):
+                    if DURATION_VALUE_PATTERN.fullmatch(value) is None:
+                        LOGGER.warning("duration mismatch path=%s value=%s", path, value)
+                        issues.append(
+                            _issue(
+                                "regex_mismatch",
+                                path,
+                                f"Value for '{key}' must be a valid duration.",
+                            )
+                        )
 
                 # Canonical size-value branch using Fluent Bit unit-size syntax:
                 # https://docs.fluentbit.io/manual/administration/configuring-fluent-bit#unit-sizes

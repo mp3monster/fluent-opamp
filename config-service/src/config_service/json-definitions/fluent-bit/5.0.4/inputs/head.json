@@ -19,10 +19,9 @@
       "description": "Buffer size to read the file.",
       "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/head#configuration-parameters",
       "default": 256,
-      "data_type": "integer",
+      "data_type": "size",
       "validation_rule": {
-        "kind": "range",
-        "min": 0
+        "kind": "size"
       }
     },
     {

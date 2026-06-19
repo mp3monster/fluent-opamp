@@ -64,7 +64,7 @@
     },
     {
       "name": "tag",
-      "required": false,
+      "required": true,
       "description": "Tag assigned to records emitted by this input plugin.",
       "reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
       "data_type": "string",

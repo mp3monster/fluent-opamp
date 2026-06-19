@@ -3,6 +3,25 @@
   "doc_url": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/fluentbit-logs",
   "fields": [
     {
+      "name": "level",
+      "required": false,
+      "description": "Severity of the log entry.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/fluentbit-logs#record-format",
+      "data_type": "string",
+      "validation_rule": {
+        "kind": "enum",
+        "values": ["error", "warn", "info", "debug", "trace", "help"]
+      }
+    },
+    {
+      "name": "message",
+      "required": false,
+      "description": "The log text message.",
+      "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/fluentbit-logs#record-format",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
       "name": "tag",
       "required": true,
       "description": "Tag assigned to records emitted by this input plugin.",
@@ -12,7 +31,7 @@
     }
   ],
   "extraction": {
-    "status": "no_table_under_config_heading",
+    "status": "manually addressed",
     "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/fluentbit-logs#configuration-parameters"
   },
   "description": "Fluent Bit input plugin: Fluent Bit logs."

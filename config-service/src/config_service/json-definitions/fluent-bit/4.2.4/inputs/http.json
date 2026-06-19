@@ -129,7 +129,7 @@
     },
     {
       "name": "oauth2.issuer",
-      "required": true,
+      "required": false,
       "description": "Expected issuer (iss) claim.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/http#configuration-parameters",
       "data_type": "string",
@@ -149,7 +149,7 @@
     },
     {
       "name": "oauth2.jwks_url",
-      "required": true,
+      "required": false,
       "description": "JWKS endpoint URL used to fetch public keys for JWT validation.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/http#configuration-parameters",
       "data_type": "string",
@@ -203,11 +203,11 @@
       "required": false,
       "description": "Allows setting successful response code.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/http#configuration-parameters",
-      "default": 201,
-      "data_type": "integer",
+      "default": "201",
+      "data_type": "string",
       "validation_rule": {
-        "kind": "range",
-        "min": 0
+        "kind": "enum",
+        "values" : ["200", "201", "204"]
       }
     },
     {
@@ -231,7 +231,7 @@
     },
     {
       "name": "tag",
-      "required": true,
+      "required": false,
       "description": "Tag assigned to records emitted by this input plugin.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/router",
       "data_type": "string",

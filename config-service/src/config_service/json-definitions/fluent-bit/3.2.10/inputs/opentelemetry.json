@@ -26,7 +26,7 @@
     },
     {
       "name": "tag",
-      "required": true,
+      "required": false,
       "description": "Tag for all the data ingested by this plugin.",
       "reference": "https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router",
       "data_type": "string",
@@ -78,11 +78,12 @@
       "required": false,
       "description": "It allows to set successful response code.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/opentelemetry#configuration-a-hrefconfiguration-idconfigurationa",
-      "default": 201,
-      "data_type": "integer",
+      "default": "201",
+      "called_enum_options": ["200", "201", "204"],
+      "data_type": "enum",
       "validation_rule": {
-        "kind": "range",
-        "min": 0
+        "kind": "enum",
+        "options": ["200", "201", "204"]
       }
     },
     {

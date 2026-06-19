@@ -38,7 +38,7 @@
       "required": false,
       "description": "Specify a key name for meta information.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/elasticsearch#configuration-parameters",
-      "default": "\"@meta\"",
+      "default": "@meta",
       "data_type": "string",
       "validation_rule": null
     },
@@ -56,7 +56,7 @@
       "required": false,
       "description": "Specify Elasticsearch server version.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/elasticsearch#configuration-parameters",
-      "default": "\"8.0.0\"",
+      "default": "8.0.0",
       "data_type": "string",
       "validation_rule": null
     },

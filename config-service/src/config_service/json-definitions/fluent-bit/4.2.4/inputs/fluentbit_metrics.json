@@ -7,7 +7,7 @@
       "required": false,
       "description": "The rate at which Fluent Bit internal metrics are collected.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/fluentbit-metrics#configuration-parameters",
-      "default": "2` seconds",
+      "default": "2s",
       "data_type": "duration",
       "validation_rule": {
         "kind": "regex",

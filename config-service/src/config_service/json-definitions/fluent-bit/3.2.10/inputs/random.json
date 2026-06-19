@@ -17,8 +17,7 @@
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/random#configuration-parameters",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -28,8 +27,7 @@
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/random#configuration-parameters",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {

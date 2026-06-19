@@ -51,9 +51,11 @@
       "required": false,
       "description": "Specify the expected payload format.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/tcp#configuration-parameters",
-      "default": "json",
-      "data_type": "string",
-      "validation_rule": null
+      "default": "JSON",
+      "data_type": "enum",
+      "called_enum_options": ["none", "JSON"],
+      "validation_rule": { "kind": "enum", "values": ["none", "JSON"]
+     }
     },
     {
       "name": "separator",

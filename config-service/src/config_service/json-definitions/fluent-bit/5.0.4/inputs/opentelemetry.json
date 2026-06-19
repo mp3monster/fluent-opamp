@@ -106,7 +106,7 @@
       "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
       "default": "256M",
       "data_type": "string",
-      "validation_rule": null
+      "validation_rule": {"kind": "size"}
     },
     {
       "name": "listen",
@@ -124,7 +124,6 @@
       "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
       "default": "info",
       "data_type": "enum",
-      "validation_rule": null,
       "called_enum_options": [
         "off",
         "trace",
@@ -132,7 +131,8 @@
         "info",
         "warn",
         "error"
-      ]
+      ],      
+      "validation_rule": {"kind": "enum", "values": ["off", "trace", "debug", "info", "warn", "error"]}
     },
     {
       "name": "log_suppress_interval",

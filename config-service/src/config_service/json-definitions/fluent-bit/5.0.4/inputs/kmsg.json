@@ -11,7 +11,8 @@
       "data_type": "integer",
       "validation_rule": {
         "kind": "range",
-        "min": 0
+        "min": 0,
+        "max": 8
       }
     },
     {

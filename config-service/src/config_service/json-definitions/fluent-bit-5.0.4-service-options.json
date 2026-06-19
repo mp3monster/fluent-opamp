@@ -294,7 +294,7 @@
     {
       "name": "storage.sync",
       "required": false,
-      "data_type": "string",
+      "data_type": "enum",
       "default": "normal",
       "description": "Filesystem sync mode for storage.",
       "reference": "https://docs.fluentbit.io/manual/administration/configuring-fluent-bit/yaml/service-section",

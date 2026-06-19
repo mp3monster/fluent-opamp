@@ -52,10 +52,11 @@
       "description": "It allows to set successful response code.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/prometheus-remote-write#configuration",
       "default": 201,
-      "data_type": "integer",
+      "called_enum_values": ["200", "201", "204"],
+      "data_type": "enum",
       "validation_rule": {
-        "kind": "range",
-        "min": 0
+        "kind": "enum",
+        "values": ["200", "201", "204"]
       }
     },
     {

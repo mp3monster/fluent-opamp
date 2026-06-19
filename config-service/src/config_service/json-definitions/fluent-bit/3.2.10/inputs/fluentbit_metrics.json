@@ -7,11 +7,10 @@
       "required": false,
       "description": "The rate at which metrics are collected from the host operating system",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/fluentbit-metrics#configuration",
-      "default": "2 seconds",
+      "default": "2s",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {

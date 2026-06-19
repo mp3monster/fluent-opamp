@@ -17,7 +17,10 @@
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/kubernetes-events#configuration-parameters",
       "default": "WAL",
       "data_type": "string",
-      "validation_rule": null
+      "validation_rule": {
+        "kind": "enum",
+        "options": ["DELETE", "TRUNCATE", "PERSIST", "MEMORY", "WAL", "OFF"]
+    }
     },
     {
       "name": "db.locking",
@@ -37,7 +40,10 @@
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/kubernetes-events#configuration-parameters",
       "default": "normal",
       "data_type": "string",
-      "validation_rule": null
+      "validation_rule": {
+        "kind": "enum",
+        "options": ["extra", "full", "normal",  "off"]
+      }
     },
     {
       "name": "interval_nsec",
@@ -106,8 +112,11 @@
       "description": "Kubernetes retention time for events.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/kubernetes-events#configuration-parameters",
       "default": "1h",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "duration",
+      "validation_rule": {
+        "kind": "regex",
+        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+      }
     },
     {
       "name": "kube_token_file",
@@ -148,7 +157,8 @@
       "data_type": "integer",
       "validation_rule": {
         "kind": "range",
-        "min": 0
+        "min": 0,
+        "max": 4
       }
     },
     {

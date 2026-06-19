@@ -4,7 +4,7 @@
   "fields": [
     {
       "name": "host",
-      "required": false,
+      "required": true,
       "description": "Name of the target host or IP address to check.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/health#configuration-parameters",
       "data_type": "string",
@@ -29,8 +29,7 @@
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/health#configuration-parameters",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -40,8 +39,7 @@
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/health#configuration-parameters",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -50,6 +48,7 @@
       "description": "If enabled, it will only generate messages if the target TCP service is down.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/health#configuration-parameters",
       "data_type": "boolean",
+      "default": false,
       "validation_rule": {
         "kind": "boolean"
       }
@@ -60,6 +59,7 @@
       "description": "If enabled, hostname is appended to each records.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/health#configuration-parameters",
       "data_type": "boolean",
+      "default": false,
       "validation_rule": {
         "kind": "boolean"
       }
@@ -70,6 +70,7 @@
       "description": "If enabled, port number is appended to each records.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/health#configuration-parameters",
       "data_type": "boolean",
+      "default": false,
       "validation_rule": {
         "kind": "boolean"
       }
@@ -79,7 +80,8 @@
       "required": false,
       "description": "Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs).",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/health#configuration-parameters",
-      "data_type": "string",
+      "data_type": "boolean",
+      "default": false,
       "validation_rule": null
     },
     {

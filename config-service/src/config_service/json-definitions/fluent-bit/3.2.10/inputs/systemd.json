@@ -39,11 +39,8 @@
       "required": true,
       "description": "Allows to perform a query over logs that contains a specific Journald key/value pairs, e.g: _SYSTEMD_UNIT=UNIT.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/systemd#configuration-parameters",
-      "data_type": "list",
-      "validation_rule": {
-        "kind": "list",
-        "delimiter": ","
-      }
+      "data_type": "string",
+      "validation_rule": null
     },
     {
       "name": "systemd_filter_type",
@@ -76,8 +73,12 @@
       "description": "Set a default synchronization (I/O) method.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/systemd#configuration-parameters",
       "default": "Full",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "enum",
+      "called_enum_options": ["Extra", "Full", "Normal", "Off"],
+      "validation_rule": {
+        "kind": "enum",
+        "values": ["Extra", "Full", "Normal", "Off"]
+      }
     },
     {
       "name": "read_from_tail",
@@ -85,8 +86,10 @@
       "description": "Start reading new entries.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/systemd#configuration-parameters",
       "default": "Off",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
     },
     {
       "name": "lowercase",
@@ -94,8 +97,10 @@
       "description": "Lowercase the Journald field (key).",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/systemd#configuration-parameters",
       "default": "Off",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
     },
     {
       "name": "strip_underscores",
@@ -103,8 +108,10 @@
       "description": "Remove the leading underscore of the Journald field (key).",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/systemd#configuration-parameters",
       "default": "Off",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "boolean",
+      "validation_rule": {
+        "kind": "boolean"
+      }
     },
     {
       "name": "threaded",

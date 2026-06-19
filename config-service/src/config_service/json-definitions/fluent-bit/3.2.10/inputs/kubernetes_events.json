@@ -16,8 +16,12 @@
       "description": "Set a database sync method.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/kubernetes-events#configuration",
       "default": "normal",
+      "called_enum_options": ["extra", "full", "normal", "off"],
       "data_type": "string",
-      "validation_rule": null
+      "validation_rule": {
+        "kind": "enum",
+        "values": ["extra", "full", "normal", "off"]
+      }
     },
     {
       "name": "interval_sec",
@@ -48,7 +52,7 @@
       "required": false,
       "description": "API Server end-point",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/kubernetes-events#configuration",
-      "default": "<https://kubernetes.default.svc>",
+      "default": "https://kubernetes.default.svc",
       "data_type": "string",
       "validation_rule": null
     },
@@ -86,8 +90,7 @@
       "default": "10m",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -108,8 +111,10 @@
       "description": "Kubernetes retention time for events.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/kubernetes-events#configuration",
       "default": "1h",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "duration",
+      "validation_rule": {
+        "kind": "duration"
+      }
     },
     {
       "name": "kube_namespace",
@@ -128,7 +133,8 @@
       "data_type": "integer",
       "validation_rule": {
         "kind": "range",
-        "min": 0
+        "min": 0,
+        "max": 4
       }
     },
     {

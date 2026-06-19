@@ -4,7 +4,7 @@
   "fields": [
     {
       "name": "interface",
-      "required": false,
+      "required": true,
       "description": "Specify the network interface to monitor.",
       "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/network-io-metrics#configuration-parameters",
       "data_type": "string",

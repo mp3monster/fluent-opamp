@@ -109,8 +109,8 @@
       "description": "When a monitored file reaches its buffer capacity due to a very long line (Buffer_Max_Size), the default behavior is to stop monitoring that file.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/tail#configuration-parameters-a-hrefconfig-idconfiga",
       "default": "Off",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "boolean",
+      "validation_rule": {"kind": "boolean"}
     },
     {
       "name": "skip_empty_lines",
@@ -118,8 +118,8 @@
       "description": "Skips empty lines in the log file from any further processing or output.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/tail#configuration-parameters-a-hrefconfig-idconfiga",
       "default": "Off",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "boolean",
+      "validation_rule": { "kind": "boolean" }
     },
     {
       "name": "db",
@@ -135,8 +135,12 @@
       "description": "Set a default synchronization (I/O) method.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/tail#configuration-parameters-a-hrefconfig-idconfiga",
       "default": "normal",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "enum",
+      "called_enum_options": ["Extra", "Full", "Normal", "Off"],
+      "validation_rule": {
+        "kind": "enum",
+        "values": ["Extra", "Full", "Normal", "Off"]
+      }
     },
     {
       "name": "db.locking",

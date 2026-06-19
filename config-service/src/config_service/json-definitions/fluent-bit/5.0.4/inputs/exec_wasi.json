@@ -5,7 +5,7 @@
     {
       "name": "accessible_paths",
       "required": false,
-      "description": "Specify the allowed list of paths to be able to access paths from Wasm programs.",
+      "description": "Specify the allowed list of paths to be able to access paths from WASM programs.",
       "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/exec-wasi#configuration-parameters",
       "default": ".",
       "data_type": "list",
@@ -20,16 +20,15 @@
       "description": "Size of the buffer.",
       "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/exec-wasi#configuration-parameters",
       "default": 4096,
-      "data_type": "integer",
+      "data_type": "size",
       "validation_rule": {
-        "kind": "range",
-        "min": 0
+        "kind": "size"
       }
     },
     {
       "name": "interval_nsec",
       "required": false,
-      "description": "Polling interval (nanosecond).",
+      "description": "Polling interval (nanoseconds).",
       "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/exec-wasi#configuration-parameters",
       "default": 0,
       "data_type": "integer",
@@ -73,7 +72,7 @@
     {
       "name": "threaded",
       "required": false,
-      "description": "Indicates whether to run this input in its own [thread](/manual/administration/multithreading.md#inputs).",
+      "description": "Indicates whether to run this input in its own.",
       "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/exec-wasi#configuration-parameters",
       "default": false,
       "data_type": "boolean",
@@ -84,7 +83,7 @@
     {
       "name": "wasi_path",
       "required": false,
-      "description": "The location of a Wasm program file.",
+      "description": "The location of a WASM program file.",
       "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/exec-wasi#configuration-parameters",
       "data_type": "string",
       "validation_rule": null
@@ -92,7 +91,7 @@
     {
       "name": "wasm_heap_size",
       "required": false,
-      "description": "Size of the heap size of Wasm execution.",
+      "description": "Size of the heap size of WASM execution.",
       "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/exec-wasi#configuration-parameters",
       "default": 8192,
       "data_type": "integer",
@@ -104,7 +103,7 @@
     {
       "name": "wasm_stack_size",
       "required": false,
-      "description": "Size of the stack size of Wasm execution.",
+      "description": "Size of the stack size of WASM execution.",
       "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/exec-wasi#configuration-parameters",
       "default": 8192,
       "data_type": "integer",
@@ -115,7 +114,7 @@
     },
     {
       "name": "tag",
-      "required": false,
+      "required": true,
       "description": "Tag assigned to records emitted by this input plugin.",
       "reference": "https://docs.fluentbit.io/manual/data-pipeline/router",
       "data_type": "string",

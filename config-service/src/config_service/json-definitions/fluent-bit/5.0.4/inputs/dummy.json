@@ -93,7 +93,7 @@
     {
       "name": "samples",
       "required": false,
-      "description": "Limit the number of events generated.",
+      "description": "If set, the number of events generated will be limited, and the plugin will then stop.",
       "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/dummy#configuration-parameters",
       "default": 0,
       "data_type": "integer",

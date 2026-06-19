@@ -17,8 +17,7 @@
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/process#configuration-parameters",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -28,9 +27,7 @@
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/process#configuration-parameters",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
-      }
+        "kind": "duration"}
     },
     {
       "name": "alert",
@@ -87,5 +84,5 @@
       "Description"
     ]
   },
-  "description": "![](https://static.scarf.sh/a.png?x-pxid=91b97a84-1cd9-41fb-9189-a4f3b30b6bce)"
+  "description": "Proc input"
 }

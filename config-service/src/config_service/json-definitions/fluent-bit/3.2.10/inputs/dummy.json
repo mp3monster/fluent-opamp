@@ -83,7 +83,7 @@
     {
       "name": "samples",
       "required": false,
-      "description": "If set, the events number will be limited.",
+      "description": "If set, the number of events generated will be limited, and the plugin will then stop.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/dummy#configuration-parameters",
       "data_type": "string",
       "validation_rule": null

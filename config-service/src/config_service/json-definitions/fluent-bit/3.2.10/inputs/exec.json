@@ -24,10 +24,10 @@
       "required": false,
       "description": "Polling interval (seconds).",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec#configuration-parameters",
-      "data_type": "duration",
+      "data_type": "integer",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "range",
+        "min": 0
       }
     },
     {
@@ -35,16 +35,16 @@
       "required": false,
       "description": "Polling interval (nanosecond).",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec#configuration-parameters",
-      "data_type": "duration",
+      "data_type": "integer",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "range",
+        "min": 0
       }
     },
     {
       "name": "buf_size",
       "required": false,
-      "description": "Size of the buffer (check [unit sizes](/manual/3.2/administration/configuring-fluent-bit/unit-sizes.md) for allowed values)",
+      "description": "Size of the buffer.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec#configuration-parameters",
       "data_type": "size",
       "validation_rule": {
@@ -56,32 +56,44 @@
       "required": false,
       "description": "Only run once at startup.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec#configuration-parameters",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "boolean",
+      "default": false,
+      "validation_rule": {
+        "kind": "boolean"
+      }
     },
     {
       "name": "exit_after_oneshot",
       "required": false,
       "description": "Exit as soon as the one-shot command exits.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec#configuration-parameters",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "boolean",
+      "default": false,
+      "validation_rule": {
+        "kind": "boolean"
+      }
     },
     {
       "name": "propagate_exit_code",
       "required": false,
       "description": "When exiting due to Exit_After_Oneshot, cause fluent-bit to exit with the exit code of the command exited by this plugin.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec#configuration-parameters",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "boolean",
+      "default": false,
+      "validation_rule": {
+        "kind": "boolean"
+      }
     },
     {
       "name": "threaded",
       "required": false,
       "description": "Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs).",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec#configuration-parameters",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "boolean",
+      "default": false,
+      "validation_rule": {
+        "kind": "boolean"
+      }
     },
     {
       "name": "tag",
