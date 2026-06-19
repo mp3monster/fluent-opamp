@@ -680,6 +680,68 @@ def test_select_guided_action_can_show_scenario_description_before_selection(
     assert "Starts the simulator and both consumer clients with repo defaults." in output
 
 
+def test_start_demo_consumers_allows_partial_observer_profile(monkeypatch, tmp_path: Path) -> None:
+    repo_root = tmp_path
+    observer_config = repo_root / "tests" / "opamp-consumer-observer.json"
+    fluentbit_config = repo_root / "consumer" / "fluent-bit.yaml"
+    simulator_instances = repo_root / "consumer-sim" / "config" / "consumer_instance-1.json"
+    observer_config.parent.mkdir(parents=True, exist_ok=True)
+    fluentbit_config.parent.mkdir(parents=True, exist_ok=True)
+    simulator_instances.parent.mkdir(parents=True, exist_ok=True)
+    observer_config.write_text("{}\n", encoding="utf-8")
+    fluentbit_config.write_text("service:\n  flush: 1\n", encoding="utf-8")
+    simulator_instances.write_text("{}\n", encoding="utf-8")
+    monkeypatch.setattr(cli_main, "_repo_root", lambda: repo_root)
+    monkeypatch.setattr(
+        cli_main,
+        "_demo_profile_by_name",
+        lambda _name: {
+            "name": "Demo setup (Flbx1 Observer)",
+            "fluentbit": {
+                "config_path": "tests/opamp-consumer-observer.json",
+                "agent_config_path": "consumer/fluent-bit.yaml",
+            },
+            "simulator": {
+                "instances_path": "consumer-sim/config/consumer_instance-1.json",
+            },
+        },
+    )
+    monkeypatch.setattr(cli_main, "_launch_background_process", lambda _action: 0)
+    monkeypatch.setattr(cli_main, "_record_simulator_batch", lambda _action: 0)
+
+    code = cli_main._start_demo_consumers(  # type: ignore[attr-defined]
+        {"profile_name": "Demo setup (Flbx1 Observer)"}
+    )
+
+    assert code == 0
+
+
+def test_start_demo_consumers_rejects_incomplete_fluentd_configuration(
+    monkeypatch,
+    tmp_path: Path,
+    capsys,
+) -> None:
+    monkeypatch.setattr(cli_main, "_repo_root", lambda: tmp_path)
+    monkeypatch.setattr(
+        cli_main,
+        "_demo_profile_by_name",
+        lambda _name: {
+            "name": "broken-profile",
+            "fluentd": {
+                "config_path": "consumer/opamp-fluentd.json",
+            },
+        },
+    )
+
+    code = cli_main._start_demo_consumers(  # type: ignore[attr-defined]
+        {"profile_name": "broken-profile"}
+    )
+    output = capsys.readouterr().err
+
+    assert code == 1
+    assert "Fluentd configuration is incomplete" in output
+
+
 def test_stop_all_recorded_processes_loops_all_record_names(monkeypatch) -> None:
     monkeypatch.setattr(
         cli_main,

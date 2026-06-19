@@ -1953,6 +1953,14 @@ def _resolve_path_from_repo(raw_path: str) -> Path:
     return (_repo_root() / candidate).resolve()
 
 
+def _resolve_optional_path_from_repo(raw_path: str) -> Path | None:
+    """Resolve one optional repo-relative path, returning None when blank."""
+    cleaned = str(raw_path or "").strip()
+    if not cleaned:
+        return None
+    return _resolve_path_from_repo(cleaned)
+
+
 def _load_demo_consumer_profiles() -> list[dict[str, Any]]:
     """Load validated demo consumer profile entries from JSON mapping."""
     config_path = _demo_consumer_config_path()
@@ -2011,7 +2019,9 @@ def _demo_record_prefix(profile_name: str) -> str:
 def _simulator_state_path_from_profile(profile: dict[str, Any]) -> Path:
     """Return expected simulator launcher state-file path for one profile."""
     simulator = dict(profile.get("simulator", {}))
-    instances_path = _resolve_path_from_repo(str(simulator.get("instances_path") or ""))
+    instances_path = _resolve_optional_path_from_repo(str(simulator.get("instances_path") or ""))
+    if instances_path is None:
+        return (_repo_root() / "consumer-sim" / "runtime" / "launcher_state.json").resolve()
     payload = _load_json_file(instances_path)
     state_file_raw = ""
     if payload:
@@ -2967,112 +2977,152 @@ def _start_demo_consumers(action: dict[str, Any]) -> int:
     fluentd = dict(profile.get("fluentd", {}))
     simulator = dict(profile.get("simulator", {}))
 
-    fluentbit_config = _resolve_path_from_repo(str(fluentbit.get("config_path") or ""))
-    fluentbit_agent = _resolve_path_from_repo(str(fluentbit.get("agent_config_path") or ""))
-    fluentd_config = _resolve_path_from_repo(str(fluentd.get("config_path") or ""))
-    fluentd_agent = _resolve_path_from_repo(str(fluentd.get("agent_config_path") or ""))
-    simulator_instances = _resolve_path_from_repo(str(simulator.get("instances_path") or ""))
+    fluentbit_config = _resolve_optional_path_from_repo(str(fluentbit.get("config_path") or ""))
+    fluentbit_agent = _resolve_optional_path_from_repo(str(fluentbit.get("agent_config_path") or ""))
+    fluentd_config = _resolve_optional_path_from_repo(str(fluentd.get("config_path") or ""))
+    fluentd_agent = _resolve_optional_path_from_repo(str(fluentd.get("agent_config_path") or ""))
+    simulator_instances = _resolve_optional_path_from_repo(str(simulator.get("instances_path") or ""))
     simulator_state_file = _simulator_state_path_from_profile(profile)
 
+    configured_components = 0
+    if fluentbit_config is not None or fluentbit_agent is not None:
+        configured_components += 1
+        if fluentbit_config is None or fluentbit_agent is None:
+            print(
+                "Demo profile Fluent Bit configuration is incomplete: both "
+                "`config_path` and `agent_config_path` are required when Fluent Bit is configured.",
+                file=sys.stderr,
+            )
+            return 1
+    if fluentd_config is not None or fluentd_agent is not None:
+        configured_components += 1
+        if fluentd_config is None or fluentd_agent is None:
+            print(
+                "Demo profile Fluentd configuration is incomplete: both "
+                "`config_path` and `agent_config_path` are required when Fluentd is configured.",
+                file=sys.stderr,
+            )
+            return 1
+    if simulator_instances is not None:
+        configured_components += 1
+    if configured_components == 0:
+        print(
+            f"Demo profile '{profile_name}' does not configure any launchable components.",
+            file=sys.stderr,
+        )
+        return 1
+
     required_paths = [
-        fluentbit_config,
-        fluentbit_agent,
-        fluentd_config,
-        fluentd_agent,
-        simulator_instances,
+        path
+        for path in [
+            fluentbit_config,
+            fluentbit_agent,
+            fluentd_config,
+            fluentd_agent,
+            simulator_instances,
+        ]
+        if path is not None
     ]
     for required in required_paths:
         if required.is_file() is not True:
-            print(f"Demo profile path not found: {required}", file=sys.stderr)
+            print(
+                f"Demo profile path not found: {required} but does exist {required.exists()}",
+                file=sys.stderr,
+            )
             return 1
 
     repo_root = _repo_root()
     prefix = _demo_record_prefix(profile_name)
     common_metadata = {"demo_profile": profile_name}
 
-    simulator_action = _simulator_start_action(
-        action_id=f"demo_simulator_{_slugify(profile_name)}",
-        label=f"{LABEL_SIMULATOR} ({profile_name})",
-        command_text=_python_script_command(
-            script_path=repo_root / "consumer-sim" / "src" / "consumer_sim_launcher.py",
-            args=["start"],
-            env={
-                APP_ENABLE_DEV_FEATURES_ENV: ENABLED_FLAG_VALUE,
-                "CONSUMER_SIM_CONFIG": str(simulator_instances),
-            },
+    sequence: list[dict[str, Any]] = []
+    if simulator_instances is not None:
+        simulator_action = _simulator_start_action(
+            action_id=f"demo_simulator_{_slugify(profile_name)}",
+            label=f"{LABEL_SIMULATOR} ({profile_name})",
+            command_text=_python_script_command(
+                script_path=repo_root / "consumer-sim" / "src" / "consumer_sim_launcher.py",
+                args=["start"],
+                env={
+                    APP_ENABLE_DEV_FEATURES_ENV: ENABLED_FLAG_VALUE,
+                    "CONSUMER_SIM_CONFIG": str(simulator_instances),
+                },
+                cwd=repo_root,
+            ),
+            argv=_python_script_argv(
+                script_path=repo_root / "consumer-sim" / "src" / "consumer_sim_launcher.py",
+                args=["start"],
+            ),
             cwd=repo_root,
-        ),
-        argv=_python_script_argv(
-            script_path=repo_root / "consumer-sim" / "src" / "consumer_sim_launcher.py",
-            args=["start"],
-        ),
-        cwd=repo_root,
-        env=_build_exec_env(
-            env={
-                APP_ENABLE_DEV_FEATURES_ENV: ENABLED_FLAG_VALUE,
-                "CONSUMER_SIM_CONFIG": str(simulator_instances),
-            }
-        ),
-        state_file=simulator_state_file,
-    )
-    simulator_action["record_prefix"] = prefix
-    simulator_action["record_metadata"] = dict(common_metadata)
+            env=_build_exec_env(
+                env={
+                    APP_ENABLE_DEV_FEATURES_ENV: ENABLED_FLAG_VALUE,
+                    "CONSUMER_SIM_CONFIG": str(simulator_instances),
+                }
+            ),
+            state_file=simulator_state_file,
+        )
+        simulator_action["record_prefix"] = prefix
+        simulator_action["record_metadata"] = dict(common_metadata)
+        sequence.append(simulator_action)
 
-    fluentbit_args = [
-        "--config-path",
-        str(fluentbit_config),
-        "--agent-config-path",
-        str(fluentbit_agent),
-    ]
-    fluentbit_action = _background_start_action(
-        action_id=f"demo_fluentbit_{_slugify(profile_name)}",
-        label=f"{LABEL_FLUENTBIT_CLIENT} ({profile_name})",
-        command_text=_python_module_command(
-            module_name="opamp_consumer.fluentbit_client",
-            python_paths=[repo_root / "consumer" / "src"],
-            args=fluentbit_args,
-            env={"OPAMP_CONFIG_PATH": str(fluentbit_config)},
+    if fluentbit_config is not None and fluentbit_agent is not None:
+        fluentbit_args = [
+            "--config-path",
+            str(fluentbit_config),
+            "--agent-config-path",
+            str(fluentbit_agent),
+        ]
+        fluentbit_action = _background_start_action(
+            action_id=f"demo_fluentbit_{_slugify(profile_name)}",
+            label=f"{LABEL_FLUENTBIT_CLIENT} ({profile_name})",
+            command_text=_python_module_command(
+                module_name="opamp_consumer.fluentbit_client",
+                python_paths=[repo_root / "consumer" / "src"],
+                args=fluentbit_args,
+                env={"OPAMP_CONFIG_PATH": str(fluentbit_config)},
+                cwd=repo_root,
+            ),
+            argv=_python_module_argv(module_name="opamp_consumer.fluentbit_client", args=fluentbit_args),
             cwd=repo_root,
-        ),
-        argv=_python_module_argv(module_name="opamp_consumer.fluentbit_client", args=fluentbit_args),
-        cwd=repo_root,
-        env=_build_exec_env(
-            python_paths=[repo_root / "consumer" / "src"],
-            env={"OPAMP_CONFIG_PATH": str(fluentbit_config)},
-        ),
-    )
-    fluentbit_action["record_name"] = f"{prefix}:{LABEL_FLUENTBIT_CLIENT}"
-    fluentbit_action["metadata"] = dict(common_metadata)
-    fluentbit_action["log_name"] = f"demo-{_slugify(profile_name)}-fluentbit-client"
+            env=_build_exec_env(
+                python_paths=[repo_root / "consumer" / "src"],
+                env={"OPAMP_CONFIG_PATH": str(fluentbit_config)},
+            ),
+        )
+        fluentbit_action["record_name"] = f"{prefix}:{LABEL_FLUENTBIT_CLIENT}"
+        fluentbit_action["metadata"] = dict(common_metadata)
+        fluentbit_action["log_name"] = f"demo-{_slugify(profile_name)}-fluentbit-client"
+        sequence.append(fluentbit_action)
 
-    fluentd_args = [
-        "--config-path",
-        str(fluentd_config),
-        "--agent-config-path",
-        str(fluentd_agent),
-    ]
-    fluentd_action = _background_start_action(
-        action_id=f"demo_fluentd_{_slugify(profile_name)}",
-        label=f"{LABEL_FLUENTD_CLIENT} ({profile_name})",
-        command_text=_python_module_command(
-            module_name="opamp_consumer.fluentd_client",
-            python_paths=[repo_root / "consumer" / "src"],
-            args=fluentd_args,
-            env={"OPAMP_CONFIG_PATH": str(fluentd_config)},
+    if fluentd_config is not None and fluentd_agent is not None:
+        fluentd_args = [
+            "--config-path",
+            str(fluentd_config),
+            "--agent-config-path",
+            str(fluentd_agent),
+        ]
+        fluentd_action = _background_start_action(
+            action_id=f"demo_fluentd_{_slugify(profile_name)}",
+            label=f"{LABEL_FLUENTD_CLIENT} ({profile_name})",
+            command_text=_python_module_command(
+                module_name="opamp_consumer.fluentd_client",
+                python_paths=[repo_root / "consumer" / "src"],
+                args=fluentd_args,
+                env={"OPAMP_CONFIG_PATH": str(fluentd_config)},
+                cwd=repo_root,
+            ),
+            argv=_python_module_argv(module_name="opamp_consumer.fluentd_client", args=fluentd_args),
             cwd=repo_root,
-        ),
-        argv=_python_module_argv(module_name="opamp_consumer.fluentd_client", args=fluentd_args),
-        cwd=repo_root,
-        env=_build_exec_env(
-            python_paths=[repo_root / "consumer" / "src"],
-            env={"OPAMP_CONFIG_PATH": str(fluentd_config)},
-        ),
-    )
-    fluentd_action["record_name"] = f"{prefix}:{LABEL_FLUENTD_CLIENT}"
-    fluentd_action["metadata"] = dict(common_metadata)
-    fluentd_action["log_name"] = f"demo-{_slugify(profile_name)}-fluentd-client"
-
-    sequence = [simulator_action, fluentbit_action, fluentd_action]
+            env=_build_exec_env(
+                python_paths=[repo_root / "consumer" / "src"],
+                env={"OPAMP_CONFIG_PATH": str(fluentd_config)},
+            ),
+        )
+        fluentd_action["record_name"] = f"{prefix}:{LABEL_FLUENTD_CLIENT}"
+        fluentd_action["metadata"] = dict(common_metadata)
+        fluentd_action["log_name"] = f"demo-{_slugify(profile_name)}-fluentd-client"
+        sequence.append(fluentd_action)
     for sub_action in sequence:
         sub_kind = str(sub_action.get("kind") or "").strip()
         if sub_kind == ACTION_KIND_SIMULATOR_START:

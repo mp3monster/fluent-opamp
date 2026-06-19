@@ -500,6 +500,48 @@ async def test_validate_rejects_invalid_size_value_format() -> None:
     mismatch_paths = {item["path"] for item in body["errors"] if item["code"] == "regex_mismatch"}
     assert "$.pipeline.inputs[0].buffer_chunk_size" in mismatch_paths
 
+
+def test_duration_rule_rejects_invalid_duration_value_format() -> None:
+    """Duration rules should reject values that do not match the compact duration pattern."""
+    from config_service.rule_engine.adapters.builtin import ValidationRuleConstraintsAdapter
+    from config_service.rule_engine.base import RuleContext
+
+    adapter = ValidationRuleConstraintsAdapter()
+    context = RuleContext(
+        version="5.0.4",
+        config={
+            "pipeline": {
+                "inputs": [{"name": "nginx_metrics", "scrape_interval": "five-seconds"}],
+                "filters": [],
+                "outputs": [],
+            }
+        },
+        catalog={
+            "plugins": {
+                "inputs": {
+                    "nginx_metrics": {
+                        "fields": [
+                            {
+                                "name": "scrape_interval",
+                                "data_type": "duration",
+                                "validation_rule": {"kind": "duration"},
+                            }
+                        ]
+                    }
+                },
+                "filters": {},
+                "outputs": {},
+            }
+        },
+        params={},
+    )
+
+    issues = adapter.evaluate(context)
+
+    assert issues
+    assert issues[0]["code"] == "regex_mismatch"
+    assert issues[0]["path"] == "$.pipeline.inputs[0].scrape_interval"
+
 @pytest.mark.asyncio
 async def test_validate_route_output_reference_and_enablement() -> None:
     """Route validation should warn on unknown destinations and disabled routing."""

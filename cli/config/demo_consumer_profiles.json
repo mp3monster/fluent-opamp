@@ -32,12 +32,18 @@
     },
     {
       "name": "Demo setup (Flbx1-Watts2)",
-      "scenario_description": "Uses the repository default Fluent Bit config and the dedicated Bluent Bit demo config.",
+      "scenario_description": "Uses the repository default Fluent Bit config and the dedicated Fluent Bit demo config.",
       "simulator": {
         "instances_path": "consumer-sim/config/consumer_instance-1.json"
       }
+    },
+    {
+      "name": "Demo setup (Flbx1 Observer)",
+      "scenario_description": "Starts up the agent in the observer configuration. As a result this means that the Fluent Bit needs to be manually started first with a command e.g. fluent-bit -c consumer/fluent-bit.yaml .",
+      "fluentbit": {
+        "config_path": "tests/opamp-consumer-observer.json",
+        "agent_config_path": "consumer/fluent-bit.yaml"
+      }
     }
-
-
   ]
 }

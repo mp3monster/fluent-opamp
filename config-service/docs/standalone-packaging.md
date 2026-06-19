@@ -107,7 +107,7 @@ python3 config-service/dev-tools/generate_sbom.py
 The script ensures `cyclonedx-bom` is available and uses `cyclonedx-py` for SBOM generation.
 
 This SBOM flow is specific to `config-service`. The repository-wide wheel publisher
-uses the developer-tool helper under `dev_tools/sbom.py` for the main deployable
+uses the developer-tool helper under `dev-tools/src/opamp_dev_tools/sbom.py` for the main deployable
 component SBOM generation.
 
 Output:

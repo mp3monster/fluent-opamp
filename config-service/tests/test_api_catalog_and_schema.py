@@ -214,6 +214,22 @@ def test_fluent_bit_catalogs_include_router_fields_for_all_plugins() -> None:
 
     assert missing == []
 
+
+def test_nginx_metrics_catalog_uses_duration_validation_rule() -> None:
+    payload = load_json_artifact(
+        Path(__file__).resolve().parents[1]
+        / "json-definitions"
+        / "fluent-bit"
+        / "5.0.4"
+        / "inputs"
+        / "nginx_metrics.json"
+    )
+    fields = payload["fields"]
+    scrape_interval = next(item for item in fields if item["name"] == "scrape_interval")
+
+    assert scrape_interval["data_type"] == "duration"
+    assert scrape_interval["validation_rule"] == {"kind": "duration"}
+
 def test_fluent_bit_older_catalogs_require_tag_for_inputs_except_forward() -> None:
     base = Path(__file__).resolve().parents[1] / "json-definitions"
     missing_required: list[tuple[str, str]] = []

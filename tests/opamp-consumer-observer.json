@@ -1,0 +1,34 @@
+{
+  "consumer": {
+    "server_url": "http://localhost:8080",
+    "client_status_port": 2020,
+    "chat_ops_port": 8888,
+    "transport": "https",
+    "processTracking": "Observer",
+    "processDetectionRegex": "fluent-bit.exe",
+    "tls": {
+      "verify_server": false
+    },
+    "server-authorization": "none",
+    "log_agent_api_responses": false,
+    "agent_additional_params": [],
+    "heartbeat_frequency": 5,
+    "full_update_controller": {
+      "fullResendAfter": 5
+    },
+    "full_update_controller_type": "SentCount",
+    "allow_custom_capabilities": true,
+    "log_level": "debug",
+    "service_name": "Fluentbit",
+    "service_namespace": "FluentBitNS"
+  },
+  "provider": {
+    "delayed_comms_seconds": 30,
+    "significant_comms_seconds": 30,
+    "webui_port": 8080,
+    "client_event_history_size": 5,
+    "log_level": "DEBUG",
+    "human_in_loop_approval": false,
+    "opamp-use-authorization": "none"
+  }
+}

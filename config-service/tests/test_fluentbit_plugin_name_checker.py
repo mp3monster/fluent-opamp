@@ -83,6 +83,29 @@ def test_markdown_table_rows_infer_size_and_boolean_fields() -> None:
     assert fields[1]["validation_rule"] == {"kind": "boolean"}
 
 
+def test_markdown_table_rows_infer_duration_fields() -> None:
+    markdown = """
+# NGINX
+
+## Configuration parameters
+
+| Key | Description | Default |
+| :--- | :--- | :--- |
+| `scrape_interval` | The interval to scrape metrics from the NGINX service. | `5s` |
+"""
+    headers, rows = parse_markdown_table(markdown, heading="## Configuration parameters")
+    fields = rows_to_fields(
+        rows,
+        headers=headers,
+        reference="https://docs.fluentbit.io/manual/data-pipeline/inputs/nginx#configuration-parameters",
+    )
+
+    assert headers == ["Key", "Description", "Default"]
+    assert fields[0]["name"] == "scrape_interval"
+    assert fields[0]["data_type"] == "duration"
+    assert fields[0]["validation_rule"] == {"kind": "duration"}
+
+
 def test_build_catalog_from_docs_auto_prefers_github_mapping(monkeypatch) -> None:
     github_yaml = """
 redirects:

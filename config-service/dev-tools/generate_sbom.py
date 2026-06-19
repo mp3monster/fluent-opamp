@@ -13,11 +13,11 @@
 
 """Generate a CycloneDX SBOM for the standalone config-service package.
 
-Relationship to `dev_tools/sbom.py`:
+Relationship to `dev-tools/src/opamp_dev_tools/sbom.py`:
 - this file is the config-service-specific wrapper that supplies package
   metadata, output defaults, and git label properties
-- `dev_tools/sbom.py` is the canonical repo-side SBOM implementation shared by
-  developer tooling without putting SBOM logic into the production `shared`
+- `opamp_dev_tools.sbom` is the canonical repo-side SBOM implementation shared
+  by developer tooling without putting SBOM logic into the production `shared`
   package
 
 This script delegates dependency discovery to the open-source `cyclonedx-py`
@@ -39,12 +39,15 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = ROOT.parent
+DEV_TOOLS_SRC = REPO_ROOT / "dev-tools" / "src"
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
+if str(DEV_TOOLS_SRC) not in sys.path:
+    sys.path.insert(0, str(DEV_TOOLS_SRC))
 
-from dev_tools.sbom import (  # noqa: E402
+from opamp_dev_tools.sbom import (  # noqa: E402
     build_requirements_application_sbom_payload,
     ensure_python_package,
     write_sbom_file,
