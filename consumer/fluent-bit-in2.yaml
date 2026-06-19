@@ -1,0 +1,15 @@
+env:
+  flush_interval: 2
+  #service_instance_id : 123456 __hostname__
+
+service:
+  flush: ${flush_interval}
+  log_level: debug
+  http_server: on
+  http_port: 2020
+
+pipeline:
+  inputs:
+    - name: dummy
+      dummy: '{ "hello": "2 files" }'
+      tag: dummy1
