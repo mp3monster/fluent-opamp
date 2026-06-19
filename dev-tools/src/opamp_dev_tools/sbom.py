@@ -1,10 +1,17 @@
-"""Developer-only CycloneDX SBOM helpers for OpAMP build and packaging flows.
+# Copyright 2026 mp3monster.org
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-This is the canonical repo-side SBOM implementation. Thin wrappers like
-`config-service/dev-tools/generate_sbom.py` should import from here, while
-packaged tools that must stay self-contained vendor a copy under their own
-source tree instead of depending on the production `shared` package.
-"""
+"""CycloneDX SBOM helpers shared by the consolidated developer tooling."""
 
 from __future__ import annotations
 
@@ -465,11 +472,17 @@ def validate_wheel_artifact_sbom(
         raise RuntimeError(
             "SBOM validation failed: metadata.component.version does not match wheel version."
         )
-    if repo is not None and _property_value(metadata_component.get("properties"), "github.repository") != repo:
+    if repo is not None and _property_value(
+        metadata_component.get("properties"),
+        "github.repository",
+    ) != repo:
         raise RuntimeError(
             "SBOM validation failed: metadata github.repository does not match build target."
         )
-    metadata_wheel_name = _property_value(metadata_component.get("properties"), "wheel.name")
+    metadata_wheel_name = _property_value(
+        metadata_component.get("properties"),
+        "wheel.name",
+    )
     if metadata_wheel_name is not None and metadata_wheel_name != wheel_name:
         raise RuntimeError("SBOM validation failed: metadata wheel.name does not match wheel.")
 
@@ -504,7 +517,10 @@ def validate_wheel_artifact_sbom(
         )
 
     expected_path = str(artifact)
-    sbom_artifact_path = _property_value(wheel_component.get("properties"), "opamp.artifact.path")
+    sbom_artifact_path = _property_value(
+        wheel_component.get("properties"),
+        "opamp.artifact.path",
+    )
     if sbom_artifact_path != expected_path:
         raise RuntimeError(
             "SBOM validation failed: wheel artifact path in SBOM does not match built artifact."

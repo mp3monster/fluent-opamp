@@ -46,7 +46,7 @@ carry build-only SBOM logic.
 
 The canonical repo-side implementation lives under:
 
-- `dev_tools/sbom.py`
+- `dev-tools/src/opamp_dev_tools/sbom.py`
 
 For standalone MCP package builds, a vendored copy of that helper is also kept under:
 

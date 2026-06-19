@@ -416,7 +416,10 @@ def _build_release_component_outputs(
     """Build wheels and SBOMs for each selected release component."""
     if str(runtime.repo_root) not in sys.path:
         sys.path.insert(0, str(runtime.repo_root))
-    from dev_tools.sbom import validate_wheel_artifact_sbom, write_wheel_artifact_sbom
+    from opamp_dev_tools.sbom import (
+        validate_wheel_artifact_sbom,
+        write_wheel_artifact_sbom,
+    )
 
     dist_root_path = _resolve_repo_path(runtime.repo_root, dist_root)
     built_wheels: dict[str, Path] = {}

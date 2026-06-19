@@ -39,7 +39,6 @@ COMPONENT_EXCLUDES = {
     "config",
     "demo",
     "dev-notes",
-    "dev_tools",
     "dev-tools",
     "dist",
     "docs",
@@ -200,7 +199,10 @@ def build_sboms(
     repo_root = runtime.repo_root
     if str(repo_root) not in sys.path:
         sys.path.insert(0, str(repo_root))
-    from dev_tools.sbom import validate_wheel_artifact_sbom, write_wheel_artifact_sbom
+    from opamp_dev_tools.sbom import (
+        validate_wheel_artifact_sbom,
+        write_wheel_artifact_sbom,
+    )
 
     build_artifacts(runtime, components=components, python_exe=python_exe, no_isolation=no_isolation)
     issue_found = False
