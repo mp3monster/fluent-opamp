@@ -20,6 +20,7 @@ The current profile lookup file is:
 Each profile in that file provides:
 
 - a logical profile name
+- an optional `scenario_description`
 - a consumer simulator instances file
 - a Fluent Bit OpAMP config path
 - a Fluent Bit agent config path
@@ -32,6 +33,7 @@ When `OPAMP_DEMO` is enabled:
 - `opamp-cli stop` includes matching demo stop entries
 - `opamp-cli demo` acts as shorthand for `opamp-cli start demo consumers`
 - `start demo consumers` acts as a category selector and offers the named profiles from the lookup file
+- the guided selector accepts `d<number>` so the scenario description can be viewed before choosing a profile
 - demo-launched process records are written into `cli/runtime/managed_processes.json`
 - those records are profile-scoped, so one demo profile can be stopped independently of another
 
@@ -52,6 +54,7 @@ Relevant CLI behavior:
 - demo profile starts set `APP_ENABLE_DEV_FEATURES=true` when invoking `consumer-sim`
 - startup messaging in interactive CLI only mentions this flag when it is actually detected as enabled
 - when the Fluent Bit dev-generator scripts are present, `opamp-cli dev-flb-config` is exposed as a guided developer workflow
+- `opamp-cli dev-pid-lookup` is exposed as a dev-only workflow for regex-based running-process PID lookup
 - that workflow discovers tool metadata from:
   - `config-service/dev-tools/generate_fluentbit_assets.py`
   - `config-service/dev-tools/generate_fluentbit_markdown.py`

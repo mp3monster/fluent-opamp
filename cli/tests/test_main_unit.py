@@ -489,6 +489,50 @@ def test_demo_mode_adds_profile_actions(monkeypatch, tmp_path: Path) -> None:
     assert "Demo consumers (script-defaults)" in stop_labels
 
 
+def test_demo_profile_loader_prefers_scenario_description(monkeypatch, tmp_path: Path) -> None:
+    demo_config = tmp_path / "demo_profiles.json"
+    demo_config.write_text(
+        json.dumps(
+            {
+                "profiles": [
+                    {
+                        "name": "repo-defaults",
+                        "description": "legacy description",
+                        "scenario_description": "preferred scenario description",
+                        "simulator": {"instances_path": "consumer-sim/config/consumer_instances.json"},
+                        "fluentbit": {
+                            "config_path": "config/opamp.json",
+                            "agent_config_path": "consumer/fluent-bit.yaml",
+                        },
+                        "fluentd": {
+                            "config_path": "config/opamp.json",
+                            "agent_config_path": "consumer/fluentd.conf",
+                        },
+                    }
+                ]
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(cli_main, "_demo_consumer_config_path", lambda: demo_config)
+
+    profiles = cli_main._load_demo_consumer_profiles()  # type: ignore[attr-defined]
+
+    assert profiles[0]["scenario_description"] == "preferred scenario description"
+
+
+def test_demo_consumer_action_carries_scenario_description() -> None:
+    action = cli_main._demo_consumer_start_action(  # type: ignore[attr-defined]
+        {
+            "name": "repo-defaults",
+            "scenario_description": "Profile scenario text",
+        }
+    )
+
+    assert action["scenario_description"] == "Profile scenario text"
+
+
 def test_demo_profile_alias_resolves_guided_action(monkeypatch, tmp_path: Path) -> None:
     demo_config = tmp_path / "demo_profiles.json"
     demo_config.write_text(
@@ -606,6 +650,34 @@ def test_start_demo_consumers_prompts_for_profile_choices(monkeypatch, tmp_path:
         "Demo consumers (script-defaults)",
         "Demo consumers (repo-defaults)",
     ]
+
+
+def test_select_guided_action_can_show_scenario_description_before_selection(
+    monkeypatch,
+    capsys,
+) -> None:
+    responses = iter(["d1", "1"])
+    actions = [
+        (
+            "Demo consumers (repo-defaults)",
+            {
+                "label": "Demo consumers (repo-defaults)",
+                "scenario_description": "Starts the simulator and both consumer clients with repo defaults.",
+            },
+        )
+    ]
+    monkeypatch.setattr("builtins.input", lambda _: next(responses))
+
+    selected = cli_main._select_guided_action(  # type: ignore[attr-defined]
+        input_reader=None,
+        intent="start",
+        actions=actions,
+    )
+    output = capsys.readouterr().out
+
+    assert selected == actions[0][1]
+    assert "d<number>. view scenario description" in output
+    assert "Starts the simulator and both consumer clients with repo defaults." in output
 
 
 def test_stop_all_recorded_processes_loops_all_record_names(monkeypatch) -> None:
@@ -808,6 +880,7 @@ def test_top_level_commands_include_dev_mcp_config_only_when_available(monkeypat
     monkeypatch.setattr(cli_main, "_demo_mode_enabled", lambda: False)
     monkeypatch.setattr(cli_main, "_fluentbit_dev_tool_available", lambda: False)
     monkeypatch.setattr(cli_main, "_mcp_dev_tool_available", lambda: True)
+    monkeypatch.setattr(cli_main, "_dev_pid_lookup_available", lambda: False)
 
     commands = cli_main._top_level_commands()  # type: ignore[attr-defined]
 
@@ -816,6 +889,21 @@ def test_top_level_commands_include_dev_mcp_config_only_when_available(monkeypat
     monkeypatch.setattr(cli_main, "_mcp_dev_tool_available", lambda: False)
     commands = cli_main._top_level_commands()  # type: ignore[attr-defined]
     assert "dev-mcp-config" not in commands
+
+
+def test_top_level_commands_include_dev_pid_lookup_only_when_available(monkeypatch) -> None:
+    monkeypatch.setattr(cli_main, "_demo_mode_enabled", lambda: False)
+    monkeypatch.setattr(cli_main, "_fluentbit_dev_tool_available", lambda: False)
+    monkeypatch.setattr(cli_main, "_mcp_dev_tool_available", lambda: False)
+    monkeypatch.setattr(cli_main, "_dev_pid_lookup_available", lambda: True)
+
+    commands = cli_main._top_level_commands()  # type: ignore[attr-defined]
+
+    assert "dev-pid-lookup" in commands
+
+    monkeypatch.setattr(cli_main, "_dev_pid_lookup_available", lambda: False)
+    commands = cli_main._top_level_commands()  # type: ignore[attr-defined]
+    assert "dev-pid-lookup" not in commands
 
 
 def test_handle_command_routes_dev_flb_config_to_workflow(monkeypatch) -> None:
@@ -845,6 +933,22 @@ def test_handle_command_routes_dev_mcp_config_to_workflow(monkeypatch) -> None:
     monkeypatch.setattr(cli_main, "_execute_dev_mcp_config_workflow", fake_workflow)
 
     code = cli_main._handle_command("dev-mcp-config")  # type: ignore[attr-defined]
+
+    assert code == 0
+    assert called["count"] == 1
+
+
+def test_handle_command_routes_dev_pid_lookup_to_workflow(monkeypatch) -> None:
+    called: dict[str, int] = {"count": 0}
+
+    def fake_workflow(*, input_reader=None):  # type: ignore[no-untyped-def]
+        assert input_reader is None
+        called["count"] += 1
+        return 0
+
+    monkeypatch.setattr(cli_main, "_execute_dev_pid_lookup_workflow", fake_workflow)
+
+    code = cli_main._handle_command("dev-pid-lookup")  # type: ignore[attr-defined]
 
     assert code == 0
     assert called["count"] == 1
@@ -975,3 +1079,63 @@ def test_execute_dev_mcp_config_workflow_prompts_and_runs_selected_tool(monkeypa
         "broker.local",
         "--preview",
     ]
+
+
+def test_execute_dev_pid_lookup_workflow_reports_matches(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(cli_main, "_dev_pid_lookup_available", lambda: True)
+    monkeypatch.setattr(
+        cli_main,
+        "_running_process_entries",
+        lambda: (
+            True,
+            [
+                {
+                    "pid": 4321,
+                    "name": "python",
+                    "command_line": "python consumer-sim/src/consumer_sim_launcher.py start",
+                },
+                {
+                    "pid": 1234,
+                    "name": "fluent-bit",
+                    "command_line": "fluent-bit -c fluent-bit.yaml",
+                },
+            ],
+        ),
+    )
+
+    code = cli_main._execute_dev_pid_lookup_workflow(  # type: ignore[attr-defined]
+        input_reader=lambda _prompt: "consumer_sim_launcher"
+    )
+    output = capsys.readouterr().out
+
+    assert code == 0
+    assert "Regex: consumer_sim_launcher" in output
+    assert "Matched 1 process(es):" in output
+    assert "python" in output
+    assert "pid: 4321" in output
+
+
+def test_execute_dev_pid_lookup_workflow_reports_no_matches(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(cli_main, "_dev_pid_lookup_available", lambda: True)
+    monkeypatch.setattr(
+        cli_main,
+        "_running_process_entries",
+        lambda: (
+            True,
+            [
+                {
+                    "pid": 4321,
+                    "name": "python",
+                    "command_line": "python provider/server.py",
+                }
+            ],
+        ),
+    )
+
+    code = cli_main._execute_dev_pid_lookup_workflow(  # type: ignore[attr-defined]
+        input_reader=lambda _prompt: "fluentd"
+    )
+    output = capsys.readouterr().out
+
+    assert code == 1
+    assert "No running processes matched the regular expression." in output

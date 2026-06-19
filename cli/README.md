@@ -93,6 +93,7 @@ Both shortcuts run the compatibility entrypoint:
   - Type `enable-process-tail` to open a separate tail shell for each future managed start log.
   - Type `disable-process-tail` to turn that behavior off again.
   - When `APP_ENABLE_DEV_FEATURES=true` and the Fluent Bit generator scripts are present, type `dev-flb-config` to open a guided prompt for the Fluent Bit asset/markdown utilities.
+  - When `APP_ENABLE_DEV_FEATURES=true`, type `dev-pid-lookup` to prompt for a regular expression and report matching running process IDs with process details.
   - `Catalog` is shown when catalog sources are configured in `config/opamp.json`. The CLI writes a temporary runtime config under `cli/runtime/` so the catalog can be launched without editing the repo config.
 - If the first word is `script`, a script file is generated for the current OS:
   - Linux/macOS: `.sh`
@@ -111,6 +112,7 @@ opamp-cli status
 opamp-cli list
 opamp-cli enable-process-tail
 APP_ENABLE_DEV_FEATURES=true opamp-cli dev-flb-config
+APP_ENABLE_DEV_FEATURES=true opamp-cli dev-pid-lookup
 ```
 
 Guided examples:
@@ -127,8 +129,11 @@ Demo consumer mode:
 
 - Set `OPAMP_DEMO=true` to expose profile-based demo consumer actions in guided `start` and `stop`.
 - Demo profiles are loaded from `cli/config/demo_consumer_profiles.json`.
+- Each demo profile can include a `scenario_description` field.
 - In interactive or direct CLI mode, `demo` acts as shorthand for `start demo consumers`.
+- In guided `start` / `stop` selection, type `d<number>` to view the selected profile's scenario description before launching or stopping it.
 - Each profile maps a logical profile name to:
+  - scenario description text
   - simulator instances file
   - Fluent Bit OpAMP config + agent config
   - Fluentd OpAMP config + agent config
@@ -138,6 +143,7 @@ Example:
 
 ```text
 OPAMP_DEMO=true opamp-cli start
+d1
 OPAMP_DEMO=true opamp-cli demo
 OPAMP_DEMO=true opamp-cli stop "demo consumers script-defaults"
 ```

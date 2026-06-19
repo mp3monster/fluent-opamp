@@ -29,6 +29,7 @@ import importlib
 import json
 import logging
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -79,6 +80,7 @@ try:
         COMMAND_DEMO,
         COMMAND_DEV_FLB_CONFIG,
         COMMAND_DEV_MCP_CONFIG,
+        COMMAND_DEV_PID_LOOKUP,
         COMMAND_DISABLE_PROCESS_TAIL,
         COMMAND_ENABLE_PROCESS_TAIL,
         COMMAND_EXIT,
@@ -163,9 +165,10 @@ except ImportError:
         CLI_RUNTIME_DIRNAME,
         CLI_SETTING_ENABLE_PROCESS_TAIL,
         CLI_SETTINGS_FILENAME,
-        COMMAND_DISABLE_PROCESS_TAIL,
         COMMAND_DEV_FLB_CONFIG,
         COMMAND_DEV_MCP_CONFIG,
+        COMMAND_DEV_PID_LOOKUP,
+        COMMAND_DISABLE_PROCESS_TAIL,
         COMMAND_ENABLE_PROCESS_TAIL,
         COMMAND_EXIT,
         COMMAND_HELP,
@@ -214,6 +217,22 @@ CLI_LOGGER_NAME = "opamp_cli"
 SIMULATOR_STATE_KEY_INSTANCES = "instances"
 SIMULATOR_STATE_KEY_NAME = "name"
 SIMULATOR_STATE_KEY_PID = "pid"
+GUIDED_DESCRIPTION_COMMAND_PREFIX = "d"
+GUIDED_DESCRIPTION_LABEL = "scenario description"
+PROCESS_INFO_KEY_PID = "pid"
+PROCESS_INFO_KEY_NAME = "name"
+PROCESS_INFO_KEY_COMMAND_LINE = "command_line"
+WINDOWS_PROCESS_SNAPSHOT_COMMAND = [
+    "powershell.exe",
+    "-NoProfile",
+    "-Command",
+    (
+        "Get-CimInstance Win32_Process | "
+        "Select-Object ProcessId,Name,CommandLine | "
+        "ConvertTo-Csv -NoTypeInformation"
+    ),
+]
+POSIX_PROCESS_SNAPSHOT_COMMAND = ["ps", "-eo", "pid=,comm=,args="]
 _CLI_LOGGER_CACHE: dict[str, logging.Logger | Path | None] = {
     "logger": None,
     "path": None,
@@ -415,6 +434,9 @@ def _handle_command(raw_command: str) -> int:  # noqa: PLR0911
     if lowered == COMMAND_DEV_MCP_CONFIG:
         logger.info("starting dev mcp config workflow")
         return _execute_dev_mcp_config_workflow()
+    if lowered == COMMAND_DEV_PID_LOOKUP:
+        logger.info("starting dev pid lookup workflow")
+        return _execute_dev_pid_lookup_workflow()
 
     if _script_mode_enabled(command_text):
         output_name, script_command = _split_script_directive(command_text)
@@ -459,6 +481,8 @@ def _top_level_commands() -> list[str]:
         commands.append(COMMAND_DEV_FLB_CONFIG)
     if _mcp_dev_tool_available():
         commands.append(COMMAND_DEV_MCP_CONFIG)
+    if _dev_pid_lookup_available():
+        commands.append(COMMAND_DEV_PID_LOOKUP)
     return commands
 
 
@@ -542,6 +566,11 @@ def _mcp_dev_tool_specs() -> list[dict[str, Any]]:
 def _mcp_dev_tool_available() -> bool:
     """Return whether the dev MCP workflow should be exposed."""
     return bool(_mcp_dev_tool_specs())
+
+
+def _dev_pid_lookup_available() -> bool:
+    """Return whether the dev PID lookup workflow should be exposed."""
+    return _dev_features_enabled()
 
 
 def _prompt_text(
@@ -791,6 +820,163 @@ def _execute_dev_mcp_config_workflow(
         if exit_code != 0:
             return exit_code
     return 0
+
+
+def _execute_dev_pid_lookup_workflow(
+    *,
+    input_reader: Callable[[str], str] | None = None,
+) -> int:
+    """Prompt for a regex and report running processes that match it."""
+    if _dev_pid_lookup_available() is not True:
+        print(
+            f"{COMMAND_DEV_PID_LOOKUP} is only available when {APP_ENABLE_DEV_FEATURES_ENV}=true.",
+            file=sys.stderr,
+        )
+        return 1
+    pattern_text = _prompt_pid_lookup_regex(input_reader=input_reader)
+    if pattern_text is None:
+        return 0
+    try:
+        pattern = re.compile(pattern_text, re.IGNORECASE)
+    except re.error as exc:
+        print(f"Invalid regular expression: {exc}", file=sys.stderr)
+        return 1
+    snapshot_ok, processes = _running_process_entries()
+    if snapshot_ok is not True:
+        print("Unable to collect the running process list.", file=sys.stderr)
+        return 1
+    matches = _process_entries_matching_pattern(processes, pattern=pattern)
+    _print_pid_lookup_results(pattern_text, matches)
+    return 0 if matches else 1
+
+
+def _prompt_pid_lookup_regex(
+    *,
+    input_reader: Callable[[str], str] | None = None,
+) -> str | None:
+    """Prompt for the regex used by the dev PID lookup workflow."""
+    while True:
+        try:
+            raw_value = _prompt_text(
+                "Process regular expression (blank to cancel): ",
+                input_reader=input_reader,
+            )
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return None
+        pattern_text = str(raw_value or "").strip()
+        if pattern_text:
+            return pattern_text
+        return None
+
+
+def _running_process_entries() -> tuple[bool, list[dict[str, Any]]]:
+    """Return a snapshot of running process details for the current platform."""
+    if _is_windows():
+        return _windows_process_entries()
+    return _posix_process_entries()
+
+
+def _windows_process_entries() -> tuple[bool, list[dict[str, Any]]]:
+    """Return running process details from Windows CIM process output."""
+    try:
+        completed = subprocess.run(
+            WINDOWS_PROCESS_SNAPSHOT_COMMAND,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError:
+        return False, []
+    if completed.returncode != 0:
+        return False, []
+    processes: list[dict[str, Any]] = []
+    for row in csv.DictReader((completed.stdout or "").splitlines()):
+        pid_text = str(row.get("ProcessId") or "").strip()
+        if pid_text.isdigit() is not True:
+            continue
+        processes.append(
+            {
+                PROCESS_INFO_KEY_PID: int(pid_text),
+                PROCESS_INFO_KEY_NAME: str(row.get("Name") or "").strip(),
+                PROCESS_INFO_KEY_COMMAND_LINE: str(row.get("CommandLine") or "").strip(),
+            }
+        )
+    return True, processes
+
+
+def _posix_process_entries() -> tuple[bool, list[dict[str, Any]]]:
+    """Return running process details from POSIX `ps` output."""
+    try:
+        completed = subprocess.run(
+            POSIX_PROCESS_SNAPSHOT_COMMAND,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError:
+        return False, []
+    if completed.returncode != 0:
+        return False, []
+    processes: list[dict[str, Any]] = []
+    for line in (completed.stdout or "").splitlines():
+        parts = line.strip().split(None, 2)
+        if len(parts) < 2 or parts[0].isdigit() is not True:
+            continue
+        processes.append(
+            {
+                PROCESS_INFO_KEY_PID: int(parts[0]),
+                PROCESS_INFO_KEY_NAME: parts[1].strip(),
+                PROCESS_INFO_KEY_COMMAND_LINE: parts[2].strip() if len(parts) > 2 else "",
+            }
+        )
+    return True, processes
+
+
+def _process_entries_matching_pattern(
+    processes: list[dict[str, Any]],
+    *,
+    pattern: re.Pattern[str],
+) -> list[dict[str, Any]]:
+    """Return process entries whose PID, name, or command line match the regex."""
+    matches: list[dict[str, Any]] = []
+    for process in processes:
+        if pattern.search(_process_entry_match_text(process)) is None:
+            continue
+        matches.append(process)
+    return matches
+
+
+def _process_entry_match_text(process: dict[str, Any]) -> str:
+    """Return the normalized text searched by the PID lookup workflow."""
+    # Keep this search surface aligned with the consumer observer locator in
+    # consumer/src/opamp_consumer/process_utils.py:ProcessUtils.find_pid_by_regex
+    # so the dev-only PID lookup mirrors observer-mode process detection.
+    return " ".join(
+        [
+            str(process.get(PROCESS_INFO_KEY_PID) or "").strip(),
+            str(process.get(PROCESS_INFO_KEY_NAME) or "").strip(),
+            str(process.get(PROCESS_INFO_KEY_COMMAND_LINE) or "").strip(),
+        ]
+    ).strip()
+
+
+def _print_pid_lookup_results(
+    pattern_text: str,
+    matches: list[dict[str, Any]],
+) -> None:
+    """Print the PID lookup result summary and matched process details."""
+    print(f"Regex: {pattern_text}")
+    if not matches:
+        print("No running processes matched the regular expression.")
+        return
+    print(f"Matched {len(matches)} process(es):")
+    for index, process in enumerate(matches, start=1):
+        print(f"{index}. {process.get(PROCESS_INFO_KEY_NAME) or 'process'}")
+        print(f"   pid: {process.get(PROCESS_INFO_KEY_PID) or ''}")
+        command_line = str(process.get(PROCESS_INFO_KEY_COMMAND_LINE) or "").strip()
+        if command_line:
+            print(f"   command_line: {command_line}")
 
 
 def _catalog_start_available() -> bool:
@@ -1789,13 +1975,21 @@ def _load_demo_consumer_profiles() -> list[dict[str, Any]]:
         profiles.append(
             {
                 "name": name,
-                "description": str(entry.get("description") or "").strip(),
+                "scenario_description": _demo_profile_scenario_description(entry),
                 "fluentbit": dict(fluentbit),
                 "fluentd": dict(fluentd),
                 "simulator": dict(simulator),
             }
         )
     return profiles
+
+
+def _demo_profile_scenario_description(entry: dict[str, Any]) -> str:
+    """Return the normalized scenario description for one demo profile entry."""
+    scenario_description = str(entry.get("scenario_description") or "").strip()
+    if scenario_description:
+        return scenario_description
+    return str(entry.get("description") or "").strip()
 
 
 def _demo_profile_by_name(profile_name: str) -> dict[str, Any] | None:
@@ -1947,6 +2141,7 @@ def _demo_consumer_start_action(profile: dict[str, Any]) -> dict[str, Any]:
         "kind": ACTION_KIND_DEMO_CONSUMERS_START,
         "label": f"Demo consumers ({profile_name})",
         "profile_name": profile_name,
+        "scenario_description": _action_scenario_description(profile),
         "aliases": [
             f"demo consumers {profile_name}",
             f"demo {profile_name}",
@@ -1964,6 +2159,7 @@ def _demo_consumer_stop_action(profile: dict[str, Any]) -> dict[str, Any]:
         "kind": ACTION_KIND_DEMO_CONSUMERS_STOP,
         "label": f"Demo consumers ({profile_name})",
         "profile_name": profile_name,
+        "scenario_description": _action_scenario_description(profile),
         "aliases": [
             f"demo consumers {profile_name}",
             f"demo {profile_name}",
@@ -2364,6 +2560,8 @@ def _select_guided_action(
     print(f"Choose what to {intent}:")
     for index, (label, _command) in enumerate(actions, start=1):
         print(f"  {index}. {label}")
+    if _guided_actions_have_descriptions(actions):
+        print(f"  {GUIDED_DESCRIPTION_COMMAND_PREFIX}<number>. view {GUIDED_DESCRIPTION_LABEL}")
     print("  0. cancel")
 
     while True:
@@ -2376,6 +2574,10 @@ def _select_guided_action(
             return None
         if selected in {"0", "cancel", "c", ""}:
             return None
+        description_index = _guided_description_index(selected, actions=actions)
+        if description_index is not None:
+            _print_guided_action_description(actions[description_index])
+            continue
         if selected.isdigit():
             index = int(selected)
             if 1 <= index <= len(actions):
@@ -2386,6 +2588,54 @@ def _select_guided_action(
                 if _matches_guided_label(selected, label):
                     return action
         print("Please choose a valid number from the list.")
+
+
+def _guided_actions_have_descriptions(actions: list[tuple[str, Any]]) -> bool:
+    """Return whether any guided action exposes a scenario description."""
+    return any(_action_scenario_description(action) for _label, action in actions)
+
+
+def _guided_description_index(
+    selection: str,
+    *,
+    actions: list[tuple[str, Any]],
+) -> int | None:
+    """Return the requested description index from guided-selection input."""
+    candidate = str(selection or "").strip()
+    if len(candidate) <= 1:
+        return None
+    if candidate[0].lower() != GUIDED_DESCRIPTION_COMMAND_PREFIX:
+        return None
+    numeric_portion = candidate[1:]
+    if numeric_portion.isdigit() is not True:
+        return None
+    index = int(numeric_portion) - 1
+    if 0 <= index < len(actions):
+        return index
+    print("Please choose a valid number from the list.")
+    return None
+
+
+def _action_scenario_description(action: dict[str, Any]) -> str:
+    """Return the normalized scenario description text for one action payload."""
+    return str(
+        action.get("scenario_description")
+        or action.get("description")
+        or ""
+    ).strip()
+
+
+def _print_guided_action_description(action_entry: tuple[str, Any]) -> None:
+    """Print the scenario description for one guided action entry."""
+    label, action = action_entry
+    description = _action_scenario_description(action)
+    print()
+    print(f"{label} {GUIDED_DESCRIPTION_LABEL}:")
+    if description:
+        print(description)
+    else:
+        print("No scenario description is configured.")
+    print()
 
 
 def _split_guided_command(command_text: str) -> tuple[str, str] | None:
@@ -3192,6 +3442,8 @@ def _interactive_loop() -> int:  # noqa: PLR0912,PLR0915
         print(f"Use `{COMMAND_DEV_FLB_CONFIG}` for the Fluent Bit dev generator workflow.")
     if _mcp_dev_tool_available():
         print(f"Use `{COMMAND_DEV_MCP_CONFIG}` for the MCP client configuration workflow.")
+    if _dev_pid_lookup_available():
+        print(f"Use `{COMMAND_DEV_PID_LOOKUP}` to find running process IDs by regex.")
     print("Use `enable-process-tail` to tail managed process logs in a new shell.")
     detected_flags = _detected_behavior_flags()
     if detected_flags:
@@ -3236,6 +3488,12 @@ def _interactive_loop() -> int:  # noqa: PLR0912,PLR0915
         if raw.strip().lower() == COMMAND_DEV_MCP_CONFIG:
             logger.info("interactive dev mcp config requested")
             code = _execute_dev_mcp_config_workflow(input_reader=input_reader)
+            if code != 0:
+                print(f"Command exited with code {code}")
+            continue
+        if raw.strip().lower() == COMMAND_DEV_PID_LOOKUP:
+            logger.info("interactive dev pid lookup requested")
+            code = _execute_dev_pid_lookup_workflow(input_reader=input_reader)
             if code != 0:
                 print(f"Command exited with code {code}")
             continue
