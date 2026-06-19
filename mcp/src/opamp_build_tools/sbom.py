@@ -1,8 +1,8 @@
 """Vendored CycloneDX SBOM helpers for the standalone MCP packaging wheel.
 
-This file intentionally mirrors `dev_tools/sbom.py` from the source tree so the
-installed `opamp-mcp-config` wheel stays self-contained and does not depend on
-repo-local developer tooling modules.
+This file intentionally mirrors `dev-tools/src/opamp_dev_tools/sbom.py` from
+the source tree so the installed `opamp-mcp-config` wheel stays self-contained
+and does not depend on repo-local developer tooling modules.
 """
 
 from __future__ import annotations

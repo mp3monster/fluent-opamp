@@ -1,0 +1,19 @@
+{
+  "instances": [
+    {
+      "name": "FluentBit-Watts-2",
+      "entrypoint": "simulator",
+      "config_path": "../../consumer/opamp-simulator.json",
+      "overrides": {
+        "heartbeat-frequency": 30,
+        "log-level": "INFO",
+        "agent-additional-params": [
+          "{\"service_instance_uid\":\"FluentBit-Watts-2\",\"client_version\":\"FluentBit 5.0.4\",\"config_version\":\"test-1\"}"
+        ]
+      },
+      "env": {
+        "OPAMP_SERVER_URL": "http://localhost:8080"
+      }
+    }
+  ]
+}

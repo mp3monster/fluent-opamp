@@ -46,7 +46,7 @@ class AIConnection(Protocol):
         schema: dict[str, Any],
         temperature: float | None = None,
         max_completion_tokens: int | None = None,
-    ) -> str:
+    ) -> str | None:
         """Return model output text constrained by the supplied JSON schema.
 
         Why schema-constrained output is required:

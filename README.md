@@ -30,7 +30,7 @@ The documentation includes background such as the implementation philosophies th
 - [docs/provider_server_diagrams.md](docs/provider_server_diagrams.md) — rendered provider/server diagrams with architecture walkthrough notes.
 - [docs/features.md](docs/features.md) — feature notes and design direction.
 - [mcp/README.md](mcp/README.md) — MCP setup Python entry points, wrapper script layout, FastMCP client role, command-line parameters, and verification.
-- [docs/scripts.md](docs/scripts.md) — script reference table by platform.
+- [scripts/README.md](scripts/README.md) — current `scripts/` folder reference, compatibility wrappers, and remaining low-level helpers.
 - [docs/dev/component_versioning.md](docs/dev/component_versioning.md) — git-derived component version metadata, help/UI exposure, and hook/build integration.
 - [cli/README.md](cli/README.md) — CLI launcher/orchestration usage and local operator workflows.
 - [consumer/README.md](consumer/README.md) — consumer configuration and CLI usage.
@@ -66,19 +66,21 @@ The repository supports independent deployable Python artefacts for:
 
 The main build entry points are:
 
-- `scripts/build_artifacts.sh`
-- `scripts/build_artifacts.cmd`
-  - build `sdist` + `wheel` outputs into `dist/`
-- `scripts/build_and_publish_wheels.py`
+- `python dev-tools/main.py build artefact all`
+  - builds per-component `sdist` + `wheel` outputs into `dist/`
+- `python dev-tools/main.py build release-assets`
   - builds per-component wheels
   - writes per-component CycloneDX SBOMs
   - supports subset builds via `--components`
   - supports GitHub release publication via `--publish`
+- `python scripts/security_checks.py`
+  - compatibility wrapper for the consolidated repository security gate
 
 For the full build matrix and output paths, start with:
 
-- `docs/scripts.md`
+- `scripts/README.md`
 - `docs/README.md`
+- `dev-tools/README.md`
 - `docs/dev/component_versioning.md`
 
 ## Folder summary
@@ -95,6 +97,6 @@ For the full build matrix and output paths, start with:
 - `logs` — runtime logs created by scripts.
 - `proto` — protobuf definitions and generated artifacts.
 - `provider` — the OpAMP provider (server) package, UI, and tests.
-- `scripts` — helper run and shutdown scripts.
+- `scripts` — compatibility wrappers and low-level operational helper scripts that remain outside `dev-tools`.
 - `shared` — shared utilities used by provider/consumer.
 - `tests` — repository-level tests.

@@ -150,7 +150,7 @@ By default the build writes:
 
 The canonical repo-side SBOM helper implementation lives in:
 
-- `dev_tools/sbom.py`
+- `dev-tools/src/opamp_dev_tools/sbom.py`
 
 The MCP package vendors the helper under `mcp/src/opamp_build_tools/` so the
 standalone wheel remains self-contained after installation.
