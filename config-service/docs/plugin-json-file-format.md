@@ -88,7 +88,7 @@ Every object inside `fields` represents one plugin attribute such as `path`, `ma
 | `data_type` | `string` | Yes | Logical type used by UI and validation. |
 | `validation_rule` | `object` or `null` | No | Additional rule metadata for backend checks. |
 | `default` | any JSON value | No | Default value shown/documented for the field. |
-| `called_enum_options` | `array<string>` | No | Explicit allowed values for enum-like fields. |
+| `called_enum_options` | `array<string>` | No | Explicit allowed values for enum-like fields. Also used as a fallback source for schema `enum` values when `validation_rule.kind` is `enum` and `validation_rule.values` is omitted. |
 | `references_parser` | `boolean` | No | Marks fields whose value should match a known parser name. |
 
 ### `directive_argument` attributes
@@ -155,7 +155,7 @@ Common forms include:
 | `regex_string` | `{ "kind": "regex_string", "pattern": "..." }` | String-specific regex validation. |
 | `duration` | `{ "kind": "duration" }` | Enforces compact duration strings such as `250ms`, `5s`, `1m`, or `2h` using `^\\d+(ns|us|ms|s|m|h|d)?$`. |
 | `size` | `{ "kind": "size" }` | Enforces Fluent Bit size strings such as `32k` or `10M`; see https://docs.fluentbit.io/manual/administration/configuring-fluent-bit#unit-sizes |
-| `enum` | `{ "kind": "enum", "values": [...] }` | Documents allowed values, usually paired with `called_enum_options`. |
+| `enum` | `{ "kind": "enum", "values": [...] }` | Documents allowed values, usually paired with `called_enum_options`. If `values` is omitted, schema generation falls back to the field's `called_enum_options` when present. |
 
 Example duration field:
 
@@ -179,6 +179,7 @@ Important nuance:
 2. Runtime schema compilation mainly carries forward `type`, `description`, `enum`, `default`, and `x-*` metadata.
 3. Backend semantic validation and rule adapters enforce the richer rule set.
 4. Some rule kinds such as `list` are currently descriptive catalog metadata rather than a dedicated standalone rule-adapter branch.
+5. For enum-like fields, runtime schema generation prefers `validation_rule.values` when `kind` is `enum`, and otherwise falls back to `called_enum_options` if available.
 
 ## Generated runtime schema shard files
 Typical examples:
