@@ -19,6 +19,9 @@ KEY_X_CONFIG_DATA_TYPE = "x-config-data-type"
 KEY_X_REFERENCES_PARSER = "x-references-parser"
 KEY_REFERENCES_PARSER = "references_parser"
 KEY_CALLED_ENUM_OPTIONS = "called_enum_options"
+KEY_VALIDATION_RULE = "validation_rule"
+KEY_KIND = "kind"
+KEY_VALUES = "values"
 KEY_DEFAULT = "default"
 KEY_NAME = "name"
 KEY_DIRECTIVE_ARGUMENT = "directive_argument"
@@ -138,6 +141,16 @@ class SchemaService:
         )
 
     def _field_schema(self, field: dict[str, Any]) -> dict[str, Any]:
+        """Build one field schema from catalog metadata.
+
+        Enum values may come from either:
+        1. `validation_rule.values` when `validation_rule.kind == "enum"`
+        2. `called_enum_options` on the field itself
+
+        When an enum validation rule omits `values`, the schema falls back to
+        the parent field's `called_enum_options` so catalog authors do not have
+        to duplicate the same allow-list in two places.
+        """
         catalog_data_type = str(field.get(KEY_DATA_TYPE, "string")).lower()
         json_type = self.TYPE_MAP.get(catalog_data_type, "string")
         payload: dict[str, Any] = {
@@ -148,8 +161,18 @@ class SchemaService:
             KEY_X_CONFIG_DATA_TYPE: catalog_data_type,
             KEY_X_REFERENCES_PARSER: bool(field.get(KEY_REFERENCES_PARSER, False)),
         }
+        validation_rule = field.get(KEY_VALIDATION_RULE)
         enum_options = field.get(KEY_CALLED_ENUM_OPTIONS)
-        if isinstance(enum_options, list) and enum_options:
+        if (
+            isinstance(validation_rule, dict)
+            and str(validation_rule.get(KEY_KIND, "")).lower() == KEY_ENUM
+        ):
+            rule_values = validation_rule.get(KEY_VALUES)
+            if isinstance(rule_values, list) and rule_values:
+                payload[KEY_ENUM] = list(rule_values)
+            elif isinstance(enum_options, list) and enum_options:
+                payload[KEY_ENUM] = list(enum_options)
+        elif isinstance(enum_options, list) and enum_options:
             payload[KEY_ENUM] = list(enum_options)
         if KEY_DEFAULT in field:
             payload[KEY_DEFAULT] = field[KEY_DEFAULT]
