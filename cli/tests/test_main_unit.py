@@ -53,6 +53,14 @@ def test_command_text_from_args_preserves_shell_quoting() -> None:
     assert "cli-e2e-ok" in command_text
 
 
+def test_build_exec_env_enables_unbuffered_python_output(monkeypatch) -> None:
+    monkeypatch.setattr(cli_main.os, "environ", {"PATH": "/tmp/bin"})
+
+    env = cli_main._build_exec_env()  # type: ignore[attr-defined]
+
+    assert env["PYTHONUNBUFFERED"] == "1"
+
+
 def test_split_guided_command_supports_restart() -> None:
     parsed = cli_main._split_guided_command("restart server")  # type: ignore[attr-defined]
     parsed_no_target = cli_main._split_guided_command("restart")  # type: ignore[attr-defined]

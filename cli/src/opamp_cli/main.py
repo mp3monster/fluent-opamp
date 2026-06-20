@@ -1933,6 +1933,7 @@ def _build_exec_env(
         extra_paths.append(existing)
     if extra_paths:
         merged["PYTHONPATH"] = os.pathsep.join(extra_paths)
+    merged.setdefault("PYTHONUNBUFFERED", "1")
     return merged
 
 
