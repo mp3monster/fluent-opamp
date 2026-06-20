@@ -257,6 +257,7 @@ POST /api/settings/state/save
 You can override selected config values at runtime:
 
 - `--config-path` overrides the config file location.
+- `--diagnostic` enables diagnostic-only UI/API features and forces `DEBUG` logging for local troubleshooting.
 - `--port` overrides `provider.webui_port`.
 - `--log-level` overrides `provider.log_level`.
 - `--restore` restores from latest snapshot for the configured `state_file_prefix`.
@@ -283,6 +284,7 @@ For the shared provider+consumer guide on implementing and deploying custom acti
 - The help page includes the server component version generated from git commit/date metadata.
 - Footer `Latest docs` links in the HTML pages go via `http://localhost:8080/doc-set`.
 - By default, that provider redirect points at the published landing page preview URL from `provider.latest_docs_url`.
+- Starting the provider with `--diagnostic` enables the `server-opamp-config` settings tab and other diagnostic-only endpoints used for local inspection/testing.
 - JavaScript asset mode is controlled by `APP_ENABLE_DEV_FEATURES`:
   - truthy (`1`, `true`, `yes`, `on`): prefer readable source files
   - otherwise: prefer compacted files

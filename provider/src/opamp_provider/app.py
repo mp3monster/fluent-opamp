@@ -17,15 +17,11 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import os
 import pathlib
-import re
-import signal
 import ssl
 import tracemalloc
 from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
-from functools import lru_cache
 from http import HTTPStatus
 
 from google.protobuf import text_format
@@ -34,6 +30,18 @@ from werkzeug.exceptions import HTTPException
 
 from opamp_provider import auth as provider_auth
 from opamp_provider import config as provider_config
+from opamp_provider.app_client_filters import (
+    client_matches_api_clients_filters,
+    coerce_bool_setting,
+    normalize_query_text,
+    parse_optional_bool,
+    serialize_client_record_for_api,
+)
+from opamp_provider.app_constants import GLOBAL_SETTINGS_HELP, MODEL_DUMP_MODE
+from opamp_provider.app_persistence import PersistenceTracker, request_process_shutdown
+from opamp_provider.app_routes_settings import register_settings_routes
+from opamp_provider.app_routes_ui import register_ui_routes
+from opamp_provider.app_ui_assets import load_provider_ui_assets, render_help_html
 from opamp_provider.command_queue import (
     QueueCommandRequestError,
     queue_command_from_payload,
@@ -90,7 +98,6 @@ from opamp_provider.state_persistence import (
     save_state_snapshot,
 )
 from opamp_provider.transport import decode_message, encode_message
-from opamp_provider.ui_assets import mini_filename
 from shared.agent_remote_config import build_agent_remote_config
 from shared.opamp_config import (
     OPAMP_HTTP_PATH,
@@ -101,7 +108,6 @@ from shared.opamp_config import (
     PB_FIELD_PACKAGE_STATUSES,
     UTF8_ENCODING,
     ServerCapabilities,
-    anyvalue_to_string,
 )
 
 app = Quart("opamp_server")
@@ -140,7 +146,6 @@ SERVER_CAPABILITIES_REMOTE_CONFIG = int(
     ServerCapabilities.OffersRemoteConfig
 )  # Additional capability bit used when remote-config support is enabled.
 DEFAULT_HEARTBEAT_INTERVAL_SECONDS = 30  # Fallback heartbeat interval for connection settings offers.
-MODEL_DUMP_MODE = "json"  # Pydantic model_dump mode used for API JSON payloads.
 CERT_NOT_AFTER_SUFFIX_GMT = " GMT"  # Trailing timezone marker emitted by ssl certificate decoder.
 CERT_NOT_AFTER_PARSE_FORMAT = "%b %d %H:%M:%S %Y"  # Datetime parse format for decoded certificate notAfter values.
 TLS_EXPIRY_WARNING_DAYS = 30  # Number of days before expiry to highlight certificate warning state.
@@ -149,14 +154,6 @@ QUERY_PARAM_CLIENT_VERSION = "client_version"  # Query parameter used to filter 
 QUERY_PARAM_HOST_NAME = "host_name"  # Query parameter used to filter by host name.
 QUERY_PARAM_HOST_IP = "host_ip"  # Query parameter used to filter by host IP.
 QUERY_PARAM_INVERT_FILTER = "invertFilter"  # Query parameter used to invert filter semantics.
-AGENT_DESCRIPTION_CACHE_SIZE = 512  # LRU size for parsed AgentDescription text payloads.
-AGENT_DESCRIPTION_ATTRIBUTE_SPLIT_PATTERN = r"[,\s]+"  # Split pattern for host.ip lists.
-BOOLEAN_TRUE_VALUES = {"1", "true", "yes", "on"}  # Accepted true-like query values.
-BOOLEAN_FALSE_VALUES = {"0", "false", "no", "off"}  # Accepted false-like query values.
-ERROR_INVALID_BOOLEAN_FILTER = (
-    "invalid boolean query parameter '%s'; expected one of: true, false, "
-    "1, 0, yes, no, on, off"
-)  # Validation message for malformed boolean query values.
 
 COMMAND_RESTART = "restart"  # Standard OpAMP restart command action name.
 COMMAND_FORCE_RESYNC = "forceresync"  # Custom action name used to trigger full state resync.
@@ -184,87 +181,10 @@ ACTION_OPTIONS = {
     ACTION_COMMAND_AGENT,
     ACTION_CUSTOM_AGENT_COMMAND,
 }
-GLOBAL_SETTINGS_HELP: dict[str, dict[str, str]] = {
-    "delayed_comms_seconds": {
-        "label": "Delayed Communications Threshold (seconds)",
-        "tooltip": (
-            "Seconds before a client is marked delayed (amber). "
-            "This overrides the config file value."
-        ),
-    },
-    "significant_comms_seconds": {
-        "label": "Significant Communications Threshold (seconds)",
-        "tooltip": (
-            "Seconds before a client is marked late (red). "
-            "Must be greater than delayed_comms_seconds. "
-            "This overrides the config file value."
-        ),
-    },
-    "minutes_keep_disconnected": {
-        "label": "Disconnected Retention Window (minutes)",
-        "tooltip": (
-            "Minutes to keep disconnected clients in provider state before purge. "
-            "This overrides the config file value."
-        ),
-    },
-    "client_event_history_size": {
-        "label": "Client Event History Size",
-        "tooltip": (
-            "Maximum number of recent per-client events retained by the provider. "
-            "Older events are dropped when this limit is exceeded."
-        ),
-    },
-    "human_in_loop_approval": {
-        "label": "Human In Loop Approval",
-        "tooltip": (
-            "When enabled, unknown agents are staged for manual review and remain "
-            "blocked from normal processing until approved."
-        ),
-    },
-    "state_persistence_enabled": {
-        "label": "State Persistence Enabled",
-        "tooltip": (
-            "When enabled, provider state snapshots can be saved/restored using "
-            "state persistence settings."
-        ),
-    },
-    "state_save_folder": {
-        "label": "State Save Folder",
-        "tooltip": (
-            "Folder path where provider state snapshots are written and restored from."
-        ),
-    },
-    "retention_count": {
-        "label": "State Snapshot Retention Count",
-        "tooltip": (
-            "Number of latest provider state snapshot files to retain."
-        ),
-    },
-    "autosave_interval_seconds_since_change": {
-        "label": "Autosave Interval Since Change (seconds)",
-        "tooltip": (
-            "Seconds between autosaves for non-heartbeat OpAMP state changes."
-        ),
-    },
-    "default_heartbeat_frequency": {
-        "label": "Default Heartbeat Frequency (seconds)",
-        "tooltip": (
-            "Default heartbeat interval in seconds applied to clients when globally updated."
-        ),
-    },
-}
 _SHUTDOWN_REQUESTED = False  # Guard to prevent duplicate shutdown scheduling.
 _LAST_DISCONNECT_PURGE: datetime | None = None  # Timestamp of last disconnected-client purge pass.
 _WEBSOCKET_CLIENTS: dict[object, str | None] = {}  # Active websocket -> client_id mapping.
-_LAST_AUTOSAVE_ELIGIBLE_CHANGE_AT: datetime | None = None  # Timestamp of first unsaved non-heartbeat OpAMP state change.
-_PERSISTENCE_STATUS: dict[str, object] = {
-    "restore_status": "not_requested",
-    "restore_detail": "",
-    "last_save_status": "not_run",
-    "last_save_path": None,
-    "last_save_reason": None,
-    "last_save_at": None,
-}
+_PERSISTENCE_TRACKER = PersistenceTracker()
 ERR_AGENT_PENDING_APPROVAL = "agent pending approval"
 ERR_AGENT_BLOCKED = "agent is blocked"
 ERR_AGENT_AUTH_FAILED = "agent authentication failed"
@@ -283,18 +203,9 @@ async def redirect_unknown_provider_route(_: HTTPException) -> Response:
     )
     return redirect(LANDING_PAGE_REDIRECT_URL)
 
-# Keep in-memory client heartbeat defaults aligned with loaded provider config.
-STORE.set_default_heartbeat_frequency(
-    provider_config.CONFIG.default_heartbeat_frequency,
-    max_events=provider_config.CONFIG.client_event_history_size,
-    record_event=False,
-)
-
-
 def set_state_restore_status(status: str, detail: str = "") -> None:
     """Record persisted-state restore status for diagnostics and logs."""
-    _PERSISTENCE_STATUS["restore_status"] = str(status).strip() or "unknown"
-    _PERSISTENCE_STATUS["restore_detail"] = str(detail or "")
+    _PERSISTENCE_TRACKER.set_state_restore_status(status, detail)
 
 
 def _record_snapshot_status(
@@ -305,68 +216,36 @@ def _record_snapshot_status(
     at: datetime | None = None,
 ) -> None:
     """Record latest snapshot save status for diagnostics."""
-    _PERSISTENCE_STATUS["last_save_status"] = str(status).strip() or "unknown"
-    _PERSISTENCE_STATUS["last_save_path"] = path
-    _PERSISTENCE_STATUS["last_save_reason"] = reason
-    _PERSISTENCE_STATUS["last_save_at"] = (
-        (at or datetime.now(timezone.utc)).replace(microsecond=0).isoformat()
+    _PERSISTENCE_TRACKER.record_snapshot_status(
+        status=status,
+        path=path,
+        reason=reason,
+        at=at,
     )
 
 
 def _is_heartbeat_only_message(agent_msg: opamp_pb2.AgentToServer) -> bool:
     """Return whether AgentToServer payload only contains instance_uid/sequence_num."""
-    field_names = {descriptor.name for descriptor, _value in agent_msg.ListFields()}
-    if not field_names:
-        return False
-    return field_names.issubset({"instance_uid", "sequence_num"})
+    return _PERSISTENCE_TRACKER.is_heartbeat_only_message(agent_msg)
 
 
 def _save_state_snapshot(reason: str) -> None:
     """Save one persisted-state snapshot if persistence is enabled."""
-    persistence = provider_config.CONFIG.state_persistence
-    if persistence.enabled is not True:
-        return
-    now = datetime.now(timezone.utc)
-    try:
-        path = save_state_snapshot(
-            store=STORE,
-            persistence=persistence,
-            reason=reason,
-            logger=logger,
-            now=now,
-        )
-        _record_snapshot_status(
-            status="saved",
-            path=str(path) if path is not None else None,
-            reason=reason,
-            at=now,
-        )
-    except Exception as exc:
-        logger.exception("state snapshot save failed reason=%s", reason, exc_info=exc)
-        _record_snapshot_status(
-            status="failed",
-            path=None,
-            reason=reason,
-            at=now,
-        )
+    _PERSISTENCE_TRACKER.save_state_snapshot(
+        reason=reason,
+        store=STORE,
+        persistence=provider_config.CONFIG.state_persistence,
+        logger=logger,
+    )
 
 
 def _note_non_heartbeat_state_change_and_maybe_autosave() -> None:
     """Track non-heartbeat state change timing and run autosave checks."""
-    global _LAST_AUTOSAVE_ELIGIBLE_CHANGE_AT
-    now = datetime.now(timezone.utc)
-    if _LAST_AUTOSAVE_ELIGIBLE_CHANGE_AT is None:
-        _LAST_AUTOSAVE_ELIGIBLE_CHANGE_AT = now
-
-    persistence = provider_config.CONFIG.state_persistence
-    if persistence.enabled is not True:
-        return
-    interval = max(1, int(persistence.autosave_interval_seconds_since_change))
-    elapsed = (now - _LAST_AUTOSAVE_ELIGIBLE_CHANGE_AT).total_seconds()
-    if elapsed < interval:
-        return
-    _save_state_snapshot("autosave_non_heartbeat_opamp")
-    _LAST_AUTOSAVE_ELIGIBLE_CHANGE_AT = None
+    _PERSISTENCE_TRACKER.note_non_heartbeat_state_change_and_maybe_autosave(
+        store=STORE,
+        persistence=provider_config.CONFIG.state_persistence,
+        logger=logger,
+    )
 
 
 def _state_snapshot_file_count() -> int:
@@ -377,14 +256,6 @@ def _state_snapshot_file_count() -> int:
     except Exception as exc:
         logger.warning("failed counting state snapshot files", exc_info=exc)
         return 0
-
-
-def _request_process_shutdown() -> None:
-    """Trigger a process shutdown via SIGINT (fallback to immediate exit)."""
-    try:
-        os.kill(os.getpid(), signal.SIGINT)
-    except Exception:
-        os._exit(0)
 
 
 async def _shutdown_after_response() -> None:
@@ -469,166 +340,27 @@ def _server_capabilities_mask() -> int:
 
 def _serialize_client_record_for_api(record: ClientRecord) -> dict[str, object]:
     """Return one API-facing client payload enriched with provider UI capability flags."""
-    payload = record.model_dump(mode=MODEL_DUMP_MODE)
-    provider_remote_config_enabled = _provider_allows_remote_config()
-    remote_config_capability_reported = _client_supports_remote_config(record)
-    payload["provider_remote_config_enabled"] = provider_remote_config_enabled
-    payload["remote_config_capability_reported"] = remote_config_capability_reported
-    payload["remote_config_files_allowed"] = (
-        provider_remote_config_enabled and remote_config_capability_reported
+    return serialize_client_record_for_api(
+        record,
+        model_dump_mode=MODEL_DUMP_MODE,
+        provider_remote_config_enabled=_provider_allows_remote_config(),
+        remote_config_capability_reported=_client_supports_remote_config(record),
     )
-    return payload
 
 
 def _coerce_bool_setting(value: object, *, key: str) -> bool:
     """Coerce UI/API boolean payload values for settings endpoints."""
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, str):
-        normalized = value.strip().lower()
-        if normalized in {"1", "true", "yes", "on"}:
-            return True
-        if normalized in {"0", "false", "no", "off"}:
-            return False
-    raise ValueError(f"{key} must be a boolean")
+    return coerce_bool_setting(value, key=key)
 
 
 def _normalize_query_text(value: str | None) -> str | None:
     """Return stripped query text or None when empty/unset."""
-    if value is None:
-        return None
-    normalized = value.strip()
-    return normalized or None
+    return normalize_query_text(value)
 
 
 def _parse_optional_bool(value: str | bool | None, *, parameter_name: str) -> bool | None:
     """Parse a bool-like query value into `bool | None`."""
-    if value is None:
-        return None
-    if isinstance(value, bool):
-        return value
-    normalized = str(value).strip().lower()
-    if not normalized:
-        return None
-    if normalized in BOOLEAN_TRUE_VALUES:
-        return True
-    if normalized in BOOLEAN_FALSE_VALUES:
-        return False
-    raise ValueError(ERROR_INVALID_BOOLEAN_FILTER % parameter_name)
-
-
-def _matches_text(value: str | None, query: str | None) -> bool:
-    """Return True when query is unset or is a case-insensitive substring match."""
-    if query is None:
-        return True
-    if not value:
-        return False
-    return query.lower() in value.lower()
-
-
-def _any_matches_text(values: tuple[str, ...], query: str | None) -> bool:
-    """Return True when any value matches query (case-insensitive substring)."""
-    if query is None:
-        return True
-    needle = query.lower()
-    for value in values:
-        if needle in str(value).lower():
-            return True
-    return False
-
-
-@lru_cache(maxsize=AGENT_DESCRIPTION_CACHE_SIZE)
-def _parse_agent_description_attributes(
-    agent_description: str,
-) -> dict[str, tuple[str, ...]]:
-    """Parse AgentDescription text and return key -> tuple(values) mapping."""
-    desc = opamp_pb2.AgentDescription()
-    text_format.Parse(agent_description, desc)
-    collected: dict[str, list[str]] = {}
-    for item in [*desc.identifying_attributes, *desc.non_identifying_attributes]:
-        key = str(item.key).strip()
-        value = anyvalue_to_string(item.value)
-        if not key or value is None:
-            continue
-        collected.setdefault(key, []).append(value)
-    return {key: tuple(values) for key, values in collected.items()}
-
-
-def _record_agent_description_attributes(record: ClientRecord) -> dict[str, tuple[str, ...]]:
-    """Read parsed agent-description attributes for one client record."""
-    if not record.agent_description:
-        return {}
-    try:
-        return _parse_agent_description_attributes(record.agent_description)
-    except text_format.ParseError:
-        logger.debug(
-            "unable to parse agent_description for client_id=%s",
-            record.client_id,
-            exc_info=True,
-        )
-        return {}
-
-
-def _record_service_instance_ids(record: ClientRecord) -> tuple[str, ...]:
-    """Return service-instance display-name candidates for filtering.
-
-    The table displays `service.instance.id` when present and falls back to
-    the OpAMP instance UID (`client_id`). Keep filter semantics aligned with
-    what operators see in the UI by supporting both.
-    """
-    attributes = _record_agent_description_attributes(record)
-    candidates: list[str] = list(attributes.get("service.instance.id", ()))
-    if not candidates and record.client_id:
-        candidates.append(record.client_id)
-    seen: set[str] = set()
-    deduped: list[str] = []
-    for item in candidates:
-        if item in seen:
-            continue
-        seen.add(item)
-        deduped.append(item)
-    return tuple(deduped)
-
-
-def _record_host_names(record: ClientRecord) -> tuple[str, ...]:
-    """Return host name values extracted from agent description."""
-    attributes = _record_agent_description_attributes(record)
-    candidates: list[str] = []
-    for key in ("host.name", "hostname"):
-        candidates.extend(attributes.get(key, ()))
-    seen: set[str] = set()
-    deduped: list[str] = []
-    for item in candidates:
-        if item in seen:
-            continue
-        seen.add(item)
-        deduped.append(item)
-    return tuple(deduped)
-
-
-def _record_host_ips(record: ClientRecord) -> tuple[str, ...]:
-    """Return host IP candidates from remote_addr and agent description fields."""
-    candidates: list[str] = []
-    if record.remote_addr:
-        candidates.append(record.remote_addr)
-    attributes = _record_agent_description_attributes(record)
-    for key in ("host.ip", "ip_address", "ip"):
-        for raw in attributes.get(key, ()):
-            stripped = str(raw).strip().strip("[]")
-            if not stripped:
-                continue
-            for part in re.split(AGENT_DESCRIPTION_ATTRIBUTE_SPLIT_PATTERN, stripped):
-                normalized = part.strip()
-                if normalized:
-                    candidates.append(normalized)
-    seen: set[str] = set()
-    deduped: list[str] = []
-    for item in candidates:
-        if item in seen:
-            continue
-        seen.add(item)
-        deduped.append(item)
-    return tuple(deduped)
+    return parse_optional_bool(value, parameter_name=parameter_name)
 
 
 def _client_matches_api_clients_filters(
@@ -642,22 +374,16 @@ def _client_matches_api_clients_filters(
     has_active_filters: bool,
 ) -> bool:
     """Evaluate whether one client satisfies requested /api/clients filters."""
-    active_matches: list[bool] = []
-    if service_instance_id is not None:
-        active_matches.append(
-            _any_matches_text(_record_service_instance_ids(client), service_instance_id)
-        )
-    if client_version is not None:
-        active_matches.append(_matches_text(client.client_version, client_version))
-    if host_name is not None:
-        active_matches.append(_any_matches_text(_record_host_names(client), host_name))
-    if host_ip is not None:
-        active_matches.append(_any_matches_text(_record_host_ips(client), host_ip))
-
-    matches = True if not active_matches else any(active_matches)
-    if invert_filter and has_active_filters:
-        return not matches
-    return matches
+    return client_matches_api_clients_filters(
+        client,
+        service_instance_id=service_instance_id,
+        client_version=client_version,
+        host_name=host_name,
+        host_ip=host_ip,
+        invert_filter=invert_filter,
+        has_active_filters=has_active_filters,
+        logger=logger,
+    )
 
 
 def _load_tls_certificate_expiry_utc(cert_file: str) -> datetime | None:
@@ -1909,369 +1635,6 @@ async def issue_agent_identification(client_id: str) -> Response:
     return jsonify({"status": "queued", "new_instance_uid": new_uid.hex()})
 
 
-@app.get("/api/settings/comms")
-async def get_comms_settings() -> Response:
-    """Get communication threshold settings."""
-    state_prefix = pathlib.Path(provider_config.CONFIG.state_persistence.state_file_prefix)
-    payload = {
-        "delayed_comms_seconds": provider_config.CONFIG.delayed_comms_seconds,
-        "significant_comms_seconds": provider_config.CONFIG.significant_comms_seconds,
-        "minutes_keep_disconnected": provider_config.CONFIG.minutes_keep_disconnected,
-        "client_event_history_size": provider_config.CONFIG.client_event_history_size,
-        "human_in_loop_approval": provider_config.CONFIG.human_in_loop_approval,
-        "state_persistence_enabled": (
-            provider_config.CONFIG.state_persistence.enabled is True
-        ),
-        "opamp_use_authorization": provider_config.CONFIG.opamp_use_authorization,
-        "state_save_folder": str(state_prefix.parent),
-        "retention_count": int(
-            provider_config.CONFIG.state_persistence.retention_count
-        ),
-        "state_snapshot_file_count": _state_snapshot_file_count(),
-        "autosave_interval_seconds_since_change": int(
-            provider_config.CONFIG.state_persistence.autosave_interval_seconds_since_change
-        ),
-    }
-    payload.update(_tls_certificate_expiry_metadata())
-    return jsonify(payload)
-
-
-@app.get("/api/settings/diagnostic")
-async def get_diagnostic_settings() -> Response:
-    """Return diagnostic-mode status used by UI feature gating."""
-    return jsonify(
-        {
-            "diagnostic_enabled": _diagnostic_mode_enabled(),
-            "state_persistence_enabled": provider_config.CONFIG.state_persistence.enabled
-            is True,
-            "state_persistence": dict(_PERSISTENCE_STATUS),
-        }
-    )
-
-
-@app.post("/api/settings/state/save")
-async def save_state_snapshot_now() -> Response:
-    """Force an immediate persisted-state snapshot save."""
-    persistence = provider_config.CONFIG.state_persistence
-    if persistence.enabled is not True:
-        _record_snapshot_status(
-            status="skipped",
-            path=None,
-            reason="manual_ui_trigger_disabled",
-        )
-        return (
-            jsonify({"error": "state persistence is disabled"}),
-            HTTPStatus.BAD_REQUEST,
-        )
-    now = datetime.now(timezone.utc)
-    try:
-        path = save_state_snapshot(
-            store=STORE,
-            persistence=persistence,
-            reason="manual_ui_trigger",
-            logger=logger,
-            now=now,
-        )
-        snapshot_path = str(path) if path is not None else None
-        _record_snapshot_status(
-            status="saved",
-            path=snapshot_path,
-            reason="manual_ui_trigger",
-            at=now,
-        )
-        return jsonify(
-            {
-                "status": "saved",
-                "snapshot_path": snapshot_path,
-                "saved_at_utc": now.replace(microsecond=0).isoformat(),
-            }
-        )
-    except Exception as exc:
-        logger.exception(
-            "manual state snapshot save failed",
-            exc_info=exc,
-        )
-        _record_snapshot_status(
-            status="failed",
-            path=None,
-            reason="manual_ui_trigger",
-            at=now,
-        )
-        return (
-            jsonify({"error": "failed to save provider state snapshot"}),
-            HTTPStatus.INTERNAL_SERVER_ERROR,
-        )
-
-
-@app.get("/api/settings/server-opamp-config")
-async def get_server_opamp_config() -> Response:
-    """Return provider config file content for diagnostic UI view."""
-    if not _diagnostic_mode_enabled():
-        return (
-            jsonify({"error": "diagnostic mode is disabled"}),
-            HTTPStatus.FORBIDDEN,
-        )
-
-    config_path = provider_config.get_effective_config_path().resolve()
-    if not config_path.exists() or not config_path.is_file():
-        return (
-            jsonify({"error": "provider config file not found"}),
-            HTTPStatus.NOT_FOUND,
-        )
-    if config_path.suffix.lower() != ".json":
-        return (
-            jsonify({"error": "provider config path must be a JSON file"}),
-            HTTPStatus.BAD_REQUEST,
-        )
-
-    try:
-        config_raw = config_path.read_text(encoding=UTF8_ENCODING)
-        config_json = json.loads(config_raw)
-    except Exception as exc:
-        logger.exception("failed to read provider config file", exc_info=exc)
-        return (
-            jsonify({"error": "failed to read provider config file"}),
-            HTTPStatus.INTERNAL_SERVER_ERROR,
-        )
-
-    return jsonify(
-        {
-            "diagnostic_enabled": True,
-            "config_path": str(config_path),
-            "config_text": json.dumps(config_json, indent=2),
-        }
-    )
-
-
-@app.put("/api/settings/comms")
-async def update_comms_settings() -> Response:
-    """Update communication threshold settings."""
-    payload = await request.get_json(silent=True)
-    if not payload:
-        return jsonify({"error": "payload is required"}), HTTPStatus.BAD_REQUEST
-    try:
-        delayed = int(
-            payload.get(
-                "delayed_comms_seconds", provider_config.CONFIG.delayed_comms_seconds
-            )
-        )
-        significant = int(
-            payload.get(
-                "significant_comms_seconds",
-                provider_config.CONFIG.significant_comms_seconds,
-            )
-        )
-        minutes_keep_disconnected = int(
-            payload.get(
-                "minutes_keep_disconnected",
-                provider_config.CONFIG.minutes_keep_disconnected,
-            )
-        )
-        client_event_history_size = int(
-            payload.get(
-                "client_event_history_size",
-                provider_config.CONFIG.client_event_history_size,
-            )
-        )
-        human_in_loop_approval = _coerce_bool_setting(
-            payload.get(
-                "human_in_loop_approval",
-                provider_config.CONFIG.human_in_loop_approval,
-            ),
-            key="human_in_loop_approval",
-        )
-        state_persistence_enabled = _coerce_bool_setting(
-            payload.get(
-                "state_persistence_enabled",
-                provider_config.CONFIG.state_persistence.enabled,
-            ),
-            key="state_persistence_enabled",
-        )
-        state_save_folder = str(
-            payload.get(
-                "state_save_folder",
-                str(
-                    pathlib.Path(
-                        provider_config.CONFIG.state_persistence.state_file_prefix
-                    ).parent
-                ),
-            )
-        ).strip()
-        autosave_interval_seconds_since_change = int(
-            payload.get(
-                "autosave_interval_seconds_since_change",
-                provider_config.CONFIG.state_persistence.autosave_interval_seconds_since_change,
-            )
-        )
-        retention_count = int(
-            payload.get(
-                "retention_count",
-                provider_config.CONFIG.state_persistence.retention_count,
-            )
-        )
-    except (TypeError, ValueError):
-        return (
-            jsonify(
-                {
-                    "error": (
-                        "thresholds must be integers, "
-                        "human_in_loop_approval/state_persistence_enabled must be boolean, and "
-                        "autosave_interval_seconds_since_change/retention_count must be integer"
-                    )
-                }
-            ),
-            HTTPStatus.BAD_REQUEST,
-        )
-    if (
-        delayed <= 0
-        or significant <= 0
-        or minutes_keep_disconnected <= 0
-        or client_event_history_size <= 0
-    ):
-        return jsonify({"error": "thresholds must be positive"}), HTTPStatus.BAD_REQUEST
-    if autosave_interval_seconds_since_change <= 0:
-        return (
-            jsonify(
-                {
-                    "error": (
-                        "autosave_interval_seconds_since_change must be a positive integer"
-                    )
-                }
-            ),
-            HTTPStatus.BAD_REQUEST,
-        )
-    if retention_count <= 0:
-        return (
-            jsonify(
-                {
-                    "error": "retention_count must be a positive integer"
-                }
-            ),
-            HTTPStatus.BAD_REQUEST,
-        )
-    if not state_save_folder:
-        return (
-            jsonify({"error": "state_save_folder must be a non-empty string"}),
-            HTTPStatus.BAD_REQUEST,
-        )
-    if delayed >= significant:
-        return (
-            jsonify({"error": "significant must be greater than delayed"}),
-            HTTPStatus.BAD_REQUEST,
-        )
-    try:
-        config = provider_config.update_comms_thresholds(
-            delayed=delayed,
-            significant=significant,
-            minutes_keep_disconnected=minutes_keep_disconnected,
-            client_event_history_size=client_event_history_size,
-            human_in_loop_approval=human_in_loop_approval,
-            state_persistence_enabled=state_persistence_enabled,
-            state_save_folder=state_save_folder,
-            retention_count=retention_count,
-            autosave_interval_seconds_since_change=(
-                autosave_interval_seconds_since_change
-            ),
-        )
-    except ValueError as exc:
-        return jsonify({"error": str(exc)}), HTTPStatus.BAD_REQUEST
-    try:
-        if retention_count < _state_snapshot_file_count():
-            prune_snapshot_files(
-                state_file_prefix=config.state_persistence.state_file_prefix,
-                retention_count=config.state_persistence.retention_count,
-                logger=logger,
-            )
-    except Exception as exc:
-        logger.warning(
-            "failed pruning snapshots after retention update",
-            exc_info=exc,
-        )
-    try:
-        provider_config.persist_provider_config(config)
-    except Exception as exc:
-        logger.exception("failed to persist provider settings", exc_info=exc)
-        return (
-            jsonify({"error": "failed to persist provider settings to opamp.json"}),
-            HTTPStatus.INTERNAL_SERVER_ERROR,
-        )
-    return jsonify(
-        {
-            "delayed_comms_seconds": config.delayed_comms_seconds,
-            "significant_comms_seconds": config.significant_comms_seconds,
-            "minutes_keep_disconnected": config.minutes_keep_disconnected,
-            "client_event_history_size": config.client_event_history_size,
-            "human_in_loop_approval": config.human_in_loop_approval,
-            "state_persistence_enabled": config.state_persistence.enabled is True,
-            "opamp_use_authorization": config.opamp_use_authorization,
-            "state_save_folder": str(
-                pathlib.Path(config.state_persistence.state_file_prefix).parent
-            ),
-            "retention_count": int(config.state_persistence.retention_count),
-            "state_snapshot_file_count": _state_snapshot_file_count(),
-            "autosave_interval_seconds_since_change": int(
-                config.state_persistence.autosave_interval_seconds_since_change
-            ),
-        }
-    )
-
-
-@app.get("/api/settings/client")
-async def get_client_settings() -> Response:
-    """Get client global settings."""
-    return jsonify(
-        {
-            "default_heartbeat_frequency": STORE.get_default_heartbeat_frequency(),
-        }
-    )
-
-
-@app.put("/api/settings/client")
-async def update_client_settings() -> Response:
-    """Update client global settings and apply to all known clients."""
-    payload = await request.get_json(silent=True)
-    if not payload:
-        return jsonify({"error": "payload is required"}), HTTPStatus.BAD_REQUEST
-    try:
-        default_heartbeat_frequency = int(
-            payload.get(
-                "default_heartbeat_frequency",
-                STORE.get_default_heartbeat_frequency(),
-            )
-        )
-    except (TypeError, ValueError):
-        return (
-            jsonify({"error": "default_heartbeat_frequency must be an integer"}),
-            HTTPStatus.BAD_REQUEST,
-        )
-    if default_heartbeat_frequency <= 0:
-        return (
-            jsonify({"error": "default_heartbeat_frequency must be positive"}),
-            HTTPStatus.BAD_REQUEST,
-        )
-    config = provider_config.update_default_heartbeat_frequency(
-        default_heartbeat_frequency=default_heartbeat_frequency
-    )
-    try:
-        provider_config.persist_provider_config(config)
-    except Exception as exc:
-        logger.exception("failed to persist provider settings", exc_info=exc)
-        return (
-            jsonify({"error": "failed to persist provider settings to opamp.json"}),
-            HTTPStatus.INTERNAL_SERVER_ERROR,
-        )
-    updated_clients = STORE.set_default_heartbeat_frequency(
-        default_heartbeat_frequency,
-        max_events=provider_config.CONFIG.client_event_history_size,
-    )
-    return jsonify(
-        {
-            "default_heartbeat_frequency": STORE.get_default_heartbeat_frequency(),
-            "updated_clients": updated_clients,
-        }
-    )
-
-
 @app.post("/api/clients/<client_id>/config")
 async def set_requested_config(client_id: str) -> Response:
     """Set requested configuration for a client."""
@@ -2513,167 +1876,6 @@ async def build_test_remote_config(client_id: str) -> Response:
     )
 
 
-@app.get("/")
-async def root() -> Response:
-    return redirect("/ui")
-
-
-@app.get("/ui")
-async def web_ui() -> Response:
-    """Serve the provider web UI."""
-    html = _WEB_UI_HTML
-    return Response(html, content_type="text/html; charset=utf-8")
-
-
-@app.get("/web_ui.css")
-async def web_ui_css() -> Response:
-    """Serve the provider web UI stylesheet."""
-    return Response(
-        _WEB_UI_CSS,
-        content_type="text/css; charset=utf-8",
-    )
-
-
-@app.get("/web_ui_state.js")
-async def web_ui_state_js() -> Response:
-    """Serve the provider web UI state/bootstrap JavaScript."""
-    return Response(
-        _WEB_UI_STATE_JS,
-        content_type="application/javascript; charset=utf-8",
-    )
-
-
-@app.get("/web_ui_functions.js")
-async def web_ui_functions_js() -> Response:
-    """Serve the provider web UI function library JavaScript."""
-    return Response(
-        _WEB_UI_FUNCTIONS_JS,
-        content_type="application/javascript; charset=utf-8",
-    )
-
-
-@app.get("/web_ui_framework.js")
-async def web_ui_framework_js() -> Response:
-    """Serve the provider web UI framework/bootstrap JavaScript."""
-    return Response(
-        _WEB_UI_FRAMEWORK_JS,
-        content_type="application/javascript; charset=utf-8",
-    )
-
-
-@app.get("/web_ui_bindings.js")
-async def web_ui_bindings_js() -> Response:
-    """Serve the provider web UI event-binding JavaScript."""
-    return Response(
-        _WEB_UI_BINDINGS_JS,
-        content_type="application/javascript; charset=utf-8",
-    )
-
-
-@app.get("/help")
-async def help_page() -> Response:
-    """Serve a simple help page."""
-    html = (
-        _HELP_HTML.replace(
-            "__DELAYED_SECONDS__", str(provider_config.CONFIG.delayed_comms_seconds)
-        )
-        .replace(
-            "__SIGNIFICANT_SECONDS__",
-            str(provider_config.CONFIG.significant_comms_seconds),
-        )
-        .replace(
-            "__HELP_DELAYED_COMMS_SECONDS__",
-            GLOBAL_SETTINGS_HELP["delayed_comms_seconds"]["tooltip"],
-        )
-        .replace(
-            "__HELP_SIGNIFICANT_COMMS_SECONDS__",
-            GLOBAL_SETTINGS_HELP["significant_comms_seconds"]["tooltip"],
-        )
-        .replace(
-            "__HELP_MINUTES_KEEP_DISCONNECTED__",
-            GLOBAL_SETTINGS_HELP["minutes_keep_disconnected"]["tooltip"],
-        )
-        .replace(
-            "__HELP_CLIENT_EVENT_HISTORY_SIZE__",
-            GLOBAL_SETTINGS_HELP["client_event_history_size"]["tooltip"],
-        )
-        .replace(
-            "__HELP_HUMAN_IN_LOOP_APPROVAL__",
-            GLOBAL_SETTINGS_HELP["human_in_loop_approval"]["tooltip"],
-        )
-        .replace(
-            "__HELP_STATE_PERSISTENCE_ENABLED__",
-            GLOBAL_SETTINGS_HELP["state_persistence_enabled"]["tooltip"],
-        )
-        .replace(
-            "__HELP_STATE_SAVE_FOLDER__",
-            GLOBAL_SETTINGS_HELP["state_save_folder"]["tooltip"],
-        )
-        .replace(
-            "__HELP_RETENTION_COUNT__",
-            GLOBAL_SETTINGS_HELP["retention_count"]["tooltip"],
-        )
-        .replace(
-            "__HELP_AUTOSAVE_INTERVAL_SECONDS_SINCE_CHANGE__",
-            GLOBAL_SETTINGS_HELP["autosave_interval_seconds_since_change"]["tooltip"],
-        )
-        .replace(
-            "__HELP_DEFAULT_HEARTBEAT_FREQUENCY__",
-            GLOBAL_SETTINGS_HELP["default_heartbeat_frequency"]["tooltip"],
-        )
-        .replace(
-            "__SERVER_COMPONENT_VERSION__",
-            component_version_text(),
-        )
-    )
-    return Response(html, content_type="text/html; charset=utf-8")
-
-
-@app.get("/doc-set")
-async def latest_docs_redirect() -> Response:
-    """Redirect to the latest documentation set."""
-    return redirect(provider_config.CONFIG.latest_docs_url)
-
-
-@app.get("/api/help/global-settings")
-async def global_settings_help() -> Response:
-    """Return shared help text used by global settings tooltips and help page."""
-    tooltips = {
-        key: value.get("tooltip", "") for key, value in GLOBAL_SETTINGS_HELP.items()
-    }
-    return jsonify({"fields": GLOBAL_SETTINGS_HELP, "tooltips": tooltips})
-
-
-@app.get("/api/ui/features")
-async def ui_features() -> Response:
-    """Return provider UI feature menu entries derived from runtime configuration."""
-    items = [
-        {
-            "entry_point": item.entry_point,
-            "label": item.label,
-            "url": item.url,
-            "target": item.target,
-        }
-        for item in _UI_FEATURE_MENU_ITEMS
-        if str(item.label).strip() and str(item.url).strip()
-    ]
-    return jsonify(
-        {
-            "items": items,
-            "component_entry_points_registered": _REGISTERED_COMPONENT_ENTRY_POINTS,
-        }
-    )
-
-
-@app.get("/create.ico")
-async def favicon() -> Response:
-    """Serve the UI favicon."""
-    return Response(
-        _ICON_PATH.read_bytes(),
-        content_type="image/x-icon",
-    )
-
-
 @app.post("/api/shutdown")
 async def shutdown_server() -> Response:
     """Shutdown the server if explicitly confirmed."""
@@ -2688,77 +1890,28 @@ async def shutdown_server() -> Response:
     asyncio.create_task(_shutdown_after_response())
     return jsonify({"status": "shutting down"})
 
-
-_HTML_DIR = pathlib.Path(__file__).with_name("html")
-_WEB_UI_PATH = _HTML_DIR / "web_ui.html"
-_WEB_UI_HTML = _WEB_UI_PATH.read_text(encoding=UTF8_ENCODING)
-_WEB_UI_CSS_PATH = _HTML_DIR / "web_ui.css"
-_WEB_UI_CSS = _WEB_UI_CSS_PATH.read_text(encoding=UTF8_ENCODING)
-
-APP_ENABLE_DEV_FEATURES_ENV = "APP_ENABLE_DEV_FEATURES"  # Environment variable controlling whether source (dev) or compacted UI JS assets are preferred.
-_ENV_TRUE_VALUES = {"1", "true", "yes", "on"}  # Truthy environment values.
-
-
-def _app_enable_dev_features_enabled() -> bool:
-    """Return whether APP_ENABLE_DEV_FEATURES resolves to an enabled value."""
-    raw_value = os.environ.get(APP_ENABLE_DEV_FEATURES_ENV, "")
-    normalized = str(raw_value or "").strip().lower()
-    return normalized in _ENV_TRUE_VALUES
-
-
-def _read_ui_js_asset(
-    *,
-    source_filename: str,
-) -> str:
-    """Read one UI JS asset with source/minified selection and fallback logging."""
-    source_path = _HTML_DIR / source_filename
-    mini_path = _HTML_DIR / mini_filename(source_filename)
-    prefer_dev_assets = _app_enable_dev_features_enabled()
-    preferred_path = source_path if prefer_dev_assets else mini_path
-    fallback_path = mini_path if prefer_dev_assets else source_path
-    preferred_exists = preferred_path.exists()
-    fallback_exists = fallback_path.exists()
-
-    if preferred_exists:
-        logger.info(
-            "provider ui asset path=%s minified=%s APP_ENABLE_DEV_FEATURES=%s",
-            str(preferred_path),
-            str(preferred_path.name.endswith(".mini.js")).lower(),
-            str(prefer_dev_assets).lower(),
-        )
-        return preferred_path.read_text(encoding=UTF8_ENCODING)
-
-    if fallback_exists:
-        logger.warning(
-            (
-                "provider ui asset preference could not be honored for %s; "
-                "APP_ENABLE_DEV_FEATURES=%s preferred=%s fallback=%s"
-            ),
-            source_filename,
-            str(prefer_dev_assets).lower(),
-            str(preferred_path),
-            str(fallback_path),
-        )
-        logger.info(
-            "provider ui asset path=%s minified=%s APP_ENABLE_DEV_FEATURES=%s",
-            str(fallback_path),
-            str(fallback_path.name.endswith(".mini.js")).lower(),
-            str(prefer_dev_assets).lower(),
-        )
-        return fallback_path.read_text(encoding=UTF8_ENCODING)
-
-    raise FileNotFoundError(
-        f"no UI asset found for {source_filename}; "
-        f"expected at least one of {source_path} or {mini_path}"
-    )
-
-
-_WEB_UI_STATE_JS = _read_ui_js_asset(source_filename="web_ui_state.js")
-_WEB_UI_FUNCTIONS_JS = _read_ui_js_asset(source_filename="web_ui_functions.js")
-_WEB_UI_FRAMEWORK_JS = _read_ui_js_asset(source_filename="web_ui_framework.js")
-_WEB_UI_BINDINGS_JS = _read_ui_js_asset(source_filename="web_ui_bindings.js")
-
-_HELP_PATH = _HTML_DIR / "help.html"
-_HELP_HTML = _HELP_PATH.read_text(encoding=UTF8_ENCODING)
-
-_ICON_PATH = _HTML_DIR / "create.ico"
+_UI_ASSETS = load_provider_ui_assets(logger=logger)
+register_ui_routes(
+    app,
+    ui_assets=_UI_ASSETS,
+    provider_config=provider_config,
+    global_settings_help=GLOBAL_SETTINGS_HELP,
+    render_help_html=render_help_html,
+    component_version_text=component_version_text,
+    ui_feature_menu_items=_UI_FEATURE_MENU_ITEMS,
+    registered_component_entry_points=_REGISTERED_COMPONENT_ENTRY_POINTS,
+)
+register_settings_routes(
+    app,
+    provider_config=provider_config,
+    store=STORE,
+    logger=logger,
+    persistence_tracker=_PERSISTENCE_TRACKER,
+    diagnostic_mode_enabled=_diagnostic_mode_enabled,
+    state_snapshot_file_count=_state_snapshot_file_count,
+    tls_certificate_expiry_metadata=_tls_certificate_expiry_metadata,
+    record_snapshot_status=_record_snapshot_status,
+    coerce_bool_setting=_coerce_bool_setting,
+    save_state_snapshot_func=lambda **kwargs: save_state_snapshot(**kwargs),
+    prune_snapshot_files_func=lambda **kwargs: prune_snapshot_files(**kwargs),
+)

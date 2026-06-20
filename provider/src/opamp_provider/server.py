@@ -122,15 +122,25 @@ def _provider_tls_run_kwargs(config: provider_config.ProviderConfig) -> dict[str
     }
 
 
-def main() -> None:
-    """Load config overrides and start the Quart app."""
-    version_text = component_version_text()
+def _emit_bootstrap_line(message: str) -> None:
+    """Emit one immediate bootstrap line before standard logging is ready."""
+    print(f"[provider-bootstrap] {message}", file=sys.stderr, flush=True)
+
+
+def _build_argument_parser(version_text: str) -> argparse.ArgumentParser:
+    """Build the provider CLI argument parser."""
     parser = argparse.ArgumentParser(
         description=f"OpAMP provider server. Version: {version_text}"
     )
     parser.add_argument("--config-path", type=str)
-    # Intentionally omitted from CLI help/documentation.
-    parser.add_argument("--diagnostic", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument(
+        "--diagnostic",
+        action="store_true",
+        help=(
+            "enable diagnostic-only UI/API features and force DEBUG logging "
+            "(intended for local troubleshooting)"
+        ),
+    )
     parser.add_argument("--host", type=str, default="127.0.0.1", help="bind address")
     parser.add_argument(
         "--port",
@@ -155,23 +165,29 @@ def main() -> None:
         action="version",
         version=f"%(prog)s {version_text}",
     )
-    args = parser.parse_args()
-    _configure_logging("INFO")
+    return parser
+
+
+def _resolve_log_level_override(args: argparse.Namespace) -> str | None:
+    """Return the startup log-level override requested on the CLI."""
+    return "DEBUG" if bool(args.diagnostic) else args.log_level
+
+
+def _load_provider_runtime_config(
+    args: argparse.Namespace,
+    *,
+    logger: logging.Logger,
+) -> provider_config.ProviderConfig:
+    """Resolve config path, apply CLI overrides, and cache provider config."""
     effective_config_path = provider_config.get_effective_config_path(
         args.config_path
     ).resolve()
-    logger = logging.getLogger(__name__)
-    logger.info(
-        "using provider config path: %s",
-        effective_config_path,
-    )
+    logger.info("using provider config path: %s", effective_config_path)
     os.environ[provider_config.ENV_OPAMP_CONFIG_PATH] = str(effective_config_path)
-    log_level_override = "DEBUG" if args.diagnostic else args.log_level
-
     try:
         config = provider_config.load_config_with_overrides(
             config_path=effective_config_path,
-            log_level=log_level_override,
+            log_level=_resolve_log_level_override(args),
         )
     except Exception as exc:
         logger.warning(
@@ -181,6 +197,15 @@ def main() -> None:
         )
         raise
     provider_config.set_config(config)
+    return config
+
+
+def _initialize_provider_runtime(
+    config: provider_config.ProviderConfig,
+    *,
+    logger: logging.Logger,
+) -> None:
+    """Initialize shared provider runtime state from loaded configuration."""
     logger.info(
         "state persistence file prefix: %s",
         config.state_persistence.state_file_prefix,
@@ -191,65 +216,94 @@ def main() -> None:
         record_event=False,
     )
 
-    if args.restore is None:
+
+def _apply_restore_option(
+    *,
+    config: provider_config.ProviderConfig,
+    restore_option: str | None,
+    logger: logging.Logger,
+) -> None:
+    """Restore provider state when requested, otherwise record skipped status."""
+    if restore_option is None:
         set_state_restore_status("not_requested")
         logger.info(
             "state restore not requested; server will start with empty in-memory state"
         )
-    elif config.state_persistence.enabled is not True:
+        return
+
+    if config.state_persistence.enabled is not True:
         set_state_restore_status(
             "skipped",
             "state persistence disabled; restore request ignored",
         )
-        logger.warning(
-            "restore requested but state persistence is disabled"
-        )
+        logger.warning("restore requested but state persistence is disabled")
         logger.info(
             "state restore skipped; server will start with empty in-memory state"
         )
-    else:
-        try:
-            restore_path = resolve_restore_snapshot_path(
-                state_file_prefix=config.state_persistence.state_file_prefix,
-                restore_option=args.restore,
-            )
-        except FileNotFoundError as exc:
-            set_state_restore_status("missing", str(exc))
-            logger.warning(
-                "restore requested but snapshot missing: %s",
-                exc,
-            )
-            logger.info(
-                "state restore fallback: no snapshot file available, starting with empty in-memory state"
-            )
-        else:
-            logger.info("state restore using snapshot file: %s", restore_path)
-            try:
-                summary = restore_state_snapshot(
-                    store=STORE,
-                    snapshot_path=restore_path,
-                    logger=logger,
-                )
-                set_state_restore_status("restored", json.dumps(summary, sort_keys=True))
-            except FileNotFoundError as exc:
-                set_state_restore_status("missing", str(exc))
-                logger.warning(
-                    "restore snapshot missing: %s",
-                    exc,
-                )
-                logger.info(
-                    "state restore fallback: no snapshot file available, starting with empty in-memory state"
-                )
-            except Exception as exc:
-                set_state_restore_status("failed", str(exc))
-                logger.warning(
-                    "failed restoring provider state from %s",
-                    restore_path,
-                    exc_info=exc,
-                )
-                logger.info(
-                    "state restore fallback: invalid/corrupt snapshot, starting with empty in-memory state"
-                )
+        return
+
+    try:
+        restore_path = resolve_restore_snapshot_path(
+            state_file_prefix=config.state_persistence.state_file_prefix,
+            restore_option=restore_option,
+        )
+    except FileNotFoundError as exc:
+        set_state_restore_status("missing", str(exc))
+        logger.warning("restore requested but snapshot missing: %s", exc)
+        logger.info(
+            "state restore fallback: no snapshot file available, starting with empty in-memory state"
+        )
+        return
+
+    logger.info("state restore using snapshot file: %s", restore_path)
+    try:
+        summary = restore_state_snapshot(
+            store=STORE,
+            snapshot_path=restore_path,
+            logger=logger,
+        )
+        set_state_restore_status("restored", json.dumps(summary, sort_keys=True))
+    except FileNotFoundError as exc:
+        set_state_restore_status("missing", str(exc))
+        logger.warning("restore snapshot missing: %s", exc)
+        logger.info(
+            "state restore fallback: no snapshot file available, starting with empty in-memory state"
+        )
+    except Exception as exc:
+        set_state_restore_status("failed", str(exc))
+        logger.warning(
+            "failed restoring provider state from %s",
+            restore_path,
+            exc_info=exc,
+        )
+        logger.info(
+            "state restore fallback: invalid/corrupt snapshot, starting with empty in-memory state"
+        )
+
+
+def _set_diagnostic_mode(enabled: bool, *, logger: logging.Logger) -> None:
+    """Store provider diagnostic-mode state for UI/API feature gating."""
+    app.config["DIAGNOSTIC_MODE"] = bool(enabled)
+    logger.info("provider diagnostic mode enabled=%s", bool(enabled))
+
+
+def main() -> None:
+    """Load config overrides and start the Quart app."""
+    version_text = component_version_text()
+    parser = _build_argument_parser(version_text)
+    args = parser.parse_args()
+    _emit_bootstrap_line(
+        f"parsed_args host={args.host} port={args.port} config_path={args.config_path or ''}"
+    )
+    _configure_logging("INFO")
+    logger = logging.getLogger(__name__)
+    config = _load_provider_runtime_config(args, logger=logger)
+    _initialize_provider_runtime(config, logger=logger)
+    _apply_restore_option(
+        config=config,
+        restore_option=args.restore,
+        logger=logger,
+    )
 
     resolved_log_level = provider_config.resolve_log_level(config.log_level)
     _configure_logging(resolved_log_level)
@@ -259,8 +313,9 @@ def main() -> None:
         config=config.observability,
         log_level=resolved_log_level,
     )
-    app.config["DIAGNOSTIC_MODE"] = bool(args.diagnostic)
+    _set_diagnostic_mode(bool(args.diagnostic), logger=logger)
     port = args.port if args.port is not None else config.webui_port
+    _emit_bootstrap_line(f"starting_app host={args.host} port={port}")
     app.run(
         host=args.host,
         port=port,

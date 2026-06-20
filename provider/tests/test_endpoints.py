@@ -1931,6 +1931,7 @@ async def test_help_page_includes_restore_usage() -> None:
         html = await resp.get_data(as_text=True)
 
     assert "--restore" in html
+    assert "--diagnostic" in html
     assert "state_file_prefix" in html
     assert "empty/default in-memory state" in html
     assert "No wildcard characters are needed" in html

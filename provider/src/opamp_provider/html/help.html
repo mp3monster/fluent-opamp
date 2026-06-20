@@ -103,6 +103,7 @@
       <ul class="command-list">
         <li><strong>Text filters:</strong> Service Instance ID, Instance UID, Client Version, Host Name, and Host IP use case-insensitive substring matching.</li>
         <li><strong>No wildcard characters are needed:</strong> entering <code>alpha</code> matches <code>svc-alpha-01</code>.</li>
+        <li><strong>Exclude mode:</strong> add <code>invertFilter=true</code> on filter requests to invert the active filter set and exclude matching rows.</li>
         <li><strong>Multi-select filters:</strong> Connection Status, Health Status, Config Version, Host Type, and Host Version provide dropdown menus with the values currently present in the table data.</li>
         <li><strong>Combined filters:</strong> Filters are combined with AND, so a row must satisfy every populated column filter.</li>
         <li><strong>Inline workflow:</strong> Filtering updates the table immediately without separate show, hide, apply, or clear controls.</li>
@@ -247,6 +248,7 @@
         <li><strong>Retention:</strong> The provider keeps the newest snapshots using <code>retention_count</code> (default <code>5</code>).</li>
         <li><strong>Auto restore:</strong> Start with <code>--restore</code> to load the latest snapshot for the configured prefix.</li>
         <li><strong>Explicit restore:</strong> Start with <code>--restore &lt;snapshot_file&gt;</code> to restore from a specific file.</li>
+        <li><strong>Diagnostic mode:</strong> Start with <code>--diagnostic</code> to enable the diagnostic config viewer tab and other local troubleshooting endpoints.</li>
         <li><strong>Restore fallback behavior:</strong> If restore fails (missing/corrupt/incompatible file), provider logs the error and continues startup with an empty/default in-memory state.</li>
       </ul>
     </section>

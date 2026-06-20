@@ -104,6 +104,50 @@ def test_server_main_logs_absolute_provider_config_path(monkeypatch, caplog) -> 
     assert f"using provider config path: {config_path}" in caplog.text
 
 
+def test_server_main_emits_bootstrap_lines(monkeypatch, capsys) -> None:
+    """Provider startup should emit immediate bootstrap lines before app.run."""
+    def fake_run(*, host: str, port: int) -> None:
+        return None
+
+    def fake_load_config_with_overrides(*, config_path, log_level):
+        return ProviderConfig(
+            delayed_comms_seconds=60,
+            significant_comms_seconds=300,
+            webui_port=8080,
+            minutes_keep_disconnected=30,
+            retry_after_seconds=30,
+            client_event_history_size=50,
+            log_level="INFO",
+        )
+
+    monkeypatch.setattr(provider_server.app, "run", fake_run)
+    monkeypatch.setattr(
+        provider_config, "load_config_with_overrides", fake_load_config_with_overrides
+    )
+    monkeypatch.setattr(provider_config, "set_config", lambda _config: None)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["server.py", "--port", "9999"],
+    )
+
+    provider_server.main()
+
+    captured = capsys.readouterr()
+    assert "[provider-bootstrap] parsed_args" in captured.err
+    assert "[provider-bootstrap] starting_app" in captured.err
+
+
+def test_argument_parser_help_includes_diagnostic_flag() -> None:
+    """Diagnostic mode should be discoverable from provider CLI help."""
+    help_text = " ".join(
+        provider_server._build_argument_parser("test-version").format_help().split()
+    )
+
+    assert "--diagnostic" in help_text
+    assert "enable diagnostic-only UI/API features and force DEBUG logging" in help_text
+
+
 def test_server_main_diagnostic_forces_debug_log_level(monkeypatch) -> None:
     """Verify `--diagnostic` forces DEBUG log-level override and enables diagnostic mode."""
     called = {}
