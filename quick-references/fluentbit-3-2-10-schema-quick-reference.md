@@ -1,7 +1,7 @@
 # Fluent Bit 3.2.10 Schema Quick Reference
 
 Generated from the local Fluent Bit 3.2.10 JSON schema only:
-- `config-service/json-schemas/fluentbit-3.2.10-config-schema.json`
+- `config-service\json-schemas\fluentbit-3.2.10-config-schema.json`
 
 Scope:
 1. Environment variable map definition for `env`
@@ -15,9 +15,9 @@ Scope:
 
 - **Environment**: [`env`](#environment-env)
 - **Upstream Servers**: [`upstream_servers`](#upstream-servers-upstream-servers)
-- **Inputs**: [`collectd`](#inputs-collectd), [`cpu-metrics`](#inputs-cpu-metrics), [`disk-io-metrics`](#inputs-disk-io-metrics), [`docker-events`](#inputs-docker-events), [`docker-metrics`](#inputs-docker-metrics), [`dummy`](#inputs-dummy), [`ebpf`](#inputs-ebpf), [`elasticsearch`](#inputs-elasticsearch), [`exec`](#inputs-exec), [`exec-wasi`](#inputs-exec-wasi), [`fluentbit-metrics`](#inputs-fluentbit-metrics), [`forward`](#inputs-forward), [`head`](#inputs-head), [`health`](#inputs-health), [`http`](#inputs-http), [`kafka`](#inputs-kafka), [`kernel-logs`](#inputs-kernel-logs), [`kubernetes-events`](#inputs-kubernetes-events), [`memory-metrics`](#inputs-memory-metrics), [`mqtt`](#inputs-mqtt), [`network-io-metrics`](#inputs-network-io-metrics), [`nginx`](#inputs-nginx), [`node-exporter-metrics`](#inputs-node-exporter-metrics), [`opentelemetry`](#inputs-opentelemetry), [`podman-metrics`](#inputs-podman-metrics), [`process`](#inputs-process), [`process-exporter-metrics`](#inputs-process-exporter-metrics), [`prometheus-remote-write`](#inputs-prometheus-remote-write), [`prometheus-scrape-metrics`](#inputs-prometheus-scrape-metrics), [`random`](#inputs-random), [`serial-interface`](#inputs-serial-interface), [`splunk`](#inputs-splunk), [`standard-input`](#inputs-standard-input), [`statsd`](#inputs-statsd), [`syslog`](#inputs-syslog), [`systemd`](#inputs-systemd), [`tail`](#inputs-tail), [`tcp`](#inputs-tcp), [`thermal`](#inputs-thermal), [`udp`](#inputs-udp), [`windows-event-log`](#inputs-windows-event-log), [`windows-event-log-winevtlog`](#inputs-windows-event-log-winevtlog), [`windows-exporter-metrics`](#inputs-windows-exporter-metrics)
-- **Filters**: [`aws-metadata`](#filters-aws-metadata), [`checklist`](#filters-checklist), [`ecs-metadata`](#filters-ecs-metadata), [`expect`](#filters-expect), [`geoip2-filter`](#filters-geoip2-filter), [`grep`](#filters-grep), [`kubernetes`](#filters-kubernetes), [`log_to_metrics`](#filters-log-to-metrics), [`lua`](#filters-lua), [`modify`](#filters-modify), [`multiline-stacktrace`](#filters-multiline-stacktrace), [`nest`](#filters-nest), [`nightfall`](#filters-nightfall), [`parser`](#filters-parser), [`record-modifier`](#filters-record-modifier), [`rewrite-tag`](#filters-rewrite-tag), [`standard-output`](#filters-standard-output), [`sysinfo`](#filters-sysinfo), [`tensorflow`](#filters-tensorflow), [`throttle`](#filters-throttle), [`type-converter`](#filters-type-converter), [`wasm`](#filters-wasm)
-- **Outputs**: [`azure`](#outputs-azure), [`azure_blob`](#outputs-azure-blob), [`azure_kusto`](#outputs-azure-kusto), [`azure_logs_ingestion`](#outputs-azure-logs-ingestion), [`bigquery`](#outputs-bigquery), [`chronicle`](#outputs-chronicle), [`cloudwatch`](#outputs-cloudwatch), [`counter`](#outputs-counter), [`dash0`](#outputs-dash0), [`datadog`](#outputs-datadog), [`dynatrace`](#outputs-dynatrace), [`elasticsearch`](#outputs-elasticsearch), [`file`](#outputs-file), [`firehose`](#outputs-firehose), [`flowcounter`](#outputs-flowcounter), [`forward`](#outputs-forward), [`gelf`](#outputs-gelf), [`http`](#outputs-http), [`influxdb`](#outputs-influxdb), [`kafka`](#outputs-kafka), [`kafka-rest-proxy`](#outputs-kafka-rest-proxy), [`kinesis`](#outputs-kinesis), [`logdna`](#outputs-logdna), [`loki`](#outputs-loki), [`nats`](#outputs-nats), [`new-relic`](#outputs-new-relic), [`null`](#outputs-null), [`observe`](#outputs-observe), [`oci-logging-analytics`](#outputs-oci-logging-analytics), [`openobserve`](#outputs-openobserve), [`opensearch`](#outputs-opensearch), [`opentelemetry`](#outputs-opentelemetry), [`postgresql`](#outputs-postgresql), [`prometheus-exporter`](#outputs-prometheus-exporter), [`prometheus-remote-write`](#outputs-prometheus-remote-write), [`s3`](#outputs-s3), [`skywalking`](#outputs-skywalking), [`slack`](#outputs-slack), [`splunk`](#outputs-splunk), [`stackdriver`](#outputs-stackdriver), [`standard-output`](#outputs-standard-output), [`syslog`](#outputs-syslog), [`tcp-and-tls`](#outputs-tcp-and-tls), [`treasure-data`](#outputs-treasure-data), [`vivo-exporter`](#outputs-vivo-exporter), [`websocket`](#outputs-websocket)
+- **Inputs**: [`collectd`](#inputs-collectd), [`cpu`](#inputs-cpu), [`disk`](#inputs-disk), [`docker-metrics`](#inputs-docker-metrics), [`docker_events`](#inputs-docker-events), [`dummy`](#inputs-dummy), [`ebpf`](#inputs-ebpf), [`elasticsearch`](#inputs-elasticsearch), [`exec`](#inputs-exec), [`exec_wasi`](#inputs-exec-wasi), [`fluentbit_metrics`](#inputs-fluentbit-metrics), [`forward`](#inputs-forward), [`head`](#inputs-head), [`health`](#inputs-health), [`http`](#inputs-http), [`kafka`](#inputs-kafka), [`kmsg`](#inputs-kmsg), [`kubernetes_events`](#inputs-kubernetes-events), [`mem`](#inputs-mem), [`mqtt`](#inputs-mqtt), [`netif`](#inputs-netif), [`nginx_metrics`](#inputs-nginx-metrics), [`node_exporter_metrics`](#inputs-node-exporter-metrics), [`opentelemetry`](#inputs-opentelemetry), [`podman_metrics`](#inputs-podman-metrics), [`proc`](#inputs-proc), [`process_exporter_metrics`](#inputs-process-exporter-metrics), [`prometheus_remote_write`](#inputs-prometheus-remote-write), [`prometheus_scrape`](#inputs-prometheus-scrape), [`random`](#inputs-random), [`serial`](#inputs-serial), [`splunk`](#inputs-splunk), [`statsd`](#inputs-statsd), [`stdin`](#inputs-stdin), [`syslog`](#inputs-syslog), [`systemd`](#inputs-systemd), [`tail`](#inputs-tail), [`tcp`](#inputs-tcp), [`thermal`](#inputs-thermal), [`udp`](#inputs-udp), [`windows_exporter_metrics`](#inputs-windows-exporter-metrics), [`winevtlog`](#inputs-winevtlog), [`winlog`](#inputs-winlog)
+- **Filters**: [`aws`](#filters-aws), [`checklist`](#filters-checklist), [`ecs`](#filters-ecs), [`expect`](#filters-expect), [`geoip2`](#filters-geoip2), [`grep`](#filters-grep), [`kubernetes`](#filters-kubernetes), [`log_to_metrics`](#filters-log-to-metrics), [`lua`](#filters-lua), [`modify`](#filters-modify), [`multiline`](#filters-multiline), [`nest`](#filters-nest), [`nightfall`](#filters-nightfall), [`parser`](#filters-parser), [`record_modifier`](#filters-record-modifier), [`rewrite_tag`](#filters-rewrite-tag), [`stdout`](#filters-stdout), [`sysinfo`](#filters-sysinfo), [`tensorflow`](#filters-tensorflow), [`throttle`](#filters-throttle), [`type_converter`](#filters-type-converter), [`wasm`](#filters-wasm)
+- **Outputs**: [`azure`](#outputs-azure), [`azure_blob`](#outputs-azure-blob), [`azure_kusto`](#outputs-azure-kusto), [`azure_logs_ingestion`](#outputs-azure-logs-ingestion), [`bigquery`](#outputs-bigquery), [`chronicle`](#outputs-chronicle), [`cloudwatch_logs`](#outputs-cloudwatch-logs), [`counter`](#outputs-counter), [`dash0`](#outputs-dash0), [`datadog`](#outputs-datadog), [`dynatrace`](#outputs-dynatrace), [`es`](#outputs-es), [`file`](#outputs-file), [`flowcounter`](#outputs-flowcounter), [`forward`](#outputs-forward), [`gelf`](#outputs-gelf), [`http`](#outputs-http), [`influxdb`](#outputs-influxdb), [`kafka`](#outputs-kafka), [`kafka-rest`](#outputs-kafka-rest), [`kinesis_firehose`](#outputs-kinesis-firehose), [`kinesis_streams`](#outputs-kinesis-streams), [`logdna`](#outputs-logdna), [`loki`](#outputs-loki), [`nats`](#outputs-nats), [`newrelic`](#outputs-newrelic), [`null`](#outputs-null), [`observe`](#outputs-observe), [`openobserve`](#outputs-openobserve), [`opensearch`](#outputs-opensearch), [`opentelemetry`](#outputs-opentelemetry), [`oracle_log_analytics`](#outputs-oracle-log-analytics), [`pgsql`](#outputs-pgsql), [`prometheus_exporter`](#outputs-prometheus-exporter), [`prometheus_remote_write`](#outputs-prometheus-remote-write), [`s3`](#outputs-s3), [`skywalking`](#outputs-skywalking), [`slack`](#outputs-slack), [`splunk`](#outputs-splunk), [`stackdriver`](#outputs-stackdriver), [`stdout`](#outputs-stdout), [`syslog`](#outputs-syslog), [`tcp`](#outputs-tcp), [`td`](#outputs-td), [`vivo_exporter`](#outputs-vivo-exporter), [`websocket`](#outputs-websocket)
 
 <a id="environment-env"></a>
 ## Environment Variables
@@ -51,7 +51,7 @@ Fluent Bit page: [Upstream servers](https://docs.fluentbit.io/manual/3.2/adminis
 
 ## Inputs
 
-[`collectd`](#inputs-collectd), [`cpu-metrics`](#inputs-cpu-metrics), [`disk-io-metrics`](#inputs-disk-io-metrics), [`docker-events`](#inputs-docker-events), [`docker-metrics`](#inputs-docker-metrics), [`dummy`](#inputs-dummy), [`ebpf`](#inputs-ebpf), [`elasticsearch`](#inputs-elasticsearch), [`exec`](#inputs-exec), [`exec-wasi`](#inputs-exec-wasi), [`fluentbit-metrics`](#inputs-fluentbit-metrics), [`forward`](#inputs-forward), [`head`](#inputs-head), [`health`](#inputs-health), [`http`](#inputs-http), [`kafka`](#inputs-kafka), [`kernel-logs`](#inputs-kernel-logs), [`kubernetes-events`](#inputs-kubernetes-events), [`memory-metrics`](#inputs-memory-metrics), [`mqtt`](#inputs-mqtt), [`network-io-metrics`](#inputs-network-io-metrics), [`nginx`](#inputs-nginx), [`node-exporter-metrics`](#inputs-node-exporter-metrics), [`opentelemetry`](#inputs-opentelemetry), [`podman-metrics`](#inputs-podman-metrics), [`process`](#inputs-process), [`process-exporter-metrics`](#inputs-process-exporter-metrics), [`prometheus-remote-write`](#inputs-prometheus-remote-write), [`prometheus-scrape-metrics`](#inputs-prometheus-scrape-metrics), [`random`](#inputs-random), [`serial-interface`](#inputs-serial-interface), [`splunk`](#inputs-splunk), [`standard-input`](#inputs-standard-input), [`statsd`](#inputs-statsd), [`syslog`](#inputs-syslog), [`systemd`](#inputs-systemd), [`tail`](#inputs-tail), [`tcp`](#inputs-tcp), [`thermal`](#inputs-thermal), [`udp`](#inputs-udp), [`windows-event-log`](#inputs-windows-event-log), [`windows-event-log-winevtlog`](#inputs-windows-event-log-winevtlog), [`windows-exporter-metrics`](#inputs-windows-exporter-metrics)
+[`collectd`](#inputs-collectd), [`cpu`](#inputs-cpu), [`disk`](#inputs-disk), [`docker-metrics`](#inputs-docker-metrics), [`docker_events`](#inputs-docker-events), [`dummy`](#inputs-dummy), [`ebpf`](#inputs-ebpf), [`elasticsearch`](#inputs-elasticsearch), [`exec`](#inputs-exec), [`exec_wasi`](#inputs-exec-wasi), [`fluentbit_metrics`](#inputs-fluentbit-metrics), [`forward`](#inputs-forward), [`head`](#inputs-head), [`health`](#inputs-health), [`http`](#inputs-http), [`kafka`](#inputs-kafka), [`kmsg`](#inputs-kmsg), [`kubernetes_events`](#inputs-kubernetes-events), [`mem`](#inputs-mem), [`mqtt`](#inputs-mqtt), [`netif`](#inputs-netif), [`nginx_metrics`](#inputs-nginx-metrics), [`node_exporter_metrics`](#inputs-node-exporter-metrics), [`opentelemetry`](#inputs-opentelemetry), [`podman_metrics`](#inputs-podman-metrics), [`proc`](#inputs-proc), [`process_exporter_metrics`](#inputs-process-exporter-metrics), [`prometheus_remote_write`](#inputs-prometheus-remote-write), [`prometheus_scrape`](#inputs-prometheus-scrape), [`random`](#inputs-random), [`serial`](#inputs-serial), [`splunk`](#inputs-splunk), [`statsd`](#inputs-statsd), [`stdin`](#inputs-stdin), [`syslog`](#inputs-syslog), [`systemd`](#inputs-systemd), [`tail`](#inputs-tail), [`tcp`](#inputs-tcp), [`thermal`](#inputs-thermal), [`udp`](#inputs-udp), [`windows_exporter_metrics`](#inputs-windows-exporter-metrics), [`winevtlog`](#inputs-winevtlog), [`winlog`](#inputs-winlog)
 
 <a id="inputs-collectd"></a>
 ### `collectd`: Collectd
@@ -67,49 +67,32 @@ Fluent Bit page: [Collectd](https://docs.fluentbit.io/manual/3.2/pipeline/inputs
 | [`threaded`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/collectd#configuration-parameters-a-hrefconfig-idconfiga) | No | `false` | Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs). |
 | [`typesdb`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/collectd#configuration-parameters-a-hrefconfig-idconfiga) | No | `/usr/share/collectd/types.db` | Set the data specification file |
 
-<a id="inputs-cpu-metrics"></a>
-### `cpu-metrics`: CPU Log Based Metrics
+<a id="inputs-cpu"></a>
+### `cpu`: CPU Log Based Metrics
 Fluent Bit page: [CPU Log Based Metrics](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/cpu-metrics#configuration-parameters)
 
 | Attribute | Mandatory | Default | Description |
 | --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/cpu-metrics#configuration-parameters) | Yes | `cpu-metrics` | Plugin identifier. |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/cpu-metrics#configuration-parameters) | Yes | `cpu` | Plugin identifier. |
 | [`tag`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/cpu-metrics#configuration-parameters) | Yes |  | Tag assigned to records emitted by this input plugin. |
 | [`interval_nsec`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/cpu-metrics#configuration-parameters) | No | `0` | Polling interval in nanoseconds |
 | [`interval_sec`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/cpu-metrics#configuration-parameters) | No | `1` | Polling interval in seconds |
 | [`pid`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/cpu-metrics#configuration-parameters) | No |  | Specify the ID (PID) of a running process in the system. |
 | [`processors`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/cpu-metrics#configuration-parameters) | No |  |  |
 
-<a id="inputs-disk-io-metrics"></a>
-### `disk-io-metrics`: Disk I/O Log Based Metrics
+<a id="inputs-disk"></a>
+### `disk`: Disk I/O Log Based Metrics
 Fluent Bit page: [Disk I/O Log Based Metrics](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/disk-io-metrics#configuration-parameters)
 
 | Attribute | Mandatory | Default | Description |
 | --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/disk-io-metrics#configuration-parameters) | Yes | `disk-io-metrics` | Plugin identifier. |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/disk-io-metrics#configuration-parameters) | Yes | `disk` | Plugin identifier. |
 | [`tag`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/disk-io-metrics#configuration-parameters) | Yes |  | Tag assigned to records emitted by this input plugin. |
 | [`dev_name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/disk-io-metrics#configuration-parameters) | No | `all disks` | Device name to limit the target. |
 | [`interval_nsec`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/disk-io-metrics#configuration-parameters) | No | `0` | Polling interval (nanosecond). |
 | [`interval_sec`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/disk-io-metrics#configuration-parameters) | No | `1` | Polling interval (seconds). |
 | [`processors`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/disk-io-metrics#configuration-parameters) | No |  |  |
 | [`threaded`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/disk-io-metrics#configuration-parameters) | No | `false` | Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs). |
-
-<a id="inputs-docker-events"></a>
-### `docker-events`: Docker Events
-Fluent Bit page: [Docker Events](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-events#configuration-parameters)
-
-| Attribute | Mandatory | Default | Description |
-| --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-events#configuration-parameters) | Yes | `docker-events` | Plugin identifier. |
-| [`tag`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-events#configuration-parameters) | Yes |  | Tag assigned to records emitted by this input plugin. |
-| [`buffer_size`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-events#configuration-parameters) | No | `8192` | The size of the buffer used to read docker events (in bytes) |
-| [`key`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-events#configuration-parameters) | No | `message` | When a message is unstructured (no parser applied), it's appended as a string under the key name message. |
-| [`parser`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-events#configuration-parameters) | No |  | Specify the name of a parser to interpret the entry as a structured message. |
-| [`processors`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-events#configuration-parameters) | No |  |  |
-| [`reconnect.retry_interval`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-events#configuration-parameters) | No | `1` | The retrying interval. |
-| [`reconnect.retry_limits`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-events#configuration-parameters) | No | `5` | The maximum number of retries allowed. |
-| [`threaded`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-events#configuration-parameters) | No | `false` | Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs). |
-| [`unix_path`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-events#configuration-parameters) | No | `/var/run/docker.sock` | The docker socket unix path |
 
 <a id="inputs-docker-metrics"></a>
 ### `docker-metrics`: Docker Log Based Metrics
@@ -125,6 +108,23 @@ Fluent Bit page: [Docker Log Based Metrics](https://docs.fluentbit.io/manual/3.2
 | [`path.containers`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-metrics#configuration-parameters) | No | `/var/lib/docker/containers` | Used to specify the container directory if Docker is configured with a custom "data-root" directory. |
 | [`processors`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-metrics#configuration-parameters) | No |  |  |
 | [`threaded`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-metrics#configuration-parameters) | No | `false` | Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs). |
+
+<a id="inputs-docker-events"></a>
+### `docker_events`: Docker Events
+Fluent Bit page: [Docker Events](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-events#configuration-parameters)
+
+| Attribute | Mandatory | Default | Description |
+| --- | --- | --- | --- |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-events#configuration-parameters) | Yes | `docker_events` | Plugin identifier. |
+| [`tag`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-events#configuration-parameters) | Yes |  | Tag assigned to records emitted by this input plugin. |
+| [`buffer_size`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-events#configuration-parameters) | No | `8192` | The size of the buffer used to read docker events (in bytes) |
+| [`key`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-events#configuration-parameters) | No | `message` | When a message is unstructured (no parser applied), it's appended as a string under the key name message. |
+| [`parser`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-events#configuration-parameters) | No |  | Specify the name of a parser to interpret the entry as a structured message. |
+| [`processors`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-events#configuration-parameters) | No |  |  |
+| [`reconnect.retry_interval`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-events#configuration-parameters) | No | `1` | The retrying interval. |
+| [`reconnect.retry_limits`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-events#configuration-parameters) | No | `5` | The maximum number of retries allowed. |
+| [`threaded`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-events#configuration-parameters) | No | `false` | Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs). |
+| [`unix_path`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/docker-events#configuration-parameters) | No | `/var/run/docker.sock` | The docker socket unix path |
 
 <a id="inputs-dummy"></a>
 ### `dummy`: Dummy
@@ -194,12 +194,12 @@ Fluent Bit page: [Exec](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exe
 | [`threaded`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec#configuration-parameters) | No |  | Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs). |
 
 <a id="inputs-exec-wasi"></a>
-### `exec-wasi`: Exec Wasi
+### `exec_wasi`: Exec Wasi
 Fluent Bit page: [Exec Wasi](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec-wasi#configuration-parameters)
 
 | Attribute | Mandatory | Default | Description |
 | --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec-wasi#configuration-parameters) | Yes | `exec-wasi` | Plugin identifier. |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec-wasi#configuration-parameters) | Yes | `exec_wasi` | Plugin identifier. |
 | [`tag`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec-wasi#configuration-parameters) | Yes |  | Tag assigned to records emitted by this input plugin. |
 | [`accessible_paths`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec-wasi#configuration-parameters) | No |  | Specify the whitelist of paths to be able to access paths from WASM programs. |
 | [`buf_size`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec-wasi#configuration-parameters) | No |  | Size of the buffer (check [unit sizes](/manual/3.2/administration/configuring-fluent-bit/unit-sizes.md) for allowed values) |
@@ -214,12 +214,12 @@ Fluent Bit page: [Exec Wasi](https://docs.fluentbit.io/manual/3.2/pipeline/input
 | [`wasm_stack_size`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/exec-wasi#configuration-parameters) | No |  | Size of the stack size of Wasm execution. |
 
 <a id="inputs-fluentbit-metrics"></a>
-### `fluentbit-metrics`: Fluent Bit Metrics
+### `fluentbit_metrics`: Fluent Bit Metrics
 Fluent Bit page: [Fluent Bit Metrics](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/fluentbit-metrics#configuration)
 
 | Attribute | Mandatory | Default | Description |
 | --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/fluentbit-metrics#configuration) | Yes | `fluentbit-metrics` | Plugin identifier. |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/fluentbit-metrics#configuration) | Yes | `fluentbit_metrics` | Plugin identifier. |
 | [`tag`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/fluentbit-metrics#configuration) | Yes |  | Tag assigned to records emitted by this input plugin. |
 | [`processors`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/fluentbit-metrics#configuration) | No |  |  |
 | [`scrape_interval`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/fluentbit-metrics#configuration) | No | `2 seconds` | The rate at which metrics are collected from the host operating system |
@@ -322,25 +322,25 @@ Fluent Bit page: [Kafka](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/ka
 | [`threaded`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/kafka#configuration-parameters) | No | `false` | Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs). |
 | [`topics`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/kafka#configuration-parameters) | No |  | Single entry or list of topics separated by comma (, ) that Fluent Bit will subscribe to. |
 
-<a id="inputs-kernel-logs"></a>
-### `kernel-logs`: Kernel Logs
+<a id="inputs-kmsg"></a>
+### `kmsg`: Kernel Logs
 Fluent Bit page: [Kernel Logs](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/kernel-logs#configuration-parameters)
 
 | Attribute | Mandatory | Default | Description |
 | --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/kernel-logs#configuration-parameters) | Yes | `kernel-logs` | Plugin identifier. |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/kernel-logs#configuration-parameters) | Yes | `kmsg` | Plugin identifier. |
 | [`tag`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/kernel-logs#configuration-parameters) | Yes |  | Tag assigned to records emitted by this input plugin. |
 | [`prio_level`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/kernel-logs#configuration-parameters) | No | `8` | The log level to filter. |
 | [`processors`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/kernel-logs#configuration-parameters) | No |  |  |
 | [`threaded`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/kernel-logs#configuration-parameters) | No | `false` | Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs). |
 
 <a id="inputs-kubernetes-events"></a>
-### `kubernetes-events`: Kubernetes Events
+### `kubernetes_events`: Kubernetes Events
 Fluent Bit page: [Kubernetes Events](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/kubernetes-events#configuration)
 
 | Attribute | Mandatory | Default | Description |
 | --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/kubernetes-events#configuration) | Yes | `kubernetes-events` | Plugin identifier. |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/kubernetes-events#configuration) | Yes | `kubernetes_events` | Plugin identifier. |
 | [`tag`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/kubernetes-events#configuration) | Yes |  | Tag assigned to records emitted by this input plugin. |
 | [`db`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/kubernetes-events#configuration) | No |  | Set a database file to keep track of recorded Kubernetes events |
 | [`db.sync`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/kubernetes-events#configuration) | No | `normal` | Set a database sync method. |
@@ -359,13 +359,13 @@ Fluent Bit page: [Kubernetes Events](https://docs.fluentbit.io/manual/3.2/pipeli
 | [`tls.verify`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/kubernetes-events#configuration) | No | `On` | Enable or disable verification of TLS peer certificate. |
 | [`tls.vhost`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/kubernetes-events#configuration) | No |  | Set optional TLS virtual host. |
 
-<a id="inputs-memory-metrics"></a>
-### `memory-metrics`: Memory Metrics
+<a id="inputs-mem"></a>
+### `mem`: Memory Metrics
 Fluent Bit page: [Memory Metrics](https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router)
 
 | Attribute | Mandatory | Default | Description |
 | --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router) | Yes | `memory-metrics` | Plugin identifier. |
+| [`name`](https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router) | Yes | `mem` | Plugin identifier. |
 | [`tag`](https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router) | Yes |  | Tag assigned to records emitted by this input plugin. |
 | [`processors`](https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router) | No |  |  |
 
@@ -383,13 +383,13 @@ Fluent Bit page: [MQTT](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/mqt
 | [`processors`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/mqtt#configuration-parameters) | No |  |  |
 | [`threaded`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/mqtt#configuration-parameters) | No | `false` | Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs). |
 
-<a id="inputs-network-io-metrics"></a>
-### `network-io-metrics`: Network I/O Log Based Metrics
+<a id="inputs-netif"></a>
+### `netif`: Network I/O Log Based Metrics
 Fluent Bit page: [Network I/O Log Based Metrics](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/network-io-metrics#configuration-parameters)
 
 | Attribute | Mandatory | Default | Description |
 | --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/network-io-metrics#configuration-parameters) | Yes | `network-io-metrics` | Plugin identifier. |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/network-io-metrics#configuration-parameters) | Yes | `netif` | Plugin identifier. |
 | [`tag`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/network-io-metrics#configuration-parameters) | Yes |  | Tag assigned to records emitted by this input plugin. |
 | [`interface`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/network-io-metrics#configuration-parameters) | No |  | Specify the network interface to monitor. |
 | [`interval_nsec`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/network-io-metrics#configuration-parameters) | No | `0` | Polling interval (nanosecond). |
@@ -399,13 +399,13 @@ Fluent Bit page: [Network I/O Log Based Metrics](https://docs.fluentbit.io/manua
 | [`threaded`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/network-io-metrics#configuration-parameters) | No | `false` | Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs). |
 | [`verbose`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/network-io-metrics#configuration-parameters) | No | `false` | If true, gather metrics precisely. |
 
-<a id="inputs-nginx"></a>
-### `nginx`: NGINX Exporter Metrics
+<a id="inputs-nginx-metrics"></a>
+### `nginx_metrics`: NGINX Exporter Metrics
 Fluent Bit page: [NGINX Exporter Metrics](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/nginx#configuration-parameters)
 
 | Attribute | Mandatory | Default | Description |
 | --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/nginx#configuration-parameters) | Yes | `nginx` | Plugin identifier. |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/nginx#configuration-parameters) | Yes | `nginx_metrics` | Plugin identifier. |
 | [`tag`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/nginx#configuration-parameters) | Yes |  | Tag assigned to records emitted by this input plugin. |
 | [`host`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/nginx#configuration-parameters) | No | `localhost` | Name of the target host or IP address to check. |
 | [`nginx_plus`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/nginx#configuration-parameters) | No | `true` | Turn on NGINX plus mode. |
@@ -415,12 +415,12 @@ Fluent Bit page: [NGINX Exporter Metrics](https://docs.fluentbit.io/manual/3.2/p
 | [`threaded`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/nginx#configuration-parameters) | No | `false` | Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs). |
 
 <a id="inputs-node-exporter-metrics"></a>
-### `node-exporter-metrics`: Node Exporter Metrics
+### `node_exporter_metrics`: Node Exporter Metrics
 Fluent Bit page: [Node Exporter Metrics](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration)
 
 | Attribute | Mandatory | Default | Description |
 | --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration) | Yes | `node-exporter-metrics` | Plugin identifier. |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration) | Yes | `node_exporter_metrics` | Plugin identifier. |
 | [`tag`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration) | Yes |  | Tag assigned to records emitted by this input plugin. |
 | [`collector.cpu.scrape_interval`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration) | No | `0 seconds` | The rate in seconds at which cpu metrics are collected from the host operating system. |
 | [`collector.cpufreq.scrape_interval`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/node-exporter-metrics#configuration) | No | `0 seconds` | The rate in seconds at which cpufreq metrics are collected from the host operating system. |
@@ -470,12 +470,12 @@ Fluent Bit page: [OpenTelemetry](https://docs.fluentbit.io/manual/3.2/pipeline/i
 | [`threaded`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/opentelemetry#configuration-a-hrefconfiguration-idconfigurationa) | No | `false` | Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs). |
 
 <a id="inputs-podman-metrics"></a>
-### `podman-metrics`: Podman Metrics
+### `podman_metrics`: Podman Metrics
 Fluent Bit page: [Podman Metrics](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/podman-metrics#configuration-parameters)
 
 | Attribute | Mandatory | Default | Description |
 | --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/podman-metrics#configuration-parameters) | Yes | `podman-metrics` | Plugin identifier. |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/podman-metrics#configuration-parameters) | Yes | `podman_metrics` | Plugin identifier. |
 | [`tag`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/podman-metrics#configuration-parameters) | Yes |  | Tag assigned to records emitted by this input plugin. |
 | [`path.config`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/podman-metrics#configuration-parameters) | No | `/var/lib/containers/storage/overlay-containers/containers.json` | Custom path to podman containers configuration file |
 | [`path.procfs`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/podman-metrics#configuration-parameters) | No | `/proc` | Custom path to proc subsystem directory |
@@ -485,13 +485,13 @@ Fluent Bit page: [Podman Metrics](https://docs.fluentbit.io/manual/3.2/pipeline/
 | [`scrape_on_start`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/podman-metrics#configuration-parameters) | No | `false` | Should this plugin scrape podman data after it is started |
 | [`threaded`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/podman-metrics#configuration-parameters) | No | `false` | Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs). |
 
-<a id="inputs-process"></a>
-### `process`: Process Log Based Metrics
+<a id="inputs-proc"></a>
+### `proc`: Process Log Based Metrics
 Fluent Bit page: [Process Log Based Metrics](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/process#configuration-parameters)
 
 | Attribute | Mandatory | Default | Description |
 | --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/process#configuration-parameters) | Yes | `process` | Plugin identifier. |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/process#configuration-parameters) | Yes | `proc` | Plugin identifier. |
 | [`tag`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/process#configuration-parameters) | Yes |  | Tag assigned to records emitted by this input plugin. |
 | [`alert`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/process#configuration-parameters) | No |  | If enabled, it will only generate messages if the target process is down. |
 | [`fd`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/process#configuration-parameters) | No |  | If enabled, a number of fd is appended to each records. |
@@ -503,12 +503,12 @@ Fluent Bit page: [Process Log Based Metrics](https://docs.fluentbit.io/manual/3.
 | [`threaded`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/process#configuration-parameters) | No |  | Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs). |
 
 <a id="inputs-process-exporter-metrics"></a>
-### `process-exporter-metrics`: Process Exporter Metrics
+### `process_exporter_metrics`: Process Exporter Metrics
 Fluent Bit page: [Process Exporter Metrics](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/process-exporter-metrics#configuration)
 
 | Attribute | Mandatory | Default | Description |
 | --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/process-exporter-metrics#configuration) | Yes | `process-exporter-metrics` | Plugin identifier. |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/process-exporter-metrics#configuration) | Yes | `process_exporter_metrics` | Plugin identifier. |
 | [`tag`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/process-exporter-metrics#configuration) | Yes |  | Tag assigned to records emitted by this input plugin. |
 | [`metrics`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/process-exporter-metrics#configuration) | No | `cpu, io, memory, state, context_switches, fd, start_time, thread_wchan, thread` | To specify which process level of metrics are collected from the host operating system. |
 | [`path.procfs`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/process-exporter-metrics#configuration) | No | `/proc/` | The mount point used to collect process information and metrics. |
@@ -518,12 +518,12 @@ Fluent Bit page: [Process Exporter Metrics](https://docs.fluentbit.io/manual/3.2
 | [`scrape_interval`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/process-exporter-metrics#configuration) | No | `5 seconds` | The rate at which metrics are collected. |
 
 <a id="inputs-prometheus-remote-write"></a>
-### `prometheus-remote-write`: Prometheus Remote Write
+### `prometheus_remote_write`: Prometheus Remote Write
 Fluent Bit page: [Prometheus Remote Write](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/prometheus-remote-write#configuration)
 
 | Attribute | Mandatory | Default | Description |
 | --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/prometheus-remote-write#configuration) | Yes | `prometheus-remote-write` | Plugin identifier. |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/prometheus-remote-write#configuration) | Yes | `prometheus_remote_write` | Plugin identifier. |
 | [`tag`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/prometheus-remote-write#configuration) | Yes |  | Tag assigned to records emitted by this input plugin. |
 | [`tag_from_uri`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/prometheus-remote-write#configuration) | Yes | `true` | If true, tag will be created from uri, e.g. |
 | [`buffer_chunk_size`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/prometheus-remote-write#configuration) | No | `512K` | This sets the chunk size for incoming incoming JSON messages. |
@@ -535,13 +535,13 @@ Fluent Bit page: [Prometheus Remote Write](https://docs.fluentbit.io/manual/3.2/
 | [`threaded`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/prometheus-remote-write#configuration) | No | `false` | Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs). |
 | [`uri`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/prometheus-remote-write#configuration) | No |  | Specify an optional HTTP URI for the target web server listening for prometheus remote write payloads, e.g: /api/prom/push |
 
-<a id="inputs-prometheus-scrape-metrics"></a>
-### `prometheus-scrape-metrics`: Prometheus Scrape Metrics
+<a id="inputs-prometheus-scrape"></a>
+### `prometheus_scrape`: Prometheus Scrape Metrics
 Fluent Bit page: [Prometheus Scrape Metrics](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/prometheus-scrape-metrics#configuration-a-hrefconfiguration-idconfigurationa)
 
 | Attribute | Mandatory | Default | Description |
 | --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/prometheus-scrape-metrics#configuration-a-hrefconfiguration-idconfigurationa) | Yes | `prometheus-scrape-metrics` | Plugin identifier. |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/prometheus-scrape-metrics#configuration-a-hrefconfiguration-idconfigurationa) | Yes | `prometheus_scrape` | Plugin identifier. |
 | [`metrics_path`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/prometheus-scrape-metrics#configuration-a-hrefconfiguration-idconfigurationa) | Yes | `/metrics` | <p>The metrics URI endpoint, that must start with a forward slash.<br><br>Note: Parameters can also be added to the path by using <code>?</code></p> |
 | [`tag`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/prometheus-scrape-metrics#configuration-a-hrefconfiguration-idconfigurationa) | Yes |  | Tag assigned to records emitted by this input plugin. |
 | [`host`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/prometheus-scrape-metrics#configuration-a-hrefconfiguration-idconfigurationa) | No |  | The host of the prometheus metric endpoint that you want to scrape |
@@ -564,13 +564,13 @@ Fluent Bit page: [Random](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/r
 | [`samples`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/random#configuration-parameters) | No |  | If set, it will only generate a specific number of samples. |
 | [`threaded`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/random#configuration-parameters) | No |  | Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs). |
 
-<a id="inputs-serial-interface"></a>
-### `serial-interface`: Serial Interface
+<a id="inputs-serial"></a>
+### `serial`: Serial Interface
 Fluent Bit page: [Serial Interface](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/serial-interface#configuration-parameters)
 
 | Attribute | Mandatory | Default | Description |
 | --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/serial-interface#configuration-parameters) | Yes | `serial-interface` | Plugin identifier. |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/serial-interface#configuration-parameters) | Yes | `serial` | Plugin identifier. |
 | [`tag`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/serial-interface#configuration-parameters) | Yes |  | Tag assigned to records emitted by this input plugin. |
 | [`bitrate`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/serial-interface#configuration-parameters) | No |  | The bitrate for the communication, e.g: 9600, 38400, 115200, etc |
 | [`file`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/serial-interface#configuration-parameters) | No |  | Absolute path to the device entry, e.g: /dev/ttyS0 |
@@ -600,19 +600,6 @@ Fluent Bit page: [Splunk](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/s
 | [`tag_key`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/splunk#configuration-parameters) | No |  | Specify the key name to overwrite a tag. |
 | [`threaded`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/splunk#configuration-parameters) | No | `false` | Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs). |
 
-<a id="inputs-standard-input"></a>
-### `standard-input`: Standard Input
-Fluent Bit page: [Standard Input](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/standard-input#configuration-parameters-a-hrefconfig-idconfiga)
-
-| Attribute | Mandatory | Default | Description |
-| --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/standard-input#configuration-parameters-a-hrefconfig-idconfiga) | Yes | `standard-input` | Plugin identifier. |
-| [`buffer_size`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/standard-input#configuration-parameters-a-hrefconfig-idconfiga) | Yes | `16k` | Set the buffer size to read data. |
-| [`tag`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/standard-input#configuration-parameters-a-hrefconfig-idconfiga) | Yes |  | Tag assigned to records emitted by this input plugin. |
-| [`parser`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/standard-input#configuration-parameters-a-hrefconfig-idconfiga) | No |  | The name of the parser to invoke instead of the default JSON input parser |
-| [`processors`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/standard-input#configuration-parameters-a-hrefconfig-idconfiga) | No |  |  |
-| [`threaded`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/standard-input#configuration-parameters-a-hrefconfig-idconfiga) | No | `false` | Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs). |
-
 <a id="inputs-statsd"></a>
 ### `statsd`: StatsD
 Fluent Bit page: [StatsD](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/statsd#configuration-parameters-a-hrefconfig-idconfiga)
@@ -626,6 +613,19 @@ Fluent Bit page: [StatsD](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/s
 | [`port`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/statsd#configuration-parameters-a-hrefconfig-idconfiga) | No | `8125` | UDP port where listening for connections |
 | [`processors`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/statsd#configuration-parameters-a-hrefconfig-idconfiga) | No |  |  |
 | [`threaded`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/statsd#configuration-parameters-a-hrefconfig-idconfiga) | No | `false` | Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs). |
+
+<a id="inputs-stdin"></a>
+### `stdin`: Standard Input
+Fluent Bit page: [Standard Input](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/standard-input#configuration-parameters-a-hrefconfig-idconfiga)
+
+| Attribute | Mandatory | Default | Description |
+| --- | --- | --- | --- |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/standard-input#configuration-parameters-a-hrefconfig-idconfiga) | Yes | `stdin` | Plugin identifier. |
+| [`buffer_size`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/standard-input#configuration-parameters-a-hrefconfig-idconfiga) | Yes | `16k` | Set the buffer size to read data. |
+| [`tag`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/standard-input#configuration-parameters-a-hrefconfig-idconfiga) | Yes |  | Tag assigned to records emitted by this input plugin. |
+| [`parser`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/standard-input#configuration-parameters-a-hrefconfig-idconfiga) | No |  | The name of the parser to invoke instead of the default JSON input parser |
+| [`processors`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/standard-input#configuration-parameters-a-hrefconfig-idconfiga) | No |  |  |
+| [`threaded`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/standard-input#configuration-parameters-a-hrefconfig-idconfiga) | No | `false` | Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs). |
 
 <a id="inputs-syslog"></a>
 ### `syslog`: Syslog
@@ -756,49 +756,13 @@ Fluent Bit page: [UDP](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/udp#
 | [`source_address_key`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/udp#configuration-parameters) | No |  | Specify the key where the source address will be injected. |
 | [`threaded`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/udp#configuration-parameters) | No | `false` | Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs). |
 
-<a id="inputs-windows-event-log"></a>
-### `windows-event-log`: Windows Event Log
-Fluent Bit page: [Windows Event Log](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log#configuration-parameters-a-hrefconfig-idconfiga)
-
-| Attribute | Mandatory | Default | Description |
-| --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log#configuration-parameters-a-hrefconfig-idconfiga) | Yes | `windows-event-log` | Plugin identifier. |
-| [`tag`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log#configuration-parameters-a-hrefconfig-idconfiga) | Yes |  | Tag assigned to records emitted by this input plugin. |
-| [`channels`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log#configuration-parameters-a-hrefconfig-idconfiga) | No |  | A comma-separated list of channels to read from. |
-| [`db`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log#configuration-parameters-a-hrefconfig-idconfiga) | No |  | Set the path to save the read offsets. |
-| [`interval_sec`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log#configuration-parameters-a-hrefconfig-idconfiga) | No | `1` | Set the polling interval for each channel. |
-| [`processors`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log#configuration-parameters-a-hrefconfig-idconfiga) | No |  |  |
-| [`threaded`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log#configuration-parameters-a-hrefconfig-idconfiga) | No | `false` | Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs). |
-
-<a id="inputs-windows-event-log-winevtlog"></a>
-### `windows-event-log-winevtlog`: Windows Event Log (winevtlog)
-Fluent Bit page: [Windows Event Log (winevtlog)](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga)
-
-| Attribute | Mandatory | Default | Description |
-| --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga) | Yes | `windows-event-log-winevtlog` | Plugin identifier. |
-| [`tag`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga) | Yes |  | Tag assigned to records emitted by this input plugin. |
-| [`channels`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga) | No |  | A comma-separated list of channels to read from. |
-| [`db`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga) | No |  | Set the path to save the read offsets. |
-| [`event_query`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga) | No | `*` | Specify XML query for filtering events. |
-| [`ignore_missing_channels`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga) | No | `false` | Whether to ignore event channels not present in the event log, and continue running with subscribed channels. |
-| [`interval_nsec`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga) | No | `0` | Set the polling interval for each channel (sub seconds. |
-| [`interval_sec`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga) | No | `1` | Set the polling interval for each channel. |
-| [`processors`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga) | No |  |  |
-| [`read_existing_events`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga) | No | `false` | Whether to read existing events from head or tailing events at last on subscribing. |
-| [`read_limit_per_cycle`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga) | No | `512KiB` | Specify read limit per cycle. |
-| [`render_event_as_xml`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga) | No | `false` | Whether to render system part of event as XML string or not. |
-| [`string_inserts`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga) | No | `true` | Whether to include StringInserts in output records. |
-| [`threaded`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga) | No | `false` | Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs). |
-| [`use_ansi`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga) | No | `false` | Use ANSI encoding on eventlog messages. |
-
 <a id="inputs-windows-exporter-metrics"></a>
-### `windows-exporter-metrics`: Windows Exporter Metrics
+### `windows_exporter_metrics`: Windows Exporter Metrics
 Fluent Bit page: [Windows Exporter Metrics](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration)
 
 | Attribute | Mandatory | Default | Description |
 | --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration) | Yes | `windows-exporter-metrics` | Plugin identifier. |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration) | Yes | `windows_exporter_metrics` | Plugin identifier. |
 | [`tag`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration) | Yes |  | Tag assigned to records emitted by this input plugin. |
 | [`collector.cpu.scrape_interval`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration) | No | `0 seconds` | The rate in seconds at which cpu metrics are collected from the host operating system. |
 | [`collector.cpu_info.scrape_interval`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration) | No | `0 seconds` | The rate in seconds at which cpu_info metrics are collected from the host operating system. |
@@ -825,17 +789,53 @@ Fluent Bit page: [Windows Exporter Metrics](https://docs.fluentbit.io/manual/3.2
 | [`we.service.include`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration) | No | `NULL` | Specify the key value pairs for the include condition for the WHERE clause of service metrics. |
 | [`we.service.where`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-exporter-metrics#configuration) | No | `NULL` | Specify the WHERE clause for retrieving service metrics. |
 
+<a id="inputs-winevtlog"></a>
+### `winevtlog`: Windows Event Log (winevtlog)
+Fluent Bit page: [Windows Event Log (winevtlog)](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga)
+
+| Attribute | Mandatory | Default | Description |
+| --- | --- | --- | --- |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga) | Yes | `winevtlog` | Plugin identifier. |
+| [`tag`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga) | Yes |  | Tag assigned to records emitted by this input plugin. |
+| [`channels`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga) | No |  | A comma-separated list of channels to read from. |
+| [`db`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga) | No |  | Set the path to save the read offsets. |
+| [`event_query`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga) | No | `*` | Specify XML query for filtering events. |
+| [`ignore_missing_channels`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga) | No | `false` | Whether to ignore event channels not present in the event log, and continue running with subscribed channels. |
+| [`interval_nsec`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga) | No | `0` | Set the polling interval for each channel (sub seconds. |
+| [`interval_sec`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga) | No | `1` | Set the polling interval for each channel. |
+| [`processors`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga) | No |  |  |
+| [`read_existing_events`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga) | No | `false` | Whether to read existing events from head or tailing events at last on subscribing. |
+| [`read_limit_per_cycle`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga) | No | `512KiB` | Specify read limit per cycle. |
+| [`render_event_as_xml`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga) | No | `false` | Whether to render system part of event as XML string or not. |
+| [`string_inserts`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga) | No | `true` | Whether to include StringInserts in output records. |
+| [`threaded`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga) | No | `false` | Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs). |
+| [`use_ansi`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log-winevtlog#configuration-parameters-a-hrefconfig-idconfiga) | No | `false` | Use ANSI encoding on eventlog messages. |
+
+<a id="inputs-winlog"></a>
+### `winlog`: Windows Event Log
+Fluent Bit page: [Windows Event Log](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log#configuration-parameters-a-hrefconfig-idconfiga)
+
+| Attribute | Mandatory | Default | Description |
+| --- | --- | --- | --- |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log#configuration-parameters-a-hrefconfig-idconfiga) | Yes | `winlog` | Plugin identifier. |
+| [`tag`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log#configuration-parameters-a-hrefconfig-idconfiga) | Yes |  | Tag assigned to records emitted by this input plugin. |
+| [`channels`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log#configuration-parameters-a-hrefconfig-idconfiga) | No |  | A comma-separated list of channels to read from. |
+| [`db`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log#configuration-parameters-a-hrefconfig-idconfiga) | No |  | Set the path to save the read offsets. |
+| [`interval_sec`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log#configuration-parameters-a-hrefconfig-idconfiga) | No | `1` | Set the polling interval for each channel. |
+| [`processors`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log#configuration-parameters-a-hrefconfig-idconfiga) | No |  |  |
+| [`threaded`](https://docs.fluentbit.io/manual/3.2/pipeline/inputs/windows-event-log#configuration-parameters-a-hrefconfig-idconfiga) | No | `false` | Indicates whether to run this input in its own [thread](/manual/3.2/administration/multithreading.md#inputs). |
+
 ## Filters
 
-[`aws-metadata`](#filters-aws-metadata), [`checklist`](#filters-checklist), [`ecs-metadata`](#filters-ecs-metadata), [`expect`](#filters-expect), [`geoip2-filter`](#filters-geoip2-filter), [`grep`](#filters-grep), [`kubernetes`](#filters-kubernetes), [`log_to_metrics`](#filters-log-to-metrics), [`lua`](#filters-lua), [`modify`](#filters-modify), [`multiline-stacktrace`](#filters-multiline-stacktrace), [`nest`](#filters-nest), [`nightfall`](#filters-nightfall), [`parser`](#filters-parser), [`record-modifier`](#filters-record-modifier), [`rewrite-tag`](#filters-rewrite-tag), [`standard-output`](#filters-standard-output), [`sysinfo`](#filters-sysinfo), [`tensorflow`](#filters-tensorflow), [`throttle`](#filters-throttle), [`type-converter`](#filters-type-converter), [`wasm`](#filters-wasm)
+[`aws`](#filters-aws), [`checklist`](#filters-checklist), [`ecs`](#filters-ecs), [`expect`](#filters-expect), [`geoip2`](#filters-geoip2), [`grep`](#filters-grep), [`kubernetes`](#filters-kubernetes), [`log_to_metrics`](#filters-log-to-metrics), [`lua`](#filters-lua), [`modify`](#filters-modify), [`multiline`](#filters-multiline), [`nest`](#filters-nest), [`nightfall`](#filters-nightfall), [`parser`](#filters-parser), [`record_modifier`](#filters-record-modifier), [`rewrite_tag`](#filters-rewrite-tag), [`stdout`](#filters-stdout), [`sysinfo`](#filters-sysinfo), [`tensorflow`](#filters-tensorflow), [`throttle`](#filters-throttle), [`type_converter`](#filters-type-converter), [`wasm`](#filters-wasm)
 
-<a id="filters-aws-metadata"></a>
-### `aws-metadata`: AWS Metadata
+<a id="filters-aws"></a>
+### `aws`: AWS Metadata
 Fluent Bit page: [AWS Metadata](https://docs.fluentbit.io/manual/3.2/pipeline/filters/aws-metadata#configuration-parameters)
 
 | Attribute | Mandatory | Default | Description |
 | --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/aws-metadata#configuration-parameters) | Yes | `aws-metadata` | Plugin identifier. |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/aws-metadata#configuration-parameters) | Yes | `aws` | Plugin identifier. |
 | [`tags_enabled`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/aws-metadata#configuration-parameters) | Yes | `false` | Specifies if should attach EC2 instance tags. |
 | [`tags_exclude`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/aws-metadata#configuration-parameters) | Yes |  | Defines list of specific EC2 tag keys not to inject into the logs. |
 | [`tags_include`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/aws-metadata#configuration-parameters) | Yes |  | Defines list of specific EC2 tag keys to inject into the logs. |
@@ -868,13 +868,13 @@ Fluent Bit page: [CheckList](https://docs.fluentbit.io/manual/3.2/pipeline/filte
 | [`print_query_time`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/checklist#configuration-parameters) | No |  | Print to stdout the elapseed query time for every matched record. |
 | [`record`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/checklist#configuration-parameters) | No |  | The record to add if the lookup_key is found in the specified file. |
 
-<a id="filters-ecs-metadata"></a>
-### `ecs-metadata`: ECS Metadata
+<a id="filters-ecs"></a>
+### `ecs`: ECS Metadata
 Fluent Bit page: [ECS Metadata](https://docs.fluentbit.io/manual/3.2/pipeline/filters/ecs-metadata#configuration-parameters)
 
 | Attribute | Mandatory | Default | Description |
 | --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/ecs-metadata#configuration-parameters) | Yes | `ecs-metadata` | Plugin identifier. |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/ecs-metadata#configuration-parameters) | Yes | `ecs` | Plugin identifier. |
 | [`ecs_tag_prefix`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/ecs-metadata#configuration-parameters) | Yes | `emptry string` | This parameter is similar to the Kube_Tag_Prefix option in the [Kubernetes filter](https://docs.fluentbit.io/manual/pipeline/filters/kubernetes) and performs the same function. |
 | [`add`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/ecs-metadata#configuration-parameters) | No | `No default` | This parameter is similar to the ADD option in the [modify filter](https://docs.fluentbit.io/manual/pipeline/filters/modify). |
 | [`cluster_metadata_only`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/ecs-metadata#configuration-parameters) | No | `Off` | When enabled, the plugin will only attempt to attach cluster metadata values. |
@@ -899,13 +899,13 @@ Fluent Bit page: [Expect](https://docs.fluentbit.io/manual/3.2/pipeline/filters/
 | [`match_regex`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/expect#configuration-parameters) | No |  | Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set. |
 | [`result_key`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/expect#configuration-parameters) | No |  | specify a key name of matching result. |
 
-<a id="filters-geoip2-filter"></a>
-### `geoip2-filter`: GeoIP2 Filter
+<a id="filters-geoip2"></a>
+### `geoip2`: GeoIP2 Filter
 Fluent Bit page: [GeoIP2 Filter](https://docs.fluentbit.io/manual/3.2/pipeline/filters/geoip2-filter#configuration-parameters-a-hrefconfig-idconfiga)
 
 | Attribute | Mandatory | Default | Description |
 | --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/geoip2-filter#configuration-parameters-a-hrefconfig-idconfiga) | Yes | `geoip2-filter` | Plugin identifier. |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/geoip2-filter#configuration-parameters-a-hrefconfig-idconfiga) | Yes | `geoip2` | Plugin identifier. |
 | [`database`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/geoip2-filter#configuration-parameters-a-hrefconfig-idconfiga) | No |  | Path to the GeoIP2 database. |
 | [`lookup_key`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/geoip2-filter#configuration-parameters-a-hrefconfig-idconfiga) | No |  | Field name to process |
 | [`match`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/geoip2-filter#configuration-parameters-a-hrefconfig-idconfiga) | No |  | Tag match pattern used to route records to this plugin. Supports '*' wildcard matching. |
@@ -1034,13 +1034,13 @@ Fluent Bit page: [Modify](https://docs.fluentbit.io/manual/3.2/pipeline/filters/
 | [`rename`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/modify#configuration-parameters) | No |  | Rename a key/value pair with key KEY to RENAMED_KEY if KEY exists AND RENAMED_KEY does not exist |
 | [`set`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/modify#configuration-parameters) | No |  | Add a key/value pair with key KEY and value VALUE. |
 
-<a id="filters-multiline-stacktrace"></a>
-### `multiline-stacktrace`: Multiline
+<a id="filters-multiline"></a>
+### `multiline`: Multiline
 Fluent Bit page: [Multiline](https://docs.fluentbit.io/manual/3.2/pipeline/filters/multiline-stacktrace#configuration-parameters)
 
 | Attribute | Mandatory | Default | Description |
 | --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/multiline-stacktrace#configuration-parameters) | Yes | `multiline-stacktrace` | Plugin identifier. |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/multiline-stacktrace#configuration-parameters) | Yes | `multiline` | Plugin identifier. |
 | [`buffer`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/multiline-stacktrace#configuration-parameters) | No |  | Enable buffered mode. |
 | [`emitter_mem_buf_limit`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/multiline-stacktrace#configuration-parameters) | No |  | Set a limit on the amount of memory the emitter can consume if the outputs provide backpressure. |
 | [`emitter_name`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/multiline-stacktrace#configuration-parameters) | No |  | Name for the emitter input instance which re-emits the completed records at the beginning of the pipeline. |
@@ -1099,12 +1099,12 @@ Fluent Bit page: [Parser](https://docs.fluentbit.io/manual/3.2/pipeline/filters/
 | [`reserve_data`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/parser#configuration-parameters) | No | `false` | Keep all other original fields in the parsed result. |
 
 <a id="filters-record-modifier"></a>
-### `record-modifier`: Record Modifier
+### `record_modifier`: Record Modifier
 Fluent Bit page: [Record Modifier](https://docs.fluentbit.io/manual/3.2/pipeline/filters/record-modifier#configuration-parameters)
 
 | Attribute | Mandatory | Default | Description |
 | --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/record-modifier#configuration-parameters) | Yes | `record-modifier` | Plugin identifier. |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/record-modifier#configuration-parameters) | Yes | `record_modifier` | Plugin identifier. |
 | [`allowlist_key`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/record-modifier#configuration-parameters) | No |  | If the key isn't matched, that field is removed. |
 | [`match`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/record-modifier#configuration-parameters) | No |  | Tag match pattern used to route records to this plugin. Supports '*' wildcard matching. |
 | [`match_regex`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/record-modifier#configuration-parameters) | No |  | Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set. |
@@ -1114,12 +1114,12 @@ Fluent Bit page: [Record Modifier](https://docs.fluentbit.io/manual/3.2/pipeline
 | [`whitelist_key`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/record-modifier#configuration-parameters) | No |  | An alias of Allowlist_key for backwards compatibility. |
 
 <a id="filters-rewrite-tag"></a>
-### `rewrite-tag`: Rewrite Tag
+### `rewrite_tag`: Rewrite Tag
 Fluent Bit page: [Rewrite Tag](https://docs.fluentbit.io/manual/3.2/pipeline/filters/rewrite-tag#configuration-parameters)
 
 | Attribute | Mandatory | Default | Description |
 | --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/rewrite-tag#configuration-parameters) | Yes | `rewrite-tag` | Plugin identifier. |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/rewrite-tag#configuration-parameters) | Yes | `rewrite_tag` | Plugin identifier. |
 | [`emitter_mem_buf_limit`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/rewrite-tag#configuration-parameters) | No |  | Set a limit on the amount of memory the tag rewrite emitter can consume if the outputs provide backpressure. |
 | [`emitter_name`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/rewrite-tag#configuration-parameters) | No |  | When the filter emits a record under the new Tag, there is an internal emitter plugin that takes care of the job. |
 | [`emitter_storage.type`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/rewrite-tag#configuration-parameters) | No |  | Define a buffering mechanism for the new records created. |
@@ -1127,13 +1127,13 @@ Fluent Bit page: [Rewrite Tag](https://docs.fluentbit.io/manual/3.2/pipeline/fil
 | [`match_regex`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/rewrite-tag#configuration-parameters) | No |  | Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set. |
 | [`rule`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/rewrite-tag#configuration-parameters) | No |  | Defines the matching criteria and the format of the Tag for the matching record. |
 
-<a id="filters-standard-output"></a>
-### `standard-output`: Standard Output
+<a id="filters-stdout"></a>
+### `stdout`: Standard Output
 Fluent Bit page: [Standard Output](https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router)
 
 | Attribute | Mandatory | Default | Description |
 | --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router) | Yes | `standard-output` | Plugin identifier. |
+| [`name`](https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router) | Yes | `stdout` | Plugin identifier. |
 | [`match`](https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router) | No |  | Tag match pattern used to route records to this plugin. Supports '*' wildcard matching. |
 | [`match_regex`](https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router) | No |  | Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set. |
 
@@ -1181,12 +1181,12 @@ Fluent Bit page: [Throttle](https://docs.fluentbit.io/manual/3.2/pipeline/filter
 | [`window`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/throttle#configuration-parameters) | No |  | Amount of intervals to calculate average over. |
 
 <a id="filters-type-converter"></a>
-### `type-converter`: Type Converter
+### `type_converter`: Type Converter
 Fluent Bit page: [Type Converter](https://docs.fluentbit.io/manual/3.2/pipeline/filters/type-converter#configuration-parameters)
 
 | Attribute | Mandatory | Default | Description |
 | --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/type-converter#configuration-parameters) | Yes | `type-converter` | Plugin identifier. |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/type-converter#configuration-parameters) | Yes | `type_converter` | Plugin identifier. |
 | [`float_key`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/type-converter#configuration-parameters) | No |  | This parameter is for float source. |
 | [`int_key`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/type-converter#configuration-parameters) | No |  | This parameter is for integer source. |
 | [`match`](https://docs.fluentbit.io/manual/3.2/pipeline/filters/type-converter#configuration-parameters) | No |  | Tag match pattern used to route records to this plugin. Supports '*' wildcard matching. |
@@ -1212,7 +1212,7 @@ Fluent Bit page: [Wasm](https://docs.fluentbit.io/manual/3.2/pipeline/filters/wa
 
 ## Outputs
 
-[`azure`](#outputs-azure), [`azure_blob`](#outputs-azure-blob), [`azure_kusto`](#outputs-azure-kusto), [`azure_logs_ingestion`](#outputs-azure-logs-ingestion), [`bigquery`](#outputs-bigquery), [`chronicle`](#outputs-chronicle), [`cloudwatch`](#outputs-cloudwatch), [`counter`](#outputs-counter), [`dash0`](#outputs-dash0), [`datadog`](#outputs-datadog), [`dynatrace`](#outputs-dynatrace), [`elasticsearch`](#outputs-elasticsearch), [`file`](#outputs-file), [`firehose`](#outputs-firehose), [`flowcounter`](#outputs-flowcounter), [`forward`](#outputs-forward), [`gelf`](#outputs-gelf), [`http`](#outputs-http), [`influxdb`](#outputs-influxdb), [`kafka`](#outputs-kafka), [`kafka-rest-proxy`](#outputs-kafka-rest-proxy), [`kinesis`](#outputs-kinesis), [`logdna`](#outputs-logdna), [`loki`](#outputs-loki), [`nats`](#outputs-nats), [`new-relic`](#outputs-new-relic), [`null`](#outputs-null), [`observe`](#outputs-observe), [`oci-logging-analytics`](#outputs-oci-logging-analytics), [`openobserve`](#outputs-openobserve), [`opensearch`](#outputs-opensearch), [`opentelemetry`](#outputs-opentelemetry), [`postgresql`](#outputs-postgresql), [`prometheus-exporter`](#outputs-prometheus-exporter), [`prometheus-remote-write`](#outputs-prometheus-remote-write), [`s3`](#outputs-s3), [`skywalking`](#outputs-skywalking), [`slack`](#outputs-slack), [`splunk`](#outputs-splunk), [`stackdriver`](#outputs-stackdriver), [`standard-output`](#outputs-standard-output), [`syslog`](#outputs-syslog), [`tcp-and-tls`](#outputs-tcp-and-tls), [`treasure-data`](#outputs-treasure-data), [`vivo-exporter`](#outputs-vivo-exporter), [`websocket`](#outputs-websocket)
+[`azure`](#outputs-azure), [`azure_blob`](#outputs-azure-blob), [`azure_kusto`](#outputs-azure-kusto), [`azure_logs_ingestion`](#outputs-azure-logs-ingestion), [`bigquery`](#outputs-bigquery), [`chronicle`](#outputs-chronicle), [`cloudwatch_logs`](#outputs-cloudwatch-logs), [`counter`](#outputs-counter), [`dash0`](#outputs-dash0), [`datadog`](#outputs-datadog), [`dynatrace`](#outputs-dynatrace), [`es`](#outputs-es), [`file`](#outputs-file), [`flowcounter`](#outputs-flowcounter), [`forward`](#outputs-forward), [`gelf`](#outputs-gelf), [`http`](#outputs-http), [`influxdb`](#outputs-influxdb), [`kafka`](#outputs-kafka), [`kafka-rest`](#outputs-kafka-rest), [`kinesis_firehose`](#outputs-kinesis-firehose), [`kinesis_streams`](#outputs-kinesis-streams), [`logdna`](#outputs-logdna), [`loki`](#outputs-loki), [`nats`](#outputs-nats), [`newrelic`](#outputs-newrelic), [`null`](#outputs-null), [`observe`](#outputs-observe), [`openobserve`](#outputs-openobserve), [`opensearch`](#outputs-opensearch), [`opentelemetry`](#outputs-opentelemetry), [`oracle_log_analytics`](#outputs-oracle-log-analytics), [`pgsql`](#outputs-pgsql), [`prometheus_exporter`](#outputs-prometheus-exporter), [`prometheus_remote_write`](#outputs-prometheus-remote-write), [`s3`](#outputs-s3), [`skywalking`](#outputs-skywalking), [`slack`](#outputs-slack), [`splunk`](#outputs-splunk), [`stackdriver`](#outputs-stackdriver), [`stdout`](#outputs-stdout), [`syslog`](#outputs-syslog), [`tcp`](#outputs-tcp), [`td`](#outputs-td), [`vivo_exporter`](#outputs-vivo-exporter), [`websocket`](#outputs-websocket)
 
 <a id="outputs-azure"></a>
 ### `azure`: Azure Log Analytics
@@ -1347,13 +1347,13 @@ Fluent Bit page: [Google Chronicle](https://docs.fluentbit.io/manual/3.2/pipelin
 | [`service_account_secret`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/chronicle#configurations-parameters) | No | `Value of environment variable *$SERVICE\_ACCOUNT\_SECRET*` | Private key content associated with the service account. |
 | [`workers`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/chronicle#configurations-parameters) | No | `0` | The number of [workers](/manual/3.2/administration/multithreading.md#outputs) to perform flush operations for this output. |
 
-<a id="outputs-cloudwatch"></a>
-### `cloudwatch`: Amazon CloudWatch
+<a id="outputs-cloudwatch-logs"></a>
+### `cloudwatch_logs`: Amazon CloudWatch
 Fluent Bit page: [Amazon CloudWatch](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/cloudwatch#configuration-parameters)
 
 | Attribute | Mandatory | Default | Description |
 | --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/cloudwatch#configuration-parameters) | Yes | `cloudwatch` | Plugin identifier. |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/cloudwatch#configuration-parameters) | Yes | `cloudwatch_logs` | Plugin identifier. |
 | [`log_group_template`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/cloudwatch#configuration-parameters) | Yes |  | Template for Log Group name using Fluent Bit [record_accessor](https://docs.fluentbit.io/manual/administration/configuring-fluent-bit/classic-mode/record-accessor) syntax. |
 | [`log_stream_template`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/cloudwatch#configuration-parameters) | Yes |  | Template for Log Stream name using Fluent Bit [record_accessor](https://docs.fluentbit.io/manual/administration/configuring-fluent-bit/classic-mode/record-accessor) syntax. |
 | [`metric_dimensions`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/cloudwatch#configuration-parameters) | Yes |  | A list of lists containing the dimension keys that will be applied to all metrics. |
@@ -1453,13 +1453,13 @@ Fluent Bit page: [Dynatrace](https://docs.fluentbit.io/manual/3.2/pipeline/outpu
 | [`tls.verify`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/dynatrace#configuration-parameters) | No | `on` | TLS verification. |
 | [`uri`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/dynatrace#configuration-parameters) | No | `/api/v2/logs/ingest` | Specify the HTTP URI for Dynatrace log ingest API. |
 
-<a id="outputs-elasticsearch"></a>
-### `elasticsearch`: Elasticsearch
+<a id="outputs-es"></a>
+### `es`: Elasticsearch
 Fluent Bit page: [Elasticsearch](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/elasticsearch#configuration-parameters)
 
 | Attribute | Mandatory | Default | Description |
 | --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/elasticsearch#configuration-parameters) | Yes | `elasticsearch` | Plugin identifier. |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/elasticsearch#configuration-parameters) | Yes | `es` | Plugin identifier. |
 | [`buffer_size`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/elasticsearch#configuration-parameters) | Yes | `512KB` | Specify the buffer size used to read the response from the Elasticsearch HTTP service. |
 | [`replace_dots`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/elasticsearch#configuration-parameters) | Yes | `Off` | When enabled, replace field name dots with underscore. |
 | [`aws_auth`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/elasticsearch#configuration-parameters) | No | `Off` | Enable AWS Sigv4 Authentication for Amazon OpenSearch Service. |
@@ -1517,30 +1517,6 @@ Fluent Bit page: [File](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/fi
 | [`path`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/file#configuration-parameters) | No |  | Directory path to store files. |
 | [`processors`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/file#configuration-parameters) | No |  |  |
 | [`workers`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/file#configuration-parameters) | No | `1` | The number of [workers](/manual/3.2/administration/multithreading.md#outputs) to perform flush operations for this output. |
-
-<a id="outputs-firehose"></a>
-### `firehose`: Amazon Kinesis Data Firehose
-Fluent Bit page: [Amazon Kinesis Data Firehose](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/firehose#configuration-parameters)
-
-| Attribute | Mandatory | Default | Description |
-| --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/firehose#configuration-parameters) | Yes | `firehose` | Plugin identifier. |
-| [`auto_retry_requests`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/firehose#configuration-parameters) | No |  | Immediately retry failed requests to AWS services once. |
-| [`compression`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/firehose#configuration-parameters) | No |  | Compression type for Firehose records. |
-| [`delivery_stream`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/firehose#configuration-parameters) | No |  | The name of the Kinesis Firehose Delivery stream that you want log records sent to. |
-| [`endpoint`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/firehose#configuration-parameters) | No |  | Specify a custom endpoint for the Firehose API. |
-| [`external_id`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/firehose#configuration-parameters) | No |  | Specify an external ID for the STS API, can be used with the role_arn parameter if your role requires an external ID. |
-| [`log_key`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/firehose#configuration-parameters) | No |  | By default, the whole log record will be sent to Firehose. |
-| [`match`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/firehose#configuration-parameters) | No |  | Tag match pattern used to route records to this plugin. Supports '*' wildcard matching. |
-| [`match_regex`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/firehose#configuration-parameters) | No |  | Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set. |
-| [`processors`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/firehose#configuration-parameters) | No |  |  |
-| [`profile`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/firehose#configuration-parameters) | No |  | AWS profile name to use. |
-| [`region`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/firehose#configuration-parameters) | No |  | The AWS region. |
-| [`role_arn`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/firehose#configuration-parameters) | No |  | ARN of an IAM role to assume (for cross account access). |
-| [`sts_endpoint`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/firehose#configuration-parameters) | No |  | Custom endpoint for the STS API. |
-| [`time_key`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/firehose#configuration-parameters) | No |  | Add the timestamp to the record under this key. |
-| [`time_key_format`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/firehose#configuration-parameters) | No |  | strftime compliant format string for the timestamp; for example, the default is '%Y-%m-%dT%H:%M:%S'. |
-| [`workers`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/firehose#configuration-parameters) | No |  | The number of [workers](/manual/3.2/administration/multithreading.md#outputs) to perform flush operations for this output. |
 
 <a id="outputs-flowcounter"></a>
 ### `flowcounter`: FlowCounter
@@ -1688,13 +1664,13 @@ Fluent Bit page: [Kafka](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/k
 | [`topics`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kafka#configuration-parameters) | No | `fluent-bit` | Single entry or list of topics separated by comma (, ) that Fluent Bit will use to send messages to Kafka. |
 | [`workers`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kafka#configuration-parameters) | No | `0` | The number of [workers](/manual/3.2/administration/multithreading.md#outputs) to perform flush operations for this output. |
 
-<a id="outputs-kafka-rest-proxy"></a>
-### `kafka-rest-proxy`: Kafka REST Proxy
+<a id="outputs-kafka-rest"></a>
+### `kafka-rest`: Kafka REST Proxy
 Fluent Bit page: [Kafka REST Proxy](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kafka-rest-proxy#configuration-parameters)
 
 | Attribute | Mandatory | Default | Description |
 | --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kafka-rest-proxy#configuration-parameters) | Yes | `kafka-rest-proxy` | Plugin identifier. |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kafka-rest-proxy#configuration-parameters) | Yes | `kafka-rest` | Plugin identifier. |
 | [`host`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kafka-rest-proxy#configuration-parameters) | No | `127.0.0.1` | IP address or hostname of the target Kafka REST Proxy server |
 | [`include_tag_key`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kafka-rest-proxy#configuration-parameters) | No | `Off` | Append the Tag name to the final record. |
 | [`match`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kafka-rest-proxy#configuration-parameters) | No |  | Tag match pattern used to route records to this plugin. Supports '*' wildcard matching. |
@@ -1709,13 +1685,37 @@ Fluent Bit page: [Kafka REST Proxy](https://docs.fluentbit.io/manual/3.2/pipelin
 | [`topic`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kafka-rest-proxy#configuration-parameters) | No | `fluent-bit` | Set the Kafka topic |
 | [`workers`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kafka-rest-proxy#configuration-parameters) | No | `0` | The number of [workers](/manual/3.2/administration/multithreading.md#outputs) to perform flush operations for this output. |
 
-<a id="outputs-kinesis"></a>
-### `kinesis`: Amazon Kinesis Data Streams
+<a id="outputs-kinesis-firehose"></a>
+### `kinesis_firehose`: Amazon Kinesis Data Firehose
+Fluent Bit page: [Amazon Kinesis Data Firehose](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/firehose#configuration-parameters)
+
+| Attribute | Mandatory | Default | Description |
+| --- | --- | --- | --- |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/firehose#configuration-parameters) | Yes | `kinesis_firehose` | Plugin identifier. |
+| [`auto_retry_requests`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/firehose#configuration-parameters) | No |  | Immediately retry failed requests to AWS services once. |
+| [`compression`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/firehose#configuration-parameters) | No |  | Compression type for Firehose records. |
+| [`delivery_stream`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/firehose#configuration-parameters) | No |  | The name of the Kinesis Firehose Delivery stream that you want log records sent to. |
+| [`endpoint`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/firehose#configuration-parameters) | No |  | Specify a custom endpoint for the Firehose API. |
+| [`external_id`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/firehose#configuration-parameters) | No |  | Specify an external ID for the STS API, can be used with the role_arn parameter if your role requires an external ID. |
+| [`log_key`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/firehose#configuration-parameters) | No |  | By default, the whole log record will be sent to Firehose. |
+| [`match`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/firehose#configuration-parameters) | No |  | Tag match pattern used to route records to this plugin. Supports '*' wildcard matching. |
+| [`match_regex`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/firehose#configuration-parameters) | No |  | Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set. |
+| [`processors`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/firehose#configuration-parameters) | No |  |  |
+| [`profile`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/firehose#configuration-parameters) | No |  | AWS profile name to use. |
+| [`region`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/firehose#configuration-parameters) | No |  | The AWS region. |
+| [`role_arn`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/firehose#configuration-parameters) | No |  | ARN of an IAM role to assume (for cross account access). |
+| [`sts_endpoint`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/firehose#configuration-parameters) | No |  | Custom endpoint for the STS API. |
+| [`time_key`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/firehose#configuration-parameters) | No |  | Add the timestamp to the record under this key. |
+| [`time_key_format`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/firehose#configuration-parameters) | No |  | strftime compliant format string for the timestamp; for example, the default is '%Y-%m-%dT%H:%M:%S'. |
+| [`workers`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/firehose#configuration-parameters) | No |  | The number of [workers](/manual/3.2/administration/multithreading.md#outputs) to perform flush operations for this output. |
+
+<a id="outputs-kinesis-streams"></a>
+### `kinesis_streams`: Amazon Kinesis Data Streams
 Fluent Bit page: [Amazon Kinesis Data Streams](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kinesis#configuration-parameters)
 
 | Attribute | Mandatory | Default | Description |
 | --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kinesis#configuration-parameters) | Yes | `kinesis` | Plugin identifier. |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kinesis#configuration-parameters) | Yes | `kinesis_streams` | Plugin identifier. |
 | [`auto_retry_requests`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kinesis#configuration-parameters) | No |  | Immediately retry failed requests to AWS services once. |
 | [`endpoint`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kinesis#configuration-parameters) | No |  | Specify a custom endpoint for the Kinesis API. |
 | [`external_id`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/kinesis#configuration-parameters) | No |  | Specify an external ID for the STS API, can be used with the role_arn parameter if your role requires an external ID. |
@@ -1801,13 +1801,13 @@ Fluent Bit page: [NATS](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/na
 | [`processors`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/nats#configuration-parameters) | No |  |  |
 | [`workers`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/nats#configuration-parameters) | No | `0` | The number of [workers](/manual/3.2/administration/multithreading.md#outputs) to perform flush operations for this output. |
 
-<a id="outputs-new-relic"></a>
-### `new-relic`: New Relic
+<a id="outputs-newrelic"></a>
+### `newrelic`: New Relic
 Fluent Bit page: [New Relic](https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router)
 
 | Attribute | Mandatory | Default | Description |
 | --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router) | Yes | `new-relic` | Plugin identifier. |
+| [`name`](https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router) | Yes | `newrelic` | Plugin identifier. |
 | [`match`](https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router) | No |  | Tag match pattern used to route records to this plugin. Supports '*' wildcard matching. |
 | [`match_regex`](https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router) | No |  | Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set. |
 | [`processors`](https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router) | No |  |  |
@@ -1842,22 +1842,6 @@ Fluent Bit page: [Observe](https://docs.fluentbit.io/manual/3.2/pipeline/outputs
 | [`tls.ca_file`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/observe#configuration-parameters) | No |  | For use with Windows: provide path to root cert |
 | [`uri`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/observe#configuration-parameters) | No | `/v1/http/fluentbit` | Specify the HTTP URI for the Observe's data ingest |
 | [`workers`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/observe#configuration-parameters) | No | `0` | The number of [workers](/manual/3.2/administration/multithreading.md#outputs) to perform flush operations for this output. |
-
-<a id="outputs-oci-logging-analytics"></a>
-### `oci-logging-analytics`: Oracle Log Analytics
-Fluent Bit page: [Oracle Log Analytics](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/oci-logging-analytics#configuration-parameters)
-
-| Attribute | Mandatory | Default | Description |
-| --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/oci-logging-analytics#configuration-parameters) | Yes | `oci-logging-analytics` | Plugin identifier. |
-| [`proxy`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/oci-logging-analytics#configuration-parameters) | Yes |  | define proxy if required, in [http://host:port](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/http:/host:port) format, supports only http protocol |
-| [`config_file_location`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/oci-logging-analytics#configuration-parameters) | No |  | The location of the configuration file containing OCI authentication details. |
-| [`match`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/oci-logging-analytics#configuration-parameters) | No |  | Tag match pattern used to route records to this plugin. Supports '*' wildcard matching. |
-| [`match_regex`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/oci-logging-analytics#configuration-parameters) | No |  | Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set. |
-| [`namespace`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/oci-logging-analytics#configuration-parameters) | No |  | OCI Tenancy Namespace in which the collected log data is to be uploaded |
-| [`processors`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/oci-logging-analytics#configuration-parameters) | No |  |  |
-| [`profile_name`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/oci-logging-analytics#configuration-parameters) | No | `DEFAULT` | OCI Config Profile Name to be used from the configuration file |
-| [`workers`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/oci-logging-analytics#configuration-parameters) | No | `1` | The number of [workers](/manual/3.2/administration/multithreading.md#outputs) to perform flush operations for this output. |
 
 <a id="outputs-openobserve"></a>
 ### `openobserve`: OpenObserve
@@ -1928,13 +1912,29 @@ Fluent Bit page: [OpenTelemetry](https://docs.fluentbit.io/manual/3.2/concepts/d
 | [`match_regex`](https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router) | No |  | Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set. |
 | [`processors`](https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router) | No |  |  |
 
-<a id="outputs-postgresql"></a>
-### `postgresql`: PostgreSQL
+<a id="outputs-oracle-log-analytics"></a>
+### `oracle_log_analytics`: Oracle Log Analytics
+Fluent Bit page: [Oracle Log Analytics](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/oci-logging-analytics#configuration-parameters)
+
+| Attribute | Mandatory | Default | Description |
+| --- | --- | --- | --- |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/oci-logging-analytics#configuration-parameters) | Yes | `oracle_log_analytics` | Plugin identifier. |
+| [`proxy`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/oci-logging-analytics#configuration-parameters) | Yes |  | define proxy if required, in [http://host:port](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/http:/host:port) format, supports only http protocol |
+| [`config_file_location`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/oci-logging-analytics#configuration-parameters) | No |  | The location of the configuration file containing OCI authentication details. |
+| [`match`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/oci-logging-analytics#configuration-parameters) | No |  | Tag match pattern used to route records to this plugin. Supports '*' wildcard matching. |
+| [`match_regex`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/oci-logging-analytics#configuration-parameters) | No |  | Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set. |
+| [`namespace`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/oci-logging-analytics#configuration-parameters) | No |  | OCI Tenancy Namespace in which the collected log data is to be uploaded |
+| [`processors`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/oci-logging-analytics#configuration-parameters) | No |  |  |
+| [`profile_name`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/oci-logging-analytics#configuration-parameters) | No | `DEFAULT` | OCI Config Profile Name to be used from the configuration file |
+| [`workers`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/oci-logging-analytics#configuration-parameters) | No | `1` | The number of [workers](/manual/3.2/administration/multithreading.md#outputs) to perform flush operations for this output. |
+
+<a id="outputs-pgsql"></a>
+### `pgsql`: PostgreSQL
 Fluent Bit page: [PostgreSQL](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/postgresql#configuration-parameters)
 
 | Attribute | Mandatory | Default | Description |
 | --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/postgresql#configuration-parameters) | Yes | `postgresql` | Plugin identifier. |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/postgresql#configuration-parameters) | Yes | `pgsql` | Plugin identifier. |
 | [`async`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/postgresql#configuration-parameters) | No | `false` | Define if we will use async or sync connections |
 | [`cockroachdb`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/postgresql#configuration-parameters) | No | `false` | Set to true if you will connect the plugin with a CockroachDB |
 | [`connection_options`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/postgresql#configuration-parameters) | No |  | Specifies any valid [PostgreSQL connection options](https://www.postgresql.org/docs/devel/libpq-connect.html#LIBPQ-CONNECT-OPTIONS) |
@@ -1953,23 +1953,23 @@ Fluent Bit page: [PostgreSQL](https://docs.fluentbit.io/manual/3.2/pipeline/outp
 | [`workers`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/postgresql#configuration-parameters) | No | `0` | The number of [workers](/manual/3.2/administration/multithreading.md#outputs) to perform flush operations for this output. |
 
 <a id="outputs-prometheus-exporter"></a>
-### `prometheus-exporter`: Prometheus Exporter
+### `prometheus_exporter`: Prometheus Exporter
 Fluent Bit page: [Prometheus Exporter](https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router)
 
 | Attribute | Mandatory | Default | Description |
 | --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router) | Yes | `prometheus-exporter` | Plugin identifier. |
+| [`name`](https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router) | Yes | `prometheus_exporter` | Plugin identifier. |
 | [`match`](https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router) | No |  | Tag match pattern used to route records to this plugin. Supports '*' wildcard matching. |
 | [`match_regex`](https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router) | No |  | Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set. |
 | [`processors`](https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router) | No |  |  |
 
 <a id="outputs-prometheus-remote-write"></a>
-### `prometheus-remote-write`: Prometheus Remote Write
+### `prometheus_remote_write`: Prometheus Remote Write
 Fluent Bit page: [Prometheus Remote Write](https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router)
 
 | Attribute | Mandatory | Default | Description |
 | --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router) | Yes | `prometheus-remote-write` | Plugin identifier. |
+| [`name`](https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router) | Yes | `prometheus_remote_write` | Plugin identifier. |
 | [`match`](https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router) | No |  | Tag match pattern used to route records to this plugin. Supports '*' wildcard matching. |
 | [`match_regex`](https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router) | No |  | Regular expression tag match used to route records to this plugin. Takes precedence over match when both are set. |
 | [`processors`](https://docs.fluentbit.io/manual/3.2/concepts/data-pipeline/router) | No |  |  |
@@ -2100,13 +2100,13 @@ Fluent Bit page: [Stackdriver](https://docs.fluentbit.io/manual/3.2/pipeline/out
 | [`severity_key`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/stackdriver#configuration-parameters) | No | `logging.googleapis.com/severity`. See [Stackdriver Special Fields](https://github.com/fluent/fluent-bit-docs/blob/master/pipeline/outputs/stackdriver_special_fields.md#log-entry-fields) for more info.` | Specify the name of the key from the original record that contains the severity information. |
 | [`workers`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/stackdriver#configuration-parameters) | No | `1` | The number of [workers](/manual/3.2/administration/multithreading.md#outputs) to perform flush operations for this output. |
 
-<a id="outputs-standard-output"></a>
-### `standard-output`: Standard Output
+<a id="outputs-stdout"></a>
+### `stdout`: Standard Output
 Fluent Bit page: [Standard Output](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/standard-output#configuration-parameters)
 
 | Attribute | Mandatory | Default | Description |
 | --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/standard-output#configuration-parameters) | Yes | `standard-output` | Plugin identifier. |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/standard-output#configuration-parameters) | Yes | `stdout` | Plugin identifier. |
 | [`format`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/standard-output#configuration-parameters) | No | `msgpack` | Specify the data format to be printed. |
 | [`json_date_format`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/standard-output#configuration-parameters) | No | `double` | Specify the format of the date. |
 | [`json_date_key`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/standard-output#configuration-parameters) | No | `date` | Specify the name of the time key in the output record. |
@@ -2147,13 +2147,13 @@ Fluent Bit page: [Syslog](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/
 | [`syslog_severity_preset`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/syslog#configuration-parameters) | No | `6` | The preset severity number. |
 | [`workers`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/syslog#configuration-parameters) | No | `0` | The number of [workers](/manual/3.2/administration/multithreading.md#outputs) to perform flush operations for this output. |
 
-<a id="outputs-tcp-and-tls"></a>
-### `tcp-and-tls`: TCP & TLS
+<a id="outputs-tcp"></a>
+### `tcp`: TCP & TLS
 Fluent Bit page: [TCP & TLS](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/tcp-and-tls#configuration-parameters)
 
 | Attribute | Mandatory | Default | Description |
 | --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/tcp-and-tls#configuration-parameters) | Yes | `tcp-and-tls` | Plugin identifier. |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/tcp-and-tls#configuration-parameters) | Yes | `tcp` | Plugin identifier. |
 | [`format`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/tcp-and-tls#configuration-parameters) | No | `msgpack` | Specify the data format to be printed. |
 | [`host`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/tcp-and-tls#configuration-parameters) | No | `127.0.0.1` | Target host where Fluent-Bit or Fluentd are listening for Forward messages. |
 | [`json_date_format`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/tcp-and-tls#configuration-parameters) | No | `double` | Specify the format of the date. |
@@ -2164,13 +2164,13 @@ Fluent Bit page: [TCP & TLS](https://docs.fluentbit.io/manual/3.2/pipeline/outpu
 | [`processors`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/tcp-and-tls#configuration-parameters) | No |  |  |
 | [`workers`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/tcp-and-tls#configuration-parameters) | No | `2` | The number of [workers](/manual/3.2/administration/multithreading.md#outputs) to perform flush operations for this output. |
 
-<a id="outputs-treasure-data"></a>
-### `treasure-data`: Treasure Data
+<a id="outputs-td"></a>
+### `td`: Treasure Data
 Fluent Bit page: [Treasure Data](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/treasure-data#configuration-parameters)
 
 | Attribute | Mandatory | Default | Description |
 | --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/treasure-data#configuration-parameters) | Yes | `treasure-data` | Plugin identifier. |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/treasure-data#configuration-parameters) | Yes | `td` | Plugin identifier. |
 | [`api`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/treasure-data#configuration-parameters) | No |  | The [Treasure Data](http://treasuredata.com) API key. |
 | [`database`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/treasure-data#configuration-parameters) | No |  | Specify the name of your target database. |
 | [`match`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/treasure-data#configuration-parameters) | No |  | Tag match pattern used to route records to this plugin. Supports '*' wildcard matching. |
@@ -2181,12 +2181,12 @@ Fluent Bit page: [Treasure Data](https://docs.fluentbit.io/manual/3.2/pipeline/o
 | [`workers`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/treasure-data#configuration-parameters) | No | `0` | The number of [workers](/manual/3.2/administration/multithreading.md#outputs) to perform flush operations for this output. |
 
 <a id="outputs-vivo-exporter"></a>
-### `vivo-exporter`: Vivo Exporter
+### `vivo_exporter`: Vivo Exporter
 Fluent Bit page: [Vivo Exporter](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/vivo-exporter#configuration-parameters)
 
 | Attribute | Mandatory | Default | Description |
 | --- | --- | --- | --- |
-| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/vivo-exporter#configuration-parameters) | Yes | `vivo-exporter` | Plugin identifier. |
+| [`name`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/vivo-exporter#configuration-parameters) | Yes | `vivo_exporter` | Plugin identifier. |
 | [`empty_stream_on_read`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/vivo-exporter#configuration-parameters) | No | `Off` | If enabled, when an HTTP client consumes the data from a stream, the stream content will be removed. |
 | [`http_cors_allow_origin`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/vivo-exporter#configuration-parameters) | No |  | Specify the value for the HTTP Access-Control-Allow-Origin header (CORS). |
 | [`match`](https://docs.fluentbit.io/manual/3.2/pipeline/outputs/vivo-exporter#configuration-parameters) | No |  | Tag match pattern used to route records to this plugin. Supports '*' wildcard matching. |
