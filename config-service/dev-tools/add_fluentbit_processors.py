@@ -63,7 +63,7 @@ def field(
     if default is not None:
         payload["default"] = default
     if enum_options:
-        payload["called_enum_options"] = enum_options
+        payload["enum_options"] = enum_options
     return payload
 
 

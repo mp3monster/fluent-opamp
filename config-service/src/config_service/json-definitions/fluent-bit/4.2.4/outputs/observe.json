@@ -8,8 +8,9 @@
       "description": "Sets the payload compression mechanism.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/observe#configuration-parameters",
       "default": "gzip",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "enum",
+      "enum_options": ["gzip", "false"],
+      "validation_rule": {"kind": "enum"}
     },
     {
       "name": "format",
@@ -57,8 +58,8 @@
       "description": "Specifies whether to use TLS.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/observe#configuration-parameters",
       "default": "on",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "boolean",
+      "validation_rule": {"kind": "boolean"}
     },
     {
       "name": "tls.ca_file",

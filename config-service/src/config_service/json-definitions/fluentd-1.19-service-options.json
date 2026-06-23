@@ -60,7 +60,7 @@
         ]
       },
       "default": "info",
-      "called_enum_options": [
+      "enum_options": [
         "trace",
         "debug",
         "info",
@@ -156,7 +156,7 @@
         ]
       },
       "default": "none",
-      "called_enum_options": [
+      "enum_options": [
         "none",
         "trace",
         "debug",

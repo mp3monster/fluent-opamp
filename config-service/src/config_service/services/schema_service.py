@@ -18,7 +18,8 @@ KEY_X_DOC_REQUIRED = "x-doc-required"
 KEY_X_CONFIG_DATA_TYPE = "x-config-data-type"
 KEY_X_REFERENCES_PARSER = "x-references-parser"
 KEY_REFERENCES_PARSER = "references_parser"
-KEY_CALLED_ENUM_OPTIONS = "called_enum_options"
+KEY_ENUM_OPTIONS = "enum_options"
+KEY_LEGACY_CALLED_ENUM_OPTIONS = "called_enum_options"
 KEY_VALIDATION_RULE = "validation_rule"
 KEY_KIND = "kind"
 KEY_VALUES = "values"
@@ -145,11 +146,16 @@ class SchemaService:
 
         Enum values may come from either:
         1. `validation_rule.values` when `validation_rule.kind == "enum"`
-        2. `called_enum_options` on the field itself
+        2. `enum_options` on the field itself
 
         When an enum validation rule omits `values`, the schema falls back to
-        the parent field's `called_enum_options` so catalog authors do not have
-        to duplicate the same allow-list in two places.
+        the parent field's `enum_options` so catalog authors do not have to
+        duplicate the same allow-list in two places.
+
+        Backward compatibility:
+        - Older catalogs may still use `called_enum_options`.
+        - Schema compilation treats that legacy key as a fallback input, but new
+          emitted artifacts and docs should use `enum_options`.
         """
         catalog_data_type = str(field.get(KEY_DATA_TYPE, "string")).lower()
         json_type = self.TYPE_MAP.get(catalog_data_type, "string")
@@ -162,7 +168,9 @@ class SchemaService:
             KEY_X_REFERENCES_PARSER: bool(field.get(KEY_REFERENCES_PARSER, False)),
         }
         validation_rule = field.get(KEY_VALIDATION_RULE)
-        enum_options = field.get(KEY_CALLED_ENUM_OPTIONS)
+        enum_options = field.get(KEY_ENUM_OPTIONS)
+        if not isinstance(enum_options, list) or not enum_options:
+            enum_options = field.get(KEY_LEGACY_CALLED_ENUM_OPTIONS)
         if (
             isinstance(validation_rule, dict)
             and str(validation_rule.get(KEY_KIND, "")).lower() == KEY_ENUM

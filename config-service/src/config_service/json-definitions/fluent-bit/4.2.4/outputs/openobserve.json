@@ -58,7 +58,7 @@
     {
       "name": "json_date_format",
       "required": false,
-      "description": "Optional.",
+      "description": " The format of the date in logs. OpenObserve supports ISO 8601.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/openobserve#configuration-parameters",
       "default": "iso8601",
       "data_type": "string",
@@ -67,7 +67,7 @@
     {
       "name": "json_date_key",
       "required": false,
-      "description": "Optional.",
+      "description": "The JSON key used for timestamps in the logs.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/openobserve#configuration-parameters",
       "default": "timestamp",
       "data_type": "string",

@@ -71,10 +71,8 @@
       "description": "If include_tag_key is enabled, defines the key name for the tag.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/kafka-rest-proxy#configuration-parameters",
       "default": "_flb-key",
-      "data_type": "boolean",
-      "validation_rule": {
-        "kind": "boolean"
-      }
+      "data_type": "string",
+      "validation_rule": null
     },
     {
       "name": "time_key",

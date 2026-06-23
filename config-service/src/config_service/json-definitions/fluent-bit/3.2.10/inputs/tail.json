@@ -136,7 +136,7 @@
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/tail#configuration-parameters-a-hrefconfig-idconfiga",
       "default": "normal",
       "data_type": "enum",
-      "called_enum_options": ["Extra", "Full", "Normal", "Off"],
+      "enum_options": ["Extra", "Full", "Normal", "Off"],
       "validation_rule": {
         "kind": "enum",
         "values": ["Extra", "Full", "Normal", "Off"]

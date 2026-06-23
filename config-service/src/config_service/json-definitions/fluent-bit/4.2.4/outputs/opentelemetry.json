@@ -3,6 +3,865 @@
   "doc_url": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
   "fields": [
     {
+      "name": "add_label",
+      "required": false,
+      "description": "Adds a custom label to the metrics use format: add_label name value.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "alias",
+      "required": false,
+      "description": "Sets an alias, use for multiple instances of the same output plugin.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "aws_auth",
+      "required": false,
+      "description": "Enable AWS SigV4 authentication",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "booelan",
+      "default": "false",
+      "validation_rule": {"kind": "boolean"}
+    },
+    {
+      "name": "aws_external_id",
+      "required": false,
+      "description": "Specify an external ID for the STS API, can be used with the aws_role_arn parameter.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "aws_profile",
+      "required": false,
+      "description": "AWS Profile name. AWS Profiles can be configured with AWS CLI.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "aws_region",
+      "required": false,
+      "description": "AWS region of your service.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "aws_role_arn",
+      "required": false,
+      "description": "ARN of an IAM role to assume (ex. for cross account access).",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "aws_service",
+      "required": false,
+      "description": "AWS destination service code, used by SigV4 authentication.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "default": "logs",
+      "validation_rule": null
+    },
+    {
+      "name": "aws_sts_endpoint",
+      "required": false,
+      "description": "Custom endpoint for the AWS STS API, used with the aws_role_arn option.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "default": "logs",
+      "validation_rule": null
+    },
+    {
+      "name": "batch_size",
+      "required": false,
+      "description": "Set the maximum number of log records to be flushed at a time.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "integer",
+      "default": "1000",
+      "validation_rule": {"kind": "range", "min": "0"}
+    },
+    {
+      "name": "compress",
+      "required": false,
+      "description": "Set payload compression mechanism. Options available are gzip and zstd.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "enum",
+      "enum_options": ["gzip", "zstd"],
+      "validation_rule": {"kind": "enum"}
+    },
+    {
+      "name": "grpc",
+      "required": false,
+      "description": "Enable, disable or auto-detect gRPC usage. Accepted values: on, off, auto.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "enum",
+      "enum_options": ["On", "Off", "Auto"],
+      "validation_rule": {"kind": "enum"}
+    },
+
+    {
+      "name": "grpc_logs_uri",
+      "required": false,
+      "description": "Specify an optional gRPC URI for the target OTel endpoint.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "default": "/opentelemetry.proto.collector.logs.v1.LogsService/Export",
+      "validation_rule": null
+    },
+    {
+      "name": "grpc_metrics_uri",
+      "required": false,
+      "description": "Specify an optional gRPC URI for the target OTel endpoint.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "default": "/opentelemetry.proto.collector.metrics.v1.LogsService/Export",
+      "validation_rule": null
+    },
+    {
+      "name": "grpc_profiles_uri",
+      "required": false,
+      "description": "Specify an optional gRPC URI for the target OTel endpoint.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "default": "/opentelemetry.proto.collector.profiles.v1experimental.ProfilesService/Export",
+      "validation_rule": null
+    },
+    {
+      "name": "grpc_traces_uri",
+      "required": false,
+      "description": "Specify an optional gRPC URI for the target OTel endpoint.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "default": "/opentelemetry.proto.collector.trace.v1.TraceService/Export",
+      "validation_rule": null
+    },
+    {
+      "name": "header",
+      "required": false,
+      "description": "Add a HTTP header key/value pair. Multiple headers can be set.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "host",
+      "required": false,
+      "description": "IP address or hostname of the target HTTP server.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "default": "127.0.0.1",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "http2",
+      "required": false,
+      "description": "Enable, disable or force HTTP/2 usage. Accepted values : on, off, or force.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "enum",
+      "default": "Off",
+      "enum_options": ["On", "Off", "Auto"],
+      "validation_rule": {"kind": "enum"}
+    },
+    {
+      "name": "http_passwd",
+      "required": false,
+      "description": "Set HTTP auth password.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "http_user",
+      "required": false,
+      "description": "Set HTTP auth user.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "log_level",
+      "required": false,
+      "description": "Specifies the log level for output plugin. If not set here, plugin uses global log level in service section.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "default": "info",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "log_response_payload",
+      "required": false,
+      "description": "Specify if the response payload should be logged or not.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "default": "true",
+      "data_type": "boolean",
+      "validation_rule": {"kind": "boolean"}
+    },
+    {
+      "name": "log_suppress_interval",
+      "required": false,
+      "description": "Suppresses log messages from output plugin that appear similar within a specified time interval. 0 disables suppression.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "integer",
+      "default": "0",
+      "validation_rule": {"kind": "range", "min": "0"}
+    },
+    {
+      "name": "logs_attributes_metadata_key",
+      "required": false,
+      "description": "Specify an Attributes key.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "default": "$Attributes",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "logs_body_key",
+      "required": false,
+      "description": "Specify an optional HTTP URI for the target OTel endpoint.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "logs_body_key_attributes",
+      "required": false,
+      "description": "If set and it matched a pattern, it includes the remaining fields in the record as attributes.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "logs_instrumentation_scope_metadata_key",
+      "required": false,
+      "description": "Specify an InstrumentationScope key.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "default": "InstrumentationScope",
+      "validation_rule": null
+    },
+    {
+      "name": "logs_max_resources",
+      "required": false,
+      "description": "Set the maximum number of OTLP log resources per export request (0 disables the limit).",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "integer",
+      "default": "0",
+      "validation_rule": {"kind": "range", "min": "0"}
+    },
+    {
+      "name": "logs_max_scopes",
+      "required": false,
+      "description": "Set the maximum number of OTLP log scopes per resource (0 disables the limit)",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "integer",
+      "default": "0",
+      "validation_rule": {"kind": "range", "min": "0"}
+    },
+    {
+      "name": "logs_metadata_key",
+      "required": false,
+      "description": "Set the key to look up in the metadata.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "default": "otlp",
+      "validation_rule": null
+    },
+
+    {
+      "name": "logs_observed_timestamp_metadata_key",
+      "required": false,
+      "description": "Specify an ObservedTimestamp key..",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "default": "$ObservedTimestamp",
+      "validation_rule": null
+    },
+    {
+      "name": "logs_resource_metadata_key",
+      "required": false,
+      "description": "Specify a Resource key.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "default": "Resource",
+      "validation_rule": null
+    },
+    {
+      "name": "logs_severity_number_message_key",
+      "required": false,
+      "description": "Specify a SeverityNumber key.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "default": "$severityNumber",
+      "validation_rule": null
+    },
+    {
+      "name": "logs_severity_number_metadata_key",
+      "required": false,
+      "description": "Specify a SeverityNumber key.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "default": "$severityNumber",
+      "validation_rule": null
+    },
+    {
+      "name": "logs_severity_text_message_key",
+      "required": false,
+      "description": "Specify a SeverityText key",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "default": "$SeverityText",
+      "validation_rule": null
+    },
+    {
+      "name": "logs_severity_text_metadata_key",
+      "required": false,
+      "description": "Specify a SeverityText key.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "default": "$SeverityText",
+      "validation_rule": null
+    },
+    {
+      "name": "logs_span_id_message_key",
+      "required": false,
+      "description": "Specify a SpanId key.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "default": "$SpanId",
+      "validation_rule": null
+    },
+    {
+      "name": "logs_span_id_metadata_key",
+      "required": false,
+      "description": "Specify a SpanId key.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "default": "$SpanId",
+      "validation_rule": null
+    },
+    {
+      "name": "logs_timestamp_metadata_key",
+      "required": false,
+      "description": "Specify a Timestamp key.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "default": "$Timestamp",
+      "validation_rule": null
+    },
+    {
+      "name": "logs_trace_flags_metadata_key",
+      "required": false,
+      "description": "Specify a TraceFlags key.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "default": "$TraceFlags",
+      "validation_rule": null
+    },    
+    {
+      "name": "logs_trace_id_message_key",
+      "required": false,
+      "description": "Specify a TraceId key.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "default": "$TraceId",
+      "validation_rule": null
+    },    
+    {
+      "name": "logs_trace_id_metadata_key",
+      "required": false,
+      "description": "Specify a TraceId key.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "default": "$TraceId",
+      "validation_rule": null
+    },    
+    {
+      "name": "logs_uri",
+      "required": false,
+      "description": "Specify an optional HTTP URI for the target OTel endpoint.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "default": "/v1/logs",
+      "validation_rule": null
+    },  
+    {
+      "name": "metrics_uri",
+      "required": false,
+      "description": "Specify an optional HTTP URI for the target OTel endpoint.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "default": "/v1/metrics",
+      "validation_rule": null
+    },  
+    {
+      "name": "net.connect_timeout",
+      "required": false,
+      "description": "Set maximum time allowed to establish a connection, this time includes the TLS handshake.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "duration",
+      "default": "10s",
+      "validation_rule": {"kind": "duration"}
+    },  
+    {
+      "name": "net.connect_timeout_log_error",
+      "required": false,
+      "description": "On connection timeout, specify if it should log an error. When disabled, the timeout is logged as a debug message.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "boolean",
+      "default": "true",
+      "validation_rule": {"kind": "boolean"}
+    },  
+    {
+      "name": "net.dns.mode",
+      "required": false,
+      "description": "Select the primary DNS connection type (TCP or UDP).",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "enum",
+      "enum_options": ["TCP","UDP"],
+      "validation_rule": {"kind": "enum"}
+    },  
+    {
+      "name": "net.dns.mode",
+      "required": false,
+      "description": "net.dns.prefer_ipv4",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "enum",
+      "enum_options": ["LEGACY","ASYNC"],
+      "validation_rule": {"kind": "enum"}
+    },  
+    {
+      "name": "net.dns.prefer_ipv6",
+      "required": false,
+      "description": "Prioritize IPv6 DNS results when trying to establish a connection.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "default": "true",
+      "data_type": "boolean",
+      "validation_rule": {"kind": "boolean"}
+    },
+    {
+      "name": "net.io_timeout",
+      "required": false,
+      "description": "Set maximum time a connection can stay idle while assigned.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "duration",
+      "default": "0s",
+      "validation_rule": {"kind": "duration"}
+    },
+
+    {
+      "name": "net.keepalive_max_recycle",
+      "required": false,
+      "description": "Set maximum number of times a keepalive connection can be used before it retries.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "integer",
+      "default": "2000",
+      "validation_rule": {"kind": "range", "min": "0"}
+    },
+    {
+      "name": "net.max_worker_connections",
+      "required": false,
+      "description": "Set the maximum number of active TCP connections that can be used per worker thread.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "integer",
+      "default": "0",
+      "validation_rule": {"kind": "range", "min": "0"}
+    },
+    {
+      "name": "net.proxy_env_ignore",
+      "required": false,
+      "description": "Ignore the environment variables HTTP_PROXY, HTTPS_PROXY and NO_PROXY when set.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "default": "false",
+      "data_type": "boolean",
+      "validation_rule": {"kind": "boolean"}
+    },
+    {
+      "name": "net.source_address",
+      "required": false,
+      "description": "Specify network address to bind for data traffic.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "net.tcp_keepalive",
+      "required": false,
+      "description": "Enable or disable Keepalive support.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "default": "off",
+      "data_type": "boolean",
+      "validation_rule": {"kind": "boolean"}
+    },
+
+    {
+      "name": "net.tcp_keepalive_interval",
+      "required": false,
+      "description": "Interval between TCP keepalive probes when no response is received on a keep idle probe.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "integer",
+      "default": "-1",
+      "validation_rule": {"kind": "range", "min": "-1"}
+    },
+    {
+      "name": "net.tcp_keepalive_probes",
+      "required": false,
+      "description": "Number of unacknowledged probes to consider a connection dead.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "integer",
+      "default": "-1",
+      "validation_rule": {"kind": "range", "min": "-1"}
+    },
+    {
+      "name": "net.tcp_keepalive_time",
+      "required": false,
+      "description": "Interval between the last data packet sent and the first TCP keepalive probe.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "integer",
+      "default": "-1",
+      "validation_rule": {"kind": "range", "min": "-1"}
+    },
+    {
+      "name": "oauth2.audience",
+      "required": false,
+      "description": "Optional OAuth 2.0 audience parameter.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "oauth2.auth_method",
+      "required": false,
+      "description": "OAuth 2.0 client authentication method. Supported values: basic, post, private_key_jwt.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "enum",
+      "enum_options": ["basic", "post", "private_key_jwt"],
+      "default": "basic",
+      "validation_rule": {"kind": "enum"}
+    },
+    {
+      "name": "oauth2.client_id",
+      "required": false,
+      "description": "OAuth 2.0 client ID.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "oauth2.client_secret",
+      "required": false,
+      "description": "OAuth 2.0 client secret.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "oauth2.connect_timeout",
+      "required": false,
+      "description": "Connect timeout for OAuth 2.0 token requests.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "duration",
+      "default": "0s",
+      "validation_rule": {"kind": "duration"}
+    },
+    {
+      "name": "oauth2.enable",
+      "required": false,
+      "description": "Enable OAuth 2.0 client credentials for outgoing requests",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "default": "false",
+      "data_type": "boolean",
+      "validation_rule": {"kind": "boolean"}
+    },
+    {
+      "name": "oauth2.jwt_aud",
+      "required": false,
+      "description": "Audience for private_key_jwt JSON Web Token (JWT) assertion. Defaults to the value of oauth2.token_url when not set.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "oauth2.jwt_cert_file",
+      "required": false,
+      "description": "Path to certificate file used by private_key_jwt.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "oauth2.jwt_key_file",
+      "required": false,
+      "description": "Path to PEM private key file used by private_key_jwt.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "enum",
+      "default": "kid",
+      "enum_options": ["kid","x5t"],
+      "validation_rule": {"kind": "enum"}
+    },
+    {
+      "name": "oauth2.jwt_key_file",
+      "required": false,
+      "description": "Path to PEM private key file used by private_key_jwt.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "oauth2.jwt_ttl_seconds",
+      "required": false,
+      "description": "Lifetime in seconds for private_key_jwt JWT client assertions.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "integer",
+      "default": "300",
+      "validation_rule": {"kind": "range", "min": "0"}
+    },
+    {
+      "name": "oauth2.refresh_skew_seconds",
+      "required": false,
+      "description": "Seconds before expiry at which to refresh the access token.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "integer",
+      "default": "60",
+      "validation_rule": {"kind": "range", "min": "0"}
+    },
+    {
+      "name": "oauth2.resource",
+      "required": false,
+      "description": "OAuth 2.0 resource parameter.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "oauth2.scope",
+      "required": false,
+      "description": "OAuth 2.0 scope.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "oauth2.timeout",
+      "required": false,
+      "description": "Timeout for OAuth 2.0 token requests.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "duration",
+      "default": "0s",
+      "validation_rule": {"kind": "duration"}
+    },
+    {
+      "name": "oauth2.token_url",
+      "required": false,
+      "description": "OAuth 2.0 token endpoint URL.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "oauth2.user_agent",
+      "required": false,
+      "description": "User-Agent header value to include in OAuth 2.0 token requests. If omitted, no User-Agent header is sent.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "port",
+      "required": false,
+      "description": "TCP port of the target server.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "default": 80,
+      "data_type": "integer",
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 65535
+      }
+    },
+    {
+      "name": "profiles_uri",
+      "required": false,
+      "description": "Specify an optional HTTP URI for the profiles OTel endpoint.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "default": "/v1development/profiles",
+      "validation_rule": null
+    },
+    {
+      "name": "proxy",
+      "required": false,
+      "description": "Specify an HTTP Proxy. The expected format of this value is http://host:port.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "retry_limit",
+      "required": false,
+      "description": "Set retry limit for output plugin when delivery fails. Integer, no_limits, false, or off to disable, or no_retries to disable retries entirely",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "default": "1",
+      "validation_rule": null
+    },
+    {
+      "name": "TLS",
+      "required": false,
+      "description": "Enable or disable TLS/SSL support.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "default": "off",
+      "data_type": "boolean",
+      "validation_rule": {"kind": "boolean"}
+    },
+    {
+      "name": "tls.ca_file",
+      "required": false,
+      "description": "Absolute path to CA certificate file..",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "tls.ca_path",
+      "required": false,
+      "description": "Absolute path to scan for certificate files.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "tls.crt_file",
+      "required": false,
+      "description": "Absolute path to Certificate file.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "tls.ciphers",
+      "required": false,
+      "description": "Specify TLS ciphers up to TLSv1.2.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "tls.crt_file",
+      "required": false,
+      "description": "Absolute path to Certificate file.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "validation_rule": null
+    },
+
+    {
+      "name": "tls.debug",
+      "required": false,
+      "description": "Set TLS debug level. Accepts 0 (No debug), 1(Error), 2 (State change), 3 (Informational) and 4 (Verbose).",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "integer",
+      "validation_rule": {"kind": "range", "min": 0, "max":4},
+      "default": "1"
+    },
+    {
+      "name": "tls.key_file",
+      "required": false,
+      "description": "Absolute path to private Key file.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "tls.key_passwd",
+      "required": false,
+      "description": "Optional password for tls.key_file.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "tls.max_version",
+      "required": false,
+      "description": "Specify the maximum version of TLS.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "tls.min_version",
+      "required": false,
+      "description": "Specify the minimum version of TLS.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "tls.verify",
+      "required": false,
+      "description": "Force certificate validation.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "boolean",
+      "default": "on",
+      "validation_rule": {"kind": "boolean"}
+    },
+    {
+      "name": "tls.verify_hostname",
+      "required": false,
+      "description": "Enable or disable to verify hostname.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "boolean",
+      "default": "off",
+      "validation_rule": {"kind": "boolean"}
+    },
+    {
+      "name": "tls.vhost",
+      "required": false,
+      "description": "Hostname to be used for TLS SNI extension.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "tls.windows.certstore_name",
+      "required": false,
+      "description": "Sets the certstore name on an output (Windows)",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "tls.windows.use_enterprise_store",
+      "required": false,
+      "description": "Sets whether using enterprise certstore or not on an output (Windows)",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "traces_uri",
+      "required": false,
+      "description": "Specify an optional HTTP URI for the target OTel endpoint.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "string",
+      "default": "/v1/traces",
+      "validation_rule": null
+    },
+    {
+      "name": "workers",
+      "required": false,
+      "description": "The number of workers to perform flush operations for this output.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry",
+      "data_type": "integer",
+      "default": "0",
+      "validation_rule": {"kind": "range", "min": "0"}
+    },
+    {
       "name": "match",
       "required": false,
       "description": "Tag match pattern used to route records to this plugin. Supports '*' wildcard matching.",
@@ -20,8 +879,13 @@
     }
   ],
   "extraction": {
-    "status": "no_config_heading",
-    "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry"
+    "status": "ok",
+    "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opentelemetry#configuration-parameters",
+    "table_header": [
+      "Key",
+      "Description",
+      "Default"
+    ]
   },
-  "description": "Fluent Bit output plugin: OpenTelemetry."
+  "description": "Use the OpenObserve output plugin to ingest logs into OpenTelemetry."
 }

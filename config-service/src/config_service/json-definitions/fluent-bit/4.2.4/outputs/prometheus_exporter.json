@@ -44,6 +44,17 @@
       }
     },
     {
+      "name": "http_server.idle_timeout",
+      "required": false,
+      "description": "Maximum time an idle HTTP client connection is kept open. Connections that remain idle beyond this duration are closed. Accepts time values such as 10s or 1m",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/prometheus-exporter#configuration-parameters",
+      "default": "10s",
+      "data_type": "duration",
+      "validation_rule": {
+        "kind": "duration"
+      }
+    },
+    {
       "name": "workers",
       "required": false,
       "description": "The number of [workers](/manual/4.2/administration/multithreading.md#outputs) to perform flush operations for this output.",

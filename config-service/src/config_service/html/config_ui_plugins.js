@@ -529,7 +529,7 @@ function renderProcessorCondition(instance, procPathPrefix) {
         required: false,
         description: "Where Fluent Bit should look for the field during route evaluation.",
         reference: "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
-        called_enum_options: [
+        enum_options: [
           "body",
           "group_attributes",
           "group_metadata",
@@ -562,7 +562,7 @@ function renderProcessorCondition(instance, procPathPrefix) {
         required: true,
         description: "Comparison operator used by this route rule.",
         reference: "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
-        called_enum_options: [
+        enum_options: [
           "eq",
           "gt",
           "gte",
@@ -738,7 +738,7 @@ function renderProcessorCondition(instance, procPathPrefix) {
           required: true,
           description: "How Fluent Bit combines route condition rules.",
           reference: "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
-          called_enum_options: ["and", "or"],
+          enum_options: ["and", "or"],
         }, {
           optional: false,
           focusKey: key + ":condition:op",

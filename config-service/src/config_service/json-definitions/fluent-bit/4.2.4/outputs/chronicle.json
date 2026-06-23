@@ -4,7 +4,7 @@
   "fields": [
     {
       "name": "customer_id",
-      "required": false,
+      "required": true,
       "description": "The customer ID identifying the Google Chronicle tenant to stream into.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/chronicle#configuration-parameters",
       "data_type": "string",
@@ -13,9 +13,8 @@
     {
       "name": "google_service_credentials",
       "required": false,
-      "description": "Absolute path to a Google Cloud credentials JSON file.",
+      "description": "Absolute path to a Google Cloud credentials JSON file. Value of the environment variable `$GOOGLE_SERVICE_CREDENTIALS",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/chronicle#configuration-parameters",
-      "default": "Value of the environment variable `$GOOGLE_SERVICE_CREDENTIALS",
       "data_type": "string",
       "validation_rule": null
     },
@@ -30,10 +29,11 @@
     {
       "name": "log_type",
       "required": false,
-      "description": "The log type to parse logs as.",
+      "description": "The log type to parse logs as. See https://docs.cloud.google.com/chronicle/docs/ingestion/parser-list/supported-default-parsers for more details",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/chronicle#configuration-parameters",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "enum",
+      "enum_options": ["CSV", "JSON", "SYSLOG", "KV", "XML", "SYSLOG + KV", "SYSLOG + JSON", "SYSLOG + XML", "LEEF", "CEF"],
+      "validation_rule": {"kind": "enum"}
     },
     {
       "name": "project_id",
@@ -55,9 +55,8 @@
     {
       "name": "service_account_email",
       "required": false,
-      "description": "Account email associated with the service.",
+      "description": "Account email associated with the service. Value of the environment variable `$SERVICE_ACCOUNT_EMAIL",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/chronicle#configuration-parameters",
-      "default": "Value of the environment variable `$SERVICE_ACCOUNT_EMAIL",
       "data_type": "integer",
       "validation_rule": {
         "kind": "integer"
@@ -66,9 +65,8 @@
     {
       "name": "service_account_secret",
       "required": false,
-      "description": "Private key content associated with the service account.",
+      "description": "Private key content associated with the service account. Value of the environment variable `$SERVICE_ACCOUNT_SECRET",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/chronicle#configuration-parameters",
-      "default": "Value of the environment variable `$SERVICE_ACCOUNT_SECRET",
       "data_type": "integer",
       "validation_rule": {
         "kind": "integer"

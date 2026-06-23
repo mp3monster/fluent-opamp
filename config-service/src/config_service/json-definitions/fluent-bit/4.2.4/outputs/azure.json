@@ -49,7 +49,7 @@
     {
       "name": "time_key",
       "required": false,
-      "description": "Optional.",
+      "description": "Specify the key name where the timestamp will be stored.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/azure#configuration-parameters",
       "default": "@timestamp",
       "data_type": "string",

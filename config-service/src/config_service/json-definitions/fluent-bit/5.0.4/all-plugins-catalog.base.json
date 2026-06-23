@@ -32,7 +32,7 @@
           "description": "Set the plugin's logging verbosity level.",
           "reference": "https://docs.fluentbit.io/manual/administration/configuring-fluent-bit/yaml/pipeline-section#inputs",
           "data_type": "enum",
-          "called_enum_options": [
+          "enum_options": [
             "off",
             "trace",
             "debug",
@@ -69,7 +69,7 @@
           "description": "Set the plugin's logging verbosity level.",
           "reference": "https://docs.fluentbit.io/manual/administration/configuring-fluent-bit/yaml/pipeline-section#filters",
           "data_type": "enum",
-          "called_enum_options": [
+          "enum_options": [
             "off",
             "trace",
             "debug",
@@ -106,7 +106,7 @@
           "description": "Set the plugin's logging verbosity level.",
           "reference": "https://docs.fluentbit.io/manual/administration/configuring-fluent-bit/yaml/pipeline-section#outputs",
           "data_type": "enum",
-          "called_enum_options": [
+          "enum_options": [
             "off",
             "trace",
             "debug",
@@ -142,7 +142,7 @@
                 "or"
               ]
             },
-            "called_enum_options": [
+            "enum_options": [
               "and",
               "or"
             ]
@@ -186,7 +186,7 @@
                       "upsert"
                     ]
                   },
-                  "called_enum_options": [
+                  "enum_options": [
                     "convert",
                     "delete",
                     "extract",
@@ -214,7 +214,7 @@
                       "otel_log_attributes"
                     ]
                   },
-                  "called_enum_options": [
+                  "enum_options": [
                     "attributes",
                     "body",
                     "otel_resource_attributes",
@@ -263,7 +263,7 @@
                       "double"
                     ]
                   },
-                  "called_enum_options": [
+                  "enum_options": [
                     "string",
                     "boolean",
                     "int",
@@ -372,7 +372,7 @@
                       "EXCLUDE"
                     ]
                   },
-                  "called_enum_options": [
+                  "enum_options": [
                     "INCLUDE",
                     "EXCLUDE"
                   ]
@@ -390,7 +390,7 @@
                       "delete_label_value"
                     ]
                   },
-                  "called_enum_options": [
+                  "enum_options": [
                     "metric_name",
                     "delete_label_value"
                   ]
@@ -424,7 +424,7 @@
                       "SUBSTRING"
                     ]
                   },
-                  "called_enum_options": [
+                  "enum_options": [
                     "PREFIX",
                     "SUBSTRING"
                   ]
@@ -473,7 +473,7 @@
                       "drop"
                     ]
                   },
-                  "called_enum_options": [
+                  "enum_options": [
                     "auto",
                     "keep",
                     "drop"
@@ -600,7 +600,7 @@
                       "upsert"
                     ]
                   },
-                  "called_enum_options": [
+                  "enum_options": [
                     "convert",
                     "delete",
                     "extract",
@@ -625,7 +625,7 @@
                       "span_attributes"
                     ]
                   },
-                  "called_enum_options": [
+                  "enum_options": [
                     "span_name",
                     "span_kind",
                     "span_status",
@@ -671,7 +671,7 @@
                       "double"
                     ]
                   },
-                  "called_enum_options": [
+                  "enum_options": [
                     "string",
                     "boolean",
                     "int",
@@ -699,7 +699,7 @@
                       "tail"
                     ]
                   },
-                  "called_enum_options": [
+                  "enum_options": [
                     "probabilistic",
                     "tail"
                   ]
@@ -809,7 +809,7 @@
           "description": "Logical operator for combining route rules.",
           "reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
           "data_type": "enum",
-          "called_enum_options": [
+          "enum_options": [
             "and",
             "or"
           ],
@@ -829,7 +829,7 @@
           "description": "Location of the field used for route evaluation.",
           "reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
           "data_type": "enum",
-          "called_enum_options": [
+          "enum_options": [
             "body",
             "group_attributes",
             "group_metadata",
@@ -864,7 +864,7 @@
           "description": "Comparison operator applied to the selected field.",
           "reference": "https://docs.fluentbit.io/manual/data-pipeline/router#conditional-routing",
           "data_type": "enum",
-          "called_enum_options": [
+          "enum_options": [
             "eq",
             "gt",
             "gte",

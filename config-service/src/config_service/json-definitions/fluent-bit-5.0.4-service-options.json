@@ -51,7 +51,7 @@
           "off"
         ]
       },
-      "called_enum_options": [
+      "enum_options": [
         "yes",
         "no",
         "on",
@@ -72,7 +72,7 @@
           "TCP"
         ]
       },
-      "called_enum_options": [
+      "enum_options": [
         "UDP",
         "TCP"
       ]
@@ -106,7 +106,7 @@
           "trace"
         ]
       },
-      "called_enum_options": [
+      "enum_options": [
         "off",
         "trace",
         "debug",
@@ -162,7 +162,7 @@
           "off"
         ]
       },
-      "called_enum_options": [
+      "enum_options": [
         "on",
         "off"
       ]
@@ -263,7 +263,7 @@
           "off"
         ]
       },
-      "called_enum_options": [
+      "enum_options": [
         "on",
         "off"
       ]
@@ -305,7 +305,7 @@
           "full"
         ]
       },
-      "called_enum_options": [
+      "enum_options": [
         "normal",
         "full"
       ]
@@ -392,7 +392,7 @@
           "ASYNC"
         ]
       },
-      "called_enum_options": [
+      "enum_options": [
         "LEGACY",
         "ASYNC"
       ]
@@ -583,7 +583,7 @@
           "memrb"
         ]
       },
-      "called_enum_options": [
+      "enum_options": [
         "memory",
         "filesystem",
         "memrb"

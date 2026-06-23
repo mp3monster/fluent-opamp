@@ -94,7 +94,8 @@
       "required": false,
       "description": "Set payload compression mechanism.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/elasticsearch#configuration-parameters",
-      "data_type": "string",
+      "data_type": "enum",
+      "enum_options": ["gzip"],
       "validation_rule": null
     },
     {

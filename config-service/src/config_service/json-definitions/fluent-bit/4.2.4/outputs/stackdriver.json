@@ -27,8 +27,9 @@
       "required": false,
       "description": "Set payload compression mechanism.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/stackdriver#configuration-parameters",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "enum",
+      "enum_options": ["gzip"],
+      "validation_rule": {"kind": "enum"}
     },
     {
       "name": "custom_k8s_regex",
@@ -47,12 +48,8 @@
       "description": "The GCP project that should receive these logs.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/stackdriver#configuration-parameters",
       "default": "The `project_id` in the `google_service_credentials` file, or the `project_id` from Google's `metadata.google.internal` server.",
-      "data_type": "integer",
-      "validation_rule": {
-        "kind": "range",
-        "min": 1,
-        "max": 65535
-      }
+      "data_type": "string",
+      "validation_rule": null
     },
     {
       "name": "google_service_credentials",
@@ -173,8 +170,9 @@
       "description": "Set resource type of data.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/stackdriver#configuration-parameters",
       "default": "global",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "enum",
+      "enum_options": ["k8s_container", "k8s_node", "k8s_pod", "global", "generic_node", "generic_task", "gce_instance"],
+      "validation_rule": {"kind": "enum"}
     },
     {
       "name": "resource_labels",
@@ -193,10 +191,8 @@
       "description": "Account email associated with the service.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/stackdriver#configuration-parameters",
       "default": "Value of environment variable `$SERVICE_ACCOUNT_EMAIL",
-      "data_type": "integer",
-      "validation_rule": {
-        "kind": "integer"
-      }
+      "data_type": "string",
+      "validation_rule": null
     },
     {
       "name": "service_account_secret",
@@ -204,10 +200,8 @@
       "description": "Private key content associated with the service account.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/stackdriver#configuration-parameters",
       "default": "Value of environment variable `$SERVICE_ACCOUNT_SECRET",
-      "data_type": "integer",
-      "validation_rule": {
-        "kind": "integer"
-      }
+      "data_type": "string",
+      "validation_rule": null
     },
     {
       "name": "severity_key",
@@ -240,7 +234,7 @@
       "required": true,
       "description": "Set the tag_prefix used to validate the tag of logs with Kubernetes resource type.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/stackdriver#configuration-parameters",
-      "default": "k8s_container.`, `k8s_pod.`, `k8s_node.",
+      "default": "k8s_container.",
       "data_type": "string",
       "validation_rule": null
     },
@@ -327,5 +321,5 @@
       "Default"
     ]
   },
-  "description": "The Stackdriver output plugin lets you ingest your records into the Google Cloud Stackdriver Logging service."
+  "description": "The Stackdriver output plugin lets you ingest your records into the Google Cloud Stackdriver Logging service. The additional special fields - see https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/stackdriver_special_fields"
 }

@@ -13,7 +13,7 @@
     {
       "name": "header",
       "required": true,
-      "description": "Required headers for Parseable integration.",
+      "description": "Required headers for Parseable integration. Must include X-P-Stream (stream name) and X-P-Log-Source (telemetry type: otel-logs, otel-metrics, or otel-traces).",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/parseable#configuration-parameters",
       "data_type": "string",
       "validation_rule": null

@@ -41,7 +41,7 @@
     {
       "name": "dd_service",
       "required": false,
-      "description": "Recommended.",
+      "description": "The human readable name for your service generating the logs. For example, the name of your application or database. If not set, Datadog looks for the service using service remapper.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/datadog#configuration-parameters",
       "data_type": "string",
       "validation_rule": null
@@ -49,7 +49,7 @@
     {
       "name": "dd_source",
       "required": false,
-      "description": "Recommended.",
+      "description": "A human-readable name for the underlying technology of your service like postgres or nginx. If unset, Datadog looks for the source in the ddsource attribute.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/datadog#configuration-parameters",
       "data_type": "string",
       "validation_rule": null
@@ -57,7 +57,7 @@
     {
       "name": "dd_tags",
       "required": false,
-      "description": "The [tags](https://docs.datadoghq.com/getting_started/tagging/) you want to assign to your logs in Datadog.",
+      "description": "The tags(https://docs.datadoghq.com/getting_started/tagging/) you want to assign to your logs in Datadog.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/datadog#configuration-parameters",
       "data_type": "string",
       "validation_rule": null

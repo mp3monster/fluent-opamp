@@ -25,7 +25,7 @@
     {
       "name": "header",
       "required": false,
-      "description": "The specific header for content-type.",
+      "description": "The specific header for content-type. e.g. Content-Type application/json; charset=utf-8. This attribute can also be used to provide the API token with a header value of Authorization Api-Token {your-API-token-here}",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/dynatrace#configuration-parameters",
       "default": "Content-Type application/json; charset=utf-8",
       "data_type": "string",
@@ -34,7 +34,7 @@
     {
       "name": "host",
       "required": false,
-      "description": "Your Dynatrace environment hostname where {your-environment-id} is your environment ID.",
+      "description": "Your Dynatrace environment hostname where {your-environment-id} is your environment ID. {your-environment-id}.live.dynatrace.com}",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/dynatrace#configuration-parameters",
       "default": "{your-environment-id}.live.dynatrace.com",
       "data_type": "string",
@@ -77,8 +77,8 @@
       "description": "Specify to use TLS.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/dynatrace#configuration-parameters",
       "default": "on",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "boolean",
+      "validation_rule": {"kind": "boolean"}
     },
     {
       "name": "tls.verify",
@@ -86,8 +86,8 @@
       "description": "TLS verification.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/dynatrace#configuration-parameters",
       "default": "on",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "boolean",
+      "validation_rule": { "kind": "boolean" }
     },
     {
       "name": "uri",

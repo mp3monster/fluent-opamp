@@ -39,8 +39,8 @@
       "description": "Use TLS authentication.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/loki#configuration-parameters",
       "default": "off",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "boolean",
+      "validation_rule": {"kind": "boolean"}
     },
     {
       "name": "http_user",
@@ -113,7 +113,7 @@
     {
       "name": "structured_metadata",
       "required": false,
-      "description": "(Optional.) Comma-separated list of key=value strings specifying structured metadata for the log line.",
+      "description": "Comma-separated list of key=value strings specifying structured metadata for the log line.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/loki#configuration-parameters",
       "data_type": "list",
       "validation_rule": {
@@ -124,7 +124,7 @@
     {
       "name": "structured_metadata_map_keys",
       "required": false,
-      "description": "(Optional.) Comma-separated list of record key strings specifying record values of type map, used to dynamically populate structured metadata for the log line.",
+      "description": "Comma-separated list of record key strings specifying record values of type map, used to dynamically populate structured metadata for the log line.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/loki#configuration-parameters",
       "data_type": "list",
       "validation_rule": {
@@ -135,7 +135,7 @@
     {
       "name": "remove_keys",
       "required": false,
-      "description": "(Optional.) List of keys to remove.",
+      "description": "List of keys to remove.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/loki#configuration-parameters",
       "data_type": "list",
       "validation_rule": {
@@ -156,9 +156,10 @@
       "required": false,
       "description": "Format to use when flattening the record to a log line.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/loki#configuration-parameters",
-      "default": "json",
-      "data_type": "string",
-      "validation_rule": null
+      "default": "JSON",
+      "data_type": "enum",
+      "enum_options": ["JSON", "key_value"],
+      "validation_rule": {"kind": "enum"}
     },
     {
       "name": "auto_kubernetes_labels",
@@ -195,8 +196,9 @@
       "required": false,
       "description": "Set payload compression mechanism.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/loki#configuration-parameters",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "enum",
+      "enum_options": ["gzip"],
+      "validation_rule": {"kind": "enum"}
     },
     {
       "name": "workers",

@@ -15,8 +15,9 @@
       "required": false,
       "description": "Set payload compression mechanism.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/splunk#configuration-parameters",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "enum",
+      "enum_options": ["gzip"],
+      "validation_rule": { "kind": "enum" }
     },
     {
       "name": "host",
@@ -97,6 +98,81 @@
         "min": 0
       }
     },
+
+    {
+      "name": "event_field",
+      "required": false,
+      "description": "Set event fields for the record. This option can be set multiple times and the format is key_name record_accessor_pattern",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/splunk#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "event_host",
+      "required": false,
+      "description": "Specify the key name that contains the host value. This option allows a record accessors pattern.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/splunk#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "event_index",
+      "required": false,
+      "description": "The name of the index by which the event data is to be indexed.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/splunk#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "event_index_key",
+      "required": false,
+      "description": "Set a record key that will populate the index field. If the key is found, it will have precedence over the value set in event_index.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/splunk#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "event_key",
+      "required": false,
+      "description": "Specify the key name that will be used to send a single value as part of the record.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/splunk#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "event_source",
+      "required": false,
+      "description": "Set the source value to assign to the event data.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/splunk#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "event_sourcetype",
+      "required": false,
+      "description": "Set the sourcetype value to assign to the event data.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/splunk#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "event_sourcetype_key",
+      "required": false,
+      "description": "Set a record key that will populate sourcetype. If the key is found, it will have precedence over the value set in event_sourcetype.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/splunk#configuration-parameters",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "splunk_send_raw",
+      "required": false,
+      "description": "When enabled, the record keys and values are set in the top level of the map instead of under the event key. See Sending Raw Events to configure this option.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/splunk#configuration-parameters",
+      "data_type": "boolean",
+      "default": "off",
+      "validation_rule": {"kind": "boolean"}
+    },
+
     {
       "name": "match",
       "required": false,

@@ -18,8 +18,9 @@
       "required": false,
       "description": "Compression type for records sent to Firehose.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/firehose#configuration-parameters",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "enum",
+      "enum_options": ["gzip", "zstd", "snappy", "arrow"],
+      "validation_rule": {"kind" : "enum"}
     },
     {
       "name": "delivery_stream",

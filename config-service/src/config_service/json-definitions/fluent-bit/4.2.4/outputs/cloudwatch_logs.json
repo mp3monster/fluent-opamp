@@ -45,7 +45,7 @@
     },
     {
       "name": "endpoint",
-      "required": false,
+      "required": true,
       "description": "Specify a custom endpoint for the CloudWatch Logs API.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/cloudwatch#configuration-parameters",
       "data_type": "string",
@@ -72,8 +72,9 @@
       "required": false,
       "description": "An optional parameter that can be used to tell CloudWatch the format of the data.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/cloudwatch#configuration-parameters",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "enum",
+      "enum_options": ["JSON", "EMF"],
+      "validation_rule": {"kind": "enum", "values": ["JSON", "EMF"]}
     },
     {
       "name": "log_group_class",
@@ -115,8 +116,8 @@
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/cloudwatch#configuration-parameters",
       "default": "info",
       "data_type": "enum",
-      "validation_rule": null,
-      "called_enum_options": [
+      "validation_rule": {"kind": "enum"},
+      "enum_options": [
         "off",
         "trace",
         "debug",

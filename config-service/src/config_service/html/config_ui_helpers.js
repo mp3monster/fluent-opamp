@@ -51,11 +51,11 @@
     if (!field || typeof field !== "object") {
       return [];
     }
-    if (Array.isArray(field.called_enum_options)) {
-      return field.called_enum_options.slice();
-    }
     if (Array.isArray(field.enum_options)) {
       return field.enum_options.slice();
+    }
+    if (Array.isArray(field.called_enum_options)) {
+      return field.called_enum_options.slice();
     }
     return [];
   }

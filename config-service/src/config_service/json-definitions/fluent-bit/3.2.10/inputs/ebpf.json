@@ -16,7 +16,7 @@
       "description": "Tag assigned to records emitted by this input plugin.",
       "reference": "https://docs.fluentbit.io/manual/3.2/data-pipeline/inputs/ebpf#configuration-parameters",
       "data_type": "enum",
-      "called_enum_options": ["trace_signal", "trace_malloc", "trace_bind"],
+      "enum_options": ["trace_signal", "trace_malloc", "trace_bind"],
       "validation_rule": {
         "kind": "enum",
         "values": ["trace_signal", "trace_malloc", "trace_bind"]

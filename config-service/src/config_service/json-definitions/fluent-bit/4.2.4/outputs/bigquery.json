@@ -42,9 +42,9 @@
     {
       "name": "google_service_credentials",
       "required": false,
-      "description": "Absolute path to a Google Cloud credentials JSON file.",
+      "description": "Absolute path to a Google Cloud credentials JSON file. Value of the environment variable `$GOOGLE_SERVICE_CREDENTIALS`",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/bigquery#configuration-parameters",
-      "default": "Value of the environment variable `$GOOGLE_SERVICE_CREDENTIALS`.",
+      "default": "",
       "data_type": "string",
       "validation_rule": null
     },
@@ -54,8 +54,8 @@
       "description": "Accept rows that contain values that don't match the schema.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/bigquery#configuration-parameters",
       "default": "Off",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "boolean",
+      "validation_rule": {"kind": "boolean"}
     },
     {
       "name": "pool_id",
@@ -68,9 +68,9 @@
     {
       "name": "project_id",
       "required": false,
-      "description": "The project ID containing the BigQuery dataset to stream into.",
+      "description": "The project ID containing the BigQuery dataset to stream into. Value of the `project_id` in the credentials file.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/bigquery#configuration-parameters",
-      "default": "Value of the `project_id` in the credentials file.",
+      "default": "",
       "data_type": "string",
       "validation_rule": null
     },
@@ -95,20 +95,16 @@
       "required": false,
       "description": "The service account email address.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/bigquery#configuration-parameters",
-      "data_type": "integer",
-      "validation_rule": {
-        "kind": "integer"
-      }
+      "data_type": "string",
+      "validation_rule": null
     },
     {
       "name": "service_account_secret",
       "required": false,
       "description": "The service account private key.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/bigquery#configuration-parameters",
-      "data_type": "integer",
-      "validation_rule": {
-        "kind": "integer"
-      }
+      "data_type": "string",
+      "validation_rule": null
     },
     {
       "name": "skip_invalid_rows",
@@ -116,8 +112,8 @@
       "description": "Insert all valid rows of a request, even if invalid rows exist.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/bigquery#configuration-parameters",
       "default": "Off",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "boolean",
+      "validation_rule": {"kind": "boolean"}
     },
     {
       "name": "table_id",

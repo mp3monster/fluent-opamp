@@ -184,8 +184,7 @@
       "default": "10s",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -219,8 +218,7 @@
       "default": "0s",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -373,11 +371,11 @@
       "description": "Allows for setting a successful response code.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/inputs/opentelemetry#configuration",
       "default": "201",
-      "data_type": "string",
+      "data_type": "enum",
       "validation_rule": {
-        "kind": "enum",
-        "options": ["200", "201", "204"]
-      }
+        "kind": "enum"
+      },
+      "enum_options": ["200", "201", "204"]
     },
     {
       "name": "tag",

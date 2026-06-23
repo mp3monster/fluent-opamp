@@ -63,7 +63,7 @@ def field(
     if default is not None:
         item["default"] = default
     if enum_options:
-        item["called_enum_options"] = enum_options
+        item["enum_options"] = enum_options
     return item
 
 

@@ -29,7 +29,7 @@
         ]
       },
       "default": "info",
-      "called_enum_options": [
+      "enum_options": [
         "trace",
         "debug",
         "info",
@@ -61,7 +61,7 @@
         ]
       },
       "default": "tsv",
-      "called_enum_options": [
+      "enum_options": [
         "tsv",
         "json",
         "msgpack"
@@ -82,7 +82,7 @@
         ]
       },
       "default": "tsv",
-      "called_enum_options": [
+      "enum_options": [
         "tsv",
         "json",
         "msgpack"

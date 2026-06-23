@@ -25,8 +25,9 @@
       "description": "Sets the compression mechanism for the payload.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/new-relic#configuration-parameters",
       "default": "gzip",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "enum",
+      "enum_options": ["gzip"],
+      "validation_rule": {"kind": "enum"}
     },
     {
       "name": "license_key",

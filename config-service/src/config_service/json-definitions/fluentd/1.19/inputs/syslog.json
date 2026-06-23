@@ -29,7 +29,7 @@
         ]
       },
       "default": "info",
-      "called_enum_options": [
+      "enum_options": [
         "trace",
         "debug",
         "info",
@@ -93,7 +93,7 @@
         ]
       },
       "default": "rfc3164",
-      "called_enum_options": [
+      "enum_options": [
         "rfc3164",
         "rfc5424",
         "auto"

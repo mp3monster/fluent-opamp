@@ -163,7 +163,7 @@
       "default": "info",
       "data_type": "enum",
       "validation_rule": null,
-      "called_enum_options": [
+      "enum_options": [
         "off",
         "trace",
         "debug",
@@ -238,7 +238,7 @@
           "TCP"
         ]
       },
-      "called_enum_options": [
+      "enum_options": [
         "UDP",
         "TCP"
       ]

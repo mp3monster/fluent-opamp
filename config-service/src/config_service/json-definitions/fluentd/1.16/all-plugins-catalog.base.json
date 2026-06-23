@@ -48,7 +48,7 @@
                 ]
               },
               "default": "float",
-              "called_enum_options": [
+              "enum_options": [
                 "float",
                 "unixtime",
                 "string"
@@ -204,7 +204,7 @@
                 ]
               },
               "default": "info",
-              "called_enum_options": [
+              "enum_options": [
                 "trace",
                 "debug",
                 "info",
@@ -284,7 +284,7 @@
                 ]
               },
               "default": "throw_exception",
-              "called_enum_options": [
+              "enum_options": [
                 "throw_exception",
                 "block",
                 "drop_oldest_chunk"
@@ -323,7 +323,7 @@
                 ]
               },
               "default": "info",
-              "called_enum_options": [
+              "enum_options": [
                 "trace",
                 "debug",
                 "info",
@@ -403,7 +403,7 @@
                 ]
               },
               "default": "float",
-              "called_enum_options": [
+              "enum_options": [
                 "float",
                 "unixtime",
                 "string"
@@ -562,7 +562,7 @@
               "TLS1_3"
             ]
           },
-          "called_enum_options": [
+          "enum_options": [
             "TLS1_1",
             "TLS1_2",
             "TLS1_3"
@@ -582,7 +582,7 @@
               "TLS1_3"
             ]
           },
-          "called_enum_options": [
+          "enum_options": [
             "TLS1_1",
             "TLS1_2",
             "TLS1_3"
@@ -602,7 +602,7 @@
               "TLS1_3"
             ]
           },
-          "called_enum_options": [
+          "enum_options": [
             "TLS1_1",
             "TLS1_2",
             "TLS1_3"
@@ -831,7 +831,7 @@
             ]
           },
           "default": "float",
-          "called_enum_options": [
+          "enum_options": [
             "float",
             "unixtime",
             "string"
@@ -912,7 +912,7 @@
             ]
           },
           "default": "float",
-          "called_enum_options": [
+          "enum_options": [
             "float",
             "unixtime",
             "string"

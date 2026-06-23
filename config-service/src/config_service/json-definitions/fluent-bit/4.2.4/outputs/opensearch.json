@@ -79,8 +79,9 @@
       "required": false,
       "description": "Set payload compression mechanism.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "enum",
+      "enum_options": ["gzip"],
+      "validation_rule": {"kind": "enum"}
     },
     {
       "name": "current_time_index",
@@ -181,10 +182,7 @@
       "description": "When logstash_format is enabled, the index name is composed using a prefix and the date.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
       "default": "logstash",
-      "data_type": "boolean",
-      "validation_rule": {
-        "kind": "boolean"
-      }
+      "data_type": "string"
     },
     {
       "name": "logstash_prefix_key",
@@ -282,10 +280,7 @@
       "description": "When logstash_format is enabled, this property defines the format of the timestamp.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/opensearch#configuration-parameters",
       "default": "%Y-%m-%dT%H:%M:%S",
-      "data_type": "boolean",
-      "validation_rule": {
-        "kind": "boolean"
-      }
+      "data_type": "string"
     },
     {
       "name": "time_key_nanos",

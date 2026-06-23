@@ -8,8 +8,9 @@
       "description": "Specify the data format.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/null#configuration-parameters",
       "default": "msgpack",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "enum",
+      "enum_options": ["msgpack", "JSON", "json_lines", "json_stream"],
+      "validation_rule": {"kind": "enum"}
     },
     {
       "name": "json_date_format",
@@ -17,8 +18,15 @@
       "description": "Specify the format of the date.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/null#configuration-parameters",
       "default": "double",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "enum",
+      "enum_options": [
+        "double",
+        "epoch",
+        "epoch_ms",
+        "iso8601",
+        "java_sql_timestamp"
+      ],
+      "validation_rule": {"kind": "enum"}
     },
     {
       "name": "json_date_key",

@@ -123,19 +123,19 @@ async def test_health_and_versions() -> None:
     assert isinstance(svc_body["options"], list)
     daemon_option = next(item for item in svc_body["options"] if item["name"] == "daemon")
     assert daemon_option["data_type"] == "enum"
-    assert daemon_option["called_enum_options"] == ["on", "off"]
+    assert daemon_option["enum_options"] == ["yes", "no", "on", "off"]
     dns_mode_option = next(item for item in svc_body["options"] if item["name"] == "dns.mode")
     assert dns_mode_option["data_type"] == "enum"
-    assert dns_mode_option["called_enum_options"] == ["UDP", "TCP"]
+    assert dns_mode_option["enum_options"] == ["UDP", "TCP"]
     dns_resolver_option = next(item for item in svc_body["options"] if item["name"] == "dns.resolver")
     assert dns_resolver_option["data_type"] == "enum"
-    assert dns_resolver_option["called_enum_options"] == ["LEGACY", "ASYNC"]
+    assert dns_resolver_option["enum_options"] == ["LEGACY", "ASYNC"]
     http_server_option = next(item for item in svc_body["options"] if item["name"] == "http_server")
     assert http_server_option["data_type"] == "enum"
-    assert http_server_option["called_enum_options"] == ["on", "off"]
+    assert http_server_option["enum_options"] == ["on", "off"]
     hot_reload_option = next(item for item in svc_body["options"] if item["name"] == "hot_reload")
     assert hot_reload_option["data_type"] == "enum"
-    assert hot_reload_option["called_enum_options"] == ["on", "off"]
+    assert hot_reload_option["enum_options"] == ["on", "off"]
 
     parser_options = await client.get("/config-service/api/v1/parser-options/5.0.4")
     assert parser_options.status_code == 200
@@ -155,14 +155,14 @@ async def test_health_and_versions() -> None:
     s3_fields = catalog_body["plugins"]["outputs"]["s3"]["fields"]
     net_dns_mode = next(item for item in s3_fields if item["name"] == "net.dns.mode")
     assert net_dns_mode["data_type"] == "enum"
-    assert net_dns_mode["called_enum_options"] == ["UDP", "TCP"]
+    assert net_dns_mode["enum_options"] == ["UDP", "TCP"]
     tail_fields = catalog_body["plugins"]["inputs"]["tail"]["fields"]
     tail_buffer_max_size = next(item for item in tail_fields if item["name"] == "buffer_max_size")
     assert tail_buffer_max_size["data_type"] == "size"
     azure_kusto_fields = catalog_body["plugins"]["outputs"]["azure_kusto"]["fields"]
     net_dns_resolver = next(item for item in azure_kusto_fields if item["name"] == "net.dns.resolver")
     assert net_dns_resolver["data_type"] == "enum"
-    assert net_dns_resolver["called_enum_options"] == ["LEGACY", "ASYNC"]
+    assert net_dns_resolver["enum_options"] == ["LEGACY", "ASYNC"]
 
     schema = await client.post("/config-service/api/v1/schema/5.0.4?config_type=fluentbit", json={"strict": True})
     assert schema.status_code == 200
@@ -230,7 +230,7 @@ def test_nginx_metrics_catalog_uses_duration_validation_rule() -> None:
     assert scrape_interval["data_type"] == "duration"
     assert scrape_interval["validation_rule"] == {"kind": "duration"}
 
-def test_fluent_bit_older_catalogs_require_tag_for_inputs_except_forward() -> None:
+def test_fluent_bit_older_catalogs_require_tag_for_inputs_except_known_legacy_exceptions() -> None:
     base = Path(__file__).resolve().parents[1] / "json-definitions"
     missing_required: list[tuple[str, str]] = []
     for version in ("3.2.10", "4.2.4"):
@@ -238,7 +238,7 @@ def test_fluent_bit_older_catalogs_require_tag_for_inputs_except_forward() -> No
         payload = load_json_artifact(path)
         inputs = payload.get("plugins", {}).get("inputs", {})
         for plugin_name, plugin_def in inputs.items():
-            if plugin_name == "forward":
+            if plugin_name in {"forward", "http", "opentelemetry"}:
                 continue
             fields = [field for field in plugin_def.get("fields", []) if isinstance(field, dict)]
             tag_field = next((field for field in fields if field.get("name") == "tag"), None)

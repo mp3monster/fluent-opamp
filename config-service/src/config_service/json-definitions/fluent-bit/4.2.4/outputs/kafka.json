@@ -125,6 +125,15 @@
       "validation_rule": null
     },
     {
+      "name": "otlp_logs_partition_by_resource",
+      "required": false,
+      "description": "When using otlp_json or otlp_proto format for logs, send each OTLP resource's logs as a separate Kafka message.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/kafka#configuration-parameters",
+      "data_type": "boolean",
+      "default": "false",
+      "validation_rule": { "kind": "boolen" }
+    },
+    {
       "name": "queue_full_retries",
       "required": false,
       "description": "Number of local retries to enqueue data when the rdkafka queue is full.",
@@ -174,8 +183,9 @@
       "description": "Specify the timestamp format.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/kafka#configuration-parameters",
       "default": "double",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "enum",
+      "enum_options": ["double", "iso8601", "iso8601_ns"],
+      "validation_rule": { "kind": "enum" }
     },
     {
       "name": "timestamp_key",
@@ -233,6 +243,2033 @@
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/router",
       "data_type": "string",
       "validation_rule": null
+    },
+
+    {
+      "name": "rdkafka.builtin.features",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "enum",
+      "validation_rule": {
+        "kind": "enum"
+      },
+      "enum_options": [
+        "gzip",
+        "snappy",
+        "ssl",
+        "sasl",
+        "regex",
+        "lz4",
+        "sasl_gssapi",
+        "sasl_plain",
+        "sasl_scram",
+        "plugins",
+        "zstd",
+        "sasl_oauthbearer",
+        "http",
+        "oidc"
+      ]
+    },
+    {
+      "name": "rdkafka.client.id",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "default": "rdkafka",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.metadata.broker.list",
+      "required": false,
+      "description": "librdkafka properties - importance high (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.bootstrap.servers",
+      "required": false,
+      "description": "librdkafka properties - importance high (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.message.max.bytes",
+      "required": false,
+      "description": "librdkafka properties - importance medium (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 1000000,
+      "validation_rule": {
+        "kind": "range",
+        "min": 1000,
+        "max": 1000000000
+      }
+    },
+    {
+      "name": "rdkafka.message.copy.max.bytes",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 65535,
+      "validation_rule": {
+        "kind": "range",
+        "min": 1000,
+        "max": 1000000000
+      }
+    },
+    {
+      "name": "rdkafka.receive.message.max.bytes",
+      "required": false,
+      "description": "librdkafka properties - importance medium (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 100000000,
+      "validation_rule": {
+        "kind": "range",
+        "min": 1000,
+        "max": 2147483647
+      }
+    },
+    {
+      "name": "rdkafka.max.in.flight.requests.per.connection",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 1000000,
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 1000000
+      }
+    },
+    {
+      "name": "rdkafka.max.in.flight",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 1000000,
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 1000000
+      }
+    },
+    {
+      "name": "rdkafka.metadata.recovery.strategy",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "enum",
+      "enum_options": ["none", "rebootstrap"],
+      "validation_rule": {
+        "kind": "enum"
+      }
+    },
+    {
+      "name": "rdkafka.metadata.recovery.rebootstrap.trigger.ms",
+      "required": false,
+      "description": "librdkafka properties (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 300000,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 2147483647
+      }
+    },
+    {
+      "name": "rdkafka.topic.metadata.refresh.interval.ms",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 300000,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 3600000
+      }
+    },
+    {
+      "name": "rdkafka.metadata.max.age.ms",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 900000,
+      "validation_rule": {
+        "kind": "range",
+        "min": -1,
+        "max": 86400000
+      }
+    },
+    {
+      "name": "rdkafka.topic.metadata.refresh.fast.interval.ms",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 100,
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 60000
+      }
+    },
+    {
+      "name": "rdkafka.topic.metadata.refresh.fast.cnt",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 10,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 1000
+      }
+    },
+    {
+      "name": "rdkafka.topic.metadata.refresh.sparse",
+      "required": false,
+      "description": "librdkafka properties (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "boolean",
+      "default": true,
+      "validation_rule": { "kind": "boolean" }
+    },
+    {
+      "name": "rdkafka.topic.metadata.propagation.max.ms",
+      "required": false,
+      "description": "librdkafka properties (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 30000,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 3600000
+      }
+    },
+    {
+      "name": "rdkafka.topic.blacklist",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.debug",
+      "required": false,
+      "description": "librdkafka properties - importance medium (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.socket.timeout.ms",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 60000,
+      "validation_rule": {
+        "kind": "range",
+        "min": 10,
+        "max": 300000
+      }
+    },
+    {
+      "name": "rdkafka.socket.blocking.max.ms",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 1000,
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 60000
+      }
+    },
+    {
+      "name": "rdkafka.socket.send.buffer.bytes - importance low",
+      "required": false,
+      "description": "librdkafka properties (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 0,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 1000000000
+      }
+    },
+    {
+      "name": "rdkafka.socket.receive.buffer.bytes - importance low",
+      "required": false,
+      "description": "librdkafka properties (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 0,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 1000000000
+      }
+    },
+    {
+      "name": "rdkafka.socket.keepalive.enable",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "boolean",
+      "validation_rule": { "kind": "boolean" }
+    },
+    {
+      "name": "rdkafka.socket.nagle.disable",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "boolean",
+      "validation_rule": { "kind": "boolean" }
+    },
+    {
+      "name": "rdkafka.socket.max.fails",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 1,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 100000
+      }
+    },
+    {
+      "name": "rdkafka.broker.address.ttl",
+      "required": false,
+      "description": "librdkafka properties (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 1000,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 86400000
+      }
+    },
+    {
+      "name": "rdkafka.broker.address.family",
+      "required": false,
+      "description": "librdkafka properties - any v4 or v6 - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.socket.connection.setup.timeout.ms",
+      "required": false,
+      "description": "librdkafka properties - importance medium (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 30000,
+      "validation_rule": {
+        "kind": "range",
+        "min": 1000,
+        "max": 2147483647
+      }
+    },
+    {
+      "name": "rdkafka.connection.max.idle.ms",
+      "required": false,
+      "description": "librdkafka properties - importance medium (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 0,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 2147483647
+      }
+    },
+    {
+      "name": "rdkafka.reconnect.backoff.jitter.ms",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 0,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 1000000000
+      }
+    },
+    {
+      "name": "rdkafka.reconnect.backoff.ms",
+      "required": false,
+      "description": "librdkafka properties - importance medium (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 0,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 1000000000
+      }
+    },
+    {
+      "name": "rdkafka.reconnect.backoff.max.ms",
+      "required": false,
+      "description": "librdkafka properties - importance medium (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 0,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 1000000000
+      }
+    },
+    {
+      "name": "rdkafka.static.interval.ms",
+      "required": false,
+      "description": "librdkafka properties - importance high (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 0,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 1000000000
+      }
+    },
+    {
+      "name": "rdkafka.enable.events",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 0,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 1000000000
+      }
+    },
+    {
+      "name": "rdkafka.error_cb",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.throttle_cb",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.stats_cb",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.log_cb",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.log_level",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 6,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 7
+      }
+    },
+    {
+      "name": "rdkafka.log.queue",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "boolean",
+      "validation_rule": { "kind": "boolean" }
+    },
+    {
+      "name": "rdkafka.log.thread.name",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "boolean",
+      "validation_rule": { "kind": "boolean" }
+    },
+    {
+      "name": "rdkafka.enable.random.seed",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "boolean",
+      "validation_rule": { "kind": "boolean" }
+    },
+    {
+      "name": "rdkafka.log.connection.close",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "boolean",
+      "validation_rule": { "kind": "boolean" }
+    },
+    {
+      "name": "rdkafka.background_event_cb",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.socket_cb",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.connect_cb",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.closesocket_cb",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.open_cb",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.resolve_cb",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.opaque",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.default_topic_conf",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.internal.termination.signal",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 0,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 128
+      }
+    },
+    {
+      "name": "rdkafka.api.version.request",
+      "required": false,
+      "description": "librdkafka properties - importance high (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "boolean",
+      "validation_rule": { "kind": "boolean" }
+    },
+
+    {
+      "name": "rdkafka.api.version.request.timeout.ms",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 10000,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 300000
+      }
+    },
+    {
+      "name": "rdkafka.api.version.fallback.ms",
+      "required": false,
+      "description": "librdkafka properties - importance medium (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 0,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 604800000
+      }
+    },
+    {
+      "name": "rdkafka.broker.version.fallback",
+      "required": false,
+      "description": "librdkafka properties - importance medium (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "default": "0.10.0",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.allow.auto.create.topics",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "boolean",
+      "validation_rule": { "kind": "boolean" }
+    },
+    {
+      "name": "rdkafka.security.protocol",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "enum",
+      "enum_options": ["plaintext", "ssl", "sasl_plaintext", "sasl_ssl"],
+      "default": "plaintext",
+      "validation_rule": {
+        "kind": "enum"
+      }
+    },
+    {
+      "name": "rdkafka.ssl.cipher.suites",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.ssl.curves.list",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.ssl.sigalgs.list",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.ssl.key.location",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.ssl.key.password",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.ssl.key.pem",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.ssl_key",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.ssl.certificate.loction",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.ssl.certificate.pem",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.ssl_certificate",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.ssl.ca.location",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.https.ca.location",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.https.ca.pem",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.ssl_ca",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.ssl.ca.pem",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.ssl.ca.certificate.stores",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.ssl.crl.location",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.ssl.keystore.location",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.ssl.keystore.password",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.ssl.providers",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.ssl.engine.location",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.ssl.engine.id",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.ssl_engine_callback_data",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+
+    {
+      "name": "rdkafka.enable.ssl.certification.verification",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "boolean",
+      "validation_rule": { "kind": "boolean" }
+    },
+
+    {
+      "name": "rdkafka.ssl.endpoint.identification.algorithm",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "enum",
+      "default": "https",
+      "enum_options": ["none", "https"],
+      "validation_rule": {
+        "kind": "enum",
+        "values": ["none", "https"]
+      }
+    },
+    {
+      "name": "rdkafka.ssl.certificate.verify_cb",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.sasl.mechanisms",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.sasl.mechanism",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.sasl.kerberos.service.name",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.sasl.kerberos.principal",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.sasl.kinit.cmd",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.sasl.keytab",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.sasl.kerberos.min.time.before.relogin",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 60000,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 86400000
+      }
+    },
+    {
+      "name": "rdkafka.sasl.username",
+      "required": false,
+      "description": "librdkafka properties - importance high (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.sasl.password",
+      "required": false,
+      "description": "librdkafka properties - importance high (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.sasl.oaurthbearer.config",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.enable.sasl.oauthbearer.unsecure.jwt",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "boolean",
+      "validation_rule": { "kind": "boolean" }
+    },
+    {
+      "name": "rdkafka.oauthbearer_token_refresh_cb",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.sasl.oauthbearer.method",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "enum",
+      "default": "default",
+      "enum_options": ["default", "oidc"],
+      "validation_rule": {
+        "kind": "enum"
+      }
+    },
+    {
+      "name": "rdkafka.sasl.oauthbearer.client.id",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.sasl.oauthbearer.client.credentials.id",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.sasl.oauthbearer.client.credentials.client.secret",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.sasl.oauthbearer.scope",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.sasl.oauthbearer.extensions",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.sasl.oauthbearer.endpoint.url",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.sasl.oauthbearer.sub.claim.name",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.sasl.oauthbearer.grant.type",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+
+    {
+      "name": "rdkafka.sasl.oauthbearer.assertion.algorithm",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "enum",
+      "default": "R256",
+      "enum_options": ["R256", "E256"],
+      "validation_rule": {
+        "kind": "enum"
+      }
+    },
+
+    {
+      "name": "rdkafka.sasl.oauthbearer.assertion.private.key.file",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.sasl.oauthbearer.assertion.private.key.passphrase",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.sasl.oauthbearer.ssertion.private.key.pem",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.sasl.oauthbearer.assertion.file",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.sasl.oauthbearer.assertion.claim.aud",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.sasl.oauthbearer.assertion.claim.exp.seconds",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 300,
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 2147483647
+      }
+    },
+    {
+      "name": "rdkafka.sasl.oauthbearer.assertion.claim.iss",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.sasl.oauthbearer.assertion.claimjti.include",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "boolean",
+      "validation_rule": { "kind": "boolean" }
+    },
+    {
+      "name": "rdkafka.sasl.oauthbearer.assertion.claim.nbf.seconds",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 60,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 2147483647
+      }
+    },
+    {
+      "name": "rdkafka.sasl.oauthbearer.scope",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.sasl.oauthbearer.metadata.authentication.type",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "enum",
+      "enum_options": ["none", "azure_imds"],
+      "default": "none",
+      "validation_rule": {
+        "kind": "enum"
+      }
+    },
+    {
+      "name": "rdkafka.plugin.library.paths",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.interceptors",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.group.id",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.Type",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.group.instance.id",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.partition.assignment.strategy",
+      "required": false,
+      "description": "librdkafka properties - importance medium (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+
+    {
+      "name": "rdkafka.session.timeout.ms",
+      "required": false,
+      "description": "librdkafka properties - importance high (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 45000,
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 3600000
+      }
+    },
+
+    {
+      "name": "rdkafka.heartbeat.interval.ms",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 3000,
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 3600000
+      }
+    },
+
+    {
+      "name": "rdkafka.group.protocol.type",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+
+    {
+      "name": "rdkafka.group.protocol",
+      "required": false,
+      "description": "librdkafka properties - importance high (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.group.remote.assignor",
+      "required": false,
+      "description": "librdkafka properties - importance medium (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.coordinator.query.interval.ms",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 600000,
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 3600000
+      }
+    },
+    {
+      "name": "rdkafka.max.poll.interval.ms",
+      "required": false,
+      "description": "librdkafka properties - importance high (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 300000,
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 604800000
+      }
+    },
+    {
+      "name": "rdkafka.enable.auto.commit",
+      "required": false,
+      "description": "librdkafka properties - importance high (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "boolean",
+      "validation_rule": { "kind": "boolean" }
+    },
+    {
+      "name": "rdkafka.auto.commit.interval.ms",
+      "required": false,
+      "description": "librdkafka properties - importance medium (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 5000,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 86400000
+      }
+    },
+
+    {
+      "name": "rdkafka.enable.auto.offset.store",
+      "required": false,
+      "description": "librdkafka properties - importance high (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "boolean",
+      "validation_rule": { "kind": "boolean" }
+    },
+
+    {
+      "name": "rdkafka.queued.min.messages",
+      "required": false,
+      "description": "librdkafka properties - importance medium (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 100000,
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 10000000
+      }
+    },
+
+    {
+      "name": "rdkafka.queued.max.messages.kbytes",
+      "required": false,
+      "description": "librdkafka properties - importance medium (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 65536,
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 2097151
+      }
+    },
+    {
+      "name": "rdkafka.fetch.wait.max.ms",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 500,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 300000
+      }
+    },
+    {
+      "name": "rdkafka.fetch.queue.backoff.ms",
+      "required": false,
+      "description": "librdkafka properties - importance medium (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 1000,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 300000
+      }
+    },
+    {
+      "name": "rdkafka.fetch.message.max.bytes",
+      "required": false,
+      "description": "librdkafka properties - importance medium (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 1048576,
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 1000000000
+      }
+    },
+    {
+      "name": "rdkafka.max.partition.fetch.bytes",
+      "required": false,
+      "description": "librdkafka properties - importance medium (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 1048576,
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 1000000000
+      }
+    },
+    {
+      "name": "rdkafka.fetch.max.bytes",
+      "required": false,
+      "description": "librdkafka properties - importance medium (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 52428800,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 2147483135
+      }
+    },
+    {
+      "name": "rdkafka.fetch.min.bytes",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 1,
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 100000000
+      }
+    },
+    {
+      "name": "rdkafka.fetch.error.backoff.ms",
+      "required": false,
+      "description": "librdkafka properties - importance medium (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 500,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 300000
+      }
+    },
+    {
+      "name": "rdkafka.offset.store.method",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "enum",
+      "enum_options": ["none", "file", "broker"],
+      "default": "broker",
+      "validation_rule": {
+        "kind": "enum"
+      }
+    },
+    {
+      "name": "rdkafka.isolation.level",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "enum",
+      "enum_options": ["read_uncommitted", "read_committed"],
+      "default": "read_committed",
+      "validation_rule": {
+        "kind": "enum"
+      }
+    },
+
+    {
+      "name": "rdkafka.consume_cb",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+
+    {
+      "name": "rdkafka.rebalance_cb",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.offset_commit_cb",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+
+    {
+      "name": "rdkafka.enable.partition.eof",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "boolean",
+      "validation_rule": { "kind": "boolean" }
+    },
+
+    {
+      "name": "rdkafka.check.crcs",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "boolean",
+      "validation_rule": { "kind": "boolean" }
+    },
+
+    {
+      "name": "rdkafka.client.rack",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+
+    {
+      "name": "rdkafka.transactional.id",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.transaction.timeout.ms",
+      "required": false,
+      "description": "librdkafka properties - importance medium (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 60000,
+      "validation_rule": {
+        "kind": "range",
+        "min": 1000,
+        "max": 2147483647
+      }
+    },
+    {
+      "name": "rdkafka.enable.idempotence",
+      "required": false,
+      "description": "librdkafka properties - importance high (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "boolean",
+      "validation_rule": { "kind": "boolean" }
+    },
+
+    {
+      "name": "rdkafka.enable.gapless.guarantee",
+      "required": false,
+      "description": "librdkafka properties - importance high (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "boolean",
+      "validation_rule": { "kind": "boolean" }
+    },
+
+    {
+      "name": "rdkafka.queue.buffering.max.message",
+      "required": false,
+      "description": "librdkafka properties - importance high (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 100000,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 2147483647
+      }
+    },
+    {
+      "name": "rdkafka.queue.buffering.max.kbytes",
+      "required": false,
+      "description": "librdkafka properties - importance high (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 1048576,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 2147483647
+      }
+    },
+    {
+      "name": "rdkafka.queue.buffering.max.ms",
+      "required": false,
+      "description": "librdkafka properties - importance high (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "float",
+      "default": 5,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 900000
+      }
+    },
+    {
+      "name": "rdkafka.linger.ms",
+      "required": false,
+      "description": "librdkafka properties - importance high (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "float",
+      "default": 5,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 900000
+      }
+    },
+    {
+      "name": "rdkafka.message.send.max.retries",
+      "required": false,
+      "description": "librdkafka properties - importance high (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 2147483647,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 2147483647
+      }
+    },
+    {
+      "name": "rdkafka.retries",
+      "required": false,
+      "description": "librdkafka properties - importance high (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 2147483647,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 2147483647
+      }
+    },
+    {
+      "name": "rdkafka.retry.backoff.ms",
+      "required": false,
+      "description": "librdkafka properties - importance medium (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 100,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 300000
+      }
+    },
+    {
+      "name": "rdkafka.retry.backoff.max.ms",
+      "required": false,
+      "description": "librdkafka properties - importance medium (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 1000,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 300000
+      }
+    },
+    {
+      "name": "rdkafka.queue.buffering.backpressure.threshold",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 1,
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 1000000
+      }
+    },
+    {
+      "name": "rdkafka.compression.codec",
+      "required": false,
+      "description": "librdkafka properties - importance medium (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "enum",
+      "enum_options": ["none", "gzip", "snappy", "lz4", "zstd"],
+      "default": "none",
+      "validation_rule": {
+        "kind": "enum"
+      }
+    },
+    {
+      "name": "rdkafka.compression.type",
+      "required": false,
+      "description": "librdkafka properties - importance medium (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "enum",
+      "enum_options": ["none", "gzip", "snappy", "lz4", "zstd"],
+      "default": "none",
+      "validation_rule": {
+        "kind": "enum"
+      }
+    },
+    {
+      "name": "rdkafka.batch.num.messages",
+      "required": false,
+      "description": "librdkafka properties - importance medium (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 1000000,
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 1000000
+      }
+    },
+    {
+      "name": "rdkafka.batch.size",
+      "required": false,
+      "description": "librdkafka properties - importance medium (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 1000000,
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 2147483647
+      }
+    },
+    {
+      "name": "rdkafka.delivery.report.only.error",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "boolean",
+      "validation_rule": { "kind": "boolean" }
+    },
+
+    {
+      "name": "rdkafka.dr_cb",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+
+    {
+      "name": "rdkafka.dr_msg_cb",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+
+    {
+      "name": "rdkafka.sticky.partitioning.linger.ms",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 10,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 900000
+      }
+    },
+    {
+      "name": "rdkafka.client.dns.lookup",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "enum",
+      "enum_options": [
+        "use_all_dns_ips",
+        "resolve_canonical_bootstrap_servers_only"
+      ],
+      "default": "use_all_dns_ips",
+      "validation_rule": {
+        "kind": "enum"
+      }
+    },
+    {
+      "name": "rdkafka.enable.metrics.push",
+      "required": false,
+      "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "boolean",
+      "default": true,
+      "validation_rule": { "kind": "boolean" }
+    },
+    {
+      "name": "rdkafka.request.required.acks",
+      "required": false,
+      "description": "librdkafka properties - importance high - Topic configuration (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": -1,
+      "validation_rule": {
+        "kind": "range",
+        "min": -1,
+        "max": 1000
+      }
+    },
+
+    {
+      "name": "rdkafka.acks",
+      "required": false,
+      "description": "librdkafka properties - importance high - Topic configuration (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": -1,
+      "validation_rule": {
+        "kind": "range",
+        "min": -1,
+        "max": 1000
+      }
+    },
+    {
+      "name": "rdkafka.request.timeout.ms",
+      "required": false,
+      "description": "librdkafka properties - importance medium - Topic configuration (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 30000,
+      "validation_rule": {
+        "kind": "range",
+        "min": 1,
+        "max": 900000
+      }
+    },
+    {
+      "name": "rdkafka.message.timeout.ms",
+      "required": false,
+      "description": "librdkafka properties - importance high - Topic configuration (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 300000,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 2147483647
+      }
+    },
+    {
+      "name": "rdkafka.delivery.timeout.ms",
+      "required": false,
+      "description": "librdkafka properties - importance high - Topic configuration (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 300000,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 2147483647
+      }
+    },
+    {
+      "name": "rdkafka.queuing.strategy",
+      "required": false,
+      "description": "librdkafka properties - importance low - Topic configuration (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "enum",
+      "default": "fifo",
+      "enum_options": ["fifo", "lifo"],
+      "validation_rule": {
+        "kind": "enum"
+      }
+    },
+    {
+      "name": "rdkafka.produce.offset.report",
+      "required": false,
+      "description": "librdkafka properties - importance low- Topic configuration DEPRECATED (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "boolean",
+      "default": true,
+      "validation_rule": { "kind": "boolean" }
+    },
+    {
+      "name": "rdkafka.partitioner",
+      "required": false,
+      "description": "librdkafka properties - importance high - Topic configuration (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.partitioner_cb",
+      "required": false,
+      "description": "librdkafka properties - importance low - Topic configuration (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.msg_order_cmp",
+      "required": false,
+      "description": "librdkafka properties - importance low - Topic configuration (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.opaque",
+      "required": false,
+      "description": "librdkafka properties - importance low - Topic configuration (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.compression.codec",
+      "required": false,
+      "description": "librdkafka properties - importance high - Topic configuration (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "enum",
+      "enum_options": ["none", "gzip", "snappy", "lz4", "zstd", "inherit"],
+      "default": "inherit",
+      "validation_rule": {
+        "kind": "enum"
+      }
+    },
+    {
+      "name": "rdkafka.compression.type",
+      "required": false,
+      "description": "librdkafka properties - importance medium - Topic configuration (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "enum",
+      "enum_options": ["none", "gzip", "snappy", "lz4", "zstd", "inherit"],
+      "default": "none",
+      "validation_rule": {
+        "kind": "enum",
+        "values": ["none", "gzip", "snappy", "lz4", "zstd", "inherit"]
+      }
+    },
+    {
+      "name": "rdkafka.compression.level",
+      "required": false,
+      "description": "librdkafka properties - importance medium - Topic configuration (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": -1,
+      "validation_rule": {
+        "kind": "range",
+        "min": -1,
+        "max": 12
+      }
+    },
+    {
+      "name": "rdkafka.auto.commit.enable",
+      "required": false,
+      "description": "librdkafka properties - importance low - Topic configuration DEPRECATED (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "boolean",
+      "default": true,
+      "validation_rule": { "kind": "boolean" }
+    },
+    {
+      "name": "rdkafka.enable.auto.commit",
+      "required": false,
+      "description": "librdkafka properties - importance low - Topic configuration  DEPRECATED (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "boolean",
+      "default": true,
+      "validation_rule": { "kind": "boolean" }
+    },
+    {
+      "name": "rdkafka.auto.commit.interval.ms",
+      "required": false,
+      "description": "librdkafka properties - importance high - Topic configuration (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 60000,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 86400000
+      }
+    },
+    {
+      "name": "rdkafka.auto.offset.reset",
+      "required": false,
+      "description": "librdkafka properties - importance high - Topic configuration (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "enum",
+      "enum_options": [
+        "use_all_dns_ips",
+        "resolve_canonical_bootstrap_servers_only"
+      ],
+      "default": "use_all_dns_ips",
+      "validation_rule": {
+        "kind": "enum"
+      }
+    },
+    {
+      "name": "rdkafka.offset.store.path",
+      "required": false,
+      "description": "librdkafka properties - importance low - Topic configuration DEPRECATED (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "string",
+      "validation_rule": null
+    },
+    {
+      "name": "rdkafka.offset.store.sync.interval.ms",
+      "required": false,
+      "description": "librdkafka properties - importance low - Topic configuration DEPRECATED (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": -1,
+      "validation_rule": {
+        "kind": "range",
+        "min": -1,
+        "max": 86400000
+      }
+    },
+    {
+      "name": "rdkafka.offset.store.method",
+      "required": false,
+      "description": "librdkafka properties - importance low - Topic configuration DEPRECATED (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "enum",
+      "enum_options": [
+        "use_all_dns_ips",
+        "resolve_canonical_bootstrap_servers_only"
+      ],
+      "default": "use_all_dns_ips",
+      "validation_rule": {
+        "kind": "enum"
+      }
+    },
+    {
+      "name": "rdkafka.consume.callback.max.messages",
+      "required": false,
+      "description": "librdkafka properties - importance low - Topic configuration (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
+      "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
+      "data_type": "integer",
+      "default": 0,
+      "validation_rule": {
+        "kind": "range",
+        "min": 0,
+        "max": 1000000
+      }
     }
   ],
   "extraction": {

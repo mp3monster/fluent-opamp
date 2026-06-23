@@ -2294,7 +2294,7 @@ function parserFormatFields(parserFormat) {
       required: Boolean(requiredLookup && requiredLookup[name]),
       description: String((prop && prop.description) || ""),
       reference: String((prop && prop["x-doc-reference"]) || defaultReference || ""),
-      called_enum_options: enumValues,
+      enum_options: enumValues,
     };
   }
 
@@ -2310,7 +2310,7 @@ function parserFormatFields(parserFormat) {
           required: true,
           description: "Upstream group identifier.",
           reference: reference,
-          called_enum_options: [],
+          enum_options: [],
         },
       ],
       nodeFields: [
@@ -2320,7 +2320,7 @@ function parserFormatFields(parserFormat) {
           required: true,
           description: "Node identifier.",
           reference: reference,
-          called_enum_options: [],
+          enum_options: [],
         },
         {
           name: "host",
@@ -2328,7 +2328,7 @@ function parserFormatFields(parserFormat) {
           required: true,
           description: "Host/IP address for the upstream node.",
           reference: reference,
-          called_enum_options: [],
+          enum_options: [],
         },
         {
           name: "port",
@@ -2336,7 +2336,7 @@ function parserFormatFields(parserFormat) {
           required: true,
           description: "TCP port for the upstream node endpoint.",
           reference: reference,
-          called_enum_options: [],
+          enum_options: [],
         },
         {
           name: "tls",
@@ -2344,7 +2344,7 @@ function parserFormatFields(parserFormat) {
           required: false,
           description: "Enable TLS for this node connection.",
           reference: reference,
-          called_enum_options: [],
+          enum_options: [],
         },
         {
           name: "tls_verify",
@@ -2352,7 +2352,7 @@ function parserFormatFields(parserFormat) {
           required: false,
           description: "Verify TLS peer certificate when TLS is enabled.",
           reference: reference,
-          called_enum_options: [],
+          enum_options: [],
         },
         {
           name: "shared_key",
@@ -2360,7 +2360,7 @@ function parserFormatFields(parserFormat) {
           required: false,
           description: "Shared key for secured upstream communication.",
           reference: reference,
-          called_enum_options: [],
+          enum_options: [],
         },
       ],
     };
@@ -3112,8 +3112,9 @@ function renderPlugins() {
             default: Object.prototype.hasOwnProperty.call(item, "default") ? item.default : "",
             description: item.description || "",
             reference: item.reference || "",
-            called_enum_options: Array.isArray(item.called_enum_options) ? item.called_enum_options.slice() : [],
-            enum_options: Array.isArray(item.enum_options) ? item.enum_options.slice() : [],
+            enum_options: Array.isArray(item.enum_options)
+              ? item.enum_options.slice()
+              : (Array.isArray(item.called_enum_options) ? item.called_enum_options.slice() : []),
             validation_rule: item.validation_rule || null,
           };
         })

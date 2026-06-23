@@ -76,8 +76,9 @@
       "description": "Payload compression algorithm.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/prometheus-remote-write#configuration-parameters",
       "default": "snappy",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "enum",
+      "enum_options": ["snappy", "gzip", "zstd"],
+      "validation_rule": {"kind": "enum"}
     },
     {
       "name": "header",

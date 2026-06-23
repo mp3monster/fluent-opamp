@@ -49,7 +49,7 @@
           "off"
         ]
       },
-      "called_enum_options": [
+      "enum_options": [
         "on",
         "off"
       ]
@@ -68,7 +68,7 @@
           "TCP"
         ]
       },
-      "called_enum_options": [
+      "enum_options": [
         "UDP",
         "TCP"
       ]
@@ -102,7 +102,7 @@
           "trace"
         ]
       },
-      "called_enum_options": [
+      "enum_options": [
         "off",
         "trace",
         "debug",
@@ -158,7 +158,7 @@
           "off"
         ]
       },
-      "called_enum_options": [
+      "enum_options": [
         "on",
         "off"
       ]
@@ -259,7 +259,7 @@
           "off"
         ]
       },
-      "called_enum_options": [
+      "enum_options": [
         "on",
         "off"
       ]

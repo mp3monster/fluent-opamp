@@ -74,16 +74,27 @@
       "required": false,
       "description": "[Predefined Canned ACL policy](https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl) for S3 objects.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/s3#configuration-parameters",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "enum",
+      "enum_options": [
+        "private",
+        "public-read",
+        "public-read-write",
+        "aws-exec-read",
+        "authenticated-read",
+        "bucket-owner-read",
+        "bucket-owner-full-control",
+        "log-delivery-write"
+      ],
+      "validation_rule": { "kind": "enum" }
     },
     {
       "name": "compression",
       "required": false,
-      "description": "Compression type for S3 objects.",
+      "description": "Compression type for S3 objects. arrow and parquet are also available if Apache Arrow was enabled at compile time",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/s3#configuration-parameters",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "enum",
+      "enum_options": ["gzip", "zstd", "snappy", "arrow", "parquet"],
+      "validation_rule": { "kind": "enum" }
     },
     {
       "name": "content_type",
@@ -122,6 +133,16 @@
       }
     },
     {
+      "name": "format",
+      "required": false,
+      "description": "Set the record output format. Supported values: json_lines, otlp_json. When set to otlp_json, the log_key option isn't supported and only logs event chunks are converted.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/s3#configuration-parameters",
+      "default": "json_lines",
+      "data_type": "enum",
+      "enum_options": ["json_lines", "otlp_json"],
+      "validation_rule": null
+    },
+    {
       "name": "host",
       "required": false,
       "description": "IP address or hostname of the target HTTP server.",
@@ -135,8 +156,15 @@
       "required": false,
       "description": "Specify the format of the date.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/s3#configuration-parameters",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "enum",
+      "enyum_options": [
+        "double",
+        "epoch",
+        "epoch_ms",
+        "iso8601",
+        "_java_sql_timestamp_"
+      ],
+      "validation_rule": { "kind": "enum" }
     },
     {
       "name": "json_date_key",
@@ -162,15 +190,8 @@
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/s3#configuration-parameters",
       "default": "info",
       "data_type": "enum",
-      "validation_rule": null,
-      "called_enum_options": [
-        "off",
-        "trace",
-        "debug",
-        "info",
-        "warn",
-        "error"
-      ]
+      "validation_rule": { "kind": "enum" },
+      "enum_options": ["off", "trace", "debug", "info", "warn", "error"]
     },
     {
       "name": "log_suppress_interval",
@@ -210,8 +231,7 @@
       "default": "10s",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -232,23 +252,17 @@
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/s3#configuration-parameters",
       "data_type": "enum",
       "validation_rule": {
-        "kind": "enum",
-        "values": [
-          "UDP",
-          "TCP"
-        ]
+        "kind": "enum"
       },
-      "called_enum_options": [
-        "UDP",
-        "TCP"
-      ]
+      "enum_options": ["UDP", "TCP"]
     },
     {
       "name": "net.dns.prefer_ipv4",
       "required": false,
       "description": "Select the primary DNS resolver type (LEGACY or ASYNC).",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/s3#configuration-parameters",
-      "data_type": "string",
+      "data_type": "enum",
+      "enum_options": ["LEGACY", "ASYNC"],
       "validation_rule": null
     },
     {
@@ -267,8 +281,7 @@
       "default": "0s",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -333,7 +346,8 @@
       "default": -1,
       "data_type": "integer",
       "validation_rule": {
-        "kind": "integer"
+        "kind": "range",
+        "min": -1
       }
     },
     {
@@ -344,7 +358,8 @@
       "default": -1,
       "data_type": "integer",
       "validation_rule": {
-        "kind": "integer"
+        "kind": "range",
+        "min": -1
       }
     },
     {
@@ -355,7 +370,8 @@
       "default": -1,
       "data_type": "integer",
       "validation_rule": {
-        "kind": "integer"
+        "kind": "range",
+        "min": -1
       }
     },
     {
@@ -412,6 +428,25 @@
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/s3#configuration-parameters",
       "data_type": "string",
       "validation_rule": null
+    },
+    {
+      "name": "quarantine_dir_limit_size",
+      "required": false,
+      "description": "Maximum disk space for quarantined chunks. Only applies when retry_exhausted_action is quarantine. When the limit is reached, new retry-exhausted chunks are deleted instead of quarantined. 0 means unlimited.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/s3#configuration-parameters",
+      "data_type": "integer",
+      "validation_rule": { "kind": "range", "min": 0 }
+    },
+
+    {
+      "name": "retry_exhausted_action",
+      "required": true,
+      "description": "Action for chunks that have exceeded the retry_limit. Accepted values: delete (permanently remove the chunk) or quarantine (move to a quarantine area and exclude from active buffer accounting).",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/s3#configuration-parameters",
+      "default": "quarantine",
+      "data_type": "enum",
+      "enum_options": ["delete", "quarantine"],
+      "validation_rule": {"kind": "enum"}
     },
     {
       "name": "region",
@@ -508,8 +543,9 @@
       "required": false,
       "description": "Specify the [storage class](https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html#AmazonS3-PutObject-request-header-StorageClass) for S3 objects.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/s3#configuration-parameters",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "enum",
+      "enum_options": ["STANDARD", "REDUCED_REDUNDANCY", "STANDARD_IA", "ONEZONE_IA", "INTELLIGENT_TIERING", "GLACIER", "DEEP_ARCHIVE", "OUTPOSTS", "GLACIER_IR", "SNOW", "EXPRESS_ONEZONE", "FSX_OPENZFS", "FSX_ONTAP"],
+      "validation_rule": {"kind": "enum"}
     },
     {
       "name": "sts_endpoint",
@@ -571,7 +607,8 @@
       "data_type": "integer",
       "validation_rule": {
         "kind": "range",
-        "min": 0
+        "min": 0,
+        "max": 4
       }
     },
     {
@@ -664,10 +701,9 @@
       "description": "Specify file size in S3.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/s3#configuration-parameters",
       "default": 100000000,
-      "data_type": "integer",
+      "data_type": "size",
       "validation_rule": {
-        "kind": "range",
-        "min": 0
+        "kind": "size"
       }
     },
     {
@@ -676,10 +712,9 @@
       "description": "The size of each part for multipart uploads.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/s3#configuration-parameters",
       "default": 5242880,
-      "data_type": "integer",
+      "data_type": "size",
       "validation_rule": {
-        "kind": "range",
-        "min": 0
+        "kind": "size"
       }
     },
     {
@@ -699,8 +734,7 @@
       "default": "10m",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -711,8 +745,7 @@
       "default": "10m",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {

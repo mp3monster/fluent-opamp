@@ -68,9 +68,15 @@ class ValidationRuleConstraintsAdapter(RuleAdapter):
         - This adapter does not currently implement a dedicated `kind == "enum"`
           branch.
         - Enum-like constraints are typically enforced either by generated JSON
-          Schema `enum` metadata from `called_enum_options`, or by catalog
+          Schema `enum` metadata from `enum_options`, or by catalog
           metadata that translates enum-like upstream docs into a
           `regex_string` validation rule.
+
+        Type mismatch note:
+        - When a rule-specific check receives an incompatible runtime type, this
+          adapter logs the mismatch and skips that branch instead of raising.
+        - The companion data-type adapter is responsible for emitting the
+          user-facing `invalid_type` issues for those payloads.
         """
 
         LOGGER.info("starting validation rule constraints evaluation version=%s", context.version)
@@ -109,34 +115,61 @@ class ValidationRuleConstraintsAdapter(RuleAdapter):
                     if max_val is not None and value > max_val:
                         LOGGER.warning("range maximum violation path=%s max=%s value=%s", path, max_val, value)
                         issues.append(build_issue("range_max", path, f"Value for '{key}' must be <= {max_val}."))
+                elif kind == RULE_KIND_RANGE:
+                    LOGGER.warning(
+                        "range rule skipped incompatible value type path=%s actual_type=%s",
+                        path,
+                        type(value).__name__,
+                    )
 
                 # Regex pattern compliance branch.
-                elif kind in {RULE_KIND_REGEX, RULE_KIND_REGEX_STRING} and isinstance(value, str):
-                    pattern = rule.get(KEY_PATTERN)
-                    if pattern and re.fullmatch(pattern, value) is None:
-                        LOGGER.warning("regex mismatch path=%s pattern=%s", path, pattern)
-                        issues.append(
-                            build_issue("regex_mismatch", path, f"Value for '{key}' does not match required pattern.")
+                elif kind in {RULE_KIND_REGEX, RULE_KIND_REGEX_STRING}:
+                    if isinstance(value, str):
+                        pattern = rule.get(KEY_PATTERN)
+                        if pattern and re.fullmatch(pattern, value) is None:
+                            LOGGER.warning("regex mismatch path=%s pattern=%s", path, pattern)
+                            issues.append(
+                                build_issue("regex_mismatch", path, f"Value for '{key}' does not match required pattern.")
+                            )
+                    else:
+                        LOGGER.warning(
+                            "regex rule skipped incompatible value type path=%s actual_type=%s",
+                            path,
+                            type(value).__name__,
                         )
 
                 # Canonical duration-value branch using compact time suffixes.
-                elif kind == RULE_KIND_DURATION and isinstance(value, str):
-                    if DURATION_VALUE_PATTERN.fullmatch(value) is None:
-                        LOGGER.warning("duration mismatch path=%s value=%s", path, value)
-                        issues.append(
-                            build_issue(
-                                "regex_mismatch",
-                                path,
-                                f"Value for '{key}' must be a valid duration.",
+                elif kind == RULE_KIND_DURATION:
+                    if isinstance(value, str):
+                        if DURATION_VALUE_PATTERN.fullmatch(value) is None:
+                            LOGGER.warning("duration mismatch path=%s value=%s", path, value)
+                            issues.append(
+                                build_issue(
+                                    "regex_mismatch",
+                                    path,
+                                    f"Value for '{key}' must be a valid duration.",
+                                )
                             )
+                    else:
+                        LOGGER.warning(
+                            "duration rule skipped incompatible value type path=%s actual_type=%s",
+                            path,
+                            type(value).__name__,
                         )
 
                 # Canonical size-value branch using Fluent Bit unit-size syntax:
                 # https://docs.fluentbit.io/manual/administration/configuring-fluent-bit#unit-sizes
-                elif kind == RULE_KIND_SIZE and isinstance(value, str):
-                    if SIZE_VALUE_PATTERN.fullmatch(value) is None:
-                        LOGGER.warning("size mismatch path=%s value=%s", path, value)
-                        issues.append(build_issue("regex_mismatch", path, f"Value for '{key}' must be a valid size."))
+                elif kind == RULE_KIND_SIZE:
+                    if isinstance(value, str):
+                        if SIZE_VALUE_PATTERN.fullmatch(value) is None:
+                            LOGGER.warning("size mismatch path=%s value=%s", path, value)
+                            issues.append(build_issue("regex_mismatch", path, f"Value for '{key}' must be a valid size."))
+                    elif not isinstance(value, int) or isinstance(value, bool):
+                        LOGGER.warning(
+                            "size rule skipped incompatible value type path=%s actual_type=%s",
+                            path,
+                            type(value).__name__,
+                        )
 
                 # Explicit boolean-only branch.
                 elif kind == RULE_KIND_BOOLEAN and not isinstance(value, bool):

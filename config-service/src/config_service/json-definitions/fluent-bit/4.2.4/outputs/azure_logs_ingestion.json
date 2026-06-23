@@ -29,7 +29,7 @@
     {
       "name": "compress",
       "required": false,
-      "description": "Optional.",
+      "description": "Enable HTTP payload gzip compression.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/azure_logs_ingestion#configuration-parameters",
       "default": false,
       "data_type": "boolean",
@@ -72,7 +72,7 @@
     {
       "name": "time_generated",
       "required": false,
-      "description": "Optional.",
+      "description": " If enabled, the timestamp appended under time_key is formatted as an ISO 8601 string. If disabled, it's a floating-point number representing seconds since Unix epoch.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/azure_logs_ingestion#configuration-parameters",
       "default": false,
       "data_type": "boolean",
@@ -83,7 +83,7 @@
     {
       "name": "time_key",
       "required": false,
-      "description": "Optional.",
+      "description": "Specify the key name where the timestamp will be stored.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/azure_logs_ingestion#configuration-parameters",
       "default": "@timestamp",
       "data_type": "string",

@@ -29,7 +29,7 @@
         ]
       },
       "default": "info",
-      "called_enum_options": [
+      "enum_options": [
         "trace",
         "debug",
         "info",
@@ -74,7 +74,7 @@
         ]
       },
       "default": "text",
-      "called_enum_options": [
+      "enum_options": [
         "text",
         "gzip",
         "zstd"

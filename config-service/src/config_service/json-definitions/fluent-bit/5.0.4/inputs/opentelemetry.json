@@ -124,7 +124,7 @@
       "reference": "https://docs.fluentbit.io/manual/data-pipeline/inputs/opentelemetry#configuration",
       "default": "info",
       "data_type": "enum",
-      "called_enum_options": [
+      "enum_options": [
         "off",
         "trace",
         "debug",

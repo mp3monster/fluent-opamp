@@ -7,8 +7,16 @@
       "required": false,
       "description": "Specify the data format to be used in the HTTP request body.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/websocket#configuration-parameters",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "enum",
+      "enum_options": [
+        "msgpack",
+        "json",
+        "json_lines",
+        "json_stream",
+        "otlp_json",
+        "otlp_json_pretty"
+      ],
+      "validation_rule": { "kind": "enum" }
     },
     {
       "name": "header",
@@ -33,8 +41,15 @@
       "description": "Specify the format of the date.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/websocket#configuration-parameters",
       "default": "double",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "enum",
+      "enum_options": [
+        "double",
+        "epoch",
+        "epoch_ms",
+        "iso8601",
+        "java_sql_timestamp"
+      ],
+      "validation_rule": { "kind": "enum" }
     },
     {
       "name": "json_date_key",

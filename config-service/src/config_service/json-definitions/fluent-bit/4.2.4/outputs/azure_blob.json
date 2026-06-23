@@ -18,8 +18,9 @@
       "description": "Specify the type to authenticate against the service.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/azure_blob#configuration-parameters",
       "default": "key",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "enum",
+      "validation_rule": {"kind": "enum"},
+      "enum_options": ["key", "sas"]
     },
     {
       "name": "auto_create_container",
@@ -49,8 +50,9 @@
       "description": "Specify the desired blob type.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/azure_blob#configuration-parameters",
       "default": "appendblob",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "enum",
+      "enum_options": ["appendblob", "blockblog"],
+      "validation_rule": {"kind": "enum"}
     },
     {
       "name": "blob_uri_length",
@@ -100,8 +102,11 @@
       "required": false,
       "description": "Sets payload compression in network transfer.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/azure_blob#configuration-parameters",
-      "data_type": "string",
-      "validation_rule": null
+      "data_type": "enum",
+      "enum_options": ["gzip", "zstd"],
+      "validation_rule": {
+        "kind": "enum"
+      }
     },
     {
       "name": "compress_blob",
@@ -221,8 +226,7 @@
       "default": "60s",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -345,8 +349,7 @@
       "default": "10M",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {
@@ -357,8 +360,7 @@
       "default": "30m",
       "data_type": "duration",
       "validation_rule": {
-        "kind": "regex",
-        "pattern": "^\\\\d+(ns|us|ms|s|m|h|d)?$"
+        "kind": "duration"
       }
     },
     {

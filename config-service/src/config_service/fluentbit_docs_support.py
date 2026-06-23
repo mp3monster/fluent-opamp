@@ -808,7 +808,7 @@ def common_sections(version: str, *, manual_root: str) -> dict[str, Any]:
                     "description": "Set the plugin's logging verbosity level.",
                     "reference": f"{pipeline_ref}#inputs",
                     "data_type": "enum",
-                    "called_enum_options": ["off", "trace", "debug", "info", "warn", "error"],
+                    "enum_options": ["off", "trace", "debug", "info", "warn", "error"],
                 },
             ]
         },
@@ -838,7 +838,7 @@ def common_sections(version: str, *, manual_root: str) -> dict[str, Any]:
                     "description": "Set the plugin's logging verbosity level.",
                     "reference": f"{pipeline_ref}#filters",
                     "data_type": "enum",
-                    "called_enum_options": ["off", "trace", "debug", "info", "warn", "error"],
+                    "enum_options": ["off", "trace", "debug", "info", "warn", "error"],
                 },
             ]
         },
@@ -868,7 +868,7 @@ def common_sections(version: str, *, manual_root: str) -> dict[str, Any]:
                     "description": "Set the plugin's logging verbosity level.",
                     "reference": f"{pipeline_ref}#outputs",
                     "data_type": "enum",
-                    "called_enum_options": ["off", "trace", "debug", "info", "warn", "error"],
+                    "enum_options": ["off", "trace", "debug", "info", "warn", "error"],
                 },
             ]
         },

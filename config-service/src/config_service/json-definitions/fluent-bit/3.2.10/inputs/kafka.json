@@ -98,10 +98,8 @@
       "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
       "data_type": "enum",
       "validation_rule":  {
-        "kind" : "enum",
-        "values" : ["gzip", "snappy", "ssl", "sasl", "regex", "lz4", "sasl_gssapi", "sasl_plain", "sasl_scram", "plugins", "zstd", "sasl_oauthbearer", "http", "oidc"]
-      },
-      "called_enum_options": ["gzip", "snappy", "ssl", "sasl", "regex", "lz4", "sasl_gssapi", "sasl_plain", "sasl_scram", "plugins", "zstd", "sasl_oauthbearer", "http", "oidc"]
+        "kind" : "enum"      },
+      "enum_options": ["gzip", "snappy", "ssl", "sasl", "regex", "lz4", "sasl_gssapi", "sasl_plain", "sasl_scram", "plugins", "zstd", "sasl_oauthbearer", "http", "oidc"]
     },    
     {
       "name": "rdkafka.client.id",
@@ -199,10 +197,9 @@
       "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
       "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
       "data_type": "enum",
-      "called_enum_options": ["none", "rebootstrap"],
+      "enum_options": ["none", "rebootstrap"],
       "validation_rule": {
-        "kind" : "enum",
-        "values" : ["none", "rebootstrap"]
+        "kind" : "enum"
       }
     }, 
         {
@@ -713,11 +710,10 @@
       "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
       "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
       "data_type": "enum",
-      "called_enum_options" : ["plaintext", "ssl", "sasl_plaintext", "sasl_ssl"],
+      "enum_options" : ["plaintext", "ssl", "sasl_plaintext", "sasl_ssl"],
       "default": "plaintext",
       "validation_rule": {
-        "kind" : "enum",
-        "values" : ["plaintext", "ssl", "sasl_plaintext", "sasl_ssl"]
+        "kind" : "enum"
       }
     },
     {
@@ -921,7 +917,7 @@
       "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
       "data_type": "enum",
       "default": "https",
-      "called_enum_options" : ["none", "https"],
+      "enum_options" : ["none", "https"],
       "validation_rule": {
         "kind" : "enum",
         "values" : ["none", "https"]
@@ -1043,10 +1039,9 @@
       "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
       "data_type": "enum",
       "default": "default",
-      "called_enum_options" : ["default", "oidc"],
+      "enum_options" : ["default", "oidc"],
       "validation_rule": {
-        "kind" : "enum",
-        "values" : ["default", "oidc"]
+        "kind" : "enum"
       }
     },
     {
@@ -1122,10 +1117,9 @@
       "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
       "data_type": "enum",
       "default": "R256",
-      "called_enum_options" : ["R256", "E256"],
+      "enum_options" : ["R256", "E256"],
       "validation_rule": {
-        "kind" : "enum",
-        "values" : ["R256", "E256"]
+        "kind" : "enum"
       }
     },
 
@@ -1225,11 +1219,10 @@
       "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
       "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
       "data_type": "enum",
-      "called_enum_options" : ["none", "azure_imds"],
+      "enum_options" : ["none", "azure_imds"],
       "default": "none",
       "validation_rule": {
-        "kind" : "enum",
-        "values" : ["none", "azure_imds"]
+        "kind" : "enum"
       }
     },
     {
@@ -1515,11 +1508,10 @@
       "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
       "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
       "data_type": "enum",
-      "called_enum_options" : ["none", "file", "broker"],
+      "enum_options" : ["none", "file", "broker"],
       "default": "broker",
       "validation_rule": {
-        "kind" : "enum",
-        "values" : ["none", "file", "broker"]
+        "kind" : "enum"
       }
     },
 {
@@ -1528,11 +1520,10 @@
       "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
       "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
       "data_type": "enum",
-      "called_enum_options" : ["read_uncommitted", "read_committed"],
+      "enum_options" : ["read_uncommitted", "read_committed"],
       "default": "read_committed",
       "validation_rule": {
-        "kind" : "enum",
-        "values" : ["read_uncommitted", "read_committed"]
+        "kind" : "enum"
       }
     },
 
@@ -1751,11 +1742,10 @@
       "description": "librdkafka properties - importance medium (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
       "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
       "data_type": "enum",
-      "called_enum_options" : ["none", "gzip", "snappy", "lz4", "zstd"],
+      "enum_options" : ["none", "gzip", "snappy", "lz4", "zstd"],
       "default": "none",
       "validation_rule": {
-        "kind" : "enum",
-        "values" : ["none", "gzip", "snappy", "lz4", "zstd"]
+        "kind" : "enum"
       }
     },
 {
@@ -1764,11 +1754,10 @@
       "description": "librdkafka properties - importance medium (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
       "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
       "data_type": "enum",
-      "called_enum_options" : ["none", "gzip", "snappy", "lz4", "zstd"],
+      "enum_options" : ["none", "gzip", "snappy", "lz4", "zstd"],
       "default": "none",
       "validation_rule": {
-        "kind" : "enum",
-        "values" : ["none", "gzip", "snappy", "lz4", "zstd"]
+        "kind" : "enum"
       }
     },
 {
@@ -1843,11 +1832,10 @@
       "description": "librdkafka properties - importance low (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
       "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
       "data_type": "enum",
-      "called_enum_options" : ["use_all_dns_ips", "resolve_canonical_bootstrap_servers_only"],
+      "enum_options" : ["use_all_dns_ips", "resolve_canonical_bootstrap_servers_only"],
       "default": "use_all_dns_ips",
       "validation_rule": {
-        "kind" : "enum",
-        "values" : ["use_all_dns_ips", "resolve_canonical_bootstrap_servers_only"]
+        "kind" : "enum"
       }
     },
 {
@@ -1932,10 +1920,9 @@
       "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
       "data_type": "enum",
       "default": "fifo",
-      "called_enum_options" : ["fifo", "lifo"],
+      "enum_options" : ["fifo", "lifo"],
       "validation_rule": {
-        "kind" : "enum",
-        "values" : ["fifo", "lifo"]
+        "kind" : "enum"
       }
     },
 {
@@ -1985,11 +1972,10 @@
       "description": "librdkafka properties - importance high - Topic configuration (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
       "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
       "data_type": "enum",
-      "called_enum_options" : ["none", "gzip", "snappy", "lz4", "zstd", "inherit"],
+      "enum_options" : ["none", "gzip", "snappy", "lz4", "zstd", "inherit"],
       "default": "inherit",
       "validation_rule": {
-        "kind" : "enum",
-        "values" : ["none", "gzip", "snappy", "lz4", "zstd", "inherit"]
+        "kind" : "enum"
       }
     },
 {
@@ -1998,7 +1984,7 @@
       "description": "librdkafka properties - importance medium - Topic configuration (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
       "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
       "data_type": "enum",
-      "called_enum_options" : ["none", "gzip", "snappy", "lz4", "zstd", "inherit"],
+      "enum_options" : ["none", "gzip", "snappy", "lz4", "zstd", "inherit"],
       "default": "none",
       "validation_rule": {
         "kind" : "enum",
@@ -2055,11 +2041,10 @@
       "description": "librdkafka properties - importance high - Topic configuration (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
       "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
       "data_type": "enum",
-      "called_enum_options" : ["use_all_dns_ips", "resolve_canonical_bootstrap_servers_only"],
+      "enum_options" : ["use_all_dns_ips", "resolve_canonical_bootstrap_servers_only"],
       "default": "use_all_dns_ips",
       "validation_rule": {
-        "kind" : "enum",
-        "options" : ["use_all_dns_ips", "resolve_canonical_bootstrap_servers_only"]
+        "kind" : "enum"
       }
     },
 {
@@ -2089,11 +2074,10 @@
       "description": "librdkafka properties - importance low - Topic configuration DEPRECATED (https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md)",
       "reference": "https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md#global-configuration-properties",
       "data_type": "enum",
-      "called_enum_options" : ["use_all_dns_ips", "resolve_canonical_bootstrap_servers_only"],
+      "enum_options" : ["use_all_dns_ips", "resolve_canonical_bootstrap_servers_only"],
       "default": "use_all_dns_ips",
       "validation_rule": {
-        "kind" : "enum",
-        "options" : ["use_all_dns_ips", "resolve_canonical_bootstrap_servers_only"]
+        "kind" : "enum"
       }
     },
 {

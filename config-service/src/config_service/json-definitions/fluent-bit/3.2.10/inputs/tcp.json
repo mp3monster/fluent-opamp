@@ -53,7 +53,7 @@
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/tcp#configuration-parameters",
       "default": "JSON",
       "data_type": "enum",
-      "called_enum_options": ["none", "JSON"],
+      "enum_options": ["none", "JSON"],
       "validation_rule": { "kind": "enum", "values": ["none", "JSON"]
      }
     },

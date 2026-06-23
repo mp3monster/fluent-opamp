@@ -7,16 +7,14 @@
       "required": false,
       "description": "The specific header for bearer authorization, where {your-Auth-token-here} is your Dash0 Auth Token.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/dash0#configuration-parameters",
-      "default": "Authorization Bearer {your-Auth-token-here}",
       "data_type": "string",
       "validation_rule": null
     },
     {
       "name": "host",
       "required": false,
-      "description": "Your Dash0 ingress endpoint.",
+      "description": "Your Dash0 ingress endpoint. e.g. ingress.eu-west-1.aws.dash0.com",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/dash0#configuration-parameters",
-      "default": "ingress.eu-west-1.aws.dash0.com",
       "data_type": "string",
       "validation_rule": null
     },

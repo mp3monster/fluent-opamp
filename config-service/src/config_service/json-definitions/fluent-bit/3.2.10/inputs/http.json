@@ -65,7 +65,7 @@
         "kind": "enum",
         "values" : ["200", "201", "204"]
       },
-      "called_enum_options": ["200", "201", "204"]
+      "enum_options": ["200", "201", "204"]
     },
     {
       "name": "success_header",

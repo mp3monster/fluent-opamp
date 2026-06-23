@@ -20,6 +20,14 @@
       "validation_rule": null
     },
     {
+      "name": "exclude_promoted_keys",
+      "required": false,
+      "description": "When enabled, keys promoted to the top-level line object (meta, level, severity, app, file) are excluded from the line body to avoid duplication.",
+      "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/logdna#configuration-parameters",
+      "data_type": "boolean",
+      "validation_rule": {"kind": "boolean"}
+    },
+    {
       "name": "file",
       "required": false,
       "description": "Optional name of a file being monitored.",

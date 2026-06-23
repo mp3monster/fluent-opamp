@@ -16,7 +16,7 @@
       "description": "Set a database sync method.",
       "reference": "https://docs.fluentbit.io/manual/3.2/pipeline/inputs/kubernetes-events#configuration",
       "default": "normal",
-      "called_enum_options": ["extra", "full", "normal", "off"],
+      "enum_options": ["extra", "full", "normal", "off"],
       "data_type": "string",
       "validation_rule": {
         "kind": "enum",

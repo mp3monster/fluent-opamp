@@ -27,9 +27,10 @@
       "required": false,
       "description": "Desired transport type.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/syslog#configuration-parameters",
-      "default": "udp",
-      "data_type": "string",
-      "validation_rule": null
+      "default": "UDP",
+      "data_type": "enum",
+      "enum_options": ["UDP", "TCP"],
+      "validation_rule": {"kind": "enum"}
     },
     {
       "name": "port",
@@ -47,7 +48,7 @@
     {
       "name": "syslog_appname_key",
       "required": false,
-      "description": "Optional.",
+      "description": "The key name from the original record that contains the application name that generated the message.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/syslog#configuration-parameters",
       "data_type": "string",
       "validation_rule": null
@@ -55,7 +56,7 @@
     {
       "name": "syslog_appname_preset",
       "required": false,
-      "description": "Optional.",
+      "description": "The preset application name. It will be overwritten if syslog_appname_key is set and a key of a record is matched.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/syslog#configuration-parameters",
       "data_type": "string",
       "validation_rule": null
@@ -63,7 +64,7 @@
     {
       "name": "syslog_facility_key",
       "required": false,
-      "description": "Optional.",
+      "description": "The key name from the original record that contains the Syslog facility number.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/syslog#configuration-parameters",
       "data_type": "string",
       "validation_rule": null
@@ -71,14 +72,11 @@
     {
       "name": "syslog_facility_preset",
       "required": false,
-      "description": "Optional.",
+      "description": "The preset facility number. It will be overwritten if syslog_facility_key is set and a key of a record is matched.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/syslog#configuration-parameters",
-      "default": 1,
-      "data_type": "integer",
-      "validation_rule": {
-        "kind": "range",
-        "min": 0
-      }
+      "default": "1",
+      "data_type": "string",
+      "validation_rule": null
     },
     {
       "name": "syslog_format",
@@ -86,7 +84,8 @@
       "description": "The Syslog protocol format to use.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/syslog#configuration-parameters",
       "default": "rfc5424",
-      "data_type": "string",
+      "data_type": "enum",
+      "enum_options": ["rfc3164", "rfc5424"],
       "validation_rule": null
     },
     {
@@ -120,7 +119,7 @@
     {
       "name": "syslog_message_key",
       "required": true,
-      "description": "Required.",
+      "description": "The key name from the original record that contains the message to deliver.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/syslog#configuration-parameters",
       "data_type": "string",
       "validation_rule": null
@@ -128,7 +127,7 @@
     {
       "name": "syslog_msgid_key",
       "required": false,
-      "description": "Optional.",
+      "description": "The key name from the original record that contains the Message ID associated to the message.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/syslog#configuration-parameters",
       "data_type": "string",
       "validation_rule": null
@@ -136,7 +135,7 @@
     {
       "name": "syslog_msgid_preset",
       "required": false,
-      "description": "Optional.",
+      "description": "The preset message ID. It will be overwritten if syslog_msgid_key is set and a key of a record is matched.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/syslog#configuration-parameters",
       "data_type": "string",
       "validation_rule": null
@@ -144,7 +143,7 @@
     {
       "name": "syslog_procid_key",
       "required": false,
-      "description": "Optional.",
+      "description": "The key name from the original record that contains the Process ID that generated the message.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/syslog#configuration-parameters",
       "data_type": "string",
       "validation_rule": null
@@ -152,7 +151,7 @@
     {
       "name": "syslog_procid_preset",
       "required": false,
-      "description": "Optional.",
+      "description": "The preset process ID. It will be overwritten if syslog_procid_key is set and a key of a record is matched.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/syslog#configuration-parameters",
       "data_type": "string",
       "validation_rule": null
@@ -160,7 +159,7 @@
     {
       "name": "syslog_sd_key",
       "required": false,
-      "description": "Optional.",
+      "description": " The key name from the original record that contains a map of key/value pairs to use as Structured Data (SD) content. The key name is included in the resulting SD field as shown in the examples in this doc.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/syslog#configuration-parameters",
       "data_type": "string",
       "validation_rule": null
@@ -168,7 +167,7 @@
     {
       "name": "syslog_severity_key",
       "required": false,
-      "description": "Optional.",
+      "description": " The key name from the original record that contains the Syslog severity number.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/syslog#configuration-parameters",
       "data_type": "string",
       "validation_rule": null
@@ -176,7 +175,7 @@
     {
       "name": "syslog_severity_preset",
       "required": false,
-      "description": "Optional.",
+      "description": "The preset severity number. It will be overwritten if syslog_severity_key is set and a key of a record is matched.",
       "reference": "https://docs.fluentbit.io/manual/4.2/data-pipeline/outputs/syslog#configuration-parameters",
       "default": 6,
       "data_type": "integer",
