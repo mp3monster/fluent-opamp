@@ -22,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from config_service.services.schema_service import SchemaService
 
 
-def test_field_schema_uses_called_enum_options_when_enum_rule_omits_values() -> None:
+def test_field_schema_uses_enum_options_when_enum_rule_omits_values() -> None:
     """Enum rules may inherit allowed values from the parent field metadata."""
 
     service = SchemaService()
@@ -33,7 +33,7 @@ def test_field_schema_uses_called_enum_options_when_enum_rule_omits_values() -> 
             "data_type": "enum",
             "description": "Allowed log level.",
             "reference": "https://example.invalid/log-level",
-            "called_enum_options": ["off", "info", "debug"],
+            "enum_options": ["off", "info", "debug"],
             "validation_rule": {"kind": "enum"},
         }
     )
@@ -52,7 +52,7 @@ def test_field_schema_prefers_validation_rule_enum_values_when_present() -> None
             "data_type": "enum",
             "description": "Allowed log level.",
             "reference": "https://example.invalid/log-level",
-            "called_enum_options": ["off", "info", "debug"],
+            "enum_options": ["off", "info", "debug"],
             "validation_rule": {"kind": "enum", "values": ["warn", "error"]},
         }
     )
