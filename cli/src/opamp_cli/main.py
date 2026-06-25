@@ -50,6 +50,7 @@ try:
         _slugify,
         _utc_timestamp,
     )
+    from .config_commands import config_command_available, execute_config_command
     from .constants import (
         ACTION_ID_ALL_CLIENTS,
         ACTION_ID_ALL_MANAGED,
@@ -77,6 +78,7 @@ try:
         CLI_RUNTIME_DIRNAME,
         CLI_SETTING_ENABLE_PROCESS_TAIL,
         CLI_SETTINGS_FILENAME,
+        COMMAND_CONFIG,
         COMMAND_DEMO,
         COMMAND_DEV_FLB_CONFIG,
         COMMAND_DEV_MCP_CONFIG,
@@ -138,6 +140,10 @@ except ImportError:
         _slugify,
         _utc_timestamp,
     )
+    from config_commands import (  # type: ignore[no-redef]
+        config_command_available,
+        execute_config_command,
+    )
     from constants import (  # type: ignore[no-redef]
         ACTION_ID_ALL_CLIENTS,
         ACTION_ID_ALL_MANAGED,
@@ -165,6 +171,8 @@ except ImportError:
         CLI_RUNTIME_DIRNAME,
         CLI_SETTING_ENABLE_PROCESS_TAIL,
         CLI_SETTINGS_FILENAME,
+        COMMAND_CONFIG,
+        COMMAND_DEMO,
         COMMAND_DEV_FLB_CONFIG,
         COMMAND_DEV_MCP_CONFIG,
         COMMAND_DEV_PID_LOOKUP,
@@ -437,6 +445,19 @@ def _handle_command(raw_command: str) -> int:  # noqa: PLR0911
     if lowered == COMMAND_DEV_PID_LOOKUP:
         logger.info("starting dev pid lookup workflow")
         return _execute_dev_pid_lookup_workflow()
+    if lowered == COMMAND_CONFIG or lowered.startswith(f"{COMMAND_CONFIG} "):
+        logger.info("starting config workflow command=%s", command_text)
+        try:
+            config_args = shlex.split(command_text, posix=not _is_windows())
+        except ValueError as exc:
+            raise ValueError(f"invalid config command syntax: {exc}") from exc
+        if not config_args:
+            raise ValueError("config command is missing arguments")
+        return execute_config_command(
+            argv=config_args[1:],
+            repo_root=_repo_root(),
+            log_dir=_cli_log_dir(),
+        )
 
     if _script_mode_enabled(command_text):
         output_name, script_command = _split_script_directive(command_text)
@@ -475,6 +496,8 @@ def _top_level_commands() -> list[str]:
         "uv",
         "curl",
     ]
+    if config_command_available(repo_root=_repo_root()):
+        commands.append(COMMAND_CONFIG)
     if _demo_mode_enabled():
         commands.append(COMMAND_DEMO)
     if _fluentbit_dev_tool_available():
@@ -1808,6 +1831,12 @@ def _print_option_hierarchy() -> int:
     print("Top-level commands:")
     for command in _top_level_commands():
         print(f"  - {command}")
+    if config_command_available(repo_root=_repo_root()):
+        print("")
+        print("Config commands:")
+        print("  config:")
+        print("    - validate <path>")
+        print("    - metadata <path>")
     print("")
     print("Guided actions:")
     for intent in GUIDED_INTENTS:

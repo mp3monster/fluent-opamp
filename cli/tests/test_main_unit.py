@@ -19,10 +19,31 @@ from __future__ import annotations
 
 import importlib
 import json
+import re
 import subprocess
 from pathlib import Path
 
 cli_main = importlib.import_module("opamp_cli.main")
+
+
+def _sample_fluentbit_config() -> str:
+    return (
+        "service:\n"
+        "  flush: 1\n"
+        "pipeline:\n"
+        "  inputs:\n"
+        "    - name: dummy\n"
+        "      tag: test\n"
+        "  outputs:\n"
+        "    - name: stdout\n"
+        "      match: \"*\"\n"
+    )
+
+
+def _report_path_from_output(output: str) -> Path:
+    match = re.search(r"Report file: (.+)", output)
+    assert match is not None
+    return Path(match.group(1).strip())
 
 
 def test_split_script_directive_parses_output_name_and_command() -> None:
@@ -208,6 +229,112 @@ def test_status_command_reports_invalid_opamp_config(
     assert exit_code == 0
     assert f"OpAMP config file: {config_path.resolve()} (default)" in output
     assert "OpAMP config loaded: no (invalid JSON:" in output
+
+
+def test_list_command_reports_config_options_when_available(capsys) -> None:
+    exit_code = cli_main.main(["list"])
+    output = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert "Config commands:" in output
+    assert "  config:" in output
+    assert "    - validate <path>" in output
+    assert "    - metadata <path>" in output
+
+
+def test_config_validate_single_file_writes_report(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    runtime_dir = tmp_path / "runtime"
+    config_path = tmp_path / "valid.yaml"
+    config_path.write_text(_sample_fluentbit_config(), encoding="utf-8")
+    monkeypatch.setattr(cli_main, "_cli_runtime_dir", lambda: runtime_dir)
+
+    exit_code = cli_main.main(["config", "validate", str(config_path)])
+    output = capsys.readouterr().out
+    report_path = _report_path_from_output(output)
+
+    assert exit_code == 0
+    assert "Validation result: no error" in output
+    assert report_path.exists()
+    report_text = report_path.read_text(encoding="utf-8")
+    assert f"File: {config_path.resolve()}" in report_text
+    assert "Config type: fluentbit" in report_text
+    assert "Validation result: no error" in report_text
+
+
+def test_config_validate_directory_reports_each_file_with_spacing(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    runtime_dir = tmp_path / "runtime"
+    config_dir = tmp_path / "configs"
+    config_dir.mkdir()
+    first = config_dir / "one.yaml"
+    second = config_dir / "two.yaml"
+    first.write_text(_sample_fluentbit_config(), encoding="utf-8")
+    second.write_text(_sample_fluentbit_config(), encoding="utf-8")
+    monkeypatch.setattr(cli_main, "_cli_runtime_dir", lambda: runtime_dir)
+
+    exit_code = cli_main.main(["config", "validate", str(config_dir)])
+    output = capsys.readouterr().out
+    report_path = _report_path_from_output(output)
+
+    assert exit_code == 0
+    report_text = report_path.read_text(encoding="utf-8")
+    assert f"File: {first.resolve()}" in report_text
+    assert f"File: {second.resolve()}" in report_text
+    assert "\n\n\n\nFile: " in report_text
+
+
+def test_config_metadata_adds_missing_header_values(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    runtime_dir = tmp_path / "runtime"
+    config_path = tmp_path / "missing.yaml"
+    config_path.write_text(_sample_fluentbit_config(), encoding="utf-8")
+    monkeypatch.setattr(cli_main, "_cli_runtime_dir", lambda: runtime_dir)
+
+    exit_code = cli_main.main(["config", "metadata", str(config_path)])
+    output = capsys.readouterr().out
+
+    assert exit_code == 0
+    updated_text = config_path.read_text(encoding="utf-8")
+    assert updated_text.startswith(
+        "# config-service: config_type=fluentbit\n"
+        "# config-service: version=5.0.4\n"
+    )
+    assert "Metadata status: applied missing metadata fields config_type, version" in output
+
+
+def test_config_metadata_preserves_existing_header_values(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    runtime_dir = tmp_path / "runtime"
+    config_path = tmp_path / "existing.yaml"
+    original = (
+        "# config-service: config_type=fluentbit\n"
+        "# config-service: version=4.2.4\n"
+        + _sample_fluentbit_config()
+    )
+    config_path.write_text(original, encoding="utf-8")
+    monkeypatch.setattr(cli_main, "_cli_runtime_dir", lambda: runtime_dir)
+
+    exit_code = cli_main.main(["config", "metadata", str(config_path)])
+    output = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert config_path.read_text(encoding="utf-8") == original
+    assert "Config type: fluentbit" in output
+    assert "Version: 4.2.4" in output
+    assert "existing metadata preserved" in output
 
 
 def test_is_process_running_uses_tasklist_on_windows(monkeypatch) -> None:

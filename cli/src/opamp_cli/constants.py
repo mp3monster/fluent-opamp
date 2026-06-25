@@ -54,6 +54,7 @@ GUIDED_INTENTS = (INTENT_START, INTENT_STOP, INTENT_RESTART)
 COMMAND_HELP = "help"
 COMMAND_LIST = "list"
 COMMAND_STATUS = "status"
+COMMAND_CONFIG = "config"
 COMMAND_EXIT = "exit"
 COMMAND_QUIT = "quit"
 COMMAND_DEMO = "demo"
@@ -135,6 +136,8 @@ HELP_TEXT = """Usage:
   opamp-cli help
   opamp-cli list
   opamp-cli status
+  opamp-cli config validate <path>
+  opamp-cli config metadata <path>
   opamp-cli demo
   opamp-cli enable-process-tail
   opamp-cli disable-process-tail
@@ -146,6 +149,8 @@ Behavior:
   - Interactive `start`, `stop`, and `restart` commands open guided multi-stage choices.
   - `list` shows the current CLI option hierarchy and guided targets.
   - `status` shows recorded managed processes, PID liveness, and log paths.
+  - `config validate` validates one file or directory tree using config-service logic when available.
+  - `config metadata` adds missing config-service header metadata without overwriting existing values.
   - `enable-process-tail` opens a new shell tailing each managed process log after start.
   - If first token is `script`, generate an OS-native script file.
   - Otherwise execute the command immediately.
@@ -170,6 +175,12 @@ Examples:
   # Show managed process status
   opamp-cli status
 
+  # Validate one config file
+  opamp-cli config validate ./fluent-bit.yaml
+
+  # Add missing metadata headers to supported files in a folder
+  opamp-cli config metadata ./configs
+
   # Show current command/target hierarchy
   opamp-cli list
 
@@ -192,6 +203,7 @@ Notes:
   - Interactive autocomplete uses prompt_toolkit when installed.
   - Fallback completion uses readline when available.
   - Guided actions can be run directly, for example `start config editor`.
+  - `config` commands are only available when config-service logic can be detected.
   - When OPAMP_DEMO=true, `demo` acts like `start demo consumers`.
   - When APP_ENABLE_DEV_FEATURES=true and the Fluent Bit dev tools are present, `dev-flb-config` opens a guided generator workflow.
   - When APP_ENABLE_DEV_FEATURES=true and the MCP config utility is present, `dev-mcp-config` opens a guided MCP client configuration workflow.

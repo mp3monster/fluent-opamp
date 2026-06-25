@@ -18,6 +18,7 @@ Test-case reference: cli/docs/TEST_CASES.md
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -41,6 +42,26 @@ def _run_cli(*args: str, cwd: Path | None = None) -> subprocess.CompletedProcess
         capture_output=True,
         check=False,
     )
+
+
+def _sample_fluentbit_config() -> str:
+    return (
+        "service:\n"
+        "  flush: 1\n"
+        "pipeline:\n"
+        "  inputs:\n"
+        "    - name: dummy\n"
+        "      tag: test\n"
+        "  outputs:\n"
+        "    - name: stdout\n"
+        "      match: \"*\"\n"
+    )
+
+
+def _report_path_from_output(output: str) -> Path:
+    match = re.search(r"Report file: (.+)", output)
+    assert match is not None
+    return Path(match.group(1).strip())
 
 
 def test_help_command_prints_usage() -> None:
@@ -68,6 +89,10 @@ def test_list_command_reports_option_hierarchy() -> None:
     assert completed.returncode == 0
     assert "Control flags:" in completed.stdout
     assert "Top-level commands:" in completed.stdout
+    assert "Config commands:" in completed.stdout
+    assert "  config:" in completed.stdout
+    assert "    - validate <path>" in completed.stdout
+    assert "    - metadata <path>" in completed.stdout
     assert "Guided actions:" in completed.stdout
 
 
@@ -100,3 +125,60 @@ def test_unknown_restart_target_returns_error() -> None:
 
     assert completed.returncode == 1
     assert "Unknown restart target" in completed.stderr
+
+
+def test_config_validate_single_file_e2e(tmp_path: Path) -> None:
+    config_path = tmp_path / "single.yaml"
+    config_path.write_text(_sample_fluentbit_config(), encoding="utf-8")
+
+    completed = _run_cli("config", "validate", str(config_path))
+    report_path = _report_path_from_output(completed.stdout)
+
+    assert completed.returncode == 0
+    assert "Validation result: no error" in completed.stdout
+    assert report_path.exists()
+    assert f"File: {config_path.resolve()}" in report_path.read_text(encoding="utf-8")
+
+
+def test_config_validate_directory_e2e(tmp_path: Path) -> None:
+    config_dir = tmp_path / "configs"
+    config_dir.mkdir()
+    first = config_dir / "first.yaml"
+    second = config_dir / "second.yaml"
+    first.write_text(_sample_fluentbit_config(), encoding="utf-8")
+    second.write_text(_sample_fluentbit_config(), encoding="utf-8")
+
+    completed = _run_cli("config", "validate", str(config_dir))
+    report_path = _report_path_from_output(completed.stdout)
+    report_text = report_path.read_text(encoding="utf-8")
+
+    assert completed.returncode == 0
+    assert f"File: {first.resolve()}" in report_text
+    assert f"File: {second.resolve()}" in report_text
+
+
+def test_config_metadata_directory_e2e_preserves_existing_header(tmp_path: Path) -> None:
+    config_dir = tmp_path / "configs"
+    config_dir.mkdir()
+    missing = config_dir / "missing.yaml"
+    existing = config_dir / "existing.yaml"
+    missing.write_text(_sample_fluentbit_config(), encoding="utf-8")
+    original_existing = (
+        "# config-service: config_type=fluentbit\n"
+        "# config-service: version=4.2.4\n"
+        + _sample_fluentbit_config()
+    )
+    existing.write_text(original_existing, encoding="utf-8")
+
+    completed = _run_cli("config", "metadata", str(config_dir))
+    report_path = _report_path_from_output(completed.stdout)
+    report_text = report_path.read_text(encoding="utf-8")
+
+    assert completed.returncode == 0
+    assert missing.read_text(encoding="utf-8").startswith(
+        "# config-service: config_type=fluentbit\n"
+        "# config-service: version=5.0.4\n"
+    )
+    assert existing.read_text(encoding="utf-8") == original_existing
+    assert f"File: {missing.resolve()}" in report_text
+    assert f"File: {existing.resolve()}" in report_text
