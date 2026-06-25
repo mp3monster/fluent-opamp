@@ -11,6 +11,7 @@
 # limitations under the License.
 
 from datetime import datetime, timedelta, timezone
+import zlib
 
 from opamp_provider.proto import opamp_pb2
 from opamp_provider.state import ClientRecord, ClientStore
@@ -90,6 +91,81 @@ def test_client_version_persists_when_later_message_omits_description() -> None:
     record = store.upsert_from_agent_msg(second)
 
     assert record.client_version == "2.3.4"
+
+
+def test_effective_config_single_file_is_stored_as_current_config_text() -> None:
+    """Verify a single effective-config file is stored as readable current config text."""
+    store = ClientStore()
+    msg = opamp_pb2.AgentToServer(instance_uid=b"\x0f\x10")
+    msg.sequence_num = 1
+    msg.effective_config.config_map.config_map["/tmp/agent.yaml"].body = (
+        b"service:\n  flush: 1\n"
+    )
+    msg.effective_config.config_map.config_map["/tmp/agent.yaml"].content_type = (
+        "application/x-yaml"
+    )
+
+    record = store.upsert_from_agent_msg(msg)
+
+    assert isinstance(record.current_config, bytes)
+    assert record.current_config != b"service:\n  flush: 1\n"
+    assert record.get_current_config() == "service:\n  flush: 1\n"
+    assert record.current_config_version is None
+
+
+def test_effective_config_multiple_files_are_stored_as_pretty_json() -> None:
+    """Verify multi-file effective-config payloads are preserved with filenames and content."""
+    store = ClientStore()
+    msg = opamp_pb2.AgentToServer(instance_uid=b"\x0f\x11")
+    msg.sequence_num = 1
+    msg.effective_config.config_map.config_map["/tmp/a.yaml"].body = b"alpha: 1\n"
+    msg.effective_config.config_map.config_map["/tmp/a.yaml"].content_type = (
+        "application/x-yaml"
+    )
+    msg.effective_config.config_map.config_map["/tmp/b.json"].body = b'{"beta":2}\n'
+    msg.effective_config.config_map.config_map["/tmp/b.json"].content_type = (
+        "application/json"
+    )
+
+    record = store.upsert_from_agent_msg(msg)
+
+    rendered = record.get_current_config()
+
+    assert rendered is not None
+    assert '"/tmp/a.yaml"' in rendered
+    assert '"body": "alpha: 1\\n"' in rendered
+    assert '"/tmp/b.json"' in rendered
+    assert '"body": "{\\"beta\\":2}\\n"' in rendered
+
+
+def test_client_record_current_config_setter_and_json_dump_round_trip() -> None:
+    """Verify current_config setter compresses storage and JSON dump returns plain text."""
+    record = ClientRecord(client_id="client-config")
+
+    record.set_current_config("service:\n  flush: 5\n")
+    dumped = record.model_dump(mode="json")
+
+    assert isinstance(record.current_config, bytes)
+    assert record.current_config == zlib.compress(b"service:\n  flush: 5\n")
+    assert record.get_current_config() == "service:\n  flush: 5\n"
+    assert dumped["current_config"] == "service:\n  flush: 5\n"
+
+
+def test_capabilities_persist_when_later_message_omits_capabilities() -> None:
+    """Verify stored capabilities are retained when a later message does not include them."""
+    store = ClientStore()
+    first = opamp_pb2.AgentToServer(instance_uid=b"\x0f\x12")
+    first.sequence_num = 1
+    first.capabilities = opamp_pb2.AgentCapabilities.AgentCapabilities_AcceptsRemoteConfig
+
+    record = store.upsert_from_agent_msg(first)
+    assert "Accepts Remote Config" in record.capabilities
+
+    second = opamp_pb2.AgentToServer(instance_uid=b"\x0f\x12")
+    second.sequence_num = 2
+    record = store.upsert_from_agent_msg(second)
+
+    assert "Accepts Remote Config" in record.capabilities
 
 
 def test_check_sequence_num_initial_message_queues_force_resync() -> None:

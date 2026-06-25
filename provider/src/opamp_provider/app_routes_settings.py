@@ -8,7 +8,8 @@ from datetime import datetime, timezone
 from http import HTTPStatus
 from typing import Any
 
-from quart import Quart, Response, jsonify, request
+from quart import Quart, jsonify, request
+from quart.typing import ResponseReturnValue
 
 from shared.opamp_config import UTF8_ENCODING
 
@@ -25,13 +26,14 @@ def register_settings_routes(  # noqa: PLR0913
     tls_certificate_expiry_metadata: Any,
     record_snapshot_status: Any,
     coerce_bool_setting: Any,
+    advertised_server_capabilities: Any,
     save_state_snapshot_func: Any,
     prune_snapshot_files_func: Any,
 ) -> None:
     """Register provider settings-related routes."""
 
     @app.get("/api/settings/comms")
-    async def get_comms_settings() -> Response:
+    async def get_comms_settings() -> ResponseReturnValue:
         """Get communication threshold settings."""
         state_prefix = pathlib.Path(provider_config.CONFIG.state_persistence.state_file_prefix)
         payload = {
@@ -52,12 +54,13 @@ def register_settings_routes(  # noqa: PLR0913
             "autosave_interval_seconds_since_change": int(
                 provider_config.CONFIG.state_persistence.autosave_interval_seconds_since_change
             ),
+            "advertised_capabilities": advertised_server_capabilities(),
         }
         payload.update(tls_certificate_expiry_metadata())
         return jsonify(payload)
 
     @app.get("/api/settings/diagnostic")
-    async def get_diagnostic_settings() -> Response:
+    async def get_diagnostic_settings() -> ResponseReturnValue:
         """Return diagnostic-mode status used by UI feature gating."""
         return jsonify(
             {
@@ -69,7 +72,7 @@ def register_settings_routes(  # noqa: PLR0913
         )
 
     @app.post("/api/settings/state/save")
-    async def save_state_snapshot_now() -> Response:
+    async def save_state_snapshot_now() -> ResponseReturnValue:
         """Force an immediate persisted-state snapshot save."""
         persistence = provider_config.CONFIG.state_persistence
         if persistence.enabled is not True:
@@ -98,6 +101,7 @@ def register_settings_routes(  # noqa: PLR0913
                 reason="manual_ui_trigger",
                 at=now,
             )
+            logger.info("manual state snapshot saved to %s", snapshot_path)            
             return jsonify(
                 {
                     "status": "saved",
@@ -122,7 +126,7 @@ def register_settings_routes(  # noqa: PLR0913
             )
 
     @app.get("/api/settings/server-opamp-config")
-    async def get_server_opamp_config() -> Response:
+    async def get_server_opamp_config() -> ResponseReturnValue:
         """Return provider config file content for diagnostic UI view."""
         if not diagnostic_mode_enabled():
             return (
@@ -161,7 +165,7 @@ def register_settings_routes(  # noqa: PLR0913
         )
 
     @app.put("/api/settings/comms")
-    async def update_comms_settings() -> Response:
+    async def update_comms_settings() -> ResponseReturnValue:
         """Update communication threshold settings."""
         payload = await request.get_json(silent=True)
         if not payload:
@@ -325,11 +329,12 @@ def register_settings_routes(  # noqa: PLR0913
                 "autosave_interval_seconds_since_change": int(
                     config.state_persistence.autosave_interval_seconds_since_change
                 ),
+                "advertised_capabilities": advertised_server_capabilities(),
             }
         )
 
     @app.get("/api/settings/client")
-    async def get_client_settings() -> Response:
+    async def get_client_settings() -> ResponseReturnValue:
         """Get client global settings."""
         return jsonify(
             {
@@ -338,7 +343,7 @@ def register_settings_routes(  # noqa: PLR0913
         )
 
     @app.put("/api/settings/client")
-    async def update_client_settings() -> Response:
+    async def update_client_settings() -> ResponseReturnValue:
         """Update client global settings and apply to all known clients."""
         payload = await request.get_json(silent=True)
         if not payload:

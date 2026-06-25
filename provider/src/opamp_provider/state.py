@@ -14,17 +14,19 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 import string
 import sys
 import threading
+import zlib
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Iterable, Optional
 
 from google.protobuf import text_format
-from pydantic import BaseModel, ConfigDict, Field, field_serializer
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
 from opamp_provider.command_record import CommandRecord
 from opamp_provider.event_history import EventHistory
@@ -44,6 +46,7 @@ HEARTBEAT_FREQUENCY_EVENT_DESCRIPTION = "send heartbeatfrequency event"  # User-
 AUTH_MECHANISM_MTLS = "mtls"  # Client auth mechanism value for mutual TLS identities.
 AUTH_MECHANISM_JWT = "jwt"  # Client auth mechanism value for JWT-based identities.
 REQUIRED_RESTORE_FIELDS = ("client_id",)  # Required persisted fields for client restore payloads.
+CONFIG_TEXT_ENCODING = "utf-8"  # Encoding used for current-config compression storage.
 
 
 def _utc_now() -> datetime:
@@ -98,6 +101,28 @@ def _normalize_custom_capabilities(capabilities: Iterable[str]) -> list[str]:
     return sorted(normalized)
 
 
+def _effective_config_to_string(
+    effective_config: opamp_pb2.EffectiveConfig,
+) -> Optional[str]:
+    """Convert an effective-config payload into a human-readable string."""
+    config_map = effective_config.config_map.config_map
+    if not config_map:
+        return None
+
+    sorted_items = sorted(config_map.items(), key=lambda item: item[0])
+    if len(sorted_items) == 1:
+        _, config_file = sorted_items[0]
+        return bytes(config_file.body or b"").decode("utf-8", errors="replace")
+
+    rendered: dict[str, dict[str, str]] = {}
+    for filename, config_file in sorted_items:
+        rendered[str(filename)] = {
+            "content_type": str(config_file.content_type or ""),
+            "body": bytes(config_file.body or b"").decode("utf-8", errors="replace"),
+        }
+    return json.dumps(rendered, indent=2, sort_keys=True)
+
+
 class ClientChannel(str, Enum):
     """Allowed transport channel values stored on ClientRecord."""
 
@@ -146,9 +171,10 @@ class ClientRecord(BaseModel):
         default=None,
         description="Last known source IP address for this client.",
     )
-    current_config: Optional[str] = Field(
+    current_config: Optional[bytes] = Field(
         default=None,
         description="Latest effective/current config reported by the client.",
+        repr=False,
     )
     current_config_version: Optional[str] = Field(
         default=None,
@@ -245,6 +271,45 @@ class ClientRecord(BaseModel):
         if pending_agent_identification is None:
             return None
         return pending_agent_identification.hex()
+
+    @field_validator("current_config", mode="before")
+    @classmethod
+    def _compress_current_config_on_load(cls, value: object) -> object:
+        """Normalize persisted/current-config input into compressed bytes."""
+        if value is None or isinstance(value, bytes):
+            return value
+        if isinstance(value, str):
+            return zlib.compress(value.encode(CONFIG_TEXT_ENCODING))
+        return value
+
+    @field_serializer("current_config", when_used="json")
+    def serialize_current_config(self, current_config: Optional[bytes]) -> Optional[str]:
+        """Serialize current-config storage bytes as decompressed text."""
+        del current_config
+        return self.get_current_config()
+
+    def get_current_config(self) -> Optional[str]:
+        """Return the decompressed current config text stored on this record."""
+        if self.current_config is None:
+            return None
+        try:
+            return zlib.decompress(self.current_config).decode(
+                CONFIG_TEXT_ENCODING,
+                errors="replace",
+            )
+        except zlib.error:
+            logging.getLogger(__name__).warning(
+                "current_config not stored as compressed data for client_id=%s",
+                self.client_id,
+            )
+            return self.current_config.decode(CONFIG_TEXT_ENCODING, errors="replace")
+
+    def set_current_config(self, value: Optional[str]) -> None:
+        """Compress and store current config text on this record."""
+        if value is None:
+            self.current_config = None
+            return
+        self.current_config = zlib.compress(value.encode(CONFIG_TEXT_ENCODING))
 
     def model_dump_for_otel_agents_tool(self) -> dict[str, Any]:
         """Serialize one client using the shared `/tool/otelAgents` contract.
@@ -395,6 +460,7 @@ class ClientStore:
         self._apply_custom_capabilities(record, agent_msg)
         self._apply_client_version(record, agent_msg)
         self._apply_health(record, agent_msg)
+        self._apply_effective_config(record, agent_msg)
         self._apply_agent_description(record, agent_msg)
         self._apply_disconnect(record, agent_msg, now)
 
@@ -490,6 +556,8 @@ class ClientStore:
         self, record: ClientRecord, agent_msg: opamp_pb2.AgentToServer
     ) -> None:
         """Apply agent capability bitmask to the record."""
+        if not agent_msg.capabilities:
+            return
         record.capabilities = _capabilities_from_mask(agent_msg.capabilities)
 
     def _apply_custom_capabilities(
@@ -539,6 +607,15 @@ class ClientStore:
             ),
             "component_health_map": component_health,
         }
+
+    def _apply_effective_config(
+        self, record: ClientRecord, agent_msg: opamp_pb2.AgentToServer
+    ) -> None:
+        """Apply effective/current config reported by the client."""
+        if not agent_msg.HasField("effective_config"):
+            return
+        record.set_current_config(_effective_config_to_string(agent_msg.effective_config))
+        record.current_config_version = None
 
     def _apply_agent_description(
         self, record: ClientRecord, agent_msg: opamp_pb2.AgentToServer

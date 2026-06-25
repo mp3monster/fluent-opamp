@@ -49,6 +49,23 @@ def _read_ui_js_asset(
     preferred_exists = preferred_path.exists()
     fallback_exists = fallback_path.exists()
 
+    if (
+        not prefer_dev_assets
+        and source_path.exists()
+        and mini_path.exists()
+        and source_path.stat().st_mtime > mini_path.stat().st_mtime
+    ):
+        logger.warning(
+            (
+                "provider ui asset source is newer than minified for %s; "
+                "serving source=%s instead of stale minified=%s"
+            ),
+            source_filename,
+            str(source_path),
+            str(mini_path),
+        )
+        return source_path.read_text(encoding=UTF8_ENCODING)
+
     if preferred_exists:
         logger.info(
             "provider ui asset path=%s minified=%s APP_ENABLE_DEV_FEATURES=%s",

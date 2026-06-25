@@ -11,8 +11,10 @@
 # limitations under the License.
 
 import json
+import logging
 import pathlib
 from datetime import datetime, timedelta, timezone
+from http import HTTPStatus
 
 import pytest
 
@@ -24,6 +26,8 @@ from opamp_provider.app import (
     ACTION_PACKAGE_AVAILABLE,
     ERR_AGENT_BLOCKED,
     ERR_AGENT_PENDING_APPROVAL,
+    _build_error_message,
+    _build_opamp_http_error_response,
     _tls_certificate_expiry_metadata,
     app,
 )
@@ -74,6 +78,11 @@ def _test_provider_config(
     ui_use_authorization: str = provider_config.DEFAULT_UI_USE_AUTHORIZATION,
     latest_docs_url: str = provider_config.DEFAULT_LATEST_DOCS_URL,
     allow_remote_config: bool = provider_config.DEFAULT_ALLOW_REMOTE_CONFIG,
+    allow_effective_config: bool = provider_config.DEFAULT_ALLOW_EFFECTIVE_CONFIG,
+    allow_connection_settings: bool = provider_config.DEFAULT_ALLOW_CONNECTION_SETTINGS,
+    allow_connection_settings_request: bool = (
+        provider_config.DEFAULT_ALLOW_CONNECTION_SETTINGS_REQUEST
+    ),
 ) -> ProviderConfig:
     """Build a ProviderConfig suitable for endpoint tests."""
     return ProviderConfig(
@@ -90,6 +99,9 @@ def _test_provider_config(
         opamp_use_authorization=opamp_use_authorization,
         ui_use_authorization=ui_use_authorization,
         allow_remote_config=allow_remote_config,
+        allow_effective_config=allow_effective_config,
+        allow_connection_settings=allow_connection_settings,
+        allow_connection_settings_request=allow_connection_settings_request,
     )
 
 
@@ -171,6 +183,40 @@ async def test_http_endpoint() -> None:
     server_msg = opamp_pb2.ServerToAgent()
     server_msg.ParseFromString(payload)
     assert server_msg.instance_uid == test_uid
+
+
+def test_build_error_message_logs_opamp_error_details(caplog) -> None:
+    """Verify websocket/shared OpAMP error payload creation writes the error to logs."""
+    test_uid = bytes.fromhex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+
+    with caplog.at_level(logging.WARNING, logger="opamp_provider.app"):
+        server_msg = _build_error_message(
+            instance_uid=test_uid,
+            error_message="example opamp error",
+        )
+
+    assert server_msg.error_response.error_message == "example opamp error"
+    assert "opamp error response" in caplog.text
+    assert "example opamp error" in caplog.text
+    assert test_uid.hex() in caplog.text
+
+
+def test_build_opamp_http_error_response_logs_opamp_error_details(caplog) -> None:
+    """Verify HTTP OpAMP error responses log the status code and error message."""
+    test_uid = bytes.fromhex("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
+
+    with caplog.at_level(logging.WARNING, logger="opamp_provider.app"):
+        response = _build_opamp_http_error_response(
+            instance_uid=test_uid,
+            status_code=HTTPStatus.FORBIDDEN,
+            error_message="http opamp error",
+        )
+
+    assert response.status_code == HTTPStatus.FORBIDDEN
+    assert "opamp error response" in caplog.text
+    assert "http opamp error" in caplog.text
+    assert "status_code=403" in caplog.text
+    assert test_uid.hex() in caplog.text
 
 
 @pytest.mark.asyncio
@@ -568,6 +614,19 @@ async def test_get_comms_settings(monkeypatch) -> None:
         "retention_count": 5,
         "state_snapshot_file_count": 2,
         "autosave_interval_seconds_since_change": 600,
+        "advertised_capabilities": [
+            {"key": "accepts_status", "label": "Accepts Status", "enabled": True},
+            {"key": "offers_remote_config", "label": "Offers Remote Config", "enabled": True},
+            {"key": "accepts_effective_config", "label": "Accepts Effective Config", "enabled": True},
+            {"key": "offers_packages", "label": "Offers Packages", "enabled": False},
+            {"key": "accepts_packages_status", "label": "Accepts Packages Status", "enabled": False},
+            {"key": "offers_connection_settings", "label": "Offers Connection Settings", "enabled": False},
+            {
+                "key": "accepts_connection_settings_request",
+                "label": "Accepts Connection Settings Request",
+                "enabled": False,
+            },
+        ],
         "tls_enabled": False,
         "https_certificate_expiry_date": None,
         "https_certificate_days_remaining": None,
@@ -1560,6 +1619,73 @@ async def test_clients_endpoint_keeps_remote_config_ui_disabled_without_client_c
 
 
 @pytest.mark.asyncio
+async def test_clients_endpoint_includes_current_config_from_effective_config_report() -> None:
+    """Verify `/api/clients` exposes current_config derived from AgentToServer.effective_config."""
+    client_id = "96969696969696969696969696969696"
+    agent_msg = opamp_pb2.AgentToServer(instance_uid=bytes.fromhex(client_id))
+    agent_msg.sequence_num = 1
+    config_entry = agent_msg.effective_config.config_map.config_map["/tmp/agent.yaml"]
+    config_entry.body = b"service:\n  flush: 1\n"
+    config_entry.content_type = "application/x-yaml"
+
+    async with app.test_client() as client:
+        post_resp = await client.post(
+            "/v1/opamp",
+            data=agent_msg.SerializeToString(),
+            headers={"Content-Type": "application/x-protobuf"},
+        )
+        assert post_resp.status_code == 200
+
+        list_resp = await client.get("/api/clients")
+        assert list_resp.status_code == 200
+        payload = await list_resp.get_json()
+
+    matching_client = next(
+        item for item in payload["clients"] if item["client_id"] == client_id
+    )
+    assert matching_client["current_config"] == "service:\n  flush: 1\n"
+    assert matching_client["current_config_version"] is None
+
+
+@pytest.mark.asyncio
+async def test_clients_endpoint_preserves_remote_config_flags_when_later_message_omits_capabilities() -> None:
+    """Verify later heartbeat-style messages do not clear previously reported capabilities."""
+    client_id = "97979797979797979797979797979797"
+    first = opamp_pb2.AgentToServer(instance_uid=bytes.fromhex(client_id))
+    first.sequence_num = 1
+    first.capabilities = (
+        opamp_pb2.AgentCapabilities.AgentCapabilities_AcceptsRemoteConfig
+    )
+    second = opamp_pb2.AgentToServer(instance_uid=bytes.fromhex(client_id))
+    second.sequence_num = 2
+
+    async with app.test_client() as client:
+        first_resp = await client.post(
+            "/v1/opamp",
+            data=first.SerializeToString(),
+            headers={"Content-Type": "application/x-protobuf"},
+        )
+        assert first_resp.status_code == 200
+
+        second_resp = await client.post(
+            "/v1/opamp",
+            data=second.SerializeToString(),
+            headers={"Content-Type": "application/x-protobuf"},
+        )
+        assert second_resp.status_code == 200
+
+        list_resp = await client.get("/api/clients")
+        assert list_resp.status_code == 200
+        payload = await list_resp.get_json()
+
+    matching_client = next(
+        item for item in payload["clients"] if item["client_id"] == client_id
+    )
+    assert matching_client["remote_config_capability_reported"] is True
+    assert matching_client["remote_config_files_allowed"] is True
+
+
+@pytest.mark.asyncio
 async def test_http_endpoint_server_capabilities_drop_remote_config_when_disabled() -> None:
     """Verify provider capability advertisement hides remote-config support when disabled."""
     provider_config.set_config(_test_provider_config(allow_remote_config=False))
@@ -1583,6 +1709,54 @@ async def test_http_endpoint_server_capabilities_drop_remote_config_when_disable
         server_msg.capabilities
         & int(opamp_pb2.ServerCapabilities.ServerCapabilities_OffersRemoteConfig)
     ) == 0
+    assert server_msg.capabilities & int(
+        opamp_pb2.ServerCapabilities.ServerCapabilities_AcceptsEffectiveConfig
+    )
+
+
+@pytest.mark.asyncio
+async def test_http_endpoint_server_capabilities_reflect_capability_configuration() -> None:
+    """Verify the advertised ServerCapabilities flags follow provider config toggles."""
+    provider_config.set_config(
+        _test_provider_config(
+            allow_remote_config=False,
+            allow_effective_config=False,
+            allow_connection_settings=True,
+            allow_connection_settings_request=True,
+        )
+    )
+    test_uid = b"7878787878787878"
+    agent_msg = opamp_pb2.AgentToServer(instance_uid=test_uid)
+    agent_msg.capabilities = opamp_pb2.AgentCapabilities.AgentCapabilities_ReportsStatus
+
+    async with app.test_client() as client:
+        resp = await client.post(
+            "/v1/opamp",
+            data=agent_msg.SerializeToString(),
+            headers={"Content-Type": "application/x-protobuf"},
+        )
+        assert resp.status_code == 200
+        payload = await resp.get_data()
+
+    server_msg = opamp_pb2.ServerToAgent()
+    server_msg.ParseFromString(payload)
+    assert server_msg.capabilities & int(
+        opamp_pb2.ServerCapabilities.ServerCapabilities_AcceptsStatus
+    )
+    assert (
+        server_msg.capabilities
+        & int(opamp_pb2.ServerCapabilities.ServerCapabilities_OffersRemoteConfig)
+    ) == 0
+    assert (
+        server_msg.capabilities
+        & int(opamp_pb2.ServerCapabilities.ServerCapabilities_AcceptsEffectiveConfig)
+    ) == 0
+    assert server_msg.capabilities & int(
+        opamp_pb2.ServerCapabilities.ServerCapabilities_OffersConnectionSettings
+    )
+    assert server_msg.capabilities & int(
+        opamp_pb2.ServerCapabilities.ServerCapabilities_AcceptsConnectionSettingsRequest
+    )
 
 
 @pytest.mark.asyncio
@@ -1635,6 +1809,19 @@ async def test_put_comms_settings(monkeypatch) -> None:
         "retention_count": 7,
         "state_snapshot_file_count": 3,
         "autosave_interval_seconds_since_change": 600,
+        "advertised_capabilities": [
+            {"key": "accepts_status", "label": "Accepts Status", "enabled": True},
+            {"key": "offers_remote_config", "label": "Offers Remote Config", "enabled": True},
+            {"key": "accepts_effective_config", "label": "Accepts Effective Config", "enabled": True},
+            {"key": "offers_packages", "label": "Offers Packages", "enabled": False},
+            {"key": "accepts_packages_status", "label": "Accepts Packages Status", "enabled": False},
+            {"key": "offers_connection_settings", "label": "Offers Connection Settings", "enabled": False},
+            {
+                "key": "accepts_connection_settings_request",
+                "label": "Accepts Connection Settings Request",
+                "enabled": False,
+            },
+        ],
     }
     config_path = pathlib.Path(provider_config.get_effective_config_path())
     stored = json.loads(config_path.read_text(encoding="utf-8"))
@@ -1908,12 +2095,13 @@ async def test_get_global_settings_help() -> None:
     assert "retention_count" in tooltips
     assert "autosave_interval_seconds_since_change" in tooltips
     assert "default_heartbeat_frequency" in tooltips
+    assert "blocked" not in tooltips["human_in_loop_approval"].lower()
     assert fields["delayed_comms_seconds"]["label"] == "Delayed Communications Threshold (seconds)"
     assert fields["significant_comms_seconds"]["label"] == "Significant Communications Threshold (seconds)"
     assert fields["minutes_keep_disconnected"]["label"] == "Disconnected Retention Window (minutes)"
     assert fields["client_event_history_size"]["label"] == "Client Event History Size"
     assert fields["human_in_loop_approval"]["label"] == "Human In Loop Approval"
-    assert fields["state_persistence_enabled"]["label"] == "State Persistence Enabled"
+    assert fields["state_persistence_enabled"]["label"] == "Enable State Persistence"
     assert fields["state_save_folder"]["label"] == "State Save Folder"
     assert fields["retention_count"]["label"] == "State Snapshot Retention Count"
     assert (

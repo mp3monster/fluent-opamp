@@ -58,6 +58,23 @@ def test_allow_remote_config_defaults_true_when_missing() -> None:
     assert config.allow_remote_config is True
 
 
+def test_allow_effective_config_defaults_true_when_missing() -> None:
+    """Verify provider effective-config support defaults to enabled when omitted."""
+    root = pathlib.Path(__file__).resolve().parents[2]
+    os.environ[provider_config.ENV_OPAMP_CONFIG_PATH] = str(root / "tests" / "opamp.json")
+    config = provider_config.load_config()
+    assert config.allow_effective_config is True
+
+
+def test_connection_settings_capability_defaults_false_when_missing() -> None:
+    """Verify connection-settings capability advertisement defaults stay disabled."""
+    root = pathlib.Path(__file__).resolve().parents[2]
+    os.environ[provider_config.ENV_OPAMP_CONFIG_PATH] = str(root / "tests" / "opamp.json")
+    config = provider_config.load_config()
+    assert config.allow_connection_settings is False
+    assert config.allow_connection_settings_request is False
+
+
 def test_allow_mcp_defaults_false_when_missing() -> None:
     """Verify provider.allow-mcp defaults to disabled when omitted."""
     root = pathlib.Path(__file__).resolve().parents[2]
@@ -104,6 +121,30 @@ def test_allow_remote_config_loads_false_from_config(tmp_path) -> None:
 
     config = provider_config.load_config()
     assert config.allow_remote_config is False
+
+
+def test_server_capability_toggles_load_from_config(tmp_path) -> None:
+    """Verify effective-config and connection-settings capability toggles are parsed."""
+    config_path = tmp_path / "opamp.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "provider": {
+                    "allow-effective-config": False,
+                    "allow-connection-settings": True,
+                    "allow-connection-settings-request": True,
+                }
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    os.environ[provider_config.ENV_OPAMP_CONFIG_PATH] = str(config_path)
+
+    config = provider_config.load_config()
+    assert config.allow_effective_config is False
+    assert config.allow_connection_settings is True
+    assert config.allow_connection_settings_request is True
 
 
 def test_latest_docs_url_defaults_when_missing() -> None:

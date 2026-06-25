@@ -44,6 +44,9 @@ CFG_DEFAULT_HEARTBEAT_FREQUENCY = "default_heartbeat_frequency"  # Provider JSON
 CFG_LATEST_DOCS_URL = "latest_docs_url"  # Provider JSON key for Latest docs redirect URL.
 CFG_HUMAN_IN_LOOP_APPROVAL = "human_in_loop_approval"  # Provider JSON key toggling manual agent approval workflow.
 CFG_ALLOW_REMOTE_CONFIG = "allow-remote-config"  # Provider JSON key toggling enhanced remote-config UI and queueing support.
+CFG_ALLOW_EFFECTIVE_CONFIG = "allow-effective-config"  # Provider JSON key toggling ServerCapabilities.AcceptsEffectiveConfig advertisement.
+CFG_ALLOW_CONNECTION_SETTINGS = "allow-connection-settings"  # Provider JSON key toggling ServerCapabilities.OffersConnectionSettings advertisement.
+CFG_ALLOW_CONNECTION_SETTINGS_REQUEST = "allow-connection-settings-request"  # Provider JSON key toggling ServerCapabilities.AcceptsConnectionSettingsRequest advertisement.
 CFG_ALLOW_MCP = "allow-mcp"  # Provider JSON key toggling Streamable HTTP MCP route exposure at /mcp.
 CFG_OPAMP_USE_AUTHORIZATION = "opamp-use-authorization"  # Provider JSON key controlling OpAMP transport bearer authorization mode.
 CFG_UI_USE_AUTHORIZATION = "ui-use-authorization"  # Provider JSON key controlling non-OpAMP HTTP/WebSocket bearer authorization mode.
@@ -72,6 +75,9 @@ DEFAULT_DEFAULT_HEARTBEAT_FREQUENCY = 30  # Default heartbeat frequency assigned
 DEFAULT_LATEST_DOCS_URL = "https://htmlpreview.github.io/?https://raw.githubusercontent.com/mp3monster/fluent-opamp/main/github-landingpage/index.html"  # Default redirect target for /doc-set.
 DEFAULT_HUMAN_IN_LOOP_APPROVAL = False  # Default behavior leaves human approval workflow disabled.
 DEFAULT_ALLOW_REMOTE_CONFIG = True  # Default behavior enables remote-config UI and related provider flows.
+DEFAULT_ALLOW_EFFECTIVE_CONFIG = True  # Default behavior advertises acceptance of effective-config reports.
+DEFAULT_ALLOW_CONNECTION_SETTINGS = False  # Default behavior does not advertise connection-settings offers.
+DEFAULT_ALLOW_CONNECTION_SETTINGS_REQUEST = False  # Default behavior does not advertise connection-settings requests.
 DEFAULT_ALLOW_MCP = False  # Default behavior leaves /mcp disabled unless explicitly enabled.
 OPAMP_USE_AUTHORIZATION_NONE = "none"  # Disable OpAMP endpoint bearer auth checks.
 OPAMP_USE_AUTHORIZATION_CONFIG_TOKEN = (
@@ -123,6 +129,11 @@ class ProviderConfig:
     latest_docs_url: str = DEFAULT_LATEST_DOCS_URL
     human_in_loop_approval: bool = DEFAULT_HUMAN_IN_LOOP_APPROVAL
     allow_remote_config: bool = DEFAULT_ALLOW_REMOTE_CONFIG
+    allow_effective_config: bool = DEFAULT_ALLOW_EFFECTIVE_CONFIG
+    allow_connection_settings: bool = DEFAULT_ALLOW_CONNECTION_SETTINGS
+    allow_connection_settings_request: bool = (
+        DEFAULT_ALLOW_CONNECTION_SETTINGS_REQUEST
+    )
     allow_mcp: bool = DEFAULT_ALLOW_MCP
     opamp_use_authorization: str = DEFAULT_OPAMP_USE_AUTHORIZATION
     ui_use_authorization: str = DEFAULT_UI_USE_AUTHORIZATION
@@ -351,6 +362,8 @@ def _load_state_persistence_config(
 
 def load_config() -> ProviderConfig:
     """Load provider config from disk."""
+    logging.getLogger(__name__).debug("About to load_config")
+
     raw = _load_json(_config_path())
     provider_raw = raw.get(CFG_PROVIDER, {})
     observability = load_observability_config_from_payload(raw)
@@ -411,6 +424,27 @@ def load_config() -> ProviderConfig:
             ),
             DEFAULT_ALLOW_REMOTE_CONFIG,
         ),
+        allow_effective_config=_as_bool(
+            provider_raw.get(
+                CFG_ALLOW_EFFECTIVE_CONFIG,
+                DEFAULT_ALLOW_EFFECTIVE_CONFIG,
+            ),
+            DEFAULT_ALLOW_EFFECTIVE_CONFIG,
+        ),
+        allow_connection_settings=_as_bool(
+            provider_raw.get(
+                CFG_ALLOW_CONNECTION_SETTINGS,
+                DEFAULT_ALLOW_CONNECTION_SETTINGS,
+            ),
+            DEFAULT_ALLOW_CONNECTION_SETTINGS,
+        ),
+        allow_connection_settings_request=_as_bool(
+            provider_raw.get(
+                CFG_ALLOW_CONNECTION_SETTINGS_REQUEST,
+                DEFAULT_ALLOW_CONNECTION_SETTINGS_REQUEST,
+            ),
+            DEFAULT_ALLOW_CONNECTION_SETTINGS_REQUEST,
+        ),
         allow_mcp=_as_bool(
             provider_raw.get(
                 CFG_ALLOW_MCP,
@@ -440,6 +474,7 @@ def load_config_with_overrides(
     log_level: str | None,
 ) -> ProviderConfig:
     """Load provider config with CLI overrides applied."""
+    logging.getLogger(__name__).debug("About to load_config_with_overrides")
     base_raw = _load_json(config_path or _config_path())
     provider_raw = base_raw.get(CFG_PROVIDER, {})
     observability = load_observability_config_from_payload(base_raw)
@@ -502,6 +537,27 @@ def load_config_with_overrides(
             ),
             DEFAULT_ALLOW_REMOTE_CONFIG,
         ),
+        allow_effective_config=_as_bool(
+            provider_raw.get(
+                CFG_ALLOW_EFFECTIVE_CONFIG,
+                DEFAULT_ALLOW_EFFECTIVE_CONFIG,
+            ),
+            DEFAULT_ALLOW_EFFECTIVE_CONFIG,
+        ),
+        allow_connection_settings=_as_bool(
+            provider_raw.get(
+                CFG_ALLOW_CONNECTION_SETTINGS,
+                DEFAULT_ALLOW_CONNECTION_SETTINGS,
+            ),
+            DEFAULT_ALLOW_CONNECTION_SETTINGS,
+        ),
+        allow_connection_settings_request=_as_bool(
+            provider_raw.get(
+                CFG_ALLOW_CONNECTION_SETTINGS_REQUEST,
+                DEFAULT_ALLOW_CONNECTION_SETTINGS_REQUEST,
+            ),
+            DEFAULT_ALLOW_CONNECTION_SETTINGS_REQUEST,
+        ),
         allow_mcp=_as_bool(
             provider_raw.get(
                 CFG_ALLOW_MCP,
@@ -529,6 +585,8 @@ def set_config(config: ProviderConfig) -> None:
     """Update the module-level config singleton."""
     global CONFIG
     CONFIG = config  # Module-level provider config singleton.
+    logging.getLogger(__name__).debug("setting config to: \n%s", config)
+
 
 
 def update_comms_thresholds(
@@ -629,6 +687,9 @@ def update_comms_thresholds(
         latest_docs_url=CONFIG.latest_docs_url,
         human_in_loop_approval=effective_human_in_loop_approval,
         allow_remote_config=CONFIG.allow_remote_config,
+        allow_effective_config=CONFIG.allow_effective_config,
+        allow_connection_settings=CONFIG.allow_connection_settings,
+        allow_connection_settings_request=CONFIG.allow_connection_settings_request,
         allow_mcp=CONFIG.allow_mcp,
         opamp_use_authorization=CONFIG.opamp_use_authorization,
         ui_use_authorization=CONFIG.ui_use_authorization,
@@ -654,6 +715,9 @@ def update_default_heartbeat_frequency(*, default_heartbeat_frequency: int) -> P
         latest_docs_url=CONFIG.latest_docs_url,
         human_in_loop_approval=CONFIG.human_in_loop_approval,
         allow_remote_config=CONFIG.allow_remote_config,
+        allow_effective_config=CONFIG.allow_effective_config,
+        allow_connection_settings=CONFIG.allow_connection_settings,
+        allow_connection_settings_request=CONFIG.allow_connection_settings_request,
         allow_mcp=CONFIG.allow_mcp,
         opamp_use_authorization=CONFIG.opamp_use_authorization,
         ui_use_authorization=CONFIG.ui_use_authorization,
@@ -696,6 +760,13 @@ def persist_provider_config(
     provider_raw[CFG_LATEST_DOCS_URL] = str(effective.latest_docs_url)
     provider_raw[CFG_HUMAN_IN_LOOP_APPROVAL] = bool(effective.human_in_loop_approval)
     provider_raw[CFG_ALLOW_REMOTE_CONFIG] = bool(effective.allow_remote_config)
+    provider_raw[CFG_ALLOW_EFFECTIVE_CONFIG] = bool(effective.allow_effective_config)
+    provider_raw[CFG_ALLOW_CONNECTION_SETTINGS] = bool(
+        effective.allow_connection_settings
+    )
+    provider_raw[CFG_ALLOW_CONNECTION_SETTINGS_REQUEST] = bool(
+        effective.allow_connection_settings_request
+    )
     provider_raw[CFG_ALLOW_MCP] = bool(effective.allow_mcp)
     provider_raw[CFG_OPAMP_USE_AUTHORIZATION] = str(effective.opamp_use_authorization)
     provider_raw[CFG_UI_USE_AUTHORIZATION] = str(effective.ui_use_authorization)

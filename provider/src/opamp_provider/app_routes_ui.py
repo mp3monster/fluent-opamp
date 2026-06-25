@@ -24,7 +24,7 @@ def register_ui_routes(  # noqa: PLR0913
 
     @app.get("/")
     async def root() -> Response:
-        return redirect("/ui")
+        return redirect("/ui") # pyright: ignore[reportReturnType]
 
     @app.get("/ui")
     async def web_ui() -> Response:
