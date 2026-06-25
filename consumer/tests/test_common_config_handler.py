@@ -42,6 +42,7 @@ class _FakeOpAMPClient(OpAMPClientInterface):
         self.fail_write = fail_write
         self.partial_write_text = partial_write_text
         self.write_calls: list[tuple[str, bytes]] = []
+        self.hot_reload_calls = 0
 
     async def send(self) -> opamp_pb2.ServerToAgent:
         return opamp_pb2.ServerToAgent()
@@ -112,6 +113,13 @@ class _FakeOpAMPClient(OpAMPClientInterface):
     def get_agent_capabilities(self) -> int:
         return 0
 
+    def check_hot_deploy(self) -> str:
+        return ""
+
+    def hot_reload(self) -> bool:
+        self.hot_reload_calls += 1
+        return True
+
     def is_capability_allowed(self, capability_name: str) -> bool:
         return False
 
@@ -149,6 +157,7 @@ def test_apply_remote_config_writes_text_file_without_content_type(tmp_path: Pat
 
     assert target_path.read_text(encoding="utf-8") == "hello=world\n"
     assert client.write_calls == [(str(target_path), b"hello=world\n")]
+    assert client.hot_reload_calls == 1
 
 
 def test_apply_remote_config_validates_hash_and_logs_match(

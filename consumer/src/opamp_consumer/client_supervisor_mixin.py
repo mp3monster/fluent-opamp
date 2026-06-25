@@ -48,9 +48,18 @@ class ClientSupervisorMixin(_BaseClientProcessLifecycle):
     def launch_agent_process(self) -> bool:
         """Launch the configured agent process using runtime command metadata."""
         logger = logging.getLogger(__name__)
+        try:
+            hot_deploy_flag = str(self._owner.check_hot_deploy() or "").strip()
+        except Exception:
+            logger.exception(
+                "failed to resolve hot deploy flag for command=%s",
+                self._owner._runtime_agent_command,
+            )
+            hot_deploy_flag = ""
         raw_command = [
             self._owner._runtime_agent_command,
             *(self._owner.config.agent_additional_params or []),
+            *([hot_deploy_flag] if hot_deploy_flag else []),
             self._owner._runtime_config_flag,
             self._owner.config.agent_config_path,
         ]

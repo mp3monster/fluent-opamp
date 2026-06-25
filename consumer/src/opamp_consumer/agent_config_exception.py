@@ -15,7 +15,7 @@
 from opamp_consumer import AgentException
 
 
-class AgentConfigException(AgentException):
+class AgentConfigException(AgentException, ValueError):
     """Raised when consumer agent operations fail because of a configuration issue."""
 
     def __init__(self, message: str, config_name: None | str = None) -> None:

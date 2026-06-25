@@ -20,6 +20,7 @@ import opamp_consumer.client_mixins as client_mixins
 import opamp_consumer.fluentbit_client as client
 import opamp_consumer.process_utils as process_utils
 import pytest
+from opamp_consumer.config import ConsumerConfig
 from opamp_consumer.exceptions import AgentException
 from opamp_consumer.proto import opamp_pb2
 
@@ -178,6 +179,124 @@ def test_terminate_agent_process_terminates_only_launched_process(monkeypatch) -
     assert called["wait"] == 1
     assert called["kill"] == 0
     assert instance.data.agent_process is None
+
+
+def test_launch_agent_process_adds_hot_reload_flag_for_remote_config(monkeypatch) -> None:
+    """Fluent Bit launch should add hot reload when remote config is enabled."""
+    captured: dict[str, object] = {}
+
+    class FakeProcess:
+        def terminate(self) -> None:
+            return None
+
+    def _fake_popen(command: list[str]) -> FakeProcess:
+        captured["command"] = command
+        return FakeProcess()
+
+    config = ConsumerConfig(
+        server_url="http://localhost",
+        agent_config_path="/tmp/fluent-bit.yaml",
+        agent_additional_params=[],
+        heartbeat_frequency=30,
+        agent_capabilities=["AcceptsRemoteConfig"],
+        log_level="debug",
+        service_name="Fluentbit",
+        service_namespace="FluentBitNS",
+    )
+    instance = client.OpAMPClient("http://localhost", config)
+
+    monkeypatch.setattr(
+        client_mixins.shutil,
+        "which",
+        lambda executable: (
+            "/usr/bin/fluent-bit" if executable == "fluent-bit" else None
+        ),
+    )
+    monkeypatch.setattr(client.subprocess, "Popen", _fake_popen)
+
+    launched = instance.launch_agent_process()
+
+    assert launched is True
+    assert captured["command"] == [
+        "/usr/bin/fluent-bit",
+        "--enable-hot-reload",
+        "-c",
+        "/tmp/fluent-bit.yaml",
+    ]
+
+
+def test_fluentbit_check_hot_deploy_supports_legacy_capability_name() -> None:
+    """Legacy AcceptRemoteConfig name should still trigger hot reload injection."""
+    config = ConsumerConfig(
+        server_url="http://localhost",
+        agent_config_path="/tmp/fluent-bit.yaml",
+        agent_additional_params=[],
+        heartbeat_frequency=30,
+        agent_capabilities=["AcceptRemoteConfig"],
+        log_level="debug",
+        service_name="Fluentbit",
+        service_namespace="FluentBitNS",
+    )
+    instance = client.OpAMPClient("http://localhost", config)
+
+    assert instance.check_hot_deploy() == "--enable-hot-reload"
+
+
+def test_fluentbit_hot_reload_posts_to_local_agent_api(monkeypatch) -> None:
+    """Fluent Bit hot reload should POST to the local reload endpoint."""
+    captured: dict[str, object] = {}
+    config = ConsumerConfig(
+        server_url="http://provider.example:8080",
+        agent_config_path="/tmp/fluent-bit.yaml",
+        agent_additional_params=[],
+        heartbeat_frequency=30,
+        agent_capabilities=["AcceptsRemoteConfig"],
+        client_status_port=2020,
+        log_level="debug",
+        service_name="Fluentbit",
+        service_namespace="FluentBitNS",
+    )
+    instance = client.OpAMPClient("http://provider.example:8080", config)
+
+    class FakeResponse:
+        status_code = 200
+
+        def raise_for_status(self) -> None:
+            return None
+
+    def _fake_post(url: str, timeout: float) -> FakeResponse:
+        captured["url"] = url
+        captured["timeout"] = timeout
+        return FakeResponse()
+
+    monkeypatch.setattr(client.httpx, "post", _fake_post)
+
+    assert instance.hot_reload() is True
+    assert captured == {
+        "url": "http://localhost:2020/api/v2/reload",
+        "timeout": 5.0,
+    }
+
+
+def test_fluentbit_hot_reload_returns_false_without_status_port(caplog) -> None:
+    """Fluent Bit hot reload should fail safely when no local HTTP port exists."""
+    instance = client.OpAMPClient(
+        "http://localhost",
+        ConsumerConfig(
+            server_url="http://localhost:8080",
+            agent_config_path="/tmp/fluent-bit.yaml",
+            agent_additional_params=[],
+            heartbeat_frequency=30,
+            agent_capabilities=["AcceptsRemoteConfig"],
+            log_level="debug",
+            service_name="Fluentbit",
+            service_namespace="FluentBitNS",
+        ),
+    )
+    caplog.set_level("WARNING")
+
+    assert instance.hot_reload() is False
+    assert "no Fluent Bit HTTP port is configured" in caplog.text
 
 
 def test_restart_agent_process_relaunches(monkeypatch) -> None:

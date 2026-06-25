@@ -49,6 +49,9 @@ The provider README still covers the operational startup flow in more detail:
 | `provider.latest_docs_url` | string | `https://htmlpreview.github.io/?https://raw.githubusercontent.com/mp3monster/fluent-opamp/main/github-landingpage/index.html` | `https://htmlpreview.github.io/?https://raw.githubusercontent.com/mp3monster/fluent-opamp/main/github-landingpage/index.html` | No | Redirect target for `GET /doc-set`, which is also the route used by the UI `Latest docs` links. |
 | `provider.human_in_loop_approval` | boolean | `false` | `false` | Yes | Enables the pending-approval workflow for unknown agents. |
 | `provider.allow-remote-config` | boolean | `true` | `true` | No | Enables the enhanced Configuration-tab remote file workflow and allows related remote-config queueing endpoints. |
+| `provider.allow-effective-config` | boolean | `true` | `true` | No | Controls whether the provider advertises `ServerCapabilities.AcceptsEffectiveConfig` to agents. |
+| `provider.allow-connection-settings` | boolean | `false` | `false` | No | Controls whether the provider advertises `ServerCapabilities.OffersConnectionSettings`. |
+| `provider.allow-connection-settings-request` | boolean | `false` | `false` | No | Controls whether the provider advertises `ServerCapabilities.AcceptsConnectionSettingsRequest`. |
 | `provider.allow-mcp` | boolean | `false` | `true` | No | Enables direct Streamable HTTP MCP access at `/mcp`. When `false`, `/mcp` requests are rejected even if other MCP transports are available. |
 | `provider.opamp-use-authorization` | string | `none` | `none` | No | Allowed values: `none`, `config-token`, `idp`. Controls OpAMP transport auth on `/v1/opamp`. |
 | `provider.ui-use-authorization` | string | `none` | `none` | No | Allowed values: `none`, `config-token`, `idp`. Controls non-OpAMP auth for `/ui`, `/api`, `/tool`, `/mcp` when enabled, and related routes. |
@@ -119,6 +122,13 @@ One provider-managed UI workflow is controlled only through config:
   **Configuration** tab. When the catalog feature is also configured, that panel shows
   **Select Configs**, opens the catalog in a popup, and lets the operator drag to reorder or remove
   returned files before using a separate send action.
+
+Server capability advertisement is also configuration-driven:
+
+- `provider.allow-remote-config` controls whether the provider advertises `OffersRemoteConfig`
+- `provider.allow-effective-config` controls whether the provider advertises `AcceptsEffectiveConfig`
+- `provider.allow-connection-settings` controls whether the provider advertises `OffersConnectionSettings`
+- `provider.allow-connection-settings-request` controls whether the provider advertises `AcceptsConnectionSettingsRequest`
 
 When the UI persists provider settings back to `opamp.json`, the provider writes a timestamped backup of
 the previous file first.

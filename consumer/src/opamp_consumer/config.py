@@ -533,8 +533,10 @@ def resolve_agent_capabilities(
     for capability_name in supported_names:
         if capability_name in desired_names:
             enabled_capabilities.append(capability_name)
+            logger.info("added to enabled capabilities %s", capability_name)
             continue
-        logger.info("supported capability not enabled capability=%s", capability_name)
+        else:
+            logger.info("supported capability not enabled capability=%s", capability_name)
 
     for capability_name in MANDATORY_AGENT_CAPABILITY_NAMES:
         if capability_name not in supported_name_set:

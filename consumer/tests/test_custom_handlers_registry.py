@@ -106,6 +106,12 @@ class _FakeOpAMPClient(OpAMPClientInterface):
     def get_agent_capabilities(self) -> int:
         return 0
 
+    def check_hot_deploy(self) -> str:
+        return ""
+
+    def hot_reload(self) -> bool:
+        return False
+
     def is_capability_allowed(self, capability_name: str) -> bool:
         return False
 

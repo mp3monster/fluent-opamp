@@ -76,6 +76,9 @@ Common fields from the default `config/opamp.json` that are covered there includ
 - `provider.latest_docs_url`
 - `provider.human_in_loop_approval`
 - `provider.allow-remote-config`
+- `provider.allow-effective-config`
+- `provider.allow-connection-settings`
+- `provider.allow-connection-settings-request`
 - `provider.allow-mcp`
 - `provider.opamp-use-authorization`
 - `provider.ui-use-authorization`

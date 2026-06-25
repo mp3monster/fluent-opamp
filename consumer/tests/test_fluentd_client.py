@@ -377,6 +377,53 @@ def test_launch_agent_process_uses_fluentd_command(monkeypatch) -> None:
     assert captured["command"] == ["/usr/bin/fluentd", "-q", "-c", "/tmp/fluentd.conf"]
 
 
+def test_fluentd_check_hot_deploy_returns_flag_when_remote_config_enabled() -> None:
+    """Fluentd should request hot reload when remote config is enabled."""
+    config = _test_config(agent_config_path="/tmp/fluentd.conf")
+    config.agent_capabilities = ["AcceptsRemoteConfig"]
+    instance = fluentd_client.FluentdOpAMPClient("http://localhost", config)
+
+    assert instance.check_hot_deploy() == "--enable-hot-reload"
+
+
+def test_fluentd_check_hot_deploy_returns_empty_when_flag_already_present() -> None:
+    """Fluentd should not duplicate hot reload flags already supplied by config."""
+    config = _test_config(agent_config_path="/tmp/fluentd.conf")
+    config.agent_capabilities = ["AcceptsRemoteConfig"]
+    config.agent_additional_params = ["-q", "-Y"]
+    instance = fluentd_client.FluentdOpAMPClient("http://localhost", config)
+
+    assert instance.check_hot_deploy() == ""
+
+
+def test_fluentd_check_hot_deploy_logs_and_returns_empty_on_error(
+    monkeypatch,
+    caplog,
+) -> None:
+    """Fluentd hot deploy checks should fail closed and log exceptions."""
+    config = _test_config(agent_config_path="/tmp/fluentd.conf")
+    instance = fluentd_client.FluentdOpAMPClient("http://localhost", config)
+
+    monkeypatch.setattr(
+        instance,
+        "_has_remote_config_capability_for_hot_deploy",
+        lambda: (_ for _ in ()).throw(RuntimeError("boom")),
+    )
+    caplog.set_level("ERROR")
+
+    assert instance.check_hot_deploy() == ""
+    assert "failed to evaluate hot deploy launch flag" in caplog.text
+
+
+def test_fluentd_hot_reload_logs_warning_and_returns_false(caplog) -> None:
+    """Fluentd hot reload should warn because the feature is not implemented yet."""
+    instance = fluentd_client.FluentdOpAMPClient("http://localhost", _test_config())
+    caplog.set_level("WARNING")
+
+    assert instance.hot_reload() is False
+    assert "Fluentd hot reload is not yet supported by this client" in caplog.text
+
+
 def test_launch_agent_process_returns_false_when_command_not_found(
     monkeypatch,
 ) -> None:

@@ -10,6 +10,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import logging
 import pathlib
 
@@ -173,7 +174,7 @@ def test_populate_agent_to_server_includes_effective_config_when_enabled(
     tmp_path,
     caplog,
 ) -> None:
-    """Effective config should be attached when the reporting capability is enabled."""
+    """Effective config should be attached when enabled and accepted by the server."""
     config_path = tmp_path / "effective.yaml"
     config_path.write_text("service:\n  flush: 1\n", encoding="utf-8")
     config = ConsumerConfig(
@@ -187,6 +188,7 @@ def test_populate_agent_to_server_includes_effective_config_when_enabled(
         service_namespace="FluentBitNS",
     )
     instance = client.OpAMPClient("http://localhost", config)
+    instance._server_accepts_effective_config = True
     message = opamp_pb2.AgentToServer()
     caplog.set_level(logging.INFO)
 
@@ -221,6 +223,180 @@ def test_populate_agent_to_server_omits_effective_config_when_not_enabled(
     populated = instance._populate_agent_to_server(message)
 
     assert not populated.HasField("effective_config")
+
+
+def test_handle_server_to_agent_sends_effective_config_when_server_accepts_it(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A server capability advertisement should trigger an effective-config send."""
+    config_path = tmp_path / "effective.yaml"
+    config_path.write_text("service:\n  flush: 1\n", encoding="utf-8")
+    config = ConsumerConfig(
+        server_url="http://localhost",
+        agent_config_path=str(config_path),
+        agent_additional_params=[],
+        heartbeat_frequency=30,
+        agent_capabilities=["ReportsEffectiveConfig"],
+        log_level="debug",
+        service_name="Fluentbit",
+        service_namespace="FluentBitNS",
+    )
+    instance = client.OpAMPClient("http://localhost", config)
+    sent: dict[str, object] = {}
+
+    async def _fake_send(
+        msg: opamp_pb2.AgentToServer | None = None,
+        *,
+        send_as_is: bool = False,
+    ) -> opamp_pb2.ServerToAgent:
+        sent["msg"] = msg
+        sent["send_as_is"] = send_as_is
+        reply = opamp_pb2.ServerToAgent()
+        reply.instance_uid = instance.data.uid_instance
+        return reply
+
+    monkeypatch.setattr(instance, "send", _fake_send)
+
+    async def _exercise() -> None:
+        reply = opamp_pb2.ServerToAgent()
+        reply.instance_uid = instance.data.uid_instance
+        reply.capabilities = (
+            opamp_pb2.ServerCapabilities.ServerCapabilities_AcceptsEffectiveConfig
+        )
+        assert instance._handle_server_to_agent(reply) is True
+        await asyncio.sleep(0)
+
+    asyncio.run(_exercise())
+
+    assert sent["send_as_is"] is True
+    sent_msg = sent["msg"]
+    assert isinstance(sent_msg, opamp_pb2.AgentToServer)
+    assert sent_msg.instance_uid == instance.data.uid_instance
+    assert sent_msg.sequence_num == 0
+    assert instance.data.msg_sequence_number == 1
+    config_map = sent_msg.effective_config.config_map.config_map
+    assert str(config_path) in config_map
+    assert config_map[str(config_path)].body == b"service:\n  flush: 1\n"
+    assert config_map[str(config_path)].content_type == "application/x-yaml"
+
+
+def test_handle_server_to_agent_only_sends_effective_config_once_per_advertisement(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Repeated AcceptsEffectiveConfig replies should not trigger duplicate sends."""
+    config_path = tmp_path / "effective.yaml"
+    config_path.write_text("service:\n  flush: 1\n", encoding="utf-8")
+    config = ConsumerConfig(
+        server_url="http://localhost",
+        agent_config_path=str(config_path),
+        agent_additional_params=[],
+        heartbeat_frequency=30,
+        agent_capabilities=["ReportsEffectiveConfig"],
+        log_level="debug",
+        service_name="Fluentbit",
+        service_namespace="FluentBitNS",
+    )
+    instance = client.OpAMPClient("http://localhost", config)
+    calls: list[opamp_pb2.AgentToServer] = []
+
+    async def _fake_send(
+        msg: opamp_pb2.AgentToServer | None = None,
+        *,
+        send_as_is: bool = False,
+    ) -> opamp_pb2.ServerToAgent:
+        assert send_as_is is True
+        assert isinstance(msg, opamp_pb2.AgentToServer)
+        calls.append(msg)
+        reply = opamp_pb2.ServerToAgent()
+        reply.instance_uid = instance.data.uid_instance
+        return reply
+
+    monkeypatch.setattr(instance, "send", _fake_send)
+
+    async def _exercise() -> None:
+        reply = opamp_pb2.ServerToAgent()
+        reply.instance_uid = instance.data.uid_instance
+        reply.capabilities = (
+            opamp_pb2.ServerCapabilities.ServerCapabilities_AcceptsEffectiveConfig
+        )
+        assert instance._handle_server_to_agent(reply) is True
+        assert instance._handle_server_to_agent(reply) is True
+        await asyncio.sleep(0)
+
+    asyncio.run(_exercise())
+
+    assert len(calls) == 1
+
+
+def test_handle_capabilities_marks_effective_config_for_next_outbound_message(
+    tmp_path,
+) -> None:
+    """Without a running loop, effective config should be queued for the next send."""
+    config_path = tmp_path / "effective.yaml"
+    config_path.write_text("service:\n  flush: 1\n", encoding="utf-8")
+    config = ConsumerConfig(
+        server_url="http://localhost",
+        agent_config_path=str(config_path),
+        agent_additional_params=[],
+        heartbeat_frequency=30,
+        agent_capabilities=["ReportsEffectiveConfig"],
+        log_level="debug",
+        service_name="Fluentbit",
+        service_namespace="FluentBitNS",
+    )
+    instance = client.OpAMPClient("http://localhost", config)
+
+    instance.handle_capabilities(
+        opamp_pb2.ServerCapabilities.ServerCapabilities_AcceptsEffectiveConfig
+    )
+
+    assert instance.data.config_changed is True
+
+    first_message = instance._populate_agent_to_server(opamp_pb2.AgentToServer())
+
+    config_map = first_message.effective_config.config_map.config_map
+    assert str(config_path) in config_map
+    assert config_map[str(config_path)].body == b"service:\n  flush: 1\n"
+    assert instance.data.config_changed is False
+
+    second_message = instance._populate_agent_to_server(opamp_pb2.AgentToServer())
+
+    assert not second_message.HasField("effective_config")
+
+
+def test_handle_capabilities_skips_effective_config_send_when_agent_capability_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog,
+) -> None:
+    """No follow-up send should happen when ReportsEffectiveConfig is disabled."""
+    _set_config(None)
+    instance = client.OpAMPClient("http://localhost")
+    called = {"count": 0}
+    caplog.set_level(logging.INFO)
+
+    async def _fake_send(
+        msg: opamp_pb2.AgentToServer | None = None,
+        *,
+        send_as_is: bool = False,
+    ) -> opamp_pb2.ServerToAgent:
+        called["count"] += 1
+        reply = opamp_pb2.ServerToAgent()
+        reply.instance_uid = instance.data.uid_instance
+        return reply
+
+    monkeypatch.setattr(instance, "send", _fake_send)
+
+    instance.handle_capabilities(
+        opamp_pb2.ServerCapabilities.ServerCapabilities_AcceptsEffectiveConfig
+    )
+
+    assert called["count"] == 0
+    assert (
+        "server accepts effective config but agent capability ReportsEffectiveConfig is disabled"
+        in caplog.text
+    )
 
 
 def test_write_config_file_preserves_previous_file_when_enabled(tmp_path) -> None:
@@ -321,6 +497,34 @@ def test_handle_flags_logs_names_and_sets_all_for_report_full_state(caplog) -> N
     assert all(instance.data.reporting_flags.values())
     assert "ReportFullState" in caplog.text
     assert "ReportAvailableComponents" in caplog.text
+
+
+def test_handle_flags_report_full_state_marks_effective_config_when_supported() -> None:
+    """ReportFullState should queue effective config when both sides support it."""
+    _set_config(["ReportsEffectiveConfig"])
+    instance = client.OpAMPClient("http://localhost")
+    instance._server_accepts_effective_config = True
+    instance.data.config_changed = False
+
+    instance.handle_flags(
+        opamp_pb2.ServerToAgentFlags.ServerToAgentFlags_ReportFullState
+    )
+
+    assert instance.data.config_changed is True
+
+
+def test_handle_flags_report_full_state_skips_effective_config_when_disabled() -> None:
+    """ReportFullState should not queue effective config when the agent capability is disabled."""
+    _set_config(None)
+    instance = client.OpAMPClient("http://localhost")
+    instance._server_accepts_effective_config = True
+    instance.data.config_changed = False
+
+    instance.handle_flags(
+        opamp_pb2.ServerToAgentFlags.ServerToAgentFlags_ReportFullState
+    )
+
+    assert instance.data.config_changed is False
 
 
 def test_handle_flags_without_report_full_state_does_not_set_all() -> None:

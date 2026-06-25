@@ -84,6 +84,16 @@ class CommonConfigHandler:
                 opamp_client=opamp_client,
             )
 
+        try:
+            reloaded = opamp_client.hot_reload()
+        except Exception as reload_error:  # pragma: no cover - defensive interface guard
+            LOGGER.warning("remote config applied but hot reload failed: %s", reload_error)
+            return
+        if reloaded:
+            LOGGER.info("remote config hot reload triggered successfully")
+        else:
+            LOGGER.info("remote config applied without hot reload support")
+
     @staticmethod
     def calculate_config_hash(config: opamp_pb2.AgentConfigMap) -> bytes:
         """Return a SHA-256 digest for the deterministic serialized config map."""

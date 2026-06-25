@@ -14,11 +14,15 @@
 
 from __future__ import annotations
 
+import logging
 import pathlib
 import socket
 import subprocess
 import sys
 import uuid
+from urllib.parse import urlsplit
+
+import httpx
 
 from opamp_consumer import config as consumer_config
 from opamp_consumer.abstract_client import (
@@ -154,6 +158,46 @@ class OpAMPClient(AbstractOpAMPClient):
             self.config.agent_config_path,
             resolve_service_instance_id_template_fn=resolve_service_instance_id_template,
         )
+
+    def check_hot_deploy(self) -> str:
+        """Return Fluent Bit hot-reload launch flag when remote config needs it.
+
+        Reference:
+        https://docs.fluentbit.io/manual/administration/hot-reload
+        """
+        return self._check_hot_deploy_flag(("-Y", "--enable-hot-reload"))
+
+    def hot_reload(self) -> bool:
+        """Invoke the Fluent Bit HTTP hot-reload endpoint.
+
+        Reference:
+        https://docs.fluentbit.io/manual/administration/hot-reload
+        """
+        logger = logging.getLogger(__name__)
+        try:
+            port = self.config.agent_http_port or self.config.client_status_port
+            if port is None:
+                logger.warning("hot reload skipped because no Fluent Bit HTTP port is configured")
+                return False
+            host = str(self.config.agent_http_listen or "").strip() or "localhost"
+            if host == "0.0.0.0":
+                host = "localhost"
+            if ":" in host and not host.startswith("["):
+                host = f"[{host}]"
+            scheme = "http"
+            configured_server_url = str(self.config.server_url or "").strip()
+            if configured_server_url:
+                split_url = urlsplit(configured_server_url)
+                if split_url.scheme in {"http", "https"}:
+                    scheme = split_url.scheme
+            reload_url = f"{scheme}://{host}:{int(port)}/api/v2/reload"
+            response = httpx.post(reload_url, timeout=5.0)
+            response.raise_for_status()
+            logger.info("triggered Fluent Bit hot reload endpoint=%s status=%s", reload_url, response.status_code)
+            return True
+        except Exception as reload_error:  # pragma: no cover - network/runtime path
+            logger.warning("failed to invoke Fluent Bit hot reload: %s", reload_error)
+            return False
 
 
 def resolve_service_instance_id_template(value: str | None) -> str | None:

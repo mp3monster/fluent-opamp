@@ -102,6 +102,14 @@ class OpAMPClientInterface(ABC):
         """Build and return agent capability bitmask for outbound OpAMP payloads."""
 
     @abstractmethod
+    def check_hot_deploy(self) -> str:
+        """Return any extra launch flag needed to enable hot deploy support."""
+
+    @abstractmethod
+    def hot_reload(self) -> bool:
+        """Trigger a hot reload on the managed agent when supported."""
+
+    @abstractmethod
     def is_capability_allowed(self, capability_name: str) -> bool:
         """Return whether the named capability is enabled for this client."""
 

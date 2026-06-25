@@ -14,12 +14,15 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import sys
+from enum import IntEnum
 from typing import TYPE_CHECKING, cast
 
 from google.protobuf import text_format
 from shared.opamp_config import (
+    AgentCapabilities,
     PB_FIELD_AGENT_IDENTIFICATION,
     PB_FIELD_COMMAND,
     PB_FIELD_CONNECTION_SETTINGS,
@@ -30,9 +33,14 @@ from shared.opamp_config import (
     PB_FIELD_REMOTE_CONFIG,
     PB_FIELD_RETRY_INFO,
     PB_FLAG_REPORT_FULL_STATE,
+    ServerCapabilities,
 )
 
 from opamp_consumer.common_config_handler import CommonConfigHandler
+from opamp_consumer.client_message_builder import (
+    EFFECTIVE_CONFIG_CAPABILITY_NAME,
+    populate_agent_to_server_effective_config,
+)
 from opamp_consumer.custom_handlers import build_factory_lookup, create_handler
 from opamp_consumer.exceptions import AgentException
 from opamp_consumer.logging_utils import format_instance_uid_for_log
@@ -55,6 +63,7 @@ class ServerMessageHandlingMixin:
     data: OpAMPClientData
     _custom_handler_folder: Path
     _custom_handler_lookup: dict[str, type[CustomMessageHandlerInterface]]
+    _server_accepts_effective_config: bool = False
 
     @property
     def config(self) -> ConsumerConfig:
@@ -77,6 +86,73 @@ class ServerMessageHandlingMixin:
         """
         raise NotImplementedError
 
+    def get_configuration_files(self) -> list[str]:
+        """Return local configuration file paths available for effective config."""
+        raise NotImplementedError
+
+    @staticmethod
+    def _capability_mask_to_labels(mask: int, enum_cls: type[IntEnum]) -> str:
+        """Convert an OpAMP capability bitmask into a compact label list."""
+        if mask == 0:
+            return "none"
+
+        labels: list[str] = []
+        known_mask = 0
+        for capability in enum_cls:
+            capability_value = int(capability)
+            if capability_value == 0:
+                continue
+            known_mask |= capability_value
+            if mask & capability_value:
+                labels.append(capability.name)
+
+        unknown_mask = mask & ~known_mask
+        if unknown_mask:
+            labels.append(f"UNKNOWN(0x{unknown_mask:x})")
+        return ", ".join(labels) if labels else "none"
+
+    @staticmethod
+    def _format_opamp_message_with_capabilities(
+        message: opamp_pb2.ServerToAgent | opamp_pb2.AgentToServer | None,
+        capability_enum: type[IntEnum],
+    ) -> str:
+        """Render an OpAMP protobuf message with decoded top-level capabilities."""
+        if message is None:
+            return "None"
+
+        rendered = text_format.MessageToString(message).rstrip()
+        capability_mask = int(getattr(message, "capabilities", 0) or 0)
+        capability_line = f"capabilities: {capability_mask}"
+        capability_labels = ServerMessageHandlingMixin._capability_mask_to_labels(
+            capability_mask,
+            capability_enum,
+        )
+        replacement_line = f"{capability_line}  # labels: {capability_labels}"
+
+        lines = rendered.splitlines()
+        for index, line in enumerate(lines):
+            if line == capability_line:
+                lines[index] = replacement_line
+                return "\n".join(lines)
+
+        return rendered
+
+    @staticmethod
+    def server_to_agent_to_log_string(message: opamp_pb2.ServerToAgent | None) -> str:
+        """Render ServerToAgent payloads for logs with decoded capabilities."""
+        return ServerMessageHandlingMixin._format_opamp_message_with_capabilities(
+            message,
+            ServerCapabilities,
+        )
+
+    @staticmethod
+    def agent_to_server_to_log_string(message: opamp_pb2.AgentToServer | None) -> str:
+        """Render AgentToServer payloads for logs with decoded capabilities."""
+        return ServerMessageHandlingMixin._format_opamp_message_with_capabilities(
+            message,
+            AgentCapabilities,
+        )
+
     def _handle_server_to_agent(self, reply: opamp_pb2.ServerToAgent) -> bool:
         """Process ServerToAgent fields and dispatch each populated payload section.
 
@@ -87,10 +163,13 @@ class ServerMessageHandlingMixin:
             True when message processing completed without critical handling errors.
         """
         logger = logging.getLogger(__name__)
-        logger.debug("_handle_server_to_agent called")
+        logger.debug("_handle_server_to_agent called **************************************")
         successful_message = True
 
-        logger.debug("Handling Server to agent payload:%s", reply)
+        logger.debug(
+            "Handling Server to agent payload:\n%s",
+            self.server_to_agent_to_log_string(reply),
+        )
         if reply is None:
             logger.error("Been given None response")
             return False
@@ -188,6 +267,7 @@ class ServerMessageHandlingMixin:
             remote_config: Remote configuration payload from ServerToAgent.
         """
         logger = logging.getLogger(__name__)
+        logger.debug("handle_remote_config triggered")
         if not self.is_capability_allowed("AcceptsRemoteConfig"):
             filenames = sorted(str(filename).strip() for filename in remote_config.config.config_map)
             logger.error(
@@ -207,7 +287,7 @@ class ServerMessageHandlingMixin:
             connection_settings: Connection settings offered by the provider.
         """
         logging.getLogger(__name__).info(
-            "server connection_settings:\n%s",
+            "server connection_settings:\n%s \n ---- to be implemented ----",
             text_format.MessageToString(connection_settings),
         )
 
@@ -220,7 +300,7 @@ class ServerMessageHandlingMixin:
             packages_available: Package availability payload from ServerToAgent.
         """
         logging.getLogger(__name__).info(
-            "server packages_available:\n%s",
+            "server packages_available:\n%s\n ---- to be implemented ----",
             text_format.MessageToString(packages_available),
         )
 
@@ -246,6 +326,14 @@ class ServerMessageHandlingMixin:
             logger.info(
                 "server flags include ReportFullState; set all reporting flags true"
             )
+            if (
+                self._server_accepts_effective_config
+                and self.is_capability_allowed(EFFECTIVE_CONFIG_CAPABILITY_NAME)
+            ):
+                self.data.config_changed = True
+                logger.info(
+                    "server flags include ReportFullState; queued effective_config for next outbound message"
+                )
 
         if flag_names:
             logger.info("server flags: %s (%s)", flags, ", ".join(flag_names))
@@ -258,7 +346,73 @@ class ServerMessageHandlingMixin:
         Args:
             capabilities: Integer bitmask from `ServerToAgent.capabilities`.
         """
-        logging.getLogger(__name__).debug("server capabilities: %s", capabilities)
+        logger = logging.getLogger(__name__)
+        logger.info("handle_capabilities given server capabilities: %s", capabilities)
+
+        accepts_effective_config = bool(
+            capabilities
+            & opamp_pb2.ServerCapabilities.ServerCapabilities_AcceptsEffectiveConfig
+        )
+        logger.debug("handle_capabilities - accepts_effective_config %s", capabilities)
+
+        if accepts_effective_config and not self._server_accepts_effective_config:
+            self._server_accepts_effective_config = True
+            self._schedule_effective_config_report()
+            logger.debug("handle_capabilities - _schedule_effective_config_report")         
+        else:
+            self._server_accepts_effective_config = accepts_effective_config
+            logger.debug(
+                "handle_capabilities - set accepts_effective_config to %s", accepts_effective_config
+            )   
+
+    def _schedule_effective_config_report(self) -> None:
+        """Schedule a one-off EffectiveConfig report when the server accepts it."""
+        logger = logging.getLogger(__name__)
+        logger.debug("_schedule_effective_config_report called")
+        if not self.is_capability_allowed(EFFECTIVE_CONFIG_CAPABILITY_NAME):
+            logger.info(
+                "server accepts effective config but agent capability %s is disabled",
+                EFFECTIVE_CONFIG_CAPABILITY_NAME,
+            )
+            return
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            self.data.config_changed = True
+            logger.debug(
+                "server accepts effective config; it will be included on the next outbound message - RuntimeTrap"
+            )
+            return
+        if loop.is_closed():
+            self.data.config_changed = True
+            logger.debug(
+                "server accepts effective config; it will be included on the next outbound message - loop closed")        
+            return
+        
+        logger.debug(
+            "server accepts effective config; it will be included on the next outbound message - loop.create task call")
+        loop.create_task(self._send_effective_config_report())
+
+    async def _send_effective_config_report(self) -> None:
+        """Build and send an EffectiveConfig-only AgentToServer message."""
+        logger = logging.getLogger(__name__)
+        logger.debug("_send_effective_config_report triggered")
+        msg = opamp_pb2.AgentToServer()
+        if self.data.uid_instance is not None:
+            msg.instance_uid = self.data.uid_instance
+        msg.sequence_num = self.data.msg_sequence_number
+        self.data.msg_sequence_number = self.data.msg_sequence_number + 1
+        populate_agent_to_server_effective_config(
+            msg=msg,
+            configuration_files=self.get_configuration_files(),
+        )
+        if not msg.HasField("effective_config"):
+            return
+        try:
+            await self.send(msg=msg, send_as_is=True)
+            self.data.config_changed = False
+        except Exception:
+            logger.exception("failed to send effective_config report")
 
     def handle_command(self, command: opamp_pb2.ServerToAgentCommand) -> None:
         """Handle ServerToAgent command payloads.

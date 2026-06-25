@@ -39,6 +39,9 @@
     "human_in_loop_approval": false,
     "allow-mcp": true,
     "allow-remote-config": true,
+    "allow-effective-config": true,
+    "allow-connection-settings": false,
+    "allow-connection-settings-request": false,
     "opamp-use-authorization": "none",
     "ui-use-authorization": "none",
     "state_persistence": {
@@ -76,7 +79,14 @@
             ".yml",
             ".conf"
           ]
-        }
+        },
+        {
+          "folder": "consumer/tests",
+          "extensions": [
+            ".yaml",
+            ".yml"
+          ]
+        }        
       ]
     }
   }

@@ -151,6 +151,11 @@ class OpAMPClientData:
         default_factory=lambda: {flag: True for flag in ReportingFlag}
     )
     full_update_controller: FullUpdateControllerInterface | None = None
+    
+    """the config_changed flag is used to indicate a change in config has happened
+    if the agent is configured to report effective config - then this is used
+    as part of the control to decide if data needs to be sent"""
+    config_changed: bool = True
 
     def set_all_reporting_flags(self, value: bool = True) -> None:
         """Set every reporting flag value to the provided boolean.
@@ -403,6 +408,9 @@ class AbstractOpAMPClient(
             get_agent_description=self.get_agent_description,
             get_agent_capabilities=self.get_agent_capabilities,
             is_capability_allowed=self.is_capability_allowed,
+            server_accepts_effective_config=getattr(
+                self, "_server_accepts_effective_config", False
+            ),
             get_configuration_files=self.get_configuration_files,
             get_custom_capabilities_payload=self.get_custom_capabilities_payload,
             populate_agent_to_server_health=self._populate_agent_to_server_health,
@@ -547,6 +555,52 @@ class AbstractOpAMPClient(
     def get_supported_capabilities(self) -> list[str]:
         """Return capability names supported by this concrete client."""
         return list(self.SUPPORTED_AGENT_CAPABILITY_NAMES)
+
+    def _has_remote_config_capability_for_hot_deploy(self) -> bool:
+        """Return whether hot-deploy checks should treat remote config as enabled."""
+        configured_names = set(
+            consumer_config.parse_agent_capabilities_override(
+                self.config.agent_capabilities
+            )
+        )
+        if "AcceptRemoteConfig" in configured_names:
+            return True
+        if self.is_capability_allowed("AcceptsRemoteConfig"):
+            return True
+        return "AcceptsRemoteConfig" in configured_names
+
+    def _check_hot_deploy_flag(self, expected_flags: tuple[str, ...]) -> str:
+        """Return a hot-reload flag when remote config is enabled and missing."""
+        logger = logging.getLogger(__name__)
+        try:
+            if not self._has_remote_config_capability_for_hot_deploy():
+                return ""
+            additional_params = [
+                str(value).strip()
+                for value in (self.config.agent_additional_params or [])
+                if str(value).strip()
+            ]
+            if any(value in expected_flags for value in additional_params):
+                return ""
+            return "--enable-hot-reload"
+        except Exception:
+            logger.exception(
+                "failed to evaluate hot deploy launch flag for client=%s",
+                self.__class__.__name__,
+            )
+            return ""
+
+    def check_hot_deploy(self) -> str:
+        """Return no extra hot-deploy flag by default."""
+        return ""
+
+    def hot_reload(self) -> bool:
+        """Return `False` when the concrete client does not implement hot reload."""
+        logging.getLogger(__name__).warning(
+            "hot reload is not implemented for client class %s",
+            self.__class__.__name__,
+        )
+        return False
 
     def supports_remote_config(self) -> bool:
         """Return whether this client type supports file-based remote config.

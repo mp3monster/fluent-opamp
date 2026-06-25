@@ -41,7 +41,7 @@ Here's the markdown table for `ServerToAgent` message fields:
 | `connection_settings`  | Beta        | Long Term             | Set when the Server wants the Agent to change one or more client connection settings (destination, headers, certificate, etc.). |                                     |
 | `packages_available`   | Beta        | Not Planned           | Set when the Server has packages to offer to the Agent for download/installation. |                                     |
 | `**flags**`            | Stable      | Partial                  | Bitmask of `ServerToAgentFlags`. Includes `ReportFullState` (asks Agent to resend full status, e.g. after Server restart) and `ReportAvailableComponents` (asks Agent to send full component details rather than just a hash). |                                     |
-| `capabilities`         | Stable      | Done                  | Bitmask of `ServerCapabilities` flags. Must be set in the first `ServerToAgent` message; may be omitted (set to 0) in subsequent messages. |                                     |
+| `capabilities`         | Stable      | Done                  | Bitmask of `ServerCapabilities` flags. Must be set in the first `ServerToAgent` message; may be omitted (set to 0) in subsequent messages. | Advertisement is config-driven; see `provider.allow-remote-config`, `provider.allow-effective-config`, `provider.allow-connection-settings`, and `provider.allow-connection-settings-request`. |
 | `agent_identification` | Stable      | Done            | Used to override the Agent's `instance_uid`. When `new_instance_uid` is set, the Agent must adopt it for all further communication. |                                     |
 | `**command**`          | Beta        | Done                  | Set when the Server wants the Agent to perform a command (currently only `Restart`). When set, all fields other than `instance_uid` and `capabilities` are ignored. |                                     |
 | `custom_capabilities`  | Development | Done                 | Declares custom/extension capabilities supported by the Server. | This is support the ChatOps concept |
@@ -154,7 +154,7 @@ The broker provides the interoperability layer with social channels and Agents w
 
 * Extend the number of versions that we have configuration definitions
 
-* Optimize the configuration further, so that data types can infer validation rules e.g. an enum has an infered validation of  using called_enum_options, boolean can infer the boolean options
+* Optimize the configuration further, so that data types can infer validation rules e.g. an enum has an infered validation of  using enum_options, boolean can infer the boolean options
 
   
 

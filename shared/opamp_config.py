@@ -143,6 +143,7 @@ def parse_capabilities(names: Iterable[str], enum_cls: type[IntEnum]) -> int:
     for name in names:
         try:
             mask |= int(enum_cls[name])
+            LOGGER.debug("parse_capabilities add to mask (%s) for %s", enum_cls[name], name)
         except KeyError:
             LOGGER.warning("unknown capability ignored capability=%s enum=%s", name, enum_cls.__name__)
     LOGGER.info("completed capability parsing enum=%s mask=%s", enum_cls.__name__, mask)

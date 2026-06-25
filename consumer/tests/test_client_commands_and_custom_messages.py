@@ -48,6 +48,39 @@ def test_handle_error_response_logs(caplog) -> None:
     assert "boom" in caplog.text
 
 
+def test_server_to_agent_to_log_string_decodes_capability_labels() -> None:
+    """ServerToAgent log formatting should include human-readable capability labels."""
+    instance = client.OpAMPClient("http://localhost")
+    reply = opamp_pb2.ServerToAgent()
+    reply.capabilities = (
+        opamp_pb2.ServerCapabilities.ServerCapabilities_AcceptsStatus
+        | opamp_pb2.ServerCapabilities.ServerCapabilities_OffersRemoteConfig
+    )
+
+    rendered = instance.server_to_agent_to_log_string(reply)
+
+    assert (
+        "capabilities: 3  # labels: AcceptsStatus, OffersRemoteConfig" in rendered
+    )
+
+
+def test_agent_to_server_to_log_string_includes_unknown_capability_bits() -> None:
+    """AgentToServer log formatting should preserve unknown capability bits."""
+    instance = client.OpAMPClient("http://localhost")
+    msg = opamp_pb2.AgentToServer()
+    msg.capabilities = (
+        opamp_pb2.AgentCapabilities.AgentCapabilities_ReportsStatus
+        | opamp_pb2.AgentCapabilities.AgentCapabilities_ReportsHealth
+        | 0x20000000
+    )
+
+    rendered = instance.agent_to_server_to_log_string(msg)
+
+    assert "ReportsStatus" in rendered
+    assert "ReportsHealth" in rendered
+    assert "UNKNOWN(0x20000000)" in rendered
+
+
 def test_handle_command_restart_invokes_restart(monkeypatch) -> None:
     """Restart command should invoke restart_agent_process."""
     instance = client.OpAMPClient("http://localhost")
@@ -212,6 +245,24 @@ def test_validate_reply_instance_uid_logs_cp1252_safe_hex() -> None:
         stream.close()
 
     assert "reply target is 01fffe6a81fd7980feff38818201fffe" in output
+
+
+def test_handle_server_to_agent_logs_human_readable_payload(caplog) -> None:
+    """Inbound server payload logging should use the decoded capability formatter."""
+    instance = client.OpAMPClient("http://localhost")
+    reply = opamp_pb2.ServerToAgent()
+    reply.instance_uid = instance.data.uid_instance
+    reply.capabilities = (
+        opamp_pb2.ServerCapabilities.ServerCapabilities_AcceptsStatus
+        | opamp_pb2.ServerCapabilities.ServerCapabilities_AcceptsEffectiveConfig
+    )
+    caplog.set_level(logging.DEBUG)
+
+    assert instance._handle_server_to_agent(reply) is True
+    assert (
+        "capabilities: 5  # labels: AcceptsStatus, AcceptsEffectiveConfig"
+        in caplog.text
+    )
 
 
 def test_populate_disconnect_logs_cp1252_safe_hex() -> None:

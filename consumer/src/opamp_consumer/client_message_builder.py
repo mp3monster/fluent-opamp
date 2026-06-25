@@ -44,6 +44,7 @@ def populate_agent_to_server(
     get_agent_description: Callable[[], opamp_pb2.AgentDescription],
     get_agent_capabilities: Callable[[], int],
     is_capability_allowed: Callable[[str], bool],
+    server_accepts_effective_config: bool,
     get_configuration_files: Callable[[], list[str]],
     get_custom_capabilities_payload: Callable[[], opamp_pb2.CustomCapabilities],
     populate_agent_to_server_health: Callable[
@@ -73,11 +74,17 @@ def populate_agent_to_server(
         msg = populate_agent_to_server_health(msg)
         data.reporting_flags[ReportingFlag.REPORT_HEALTH] = False
 
-    if is_capability_allowed(EFFECTIVE_CONFIG_CAPABILITY_NAME):
+    
+    if (
+        data.config_changed
+        and server_accepts_effective_config
+        and is_capability_allowed(EFFECTIVE_CONFIG_CAPABILITY_NAME)
+    ):
         msg = populate_agent_to_server_effective_config(
             msg=msg,
             configuration_files=get_configuration_files(),
         )
+        data.config_changed = False
     return msg
 
 
@@ -88,6 +95,8 @@ def populate_agent_to_server_effective_config(
 ) -> opamp_pb2.AgentToServer:
     """Populate AgentToServer.effective_config from local configuration files."""
     logger = logging.getLogger(__name__)
+    logger.debug("populate_agent_to_server_effective_config using %s", configuration_files)
+    
     msg.ClearField("effective_config")
     file_entries = _read_effective_config_entries(configuration_files)
     if not file_entries:

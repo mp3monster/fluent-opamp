@@ -574,6 +574,22 @@ class FluentdOpAMPClient(AbstractOpAMPClient):
         """Return structured metadata extracted from the active Fluentd config."""
         return extract_fluentd_config_metadata(self.config.agent_config_path)
 
+    def check_hot_deploy(self) -> str:
+        """Return Fluentd hot-reload launch flag when remote config needs it.
+
+        Reference:
+        https://docs.fluentbit.io/manual/2.2/administration/hot-reload
+        """
+        return self._check_hot_deploy_flag(("-Y", "--enable-hot-reload"))
+
+    def hot_reload(self) -> bool:
+        """Warn that Fluentd hot reload is not yet supported by this client."""
+        logging.getLogger(__name__).warning(
+            "Fluentd hot reload is not yet supported by this client. "
+            "Reference: https://docs.fluentbit.io/manual/2.2/administration/hot-reload"
+        )
+        return False
+
     def _monitor_agent_host(self) -> str:
         """Return monitor_agent host used by Fluentd status/version requests.
 
