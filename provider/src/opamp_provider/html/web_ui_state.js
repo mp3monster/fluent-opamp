@@ -20,6 +20,7 @@
       diagnosticEnabled: false,
       statePersistenceEnabled: false,
       humanInLoopApproval: false,
+      advertisedCapabilities: [],
       opampUseAuthorization: "none",
       tlsEnabled: false,
       httpsCertificateExpiryDate: null,
@@ -62,8 +63,10 @@
     const authTokenGroup = document.getElementById("authTokenGroup");
     const modal = document.getElementById("modal");
     const modalCard = document.getElementById("modalCard");
+    const modalResizeHandle = document.getElementById("modalResizeHandle");
     const modalFields = document.getElementById("modalFields");
     const modalTitle = document.getElementById("modalTitle");
+    const requestedConfigPanel = document.getElementById("requestedConfigPanel");
     const configInput = document.getElementById("configInput");
     const currentConfigOutput = document.getElementById("currentConfigOutput");
     const remoteConfigEnhancedPanel = document.getElementById(
@@ -116,6 +119,9 @@
     const featureMenuSelect = document.getElementById("featureMenuSelect");
     const globalSettingsModal = document.getElementById("globalSettingsModal");
     const statePersistenceGroup = document.getElementById("statePersistenceGroup");
+    const advertisedCapabilitiesBody = document.getElementById(
+      "advertisedCapabilitiesBody"
+    );
     const closeGlobalSettingsBtn = document.getElementById("closeGlobalSettingsBtn");
     const cancelGlobalSettingsBtn = document.getElementById("cancelGlobalSettingsBtn");
     const saveGlobalSettingsBtn = document.getElementById("saveGlobalSettingsBtn");
@@ -254,10 +260,10 @@
       },
       human_in_loop_approval: {
         label: "Human In Loop Approval",
-        tooltip: "When enabled, unknown agents are staged for manual review and remain blocked until approved.",
+        tooltip: "When enabled, unknown agents are staged for manual review and must be approved before normal processing continues.",
       },
       state_persistence_enabled: {
-        label: "State Persistence Enabled",
+        label: "Enable State Persistence",
         tooltip: "When enabled, provider state snapshots can be saved/restored using state persistence settings.",
       },
       state_save_folder: {
@@ -309,8 +315,10 @@
             authTokenGroup,
             modal,
             modalCard,
+            modalResizeHandle,
             modalFields,
             modalTitle,
+            requestedConfigPanel,
             configInput,
             currentConfigOutput,
             remoteConfigEnhancedPanel,
@@ -347,6 +355,7 @@
             featureMenuSelect,
             globalSettingsModal,
             statePersistenceGroup,
+            advertisedCapabilitiesBody,
             closeGlobalSettingsBtn,
             cancelGlobalSettingsBtn,
             saveGlobalSettingsBtn,

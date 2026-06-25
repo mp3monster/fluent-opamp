@@ -198,7 +198,7 @@
             <label style="font-size: 0.85rem; color: var(--muted);">Current Configuration</label>
             <pre id="currentConfigOutput" class="data-output"></pre>
           </div>
-          <div style="margin-top: 16px;">
+          <div id="requestedConfigPanel" style="margin-top: 16px;">
             <label style="font-size: 0.85rem; color: var(--muted);">Requested Configuration</label>
             <textarea id="configInput" placeholder="Paste new configuration here..."></textarea>
             <div class="tab-actions">
@@ -258,6 +258,12 @@
       <div class="modal-actions">
         <button id="cancelBtn" class="cancel">Close</button>
       </div>
+      <div
+        id="modalResizeHandle"
+        class="modal-resize-handle"
+        aria-hidden="true"
+        title="Resize dialog"
+      ></div>
     </div>
   </div>
 
@@ -331,7 +337,7 @@
             </div>
             <div class="settings-group">
               <div class="settings-row">
-                <label id="humanInLoopApprovalLabel" for="humanInLoopApprovalInput">human_in_loop_approval</label>
+                <label id="humanInLoopApprovalLabel" for="humanInLoopApprovalInput">Human In Loop Approval</label>
                 <label class="settings-switch" for="humanInLoopApprovalInput">
                   <input
                     id="humanInLoopApprovalInput"
@@ -354,7 +360,7 @@
               <div class="settings-group-title">State Persistence</div>
               <div class="settings-group-rows">
                 <div class="settings-row">
-                  <label id="statePersistenceEnabledLabel" for="statePersistenceEnabledInput">state_persistence.enabled</label>
+                  <label id="statePersistenceEnabledLabel" for="statePersistenceEnabledInput">Enable State Persistence</label>
                   <label class="settings-switch" for="statePersistenceEnabledInput">
                     <input
                       id="statePersistenceEnabledInput"
@@ -431,6 +437,12 @@
                 <label for="httpsCertificateExpiryOutput">HTTPS Certificate Expiry Date</label>
                 <div id="httpsCertificateExpiryOutput" class="settings-readonly-value">--</div>
                 <span class="settings-row-placeholder" aria-hidden="true"></span>
+              </div>
+            </div>
+            <div class="settings-group settings-group-cluster">
+              <div class="settings-group-title">Advertised Capabilities</div>
+              <div id="advertisedCapabilitiesBody" class="settings-group-rows">
+                <div class="settings-inline-status">Capability data will load when the dialog opens.</div>
               </div>
             </div>
           </div>

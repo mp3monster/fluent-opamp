@@ -589,6 +589,36 @@
       box-shadow: var(--shadow);
       display: flex;
       flex-direction: column;
+      position: relative;
+    }
+
+    #modalCard {
+      min-width: min(820px, 95vw);
+      min-height: min(820px, 90vh);
+      max-width: 95vw;
+      max-height: 90vh;
+    }
+
+    .modal-resize-handle {
+      position: absolute;
+      right: 10px;
+      bottom: 10px;
+      width: 18px;
+      height: 18px;
+      border-radius: 6px;
+      cursor: nwse-resize;
+      opacity: 0.85;
+      background:
+        linear-gradient(135deg, transparent 0 45%, rgba(48, 64, 99, 0.28) 45% 55%, transparent 55% 100%),
+        linear-gradient(135deg, transparent 0 62%, rgba(48, 64, 99, 0.42) 62% 72%, transparent 72% 100%),
+        linear-gradient(135deg, transparent 0 79%, rgba(48, 64, 99, 0.58) 79% 89%, transparent 89% 100%);
+      touch-action: none;
+    }
+
+    body.modal-resizing,
+    body.modal-resizing * {
+      cursor: nwse-resize !important;
+      user-select: none;
     }
 
     .modal-card.late-amber { border-color: var(--amber); }
@@ -698,6 +728,10 @@
 
     .settings-row-retention {
       grid-template-columns: minmax(220px, 1fr) minmax(120px, 220px) minmax(220px, 1fr) auto;
+    }
+
+    .settings-row-capability {
+      grid-template-columns: minmax(220px, 1fr) auto minmax(140px, 1fr);
     }
 
     .settings-inline-status {
@@ -832,7 +866,7 @@
     }
 
     .settings-switch-state::before {
-      content: "Block";
+      content: "Off";
     }
 
     .settings-switch-input:checked ~ .settings-switch-state {
@@ -840,7 +874,19 @@
     }
 
     .settings-switch-input:checked ~ .settings-switch-state::before {
-      content: "Accept";
+      content: "On";
+    }
+
+    .settings-switch-input:disabled + .settings-switch-track {
+      opacity: 0.72;
+    }
+
+    .settings-switch-input:disabled ~ .settings-switch-state {
+      opacity: 0.9;
+    }
+
+    .settings-switch-disabled {
+      cursor: default;
     }
 
     .modal-tab-body {

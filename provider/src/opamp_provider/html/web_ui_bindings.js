@@ -79,6 +79,9 @@
       btn.addEventListener("click", () => setActiveSettingsTab(btn.dataset.settingsTab));
     });
     saveConfigBtn.addEventListener("click", saveConfig);
+    if (modalResizeHandle) {
+      modalResizeHandle.addEventListener("pointerdown", beginModalResize);
+    }
     if (selectRemoteConfigsBtn) {
       selectRemoteConfigsBtn.addEventListener("click", openRemoteConfigCatalogPopup);
     }
@@ -183,7 +186,10 @@
     document.addEventListener("click", event => {
       if (!contextMenu.contains(event.target)) hideContextMenu();
     });
-    window.addEventListener("resize", hideContextMenu);
+    window.addEventListener("resize", () => {
+      hideContextMenu();
+      clampOpenModalCardToViewport();
+    });
     window.addEventListener("scroll", hideContextMenu);
     window.addEventListener("message", handleCatalogSelectionMessage);
 

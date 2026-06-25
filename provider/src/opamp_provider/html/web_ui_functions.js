@@ -60,6 +60,101 @@
       host_name: false,
       host_ip: false,
     });
+    let modalResizeState = null;
+
+    function clampValue(value, minValue, maxValue) {
+      return Math.min(Math.max(value, minValue), maxValue);
+    }
+
+    function clearModalResizeState() {
+      modalResizeState = null;
+      document.body.classList.remove("modal-resizing");
+      document.removeEventListener("pointermove", handleModalResizePointerMove);
+      document.removeEventListener("pointerup", endModalResize);
+      document.removeEventListener("pointercancel", endModalResize);
+    }
+
+    function resetModalCardSize() {
+      if (!modalCard) return;
+      clearModalResizeState();
+      modalCard.style.width = "";
+      modalCard.style.height = "";
+      delete modalCard.dataset.minWidth;
+      delete modalCard.dataset.minHeight;
+    }
+
+    function captureModalCardMinSize() {
+      if (!modalCard || !modal.classList.contains("open")) return;
+      if (modalCard.dataset.minWidth && modalCard.dataset.minHeight) return;
+      const rect = modalCard.getBoundingClientRect();
+      modalCard.dataset.minWidth = String(Math.round(rect.width));
+      modalCard.dataset.minHeight = String(Math.round(rect.height));
+    }
+
+    function clampOpenModalCardToViewport() {
+      if (!modalCard || !modal.classList.contains("open")) return;
+      captureModalCardMinSize();
+      if (!modalCard.style.width && !modalCard.style.height) return;
+      const rect = modalCard.getBoundingClientRect();
+      const storedMinWidth = parseFloat(modalCard.dataset.minWidth || "");
+      const storedMinHeight = parseFloat(modalCard.dataset.minHeight || "");
+      const maxWidth = Math.max(320, window.innerWidth - 48);
+      const maxHeight = Math.max(320, window.innerHeight - 48);
+      const minWidth = Number.isFinite(storedMinWidth)
+        ? Math.min(storedMinWidth, maxWidth)
+        : Math.min(rect.width, maxWidth);
+      const minHeight = Number.isFinite(storedMinHeight)
+        ? Math.min(storedMinHeight, maxHeight)
+        : Math.min(rect.height, maxHeight);
+      modalCard.style.width = `${Math.round(clampValue(rect.width, minWidth, maxWidth))}px`;
+      modalCard.style.height = `${Math.round(clampValue(rect.height, minHeight, maxHeight))}px`;
+    }
+
+    function handleModalResizePointerMove(event) {
+      if (!modalResizeState || !modalCard) return;
+      event.preventDefault();
+      const maxWidth = Math.max(320, window.innerWidth - 48);
+      const maxHeight = Math.max(320, window.innerHeight - 48);
+      const minWidth = Math.min(modalResizeState.minWidth, maxWidth);
+      const minHeight = Math.min(modalResizeState.minHeight, maxHeight);
+      const width = clampValue(
+        modalResizeState.startWidth + (event.clientX - modalResizeState.startX),
+        minWidth,
+        maxWidth
+      );
+      const height = clampValue(
+        modalResizeState.startHeight + (event.clientY - modalResizeState.startY),
+        minHeight,
+        maxHeight
+      );
+      modalCard.style.width = `${Math.round(width)}px`;
+      modalCard.style.height = `${Math.round(height)}px`;
+    }
+
+    function endModalResize() {
+      clearModalResizeState();
+    }
+
+    function beginModalResize(event) {
+      if (!modalCard || !modal.classList.contains("open")) return;
+      if (typeof event.button === "number" && event.button !== 0) return;
+      captureModalCardMinSize();
+      const rect = modalCard.getBoundingClientRect();
+      modalResizeState = {
+        startX: event.clientX,
+        startY: event.clientY,
+        startWidth: rect.width,
+        startHeight: rect.height,
+        minWidth: parseFloat(modalCard.dataset.minWidth || "") || rect.width,
+        minHeight: parseFloat(modalCard.dataset.minHeight || "") || rect.height,
+      };
+      document.body.classList.add("modal-resizing");
+      document.addEventListener("pointermove", handleModalResizePointerMove);
+      document.addEventListener("pointerup", endModalResize);
+      document.addEventListener("pointercancel", endModalResize);
+      event.preventDefault();
+    }
+
     let draggingRemoteConfigSelectionClientId = "";
     let draggingRemoteConfigSelectionIndex = -1;
 
@@ -90,6 +185,10 @@
           ? 600
           : autosaveInterval;
       state.humanInLoopApproval = data.human_in_loop_approval === true;
+      state.statePersistenceEnabled = data.state_persistence_enabled === true;
+      state.advertisedCapabilities = Array.isArray(data.advertised_capabilities)
+        ? data.advertised_capabilities
+        : [];
       state.tlsEnabled = data.tls_enabled === true;
       state.httpsCertificateExpiryDate =
         typeof data.https_certificate_expiry_date === "string"
@@ -235,6 +334,11 @@
           key: "human_in_loop_approval",
           label: humanInLoopApprovalLabel,
           icon: document.querySelector('.help-icon[data-help-key="human_in_loop_approval"]'),
+        },
+        {
+          key: "state_persistence_enabled",
+          label: statePersistenceEnabledLabel,
+          icon: document.querySelector('.help-icon[data-help-key="state_persistence_enabled"]'),
         },
         {
           key: "state_save_folder",
@@ -384,14 +488,13 @@
     }
 
     function updateRequestedConfigEditingState() {
-      if (!configInput || !saveConfigBtn) return;
+      if (!requestedConfigPanel || !configInput || !saveConfigBtn) return;
       const configServiceAvailable = state.configServiceFeatureAvailable === true;
-      configInput.readOnly = configServiceAvailable;
-      configInput.classList.toggle("requested-config-readonly", configServiceAvailable);
-      saveConfigBtn.disabled = configServiceAvailable;
-      saveConfigBtn.title = configServiceAvailable
-        ? "Requested configuration is read-only while Config Editor is available."
-        : "";
+      requestedConfigPanel.classList.toggle("hidden", configServiceAvailable);
+      configInput.readOnly = false;
+      configInput.classList.remove("requested-config-readonly");
+      saveConfigBtn.disabled = false;
+      saveConfigBtn.title = "";
     }
 
     async function fetchUiFeatureMenu() {
@@ -1648,11 +1751,13 @@
       }
       setActiveTab(nextTab);
       modal.classList.add("open");
+      requestAnimationFrame(captureModalCardMinSize);
     }
 
     function closeModal() {
       modal.classList.remove("open");
       activeClient = null;
+      resetModalCardSize();
       configInput.value = "";
       updateRequestedConfigEditingState();
       currentConfigOutput.textContent = "";
@@ -1828,6 +1933,8 @@
       retentionCountInput.value = String(state.retentionCount);
       autosaveIntervalInput.value = String(state.autosaveIntervalSecondsSinceChange);
       humanInLoopApprovalInput.checked = state.humanInLoopApproval === true;
+      statePersistenceEnabledInput.checked = state.statePersistenceEnabled === true;
+      renderAdvertisedCapabilities();
       renderHttpsCertificateExpiryRow();
       defaultHeartbeatFrequencyInput.value = String(state.defaultHeartbeatFrequency);
       settingsTabServerOpampConfigBtn.classList.toggle("hidden", !state.diagnosticEnabled);
@@ -1873,6 +1980,60 @@
       if (tone === "success" || tone === "error") {
         saveStateNowStatus.classList.add(tone);
       }
+    }
+
+    function renderAdvertisedCapabilities() {
+      if (!advertisedCapabilitiesBody) return;
+      const capabilities = Array.isArray(state.advertisedCapabilities)
+        ? state.advertisedCapabilities
+        : [];
+      advertisedCapabilitiesBody.innerHTML = "";
+      if (capabilities.length === 0) {
+        const emptyState = document.createElement("div");
+        emptyState.className = "settings-inline-status";
+        emptyState.textContent = "No advertised capability metadata is available.";
+        advertisedCapabilitiesBody.appendChild(emptyState);
+        return;
+      }
+      capabilities.forEach(capability => {
+        const row = document.createElement("div");
+        row.className = "settings-row settings-row-capability";
+
+        const label = document.createElement("label");
+        label.textContent = String(capability && capability.label ? capability.label : "--");
+        row.appendChild(label);
+
+        const switchLabel = document.createElement("label");
+        switchLabel.className = "settings-switch settings-switch-disabled";
+        switchLabel.setAttribute("aria-disabled", "true");
+
+        const input = document.createElement("input");
+        input.className = "settings-switch-input";
+        input.type = "checkbox";
+        input.disabled = true;
+        input.checked = capability && capability.enabled === true;
+        switchLabel.appendChild(input);
+
+        const track = document.createElement("span");
+        track.className = "settings-switch-track";
+        track.setAttribute("aria-hidden", "true");
+        switchLabel.appendChild(track);
+
+        const stateLabel = document.createElement("span");
+        stateLabel.className = "settings-switch-state";
+        stateLabel.setAttribute("aria-hidden", "true");
+        switchLabel.appendChild(stateLabel);
+        row.appendChild(switchLabel);
+
+        const status = document.createElement("span");
+        status.className = "settings-inline-status";
+        status.textContent = capability && capability.enabled === true
+          ? "Advertised"
+          : "Not advertised";
+        row.appendChild(status);
+
+        advertisedCapabilitiesBody.appendChild(row);
+      });
     }
 
     async function saveStateNowFromSettings() {
@@ -2654,7 +2815,7 @@
 
     async function saveConfig() {
       if (!activeClient) return;
-      if (configInput.readOnly) return;
+      if (state.configServiceFeatureAvailable === true) return;
       const configValue = configInput.value.trim();
       if (!configValue) {
         closeModal();

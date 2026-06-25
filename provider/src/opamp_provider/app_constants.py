@@ -45,12 +45,12 @@ GLOBAL_SETTINGS_HELP: dict[str, dict[str, str]] = {
     "human_in_loop_approval": {
         "label": "Human In Loop Approval",
         "tooltip": (
-            "When enabled, unknown agents are staged for manual review and remain "
-            "blocked from normal processing until approved."
+            "When enabled, unknown agents are staged for manual review and must "
+            "be approved before normal processing continues."
         ),
     },
     "state_persistence_enabled": {
-        "label": "State Persistence Enabled",
+        "label": "Enable State Persistence",
         "tooltip": (
             "When enabled, provider state snapshots can be saved/restored using "
             "state persistence settings."
