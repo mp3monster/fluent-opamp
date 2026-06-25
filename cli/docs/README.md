@@ -8,6 +8,15 @@ This directory contains component-specific documentation for the OpAMP CLI.
 - `CLI_REBUILD_PROMPT.md`: prompt document for recreating the CLI component from scratch, including docs and deployment expectations
 - `TEST_CASES.md`: maintained index of CLI unit and end-to-end test scenarios
 
+## Current Feature Areas
+
+- Guided lifecycle commands: `start`, `stop`, `restart`
+- Runtime inspection: `status`, `list`
+- Script generation: `script`
+- Config-service-backed config workflows when available:
+  - `config validate <path>`
+  - `config metadata <path>`
+
 ## Related Files
 
 - `../README.md`: component overview, usage, and startup instructions

@@ -26,6 +26,16 @@ Test modules should reference this file so the implementation and the documented
   - Verifies `status` reports an `OPAMP_CONFIG_PATH` override and successful load state.
 - `test_status_command_reports_invalid_opamp_config`
   - Verifies `status` reports invalid JSON instead of treating an unreadable config as loaded.
+- `test_list_command_reports_config_options_when_available`
+  - Verifies `list` includes the `config` command subtree when config-service support is available.
+- `test_config_validate_single_file_writes_report`
+  - Verifies `config validate` processes one file, prints `no error`, and writes a report file.
+- `test_config_validate_directory_reports_each_file_with_spacing`
+  - Verifies `config validate` processes a two-file directory and separates file sections with three blank lines.
+- `test_config_metadata_adds_missing_header_values`
+  - Verifies `config metadata` adds missing config-service header values for config type and version.
+- `test_config_metadata_preserves_existing_header_values`
+  - Verifies `config metadata` does not overwrite existing config-service header values.
 - `test_rejected_guided_action_is_logged`
   - Verifies invalid guided actions are rejected and logged.
 - `test_resolve_guided_action_matches_aliases`
@@ -44,9 +54,17 @@ Test modules should reference this file so the implementation and the documented
   - Verifies `help` output is available from the CLI entrypoint.
 - `test_status_command_reports_runtime_paths`
   - Verifies `status` reports the effective OpAMP config path, managed-process state path, log path, and CLI log path.
+- `test_list_command_reports_option_hierarchy`
+  - Verifies `list` reports top-level commands, guided actions, and the `config` subcommands when available.
 - `test_direct_execution_runs_python_command`
   - Verifies direct command execution works through the CLI entrypoint.
 - `test_script_generation_writes_os_native_script`
   - Verifies `script ...` generation creates an OS-native output script.
+- `test_config_validate_single_file_e2e`
+  - Verifies `config validate` succeeds for one file and writes a report file through the real entrypoint.
+- `test_config_validate_directory_e2e`
+  - Verifies `config validate` succeeds for a two-file directory through the real entrypoint.
+- `test_config_metadata_directory_e2e_preserves_existing_header`
+  - Verifies `config metadata` updates missing metadata while preserving files that already contain config-service header values.
 - `test_unknown_guided_target_returns_error`
   - Verifies unknown guided targets fail cleanly with a non-zero exit path.
