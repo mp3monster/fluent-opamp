@@ -38,12 +38,20 @@
       }
     },
     {
-      "name": "Demo setup (Flbx1 Observer)",
+      "name": "Test setup (Flbx1 Observer)",
       "scenario_description": "Starts up the agent in the observer configuration. As a result this means that the Fluent Bit needs to be manually started first with a command e.g. fluent-bit -c consumer/fluent-bit.yaml .",
       "fluentbit": {
         "config_path": "tests/opamp-consumer-observer.json",
         "agent_config_path": "consumer/fluent-bit.yaml"
       }
-    }
+    },
+        {
+          "name": "Test setup (Flbx1 Supervisor + Remote Config)",
+          "scenario_description": "Supervisor setup that allows remote config",
+          "fluentbit": {
+            "config_path": "tests/opamp-consumer-with-remote.json",
+            "agent_config_path": "consumer/fluent-bit-replacable.yaml"
+          }
+        }
   ]
 }

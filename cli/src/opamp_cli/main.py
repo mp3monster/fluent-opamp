@@ -1970,7 +1970,7 @@ def _load_demo_consumer_profiles() -> list[dict[str, Any]]:
     if not isinstance(profiles_raw, list):
         return []
     profiles: list[dict[str, Any]] = []
-    for entry in profiles_raw:
+    for index, entry in enumerate(profiles_raw, start=1):
         if not isinstance(entry, dict):
             continue
         name = str(entry.get("name") or "").strip()
@@ -1983,6 +1983,7 @@ def _load_demo_consumer_profiles() -> list[dict[str, Any]]:
             continue
         profiles.append(
             {
+                "profile_index": index,
                 "name": name,
                 "scenario_description": _demo_profile_scenario_description(entry),
                 "fluentbit": dict(fluentbit),
@@ -2007,9 +2008,20 @@ def _demo_profile_by_name(profile_name: str) -> dict[str, Any] | None:
     if not normalized:
         return None
     for profile in _load_demo_consumer_profiles():
+        if normalized == str(profile.get("profile_index") or "").strip():
+            return profile
         if _normalized_label(str(profile.get("name") or "")) == normalized:
             return profile
     return None
+
+
+def _demo_profile_label(profile: dict[str, Any]) -> str:
+    """Return guided demo label text including the stable profile number."""
+    profile_name = str(profile.get("name") or "").strip()
+    profile_index = int(profile.get("profile_index") or 0)
+    if profile_index > 0:
+        return f"Demo consumers ({profile_index}: {profile_name})"
+    return f"Demo consumers ({profile_name})"
 
 
 def _demo_record_prefix(profile_name: str) -> str:
@@ -2147,16 +2159,19 @@ def _demo_consumer_start_action(profile: dict[str, Any]) -> dict[str, Any]:
     """Create one guided demo-consumer start action for one profile."""
     profile_name = str(profile.get("name") or "").strip()
     profile_slug = _slugify(profile_name).replace("-", "_")
+    profile_index = int(profile.get("profile_index") or 0)
     return {
         "id": f"demo_consumers_{profile_slug}",
         "kind": ACTION_KIND_DEMO_CONSUMERS_START,
-        "label": f"Demo consumers ({profile_name})",
+        "label": _demo_profile_label(profile),
         "profile_name": profile_name,
+        "profile_index": profile_index,
         "scenario_description": _action_scenario_description(profile),
         "aliases": [
             f"demo consumers {profile_name}",
             f"demo {profile_name}",
             f"consumers {profile_name}",
+            *( [f"demo consumers {profile_index}", f"demo {profile_index}", f"consumers {profile_index}"] if profile_index > 0 else [] ),
         ],
     }
 
@@ -2165,16 +2180,19 @@ def _demo_consumer_stop_action(profile: dict[str, Any]) -> dict[str, Any]:
     """Create one guided demo-consumer stop action for one profile."""
     profile_name = str(profile.get("name") or "").strip()
     profile_slug = _slugify(profile_name).replace("-", "_")
+    profile_index = int(profile.get("profile_index") or 0)
     return {
         "id": f"demo_consumers_{profile_slug}",
         "kind": ACTION_KIND_DEMO_CONSUMERS_STOP,
-        "label": f"Demo consumers ({profile_name})",
+        "label": _demo_profile_label(profile),
         "profile_name": profile_name,
+        "profile_index": profile_index,
         "scenario_description": _action_scenario_description(profile),
         "aliases": [
             f"demo consumers {profile_name}",
             f"demo {profile_name}",
             f"consumers {profile_name}",
+            *( [f"demo consumers {profile_index}", f"demo {profile_index}", f"consumers {profile_index}"] if profile_index > 0 else [] ),
         ],
     }
 

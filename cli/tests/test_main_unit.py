@@ -417,7 +417,7 @@ def test_list_command_reflects_demo_flag(monkeypatch, tmp_path: Path, capsys) ->
     assert exit_code == 0
     assert "OPAMP_DEMO: enabled" in output
     assert "  - demo" in output
-    assert "Demo consumers (script-defaults)" in output
+    assert "Demo consumers (1: script-defaults)" in output
 
 
 def test_restart_action_runs_stop_wait_cleanup_then_start(monkeypatch) -> None:
@@ -493,8 +493,8 @@ def test_demo_mode_adds_profile_actions(monkeypatch, tmp_path: Path) -> None:
     start_labels = [label for label, _action in cli_main._start_actions()]  # type: ignore[attr-defined]
     stop_labels = [label for label, _action in cli_main._stop_actions()]  # type: ignore[attr-defined]
 
-    assert "Demo consumers (script-defaults)" in start_labels
-    assert "Demo consumers (script-defaults)" in stop_labels
+    assert "Demo consumers (1: script-defaults)" in start_labels
+    assert "Demo consumers (1: script-defaults)" in stop_labels
 
 
 def test_demo_profile_loader_prefers_scenario_description(monkeypatch, tmp_path: Path) -> None:
@@ -576,6 +576,38 @@ def test_demo_profile_alias_resolves_guided_action(monkeypatch, tmp_path: Path) 
     assert action["profile_name"] == "repo-defaults"
 
 
+def test_demo_profile_numeric_alias_resolves_guided_action(monkeypatch, tmp_path: Path) -> None:
+    demo_config = tmp_path / "demo_profiles.json"
+    demo_config.write_text(
+        json.dumps(
+            {
+                "profiles": [
+                    {
+                        "name": "script-defaults",
+                        "simulator": {"instances_path": "consumer-sim/consumer_instances.json"},
+                    },
+                    {
+                        "name": "repo-defaults",
+                        "simulator": {"instances_path": "consumer-sim/consumer_instances.json"},
+                    },
+                ]
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setenv("OPAMP_DEMO", "true")
+    monkeypatch.setattr(cli_main, "_demo_consumer_config_path", lambda: demo_config)
+
+    action = cli_main._resolve_guided_action("start", "demo 2")  # type: ignore[attr-defined]
+
+    assert action is not None
+    assert action["kind"] == "demo_consumers_start"
+    assert action["profile_name"] == "repo-defaults"
+    assert action["profile_index"] == 2
+
+
 def test_top_level_commands_include_demo_when_enabled(monkeypatch) -> None:
     monkeypatch.setenv("OPAMP_DEMO", "true")
 
@@ -589,6 +621,7 @@ def test_split_guided_command_maps_demo_shorthand_when_enabled(monkeypatch) -> N
 
     assert cli_main._split_guided_command("demo") == ("start", "demo consumers")  # type: ignore[attr-defined]
     assert cli_main._split_guided_command("demo repo-defaults") == ("start", "demo repo-defaults")  # type: ignore[attr-defined]
+    assert cli_main._split_guided_command("demo 2") == ("start", "demo 2")  # type: ignore[attr-defined]
 
 
 def test_split_guided_command_ignores_demo_shorthand_when_disabled(monkeypatch) -> None:
@@ -655,8 +688,8 @@ def test_start_demo_consumers_prompts_for_profile_choices(monkeypatch, tmp_path:
 
     assert code == 0
     assert captured_labels == [
-        "Demo consumers (script-defaults)",
-        "Demo consumers (repo-defaults)",
+        "Demo consumers (1: script-defaults)",
+        "Demo consumers (2: repo-defaults)",
     ]
 
 
