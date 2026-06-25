@@ -20,10 +20,19 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+HTML_COVERAGE_INDEX = ROOT / "htmlcov" / "index.html"
+XML_COVERAGE_REPORT = ROOT / "coverage.xml"
 
 
 def run_step(*args: str) -> None:
     subprocess.run(args, cwd=ROOT, check=True)
+
+
+def report_coverage_outputs() -> None:
+    """Summarize the generated coverage report artifacts for developers."""
+
+    print(f"Coverage XML report: {XML_COVERAGE_REPORT}")
+    print(f"Coverage HTML report: {HTML_COVERAGE_INDEX}")
 
 
 def main() -> None:
@@ -39,6 +48,7 @@ def main() -> None:
         "build_config.py",
     )
     run_step(sys.executable, "-m", "pytest")
+    report_coverage_outputs()
 
 
 if __name__ == "__main__":

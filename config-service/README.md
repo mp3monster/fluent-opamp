@@ -26,6 +26,10 @@ Developer quality checks:
 python3 config-service/dev-tools/run_backend_quality_checks.py
 ```
 
+Coverage reports from backend tests are written to:
+- `config-service/coverage.xml`
+- `config-service/htmlcov/index.html`
+
 Browser UI quality checks:
 
 ```bash

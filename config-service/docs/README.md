@@ -42,6 +42,7 @@ This folder contains user-facing documentation for running, configuring, and ext
 - Local convenience scripts: `config-service/scripts`
 - Developer tooling and generators: `config-service/dev-tools`
 - Backend lint/test entrypoint: `config-service/dev-tools/run_backend_quality_checks.py`
+- Backend coverage reports: `config-service/coverage.xml` and `config-service/htmlcov/index.html`
 - UI browser-test entrypoint: `config-service/dev-tools/run_ui_quality_checks.sh`
 - Fluent Bit asset generator: `config-service/dev-tools/generate_fluentbit_assets.py`
 - Fluent Bit markdown generator: `config-service/dev-tools/generate_fluentbit_markdown.py`

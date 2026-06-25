@@ -57,6 +57,7 @@ addopts = [
   "-s",
   "--cov=config_service",
   "--cov-report=term-missing",
+  "--cov-report=html:htmlcov",
   "--cov-report=xml:coverage.xml",
   "--cov-branch",
 ]
@@ -74,6 +75,10 @@ exclude_lines = [
   "pragma: no cover",
   "if __name__ == .__main__.:",
 ]
+
+[tool.coverage.html]
+directory = "htmlcov"
+title = "config-service Coverage Report"
 
 [tool.ruff]
 line-length = 100
