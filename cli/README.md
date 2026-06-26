@@ -89,12 +89,21 @@ Both shortcuts run the compatibility entrypoint:
   - You can also run guided actions directly on one line, for example `start server`, `stop config editor`, or `restart server`.
   - Type `status` in interactive mode to list the effective OpAMP config file,
     config load status, managed processes, PID liveness, and log paths.
-  - Type `list` in interactive mode to display the current command hierarchy and guided options (including flag-gated options).
+  - Type `list` in interactive mode to display the current command hierarchy, guided options, and available `config` subcommands when config-service support is present.
   - Type `enable-process-tail` to open a separate tail shell for each future managed start log.
   - Type `disable-process-tail` to turn that behavior off again.
   - When `APP_ENABLE_DEV_FEATURES=true` and the Fluent Bit generator scripts are present, type `dev-flb-config` to open a guided prompt for the Fluent Bit asset/markdown utilities.
   - When `APP_ENABLE_DEV_FEATURES=true`, type `dev-pid-lookup` to prompt for a regular expression and report matching running process IDs with process details.
   - `Catalog` is shown when catalog sources are configured in `config/opamp.json`. The CLI writes a temporary runtime config under `cli/runtime/` so the catalog can be launched without editing the repo config.
+- Config file workflows:
+  - Type `config validate <file-or-folder>` to validate one supported config file or every supported config file beneath a directory.
+  - Type `config metadata <file-or-folder>` to add missing config-service metadata headers for config type and version.
+  - Supported file extensions are `.yaml`, `.yml`, and `.conf`.
+  - These commands are only shown and enabled when the CLI can detect config-service logic in the repository or installed environment.
+  - Each run writes a timestamped report file under `cli/runtime/logs/` and also prints the same report to the console.
+  - Reports include the file path plus either `Validation result: no error` or a normalized issue list.
+  - Multi-file reports use three blank lines between file sections for readability.
+  - `config metadata` does not overwrite existing `config-service` header values when both config type and version are already present.
 - If the first word is `script`, a script file is generated for the current OS:
   - Linux/macOS: `.sh`
   - Windows: `.cmd`
@@ -110,6 +119,8 @@ python -m pytest -s
 cli/main.py --help
 opamp-cli status
 opamp-cli list
+opamp-cli config validate ./example/fluent-bit.yaml
+opamp-cli config metadata ./example/configs
 opamp-cli enable-process-tail
 APP_ENABLE_DEV_FEATURES=true opamp-cli dev-flb-config
 APP_ENABLE_DEV_FEATURES=true opamp-cli dev-pid-lookup
@@ -151,6 +162,14 @@ OPAMP_DEMO=true opamp-cli stop "demo consumers script-defaults"
 Type `exit` or `quit` to leave interactive mode.
 Type `help` (or `-h` / `--help`) to print CLI usage and examples.
 The process-tail preference is stored in `cli/runtime/settings.json`.
+
+## Config Reports
+
+- `config validate` writes log files named like `config-validate-<timestamp>.log`.
+- `config metadata` writes log files named like `config-metadata-<timestamp>.log`.
+- The CLI prints the generated report path at the end of each run.
+- Validation reports list parser and validation issues when present.
+- Metadata reports show whether values already existed or which metadata fields were applied.
 
 ## Autocomplete
 
