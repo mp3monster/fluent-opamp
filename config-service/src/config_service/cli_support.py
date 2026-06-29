@@ -45,6 +45,7 @@ class CliConfigFileReport:
 
     source_path: Path
     lines: tuple[str, ...]
+    has_issues: bool = False
 
     def render(self) -> str:
         """Render the report block as plain text."""
@@ -57,6 +58,11 @@ class CliConfigBatchReport:
     """Collection of file reports rendered with wide spacing between entries."""
 
     reports: tuple[CliConfigFileReport, ...]
+
+    @property
+    def has_issues(self) -> bool:
+        """Return whether any processed file reported parse or validation issues."""
+        return any(report.has_issues for report in self.reports)
 
     def render(self) -> str:
         """Render all reports using three blank lines between files."""
@@ -153,7 +159,11 @@ class CliConfigSupport:
             if validation_issues:
                 lines.append("Validation issues:")
                 lines.extend(self._format_issue_lines(validation_issues))
-        return CliConfigFileReport(source_path=source_path, lines=tuple(lines))
+        return CliConfigFileReport(
+            source_path=source_path,
+            lines=tuple(lines),
+            has_issues=bool(parse_issues or validation_issues),
+        )
 
     def _ensure_metadata_for_file(self, source_path: Path) -> CliConfigFileReport:
         raw_text = source_path.read_text(encoding=UTF8_ENCODING)
