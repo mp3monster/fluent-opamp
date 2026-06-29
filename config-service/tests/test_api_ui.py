@@ -335,7 +335,7 @@ async def test_ui_prepare_file_extracts_header_metadata_and_line_map() -> None:
     assert body["ok"] is True
     assert body["config_type"] == "fluentbit"
     assert body["version"] == "5.0.4"
-    assert body["header_comments"] == ""
+    assert body["header_comments"] == "Owned by Team A"
     assert body["body"].startswith("pipeline:")
     assert body["source_line_map"]["$.pipeline"] >= 1
 
