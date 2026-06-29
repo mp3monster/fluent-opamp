@@ -1,0 +1,20 @@
+service:
+  flush: 1
+
+pipeline:
+  inputs:
+    - name: exec
+      command: ls -al
+      interval_sec: 60
+      tag: my-exec
+    - name: dummy
+      dummy: '{"message":"dummy"}'
+      tag: dumdum
+
+  outputs:
+    - name: null
+      match: "*"
+      processors:
+        logs:
+          - name: sql
+            query: "SELECT REPLACE(body, 'dummy', 'blah') AS body FROM STREAM;"

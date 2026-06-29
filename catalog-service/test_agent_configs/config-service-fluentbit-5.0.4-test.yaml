@@ -1,0 +1,16 @@
+service:
+  flush: 1
+
+pipeline:
+  inputs:
+    - name: exec
+      command: ls -al
+      interval_sec: 60
+      tag: mydir
+    - name: dummy
+      dummy: '{"message":"dummy"}'
+      tag: myblah
+
+  outputs:
+    - name: null
+      match: "*"

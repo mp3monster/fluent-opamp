@@ -1,0 +1,3 @@
+includes:
+  - config-service-fluentbit-5.0.4-test.yaml
+  - config-service-fluentbit-5.0.4-test2.yaml
