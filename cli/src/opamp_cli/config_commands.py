@@ -93,6 +93,8 @@ def execute_config_command(
     output_path.write_text(rendered, encoding=UTF8_ENCODING)
     print(rendered, end="" if rendered.endswith("\n") else "\n")
     print(f"Report file: {output_path}")
+    if args.subcommand == COMMAND_CONFIG_VALIDATE and report.has_issues:
+        return 1
     return 0
 
 

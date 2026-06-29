@@ -50,7 +50,12 @@ try:
         _slugify,
         _utc_timestamp,
     )
-    from .config_commands import config_command_available, execute_config_command
+    from .config_commands import (
+        COMMAND_CONFIG_METADATA,
+        COMMAND_CONFIG_VALIDATE,
+        config_command_available,
+        execute_config_command,
+    )
     from .constants import (
         ACTION_ID_ALL_CLIENTS,
         ACTION_ID_ALL_MANAGED,
@@ -141,6 +146,8 @@ except ImportError:
         _utc_timestamp,
     )
     from config_commands import (  # type: ignore[no-redef]
+        COMMAND_CONFIG_METADATA,
+        COMMAND_CONFIG_VALIDATE,
         config_command_available,
         execute_config_command,
     )
@@ -507,6 +514,68 @@ def _top_level_commands() -> list[str]:
     if _dev_pid_lookup_available():
         commands.append(COMMAND_DEV_PID_LOOKUP)
     return commands
+
+
+def _config_subcommands() -> tuple[str, ...]:
+    """Return supported interactive `config` subcommands."""
+    return (COMMAND_CONFIG_VALIDATE, COMMAND_CONFIG_METADATA)
+
+
+def _config_subcommand_prefix(buffer_text: str) -> str | None:
+    """Return the in-progress `config` subcommand token, when applicable."""
+    stripped = str(buffer_text or "").lstrip()
+    lowered = stripped.lower()
+    if lowered.startswith(f"{COMMAND_CONFIG} ") is not True:
+        return None
+    remainder = stripped[len(COMMAND_CONFIG) + 1 :]
+    if " " in remainder:
+        return None
+    return remainder
+
+
+def _config_subcommand_completion_context(buffer_text: str) -> tuple[str, str] | None:
+    """Return prefix-preserving context for completing `config` subcommands."""
+    buffer_value = str(buffer_text or "")
+    stripped = buffer_value.lstrip()
+    if stripped:
+        leading = buffer_value[: len(buffer_value) - len(stripped)]
+    else:
+        leading = ""
+    lowered = stripped.lower()
+    if lowered.startswith(f"{COMMAND_CONFIG} ") is not True:
+        return None
+    remainder = stripped[len(COMMAND_CONFIG) + 1 :]
+    if " " in remainder:
+        return None
+    return (f"{leading}{stripped[: len(COMMAND_CONFIG) + 1]}", remainder)
+
+
+def _completion_entries(words: Iterable[str]) -> list[str]:
+    """Return full-line completion entries for non-contextual completion backends."""
+    return sorted({str(word).strip() for word in words if str(word).strip()})
+
+
+def _completion_candidates(
+    buffer_text: str,
+    *,
+    entries: Iterable[str],
+) -> tuple[str, str, list[str]]:
+    """Return completion base, token prefix, and candidate values for one buffer."""
+    config_context = _config_subcommand_completion_context(buffer_text)
+    if config_context is not None:
+        completion_base, prefix = config_context
+        lowered_prefix = prefix.lower()
+        matches = [
+            subcommand
+            for subcommand in _config_subcommands()
+            if subcommand.startswith(lowered_prefix)
+        ]
+        return (completion_base, prefix, matches)
+
+    prefix = str(buffer_text or "")
+    lowered_prefix = prefix.lower()
+    matches = [entry for entry in entries if entry.lower().startswith(lowered_prefix)]
+    return ("", prefix, matches)
 
 
 def _fluentbit_dev_tool_script_paths() -> list[Path]:
@@ -1131,10 +1200,21 @@ def _setup_readline_completion(words: Iterable[str]) -> None:
     except ImportError:
         return
 
-    entries = list(words)
+    entries = _completion_entries(words)
 
     def completer(text: str, state: int) -> str | None:
-        matches = [entry for entry in entries if entry.startswith(text)]
+        line_buffer = str(readline.get_line_buffer() or "")
+        subcommand_prefix = _config_subcommand_prefix(line_buffer)
+        if subcommand_prefix is not None:
+            lowered_text = str(text or "").lower()
+            matches = [
+                subcommand
+                for subcommand in _config_subcommands()
+                if subcommand.startswith(lowered_text)
+            ]
+        else:
+            lowered_text = str(text or "").lower()
+            matches = [entry for entry in entries if entry.lower().startswith(lowered_text)]
         if state < len(matches):
             return matches[state]
         return None
@@ -1157,6 +1237,7 @@ def _prompt_toolkit_input_reader(words: Iterable[str]) -> Callable[[str], str] |
     PathCompleter = pt_completion.PathCompleter
 
     top_level_words = sorted({str(word).strip() for word in words if str(word).strip()})
+    config_subcommands = list(_config_subcommands())
     path_completer = PathCompleter(expanduser=True)
 
     def _line_prefix(document: Any) -> str:
@@ -1237,6 +1318,25 @@ def _prompt_toolkit_input_reader(words: Iterable[str]) -> Callable[[str], str] |
                 yield Completion(f"{INTENT_RESTART} ", start_position=0)
                 return
 
+            if lowered == COMMAND_CONFIG:
+                yield Completion(f"{COMMAND_CONFIG} ", start_position=0)
+                return
+
+            config_subcommand_prefix = _config_subcommand_prefix(text)
+            if config_subcommand_prefix is not None:
+                yield from _yield_word_matches(
+                    options=config_subcommands,
+                    prefix=config_subcommand_prefix,
+                )
+                return
+
+            if (
+                lowered.startswith(f"{COMMAND_CONFIG} {COMMAND_CONFIG_VALIDATE} ")
+                or lowered.startswith(f"{COMMAND_CONFIG} {COMMAND_CONFIG_METADATA} ")
+            ):
+                yield from path_completer.get_completions(document, complete_event)
+                return
+
             line_prefix = _line_prefix(document)
             if len(stripped.split()) <= 1:
                 yield from _yield_word_matches(options=top_level_words, prefix=line_prefix)
@@ -1282,7 +1382,7 @@ def _builtin_tty_input_reader(words: Iterable[str]) -> Callable[[str], str] | No
     except ImportError:
         return None
 
-    entries = sorted({str(word) for word in words if str(word).strip()})
+    entries = _completion_entries(words)
 
     def _render_prompt(prompt_text: str, buffer_text: str) -> None:
         sys.stdout.write("\r")
@@ -1292,13 +1392,10 @@ def _builtin_tty_input_reader(words: Iterable[str]) -> Callable[[str], str] | No
         sys.stdout.write(f"{prompt_text}{buffer_text}")
         sys.stdout.flush()
 
-    def _matches(prefix: str) -> list[str]:
-        lowered = prefix.lower()
-        return [entry for entry in entries if entry.lower().startswith(lowered)]
-
     def reader(prompt_text: str) -> str:  # noqa: PLR0912,PLR0915
         buffer: list[str] = []
         tab_prefix = ""
+        tab_base = ""
         tab_matches: list[str] = []
         tab_index = -1
 
@@ -1328,34 +1425,43 @@ def _builtin_tty_input_reader(words: Iterable[str]) -> Callable[[str], str] | No
                 continue
             if char == "\t":
                 current = "".join(buffer)
-                matches = _matches(current)
+                completion_base, token_prefix, matches = _completion_candidates(
+                    current,
+                    entries=entries,
+                )
                 if not matches:
                     sys.stdout.write("\a")
                     sys.stdout.flush()
                     continue
                 if len(matches) == 1:
-                    completion = matches[0]
+                    completion = f"{completion_base}{matches[0]}"
                     buffer = list(completion)
                     _render_prompt(prompt_text, completion)
-                    tab_prefix = completion
+                    tab_prefix = current
+                    tab_base = completion_base
                     tab_matches = matches
                     tab_index = 0
                     continue
                 common_prefix = os.path.commonprefix(matches)
-                if len(common_prefix) > len(current):
-                    buffer = list(common_prefix)
-                    _render_prompt(prompt_text, common_prefix)
-                    tab_prefix = common_prefix
-                    tab_matches = _matches(common_prefix)
+                if len(common_prefix) > len(token_prefix):
+                    completion = f"{completion_base}{common_prefix}"
+                    buffer = list(completion)
+                    _render_prompt(prompt_text, completion)
+                    tab_prefix = completion
+                    tab_base = completion_base
+                    tab_matches = [
+                        match for match in matches if match.startswith(common_prefix)
+                    ]
                     tab_index = -1
                     continue
-                if current != tab_prefix or matches != tab_matches:
+                if current != tab_prefix or completion_base != tab_base or matches != tab_matches:
                     tab_prefix = current
+                    tab_base = completion_base
                     tab_matches = matches
                     tab_index = 0
                 else:
                     tab_index = (tab_index + 1) % len(tab_matches)
-                completion = tab_matches[tab_index]
+                completion = f"{tab_base}{tab_matches[tab_index]}"
                 buffer = list(completion)
                 _render_prompt(prompt_text, completion)
                 continue
@@ -1364,6 +1470,7 @@ def _builtin_tty_input_reader(words: Iterable[str]) -> Callable[[str], str] | No
                 sys.stdout.write(char)
                 sys.stdout.flush()
                 tab_prefix = ""
+                tab_base = ""
                 tab_matches = []
                 tab_index = -1
 

@@ -21,6 +21,7 @@ import importlib
 import json
 import re
 import subprocess
+from types import SimpleNamespace
 from pathlib import Path
 
 cli_main = importlib.import_module("opamp_cli.main")
@@ -34,6 +35,20 @@ def _sample_fluentbit_config() -> str:
         "  inputs:\n"
         "    - name: dummy\n"
         "      tag: test\n"
+        "  outputs:\n"
+        "    - name: stdout\n"
+        "      match: \"*\"\n"
+    )
+
+
+def _invalid_fluentbit_config_missing_required_tag() -> str:
+    return (
+        "service:\n"
+        "  flush: 1\n"
+        "pipeline:\n"
+        "  inputs:\n"
+        "    - name: exec\n"
+        "      command: ls -al\n"
         "  outputs:\n"
         "    - name: stdout\n"
         "      match: \"*\"\n"
@@ -288,6 +303,49 @@ def test_config_validate_directory_reports_each_file_with_spacing(
     assert f"File: {first.resolve()}" in report_text
     assert f"File: {second.resolve()}" in report_text
     assert "\n\n\n\nFile: " in report_text
+
+
+def test_config_validate_single_file_returns_error_when_issues_found(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    runtime_dir = tmp_path / "runtime"
+    config_path = tmp_path / "invalid.yaml"
+    config_path.write_text(_invalid_fluentbit_config_missing_required_tag(), encoding="utf-8")
+    monkeypatch.setattr(cli_main, "_cli_runtime_dir", lambda: runtime_dir)
+
+    exit_code = cli_main.main(["config", "validate", str(config_path)])
+    output = capsys.readouterr().out
+
+    assert exit_code == 1
+    assert "Validation result: issues found" in output
+    assert "missing_required_field" in output
+
+
+def test_config_validate_directory_returns_error_when_any_file_has_issues(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    runtime_dir = tmp_path / "runtime"
+    config_dir = tmp_path / "configs"
+    config_dir.mkdir()
+    valid_path = config_dir / "valid.yaml"
+    invalid_path = config_dir / "invalid.yaml"
+    valid_path.write_text(_sample_fluentbit_config(), encoding="utf-8")
+    invalid_path.write_text(_invalid_fluentbit_config_missing_required_tag(), encoding="utf-8")
+    monkeypatch.setattr(cli_main, "_cli_runtime_dir", lambda: runtime_dir)
+
+    exit_code = cli_main.main(["config", "validate", str(config_dir)])
+    output = capsys.readouterr().out
+    report_path = _report_path_from_output(output)
+    report_text = report_path.read_text(encoding="utf-8")
+
+    assert exit_code == 1
+    assert f"File: {valid_path.resolve()}" in report_text
+    assert f"File: {invalid_path.resolve()}" in report_text
+    assert "Validation result: issues found" in report_text
 
 
 def test_config_metadata_adds_missing_header_values(
@@ -1309,6 +1367,85 @@ def test_execute_dev_mcp_config_workflow_prompts_and_runs_selected_tool(monkeypa
         "broker.local",
         "--preview",
     ]
+
+
+def test_config_subcommand_prefix_detects_second_level_keyword() -> None:
+    assert cli_main._config_subcommand_prefix("config ") == ""  # type: ignore[attr-defined]
+    assert cli_main._config_subcommand_prefix("config val") == "val"  # type: ignore[attr-defined]
+    assert cli_main._config_subcommand_prefix("config validate ./cfg.yaml") is None  # type: ignore[attr-defined]
+
+
+def test_completion_candidates_keep_config_base_separate_from_subcommand() -> None:
+    base, prefix, matches = cli_main._completion_candidates(  # type: ignore[attr-defined]
+        "config va",
+        entries=["config", "status"],
+    )
+
+    assert base == "config "
+    assert prefix == "va"
+    assert matches == ["validate"]
+
+
+def test_prompt_toolkit_reader_offers_config_subcommands_and_paths(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    class _FakeCompletion:
+        def __init__(self, text: str, start_position: int = 0) -> None:
+            self.text = text
+            self.start_position = start_position
+
+    class _FakePathCompleter:
+        def __init__(self, *, expanduser: bool) -> None:
+            self.expanduser = expanduser
+
+        def get_completions(self, document, complete_event):  # type: ignore[no-untyped-def]
+            captured["path_document"] = document.text_before_cursor
+            return [_FakeCompletion("./config.yaml")]
+
+    def fake_prompt(prompt_text: str, *, completer, complete_while_typing: bool):  # type: ignore[no-untyped-def]
+        captured["prompt_text"] = prompt_text
+        captured["completer"] = completer
+        captured["complete_while_typing"] = complete_while_typing
+        return ""
+
+    def fake_import_module(name: str):  # type: ignore[no-untyped-def]
+        if name == "prompt_toolkit":
+            return SimpleNamespace(prompt=fake_prompt)
+        if name == "prompt_toolkit.completion":
+            return SimpleNamespace(
+                Completer=object,
+                Completion=_FakeCompletion,
+                PathCompleter=_FakePathCompleter,
+            )
+        raise ImportError(name)
+
+    monkeypatch.setattr(cli_main.importlib, "import_module", fake_import_module)
+    monkeypatch.setattr(cli_main.sys.stdin, "isatty", lambda: True)
+    monkeypatch.setattr(cli_main.sys.stdout, "isatty", lambda: True)
+
+    reader = cli_main._prompt_toolkit_input_reader(["config"])  # type: ignore[attr-defined]
+
+    assert reader is not None
+
+    reader("opamp> ")
+    completer = captured["completer"]
+
+    completions = list(
+        completer.get_completions(  # type: ignore[union-attr]
+            SimpleNamespace(text_before_cursor="config "),
+            None,
+        )
+    )
+    assert [item.text for item in completions] == ["validate", "metadata"]
+
+    path_completions = list(
+        completer.get_completions(  # type: ignore[union-attr]
+            SimpleNamespace(text_before_cursor="config validate "),
+            None,
+        )
+    )
+    assert [item.text for item in path_completions] == ["./config.yaml"]
+    assert captured["path_document"] == "config validate "
 
 
 def test_execute_dev_pid_lookup_workflow_reports_matches(monkeypatch, capsys) -> None:

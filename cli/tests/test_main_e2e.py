@@ -58,6 +58,20 @@ def _sample_fluentbit_config() -> str:
     )
 
 
+def _invalid_fluentbit_config_missing_required_tag() -> str:
+    return (
+        "service:\n"
+        "  flush: 1\n"
+        "pipeline:\n"
+        "  inputs:\n"
+        "    - name: exec\n"
+        "      command: ls -al\n"
+        "  outputs:\n"
+        "    - name: stdout\n"
+        "      match: \"*\"\n"
+    )
+
+
 def _report_path_from_output(output: str) -> Path:
     match = re.search(r"Report file: (.+)", output)
     assert match is not None
@@ -155,6 +169,24 @@ def test_config_validate_directory_e2e(tmp_path: Path) -> None:
     assert completed.returncode == 0
     assert f"File: {first.resolve()}" in report_text
     assert f"File: {second.resolve()}" in report_text
+
+
+def test_config_validate_directory_e2e_returns_error_when_any_file_is_invalid(tmp_path: Path) -> None:
+    config_dir = tmp_path / "configs"
+    config_dir.mkdir()
+    valid_path = config_dir / "valid.yaml"
+    invalid_path = config_dir / "invalid.yaml"
+    valid_path.write_text(_sample_fluentbit_config(), encoding="utf-8")
+    invalid_path.write_text(_invalid_fluentbit_config_missing_required_tag(), encoding="utf-8")
+
+    completed = _run_cli("config", "validate", str(config_dir))
+    report_path = _report_path_from_output(completed.stdout)
+    report_text = report_path.read_text(encoding="utf-8")
+
+    assert completed.returncode == 1
+    assert f"File: {valid_path.resolve()}" in report_text
+    assert f"File: {invalid_path.resolve()}" in report_text
+    assert "Validation result: issues found" in report_text
 
 
 def test_config_metadata_directory_e2e_preserves_existing_header(tmp_path: Path) -> None:
