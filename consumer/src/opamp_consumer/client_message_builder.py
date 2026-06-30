@@ -25,6 +25,9 @@ from typing import Any
 from shared.agent_remote_config import AgentConfigMapFileEntry, build_agent_remote_config
 
 from opamp_consumer.proto import opamp_pb2
+from opamp_consumer.remote_config_status import (
+    populate_agent_to_server_remote_config_status,
+)
 from opamp_consumer.reporting_flag import ReportingFlag
 
 EFFECTIVE_CONFIG_CAPABILITY_NAME = "ReportsEffectiveConfig"
@@ -74,7 +77,11 @@ def populate_agent_to_server(
         msg = populate_agent_to_server_health(msg)
         data.reporting_flags[ReportingFlag.REPORT_HEALTH] = False
 
-    
+    msg = populate_agent_to_server_remote_config_status(
+        data=data,
+        msg=msg,
+    )
+
     if (
         data.config_changed
         and server_accepts_effective_config

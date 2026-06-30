@@ -44,6 +44,9 @@ if TYPE_CHECKING:
 
 LOGGER = logging.getLogger(__name__)
 BACKUP_TIMESTAMP_FORMAT = "%Y-%m-%d--%H-%M-%S"
+REMOTE_CONFIG_STATUS_APPLIED = opamp_pb2.RemoteConfigStatuses.RemoteConfigStatuses_APPLIED
+REMOTE_CONFIG_STATUS_APPLYING = opamp_pb2.RemoteConfigStatuses.RemoteConfigStatuses_APPLYING
+REMOTE_CONFIG_STATUS_FAILED = opamp_pb2.RemoteConfigStatuses.RemoteConfigStatuses_FAILED
 STRUCTURED_JSON_CONTENT_TYPES = {"application/json", "text/json"}
 STRUCTURED_XML_CONTENT_TYPES = {"application/xml", "text/xml"}
 STRUCTURED_YAML_CONTENT_TYPES = {
@@ -70,29 +73,55 @@ class CommonConfigHandler:
         opamp_client: OpAMPClientInterface,
     ) -> None:
         """Validate and apply a remote-config payload to the local filesystem."""
-        CommonConfigHandler._validate_remote_config_hash(remote_config)
+        try:
+            CommonConfigHandler._validate_remote_config_hash(remote_config)
 
-        config_entries = remote_config.config.config_map
-        if not config_entries:
-            LOGGER.info("remote config payload contained no config files")
-            return
+            config_entries = remote_config.config.config_map
+            if not config_entries:
+                LOGGER.info("remote config payload contained no config files")
+                opamp_client.set_remote_config_status(
+                    remote_config,
+                    REMOTE_CONFIG_STATUS_APPLIED,
+                )
+                return
 
-        for filename, config_file in sorted(config_entries.items()):
-            CommonConfigHandler._apply_config_file(
-                filename=filename,
-                config_file=config_file,
-                opamp_client=opamp_client,
+            for filename, config_file in sorted(config_entries.items()):
+                CommonConfigHandler._apply_config_file(
+                    filename=filename,
+                    config_file=config_file,
+                    opamp_client=opamp_client,
+                )
+
+            opamp_client.set_remote_config_status(
+                remote_config,
+                REMOTE_CONFIG_STATUS_APPLYING,
             )
 
-        try:
-            reloaded = opamp_client.hot_reload()
-        except Exception as reload_error:  # pragma: no cover - defensive interface guard
-            LOGGER.warning("remote config applied but hot reload failed: %s", reload_error)
-            return
-        if reloaded:
-            LOGGER.info("remote config hot reload triggered successfully")
-        else:
-            LOGGER.info("remote config applied without hot reload support")
+            try:
+                reloaded = opamp_client.hot_reload()
+            except Exception as reload_error:  # pragma: no cover - defensive interface guard
+                opamp_client.set_remote_config_status(
+                    remote_config,
+                    REMOTE_CONFIG_STATUS_FAILED,
+                    str(reload_error),
+                )
+                LOGGER.warning("remote config applied but hot reload failed: %s", reload_error)
+                return
+            opamp_client.set_remote_config_status(
+                remote_config,
+                REMOTE_CONFIG_STATUS_APPLIED,
+            )
+            if reloaded:
+                LOGGER.info("remote config hot reload triggered successfully")
+            else:
+                LOGGER.info("remote config applied without hot reload support")
+        except RemoteAgentConfigError as apply_error:
+            opamp_client.set_remote_config_status(
+                remote_config,
+                REMOTE_CONFIG_STATUS_FAILED,
+                str(apply_error),
+            )
+            raise
 
     @staticmethod
     def calculate_config_hash(config: opamp_pb2.AgentConfigMap) -> bytes:

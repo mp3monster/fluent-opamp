@@ -22,6 +22,7 @@ from opamp_consumer.config import ConsumerConfig
 from opamp_consumer.exceptions import RemoteAgentConfigWriteError
 from opamp_consumer.fluentbit_client import CONFIG_DOCS_URL
 from opamp_consumer.proto import opamp_pb2
+from opamp_consumer.remote_config_status import resolve_remote_config_hash
 
 
 def _set_config(
@@ -364,6 +365,99 @@ def test_handle_capabilities_marks_effective_config_for_next_outbound_message(
     second_message = instance._populate_agent_to_server(opamp_pb2.AgentToServer())
 
     assert not second_message.HasField("effective_config")
+
+
+def test_send_includes_remote_config_status_only_after_it_changes(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """RemoteConfigStatus should be sent once per changed snapshot."""
+    config = ConsumerConfig(
+        server_url="http://localhost",
+        agent_config_path=str(tmp_path / "effective.yaml"),
+        agent_additional_params=[],
+        heartbeat_frequency=30,
+        agent_capabilities=["AcceptsRemoteConfig"],
+        log_level="debug",
+        service_name="Fluentbit",
+        service_namespace="FluentBitNS",
+    )
+    instance = client.OpAMPClient("http://localhost", config)
+    remote_config = opamp_pb2.AgentRemoteConfig()
+    remote_config.config.config_map[str(tmp_path / "remote.yaml")].body = b"updated: true\n"
+    instance.set_remote_config_status(
+        remote_config,
+        opamp_pb2.RemoteConfigStatuses.RemoteConfigStatuses_APPLIED,
+    )
+    sent_messages: list[opamp_pb2.AgentToServer] = []
+
+    async def _fake_send_http(msg: opamp_pb2.AgentToServer) -> opamp_pb2.ServerToAgent:
+        sent_messages.append(msg)
+        reply = opamp_pb2.ServerToAgent()
+        reply.instance_uid = instance.data.uid_instance
+        return reply
+
+    monkeypatch.setattr(instance, "send_http", _fake_send_http)
+
+    asyncio.run(instance.send())
+    asyncio.run(instance.send())
+
+    assert len(sent_messages) == 2
+    assert sent_messages[0].HasField("remote_config_status")
+    assert sent_messages[0].remote_config_status.last_remote_config_hash == resolve_remote_config_hash(
+        remote_config
+    )
+    assert (
+        sent_messages[0].remote_config_status.status
+        == opamp_pb2.RemoteConfigStatuses.RemoteConfigStatuses_APPLIED
+    )
+    assert not sent_messages[1].HasField("remote_config_status")
+
+
+def test_send_retries_remote_config_status_until_a_send_succeeds(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A failed transport send should not mark the status as already reported."""
+    config = ConsumerConfig(
+        server_url="http://localhost",
+        agent_config_path=str(tmp_path / "effective.yaml"),
+        agent_additional_params=[],
+        heartbeat_frequency=30,
+        agent_capabilities=["AcceptsRemoteConfig"],
+        log_level="debug",
+        service_name="Fluentbit",
+        service_namespace="FluentBitNS",
+    )
+    instance = client.OpAMPClient("http://localhost", config)
+    remote_config = opamp_pb2.AgentRemoteConfig()
+    remote_config.config.config_map[str(tmp_path / "remote.yaml")].body = b"updated: true\n"
+    instance.set_remote_config_status(
+        remote_config,
+        opamp_pb2.RemoteConfigStatuses.RemoteConfigStatuses_FAILED,
+        "disk full",
+    )
+    sent_messages: list[opamp_pb2.AgentToServer] = []
+    attempts = {"count": 0}
+
+    async def _fake_send_http(msg: opamp_pb2.AgentToServer) -> opamp_pb2.ServerToAgent:
+        attempts["count"] += 1
+        sent_messages.append(msg)
+        if attempts["count"] == 1:
+            raise RuntimeError("transport down")
+        reply = opamp_pb2.ServerToAgent()
+        reply.instance_uid = instance.data.uid_instance
+        return reply
+
+    monkeypatch.setattr(instance, "send_http", _fake_send_http)
+
+    asyncio.run(instance.send())
+    asyncio.run(instance.send())
+
+    assert len(sent_messages) == 2
+    assert sent_messages[0].HasField("remote_config_status")
+    assert sent_messages[1].HasField("remote_config_status")
+    assert instance.data.last_sent_remote_config_status is not None
 
 
 def test_handle_capabilities_skips_effective_config_send_when_agent_capability_disabled(

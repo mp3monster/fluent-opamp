@@ -75,6 +75,10 @@ from opamp_consumer.full_update_controller import (
 )
 from opamp_consumer.opamp_client_interface import OpAMPClientInterface
 from opamp_consumer.proto import anyvalue_pb2, opamp_pb2
+from opamp_consumer.remote_config_status import (
+    RemoteConfigStatusSnapshot,
+    set_remote_config_status,
+)
 from opamp_consumer.remote_agent_config_write_error import (
     RemoteAgentConfigWriteError,
 )
@@ -156,6 +160,10 @@ class OpAMPClientData:
     if the agent is configured to report effective config - then this is used
     as part of the control to decide if data needs to be sent"""
     config_changed: bool = True
+    remote_config_status: RemoteConfigStatusSnapshot = field(
+        default_factory=RemoteConfigStatusSnapshot
+    )
+    last_sent_remote_config_status: RemoteConfigStatusSnapshot | None = None
 
     def set_all_reporting_flags(self, value: bool = True) -> None:
         """Set every reporting flag value to the provided boolean.
@@ -271,6 +279,20 @@ class AbstractOpAMPClient(
             raise RemoteAgentConfigWriteError(
                 error_message
             ) from io_error
+
+    def set_remote_config_status(
+        self,
+        remote_config: opamp_pb2.AgentRemoteConfig,
+        status: int,
+        error_message: str = "",
+    ) -> None:
+        """Store the latest remote-config status snapshot for outbound reporting."""
+        set_remote_config_status(
+            data=self.data,
+            remote_config=remote_config,
+            status=status,
+            error_message=error_message,
+        )
 
     def _preserve_previous_config_file(self, target_path: pathlib.Path) -> pathlib.Path | None:
         """Rename an existing config file so the previous version is retained.

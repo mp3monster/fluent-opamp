@@ -83,6 +83,14 @@ class _FakeOpAMPClient(OpAMPClientInterface):
     def write_config_file(self, filename: str, body: bytes) -> None:
         return None
 
+    def set_remote_config_status(
+        self,
+        remote_config: opamp_pb2.AgentRemoteConfig,
+        status: int,
+        error_message: str = "",
+    ) -> None:
+        return None
+
     def poll_local_status_with_codes(
         self, port: int
     ) -> tuple[dict[str, str], dict[str, str]]:

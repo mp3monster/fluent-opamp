@@ -74,6 +74,15 @@ class OpAMPClientInterface(ABC):
         """Persist one remote config file to local disk."""
 
     @abstractmethod
+    def set_remote_config_status(
+        self,
+        remote_config: opamp_pb2.AgentRemoteConfig,
+        status: int,
+        error_message: str = "",
+    ) -> None:
+        """Store the latest remote-config status for future AgentToServer sends."""
+
+    @abstractmethod
     def poll_local_status_with_codes(
         self, port: int
     ) -> tuple[dict[str, str], dict[str, str]]:

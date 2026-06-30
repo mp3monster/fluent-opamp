@@ -30,6 +30,7 @@ from opamp_consumer.exceptions import (
 )
 from opamp_consumer.opamp_client_interface import OpAMPClientInterface
 from opamp_consumer.proto import opamp_pb2
+from opamp_consumer.remote_config_status import resolve_remote_config_hash
 
 
 class _FakeOpAMPClient(OpAMPClientInterface):
@@ -38,11 +39,16 @@ class _FakeOpAMPClient(OpAMPClientInterface):
         *,
         fail_write: bool = False,
         partial_write_text: str | None = None,
+        hot_reload_result: bool = True,
+        hot_reload_error: Exception | None = None,
     ) -> None:
         self.fail_write = fail_write
         self.partial_write_text = partial_write_text
+        self.hot_reload_result = hot_reload_result
+        self.hot_reload_error = hot_reload_error
         self.write_calls: list[tuple[str, bytes]] = []
         self.hot_reload_calls = 0
+        self.remote_config_status_calls: list[tuple[bytes, int, str]] = []
 
     async def send(self) -> opamp_pb2.ServerToAgent:
         return opamp_pb2.ServerToAgent()
@@ -90,6 +96,16 @@ class _FakeOpAMPClient(OpAMPClientInterface):
             raise RuntimeError("simulated write failure")
         target_path.write_text(body.decode("utf-8"), encoding="utf-8")
 
+    def set_remote_config_status(
+        self,
+        remote_config: opamp_pb2.AgentRemoteConfig,
+        status: int,
+        error_message: str = "",
+    ) -> None:
+        self.remote_config_status_calls.append(
+            (resolve_remote_config_hash(remote_config), int(status), str(error_message or ""))
+        )
+
     def poll_local_status_with_codes(
         self, port: int
     ) -> tuple[dict[str, str], dict[str, str]]:
@@ -118,7 +134,9 @@ class _FakeOpAMPClient(OpAMPClientInterface):
 
     def hot_reload(self) -> bool:
         self.hot_reload_calls += 1
-        return True
+        if self.hot_reload_error is not None:
+            raise self.hot_reload_error
+        return self.hot_reload_result
 
     def is_capability_allowed(self, capability_name: str) -> bool:
         return False
@@ -158,6 +176,18 @@ def test_apply_remote_config_writes_text_file_without_content_type(tmp_path: Pat
     assert target_path.read_text(encoding="utf-8") == "hello=world\n"
     assert client.write_calls == [(str(target_path), b"hello=world\n")]
     assert client.hot_reload_calls == 1
+    assert client.remote_config_status_calls == [
+        (
+            resolve_remote_config_hash(remote_config),
+            opamp_pb2.RemoteConfigStatuses.RemoteConfigStatuses_APPLYING,
+            "",
+        ),
+        (
+            resolve_remote_config_hash(remote_config),
+            opamp_pb2.RemoteConfigStatuses.RemoteConfigStatuses_APPLIED,
+            "",
+        ),
+    ]
 
 
 def test_apply_remote_config_validates_hash_and_logs_match(
@@ -268,3 +298,45 @@ def test_apply_remote_config_restores_backup_after_write_failure(tmp_path: Path)
 
     assert target_path.read_text(encoding="utf-8") == "original: true\n"
     assert list(tmp_path.glob("config.yaml.*")) == []
+    assert client.remote_config_status_calls[-1] == (
+        resolve_remote_config_hash(remote_config),
+        opamp_pb2.RemoteConfigStatuses.RemoteConfigStatuses_FAILED,
+        "failed to write remote config file "
+        f"'{str(target_path)}': simulated write failure",
+    )
+
+
+def test_apply_remote_config_marks_applied_when_hot_reload_returns_false(
+    tmp_path: Path,
+) -> None:
+    """A non-raising hot-reload failure should still report the config as applied."""
+    target_path = tmp_path / "config.yaml"
+    remote_config = _build_remote_config(
+        entries={str(target_path): (b"updated: true\n", "application/x-yaml")},
+    )
+    client = _FakeOpAMPClient(hot_reload_result=False)
+
+    CommonConfigHandler.apply_remote_config(remote_config, client)
+
+    assert client.remote_config_status_calls[-1] == (
+        resolve_remote_config_hash(remote_config),
+        opamp_pb2.RemoteConfigStatuses.RemoteConfigStatuses_APPLIED,
+        "",
+    )
+
+
+def test_apply_remote_config_marks_failed_when_hot_reload_raises(tmp_path: Path) -> None:
+    """A trapped hot-reload exception should be reported as a failed deployment."""
+    target_path = tmp_path / "config.yaml"
+    remote_config = _build_remote_config(
+        entries={str(target_path): (b"updated: true\n", "application/x-yaml")},
+    )
+    client = _FakeOpAMPClient(hot_reload_error=RuntimeError("reload exploded"))
+
+    CommonConfigHandler.apply_remote_config(remote_config, client)
+
+    assert client.remote_config_status_calls[-1] == (
+        resolve_remote_config_hash(remote_config),
+        opamp_pb2.RemoteConfigStatuses.RemoteConfigStatuses_FAILED,
+        "reload exploded",
+    )

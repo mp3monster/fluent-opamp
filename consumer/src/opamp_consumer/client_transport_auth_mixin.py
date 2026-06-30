@@ -23,6 +23,7 @@ import httpx
 from opamp_consumer import config as consumer_config
 from opamp_consumer.client_transport import send_http_message, send_websocket_message
 from opamp_consumer.proto import opamp_pb2
+from opamp_consumer.remote_config_status import mark_remote_config_status_sent
 from shared.opamp_config import OPAMP_HTTP_PATH
 
 TRANSPORT_HTTP = "http"  # Transport selector for HTTP polling mode.
@@ -144,12 +145,14 @@ class ClientTransportAuthorizationMixin:
                     ),
                 )
         if response is not None:
+            mark_remote_config_status_sent(data=self.data, msg=msg)
             if not send_as_is and self.data.full_update_controller is not None:
                 self.data.full_update_controller.update_sent()
             return response
 
         try:
             response = await self.send_http(msg)
+            mark_remote_config_status_sent(data=self.data, msg=msg)
             if not send_as_is and self.data.full_update_controller is not None:
                 self.data.full_update_controller.update_sent()
             return response
