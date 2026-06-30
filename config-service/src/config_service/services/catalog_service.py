@@ -13,11 +13,11 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
 from config_service.json_artifacts import load_json_artifact
+from config_service.json_utils import load_json_file
 
 KEY_CATALOGS_BY_TYPE = "catalogs_by_type"
 KEY_DEFAULT_VERSIONS = "default_versions"
@@ -76,7 +76,7 @@ class CatalogService:
 
     def _load_registry(self) -> None:
         """Load registry JSON and enforce that at least one catalog group exists."""
-        self._registry = json.loads(self.registry_path.read_text(encoding="utf-8"))
+        self._registry = load_json_file(self.registry_path, purpose="catalog registry")
         catalogs_by_type = self._registry_catalogs_by_type()
         if not catalogs_by_type:
             raise ValueError("catalog-registry.json must define at least one catalog group")
@@ -99,7 +99,12 @@ class CatalogService:
             loaded[config_type] = {}
             for version, catalog_ref in version_map.items():
                 path = self._resolve_catalog_path(catalog_ref)
-                payload = load_json_artifact(path)
+                try:
+                    payload = load_json_artifact(path)
+                except Exception as exc:
+                    raise ValueError(
+                        f"Failed loading catalog for config_type={config_type} version={version} from {path}: {exc}"
+                    ) from exc
                 self.validate_catalog_payload(version, payload, source=str(path))
                 loaded[config_type][version] = payload
         self._catalogs_by_type = loaded

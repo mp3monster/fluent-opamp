@@ -13,7 +13,9 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
+from typing import Any, Callable
 
 from quart import Quart
 
@@ -34,6 +36,18 @@ from config_service.services.ui_document_service import UiDocumentService
 from config_service.services.validation_service import ValidationService
 from config_service.services.yaml_render_service import YamlRenderService
 
+LOGGER = logging.getLogger(__name__)
+
+
+def _bootstrap_or_raise(component_name: str, path: Path, loader: Callable[[], Any]) -> Any:
+    """Execute one config-service bootstrap stage with path-rich failures."""
+    try:
+        return loader()
+    except Exception as exc:
+        raise RuntimeError(
+            f"Config-service bootstrap failed while loading {component_name} from {path}: {exc}"
+        ) from exc
+
 
 def register_config_service_feature(opamp_app: Quart) -> None:
     """Mount config-service routes/services into an existing OpAMP Quart app."""
@@ -46,17 +60,49 @@ def register_config_service_feature(opamp_app: Quart) -> None:
     ).strip()
     effective_config_path = Path(configured_path).resolve()
     opamp_app.extensions[APP_EXTENSION_CONFIG_PATH] = str(effective_config_path)
-    catalog_service = CatalogService(repo_root / "config" / "catalog-registry.json")
-    catalog_service.load_all_catalogs()
-    service_definition_service = ServiceDefinitionService(
-        repo_root / "config" / "service-registry.json"
+    LOGGER.info(
+        "registering embedded config-service feature repo_root=%s runtime_config=%s",
+        repo_root,
+        effective_config_path,
     )
-    service_definition_service.load_all()
-    parser_definition_service = ParserDefinitionService(repo_root / "config" / "parser-registry.json")
-    parser_definition_service.load_all()
-    issue_code_service = IssueCodeService(repo_root / "config" / "issue-code-messages.json")
-    issue_code_service.load()
-    rules_registry_service = RulesRegistryService(repo_root / "config" / "validation-rules-registry.json")
+    catalog_registry_path = repo_root / "config" / "catalog-registry.json"
+    catalog_service = _bootstrap_or_raise(
+        "catalog registry",
+        catalog_registry_path,
+        lambda: CatalogService(catalog_registry_path),
+    )
+    _bootstrap_or_raise("catalog definitions", catalog_registry_path, catalog_service.load_all_catalogs)
+    service_registry_path = repo_root / "config" / "service-registry.json"
+    service_definition_service = _bootstrap_or_raise(
+        "service registry",
+        service_registry_path,
+        lambda: ServiceDefinitionService(service_registry_path),
+    )
+    _bootstrap_or_raise(
+        "service definitions",
+        service_registry_path,
+        service_definition_service.load_all,
+    )
+    parser_registry_path = repo_root / "config" / "parser-registry.json"
+    parser_definition_service = _bootstrap_or_raise(
+        "parser registry",
+        parser_registry_path,
+        lambda: ParserDefinitionService(parser_registry_path),
+    )
+    _bootstrap_or_raise(
+        "parser definitions",
+        parser_registry_path,
+        parser_definition_service.load_all,
+    )
+    issue_code_path = repo_root / "config" / "issue-code-messages.json"
+    issue_code_service = IssueCodeService(issue_code_path)
+    _bootstrap_or_raise("issue-code registry", issue_code_path, issue_code_service.load)
+    rules_registry_path = repo_root / "config" / "validation-rules-registry.json"
+    rules_registry_service = _bootstrap_or_raise(
+        "validation rules registry",
+        rules_registry_path,
+        lambda: RulesRegistryService(rules_registry_path),
+    )
     rule_engine_service = RuleEngineService(rules_registry_service)
     validation_service = ValidationService(rule_engine_service)
     fluentbit_yaml_config_service = FluentBitYamlConfigService()

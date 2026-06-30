@@ -27,6 +27,7 @@ from quart import Quart
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+import config_service.opamp_integration as opamp_integration
 from config_service.app import create_app
 from config_service.opamp_integration import register_config_service_feature
 from config_service.runtime_config import ENV_CONFIG_TOOL_CONFIG_PATH
@@ -115,6 +116,25 @@ async def test_embedded_agent_validation_availability_registers_service(
     body = await resp.get_json()
     assert body["ok"] is True
     assert body["available"] is False
+
+
+def test_register_config_service_feature_wraps_bootstrap_errors_with_stage_and_path(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = Quart(__name__)
+
+    def _raise_catalog_error(self: object) -> None:
+        raise ValueError("broken catalog payload")
+
+    monkeypatch.setattr(opamp_integration.CatalogService, "load_all_catalogs", _raise_catalog_error)
+
+    with pytest.raises(RuntimeError) as exc_info:
+        opamp_integration.register_config_service_feature(app)
+
+    message = str(exc_info.value)
+    assert "catalog definitions" in message
+    assert "catalog-registry.json" in message
+    assert "broken catalog payload" in message
 
 
 @pytest.mark.asyncio

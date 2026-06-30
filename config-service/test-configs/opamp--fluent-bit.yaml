@@ -28,5 +28,5 @@ pipeline:
     -
       file: test.txt
       format: out_file
-      match: *
+      match: "*"
       name: file

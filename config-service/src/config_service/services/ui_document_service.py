@@ -123,7 +123,7 @@ class UiDocumentService:
         while header_comment_lines and header_comment_lines[-1].strip() == "":
             header_comment_lines.pop()
 
-        meta[KEY_HEADER_COMMENTS] = ""
+        meta[KEY_HEADER_COMMENTS] = "\n".join(header_comment_lines)
         meta[KEY_BODY] = "\n".join(lines[body_start:])
         return meta
 

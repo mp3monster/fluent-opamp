@@ -20,6 +20,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import unquote
 
+from config_service.json_utils import JsonConfigLoadError, load_json_file
+
 UTF8_ENCODING = "utf-8"
 KEY_ARTIFACT_MANIFEST = "artifact_manifest"
 KEY_FORMAT = "format"
@@ -42,7 +44,10 @@ class JsonArtifactError(ValueError):
 
 def load_json_artifact(path: Path) -> Any:
     """Load one JSON artifact, assembling it when the file is a manifest."""
-    payload = json.loads(path.read_text(encoding=UTF8_ENCODING))
+    try:
+        payload = load_json_file(path, purpose="JSON artifact")
+    except JsonConfigLoadError as exc:
+        raise JsonArtifactError(str(exc)) from exc
     if not _is_manifest(payload):
         return payload
     return _assemble_manifest(path, payload, loader=load_json_artifact)
@@ -50,7 +55,10 @@ def load_json_artifact(path: Path) -> Any:
 
 def load_json_schema_artifact(path: Path) -> Any:
     """Load one JSON Schema artifact, resolving manifests and file `$ref`s."""
-    payload = json.loads(path.read_text(encoding=UTF8_ENCODING))
+    try:
+        payload = load_json_file(path, purpose="JSON schema artifact")
+    except JsonConfigLoadError as exc:
+        raise JsonArtifactError(str(exc)) from exc
     if _is_manifest(payload):
         return _assemble_manifest(path, payload, loader=load_json_schema_artifact)
     return _resolve_json_schema_refs(payload, source_path=path, root_document=payload, root_path=path)

@@ -13,9 +13,10 @@
 # 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
+
+from config_service.json_utils import load_json_file
 
 UTF8_ENCODING = "utf-8"
 KEY_REGISTRY_VERSION = "registry_version"
@@ -35,7 +36,7 @@ class IssueCodeService:
         """Load the issue-code registry from disk when the registry file exists."""
         if not self.config_path.exists():
             return
-        self._payload = json.loads(self.config_path.read_text(encoding=UTF8_ENCODING))
+        self._payload = load_json_file(self.config_path, purpose="issue-code registry")
 
     def get_all(self) -> dict[str, Any]:
         """Return the full loaded issue-code registry payload."""

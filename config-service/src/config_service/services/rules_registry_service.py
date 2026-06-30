@@ -12,11 +12,11 @@
 # limitations under the License.
 from __future__ import annotations
 
-import json
 import logging
 from pathlib import Path
 from typing import Any
 
+from config_service.json_utils import load_json_file
 from config_service.rule_engine.registry import RuleAdapterRegistry
 
 LOGGER = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ class RulesRegistryService:
 
     def _load(self) -> None:
         """Load the raw registry payload from disk and validate its structure."""
-        self._registry = json.loads(self.registry_path.read_text(encoding=UTF8_ENCODING))
+        self._registry = load_json_file(self.registry_path, purpose="validation rules registry")
         self.validate_registry()
 
     def validate_registry(self) -> None:

@@ -13,9 +13,10 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
+
+from config_service.json_utils import load_json_file
 
 UTF8_ENCODING = "utf-8"
 KEY_SERVICE_DEFINITIONS_BY_TYPE = "service_definitions_by_type"
@@ -55,7 +56,7 @@ class ServiceDefinitionService:
 
     def _load_registry(self) -> None:
         """Load the service registry and validate that it contains grouped definitions."""
-        self._registry = json.loads(self.registry_path.read_text(encoding=UTF8_ENCODING))
+        self._registry = load_json_file(self.registry_path, purpose="service registry")
         grouped = self._registry_definitions_by_type()
         if not grouped:
             raise ValueError("service-registry.json must include non-empty service definitions")
@@ -90,7 +91,7 @@ class ServiceDefinitionService:
             loaded[config_type] = {}
             for version, ref in version_map.items():
                 path = self._resolve_path(str(ref))
-                payload = json.loads(path.read_text(encoding=UTF8_ENCODING))
+                payload = load_json_file(path, purpose="service definition")
                 self.validate_definition(version, payload, source=str(path))
                 loaded[config_type][version] = payload
         self._definitions_by_type = loaded

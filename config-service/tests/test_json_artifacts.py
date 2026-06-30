@@ -80,6 +80,18 @@ def test_load_json_artifact_rejects_unknown_manifest_format(tmp_path: Path) -> N
         load_json_artifact(artifact_path)
 
 
+def test_load_json_artifact_reports_path_and_parse_location_for_invalid_json(tmp_path: Path) -> None:
+    artifact_path = tmp_path / "broken.json"
+    artifact_path.write_text('{"title": "broken",\n', encoding="utf-8")
+
+    with pytest.raises(JsonArtifactError) as exc_info:
+        load_json_artifact(artifact_path)
+
+    message = str(exc_info.value)
+    assert str(artifact_path) in message
+    assert "line 2 column 1" in message
+
+
 def test_write_manifest_json_artifact_supports_nested_files_and_array_appends(tmp_path: Path) -> None:
     artifact_path = tmp_path / "schema.json"
 
