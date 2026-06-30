@@ -127,6 +127,33 @@ def test_main_without_arguments_supports_dev_sync_command(
     assert args.sync_command == "config-service-json"
 
 
+def test_main_without_arguments_supports_build_js_complexity_command(
+    monkeypatch,
+    capsys,
+) -> None:
+    responses = iter(["2", "7", "", "", "q"])
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr("builtins.input", lambda _: next(responses))
+    monkeypatch.setattr(cli, "CommandRuntime", _FakeRuntime)
+
+    def fake_dispatch(args, runtime) -> bool:  # type: ignore[no-untyped-def]
+        captured["args"] = args
+        captured["runtime"] = runtime
+        return False
+
+    monkeypatch.setattr(cli, "_dispatch", fake_dispatch)
+
+    exit_code = cli.main([])
+    stdout = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert "js-complexity" in stdout
+    args = captured["args"]
+    assert args.command_group == "build"
+    assert args.build_command == "js-complexity"
+
+
 def test_main_without_arguments_can_quit_immediately(monkeypatch, capsys) -> None:
     monkeypatch.setattr("builtins.input", lambda _: "q")
 

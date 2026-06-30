@@ -38,6 +38,10 @@ from .components import (
     run_e2e_tests,
     select_components,
 )
+from .javascript_complexity import (
+    DEFAULT_MAX_COMPLEXITY,
+    run_javascript_complexity_checks,
+)
 from .config_sync import sync_config_service_json_assets
 from .hooks import apply_precommit_logic
 from .provider_ui import compact_provider_ui_assets
@@ -61,7 +65,9 @@ INTERACTIVE_SUCCESS_MESSAGE = "Command complete. Returning to main menu."
 INTERACTIVE_ISSUES_MESSAGE = "Command completed with reported issues. Returning to main menu."
 INTERACTIVE_FAILURE_MESSAGE = "Command failed. Returning to main menu."
 COMPONENT_BUILD_COMMANDS = frozenset({"artefact", "sbom", "secure"})
-SIMPLE_BUILD_COMMANDS = frozenset({"ui-compaction", "docs", "diagrams", "release-assets"})
+SIMPLE_BUILD_COMMANDS = frozenset(
+    {"ui-compaction", "js-complexity", "docs", "diagrams", "release-assets"}
+)
 
 
 def build_parser(default_repo_root: Path | None = None) -> argparse.ArgumentParser:
@@ -165,6 +171,25 @@ def build_parser(default_repo_root: Path | None = None) -> argparse.ArgumentPars
         "--clean-only",
         action="store_true",
         help="Remove existing `.mini.js` files and exit",
+    )
+    js_complexity_parser = build_subparsers.add_parser(
+        "js-complexity",
+        help="Run JavaScript and TypeScript cyclomatic-complexity checks",
+    )
+    js_complexity_parser.add_argument(
+        "--max-complexity",
+        type=int,
+        default=DEFAULT_MAX_COMPLEXITY,
+        help="Maximum allowed cyclomatic complexity per function/method",
+    )
+    js_complexity_parser.add_argument(
+        "--path",
+        action="append",
+        dest="paths",
+        help=(
+            "Optional file or directory path relative to repo root. "
+            "Repeat to override the default JavaScript/TypeScript source target set."
+        ),
     )
     build_subparsers.add_parser("docs", help="Regenerate markdown quick references from JSON artifacts")
     build_subparsers.add_parser("diagrams", help="Render Mermaid diagrams to images")
@@ -397,6 +422,12 @@ def _dispatch_simple_build_command(args: argparse.Namespace, runtime: CommandRun
             html_dir=args.html_dir,
             clean_only=args.clean_only,
         )
+    if args.build_command == "js-complexity":
+        return run_javascript_complexity_checks(
+            runtime,
+            max_complexity=args.max_complexity,
+            target_paths=args.paths,
+        )
     if args.build_command == "docs":
         return build_docs(runtime, python_exe=args.python)
     if args.build_command == "diagrams":
@@ -544,6 +575,7 @@ def _prompt_for_build_tokens(available_components: list[str]) -> list[str]:
             ("test", "Run unit, Playwright, or e2e tests"),
             ("pdf", "Generate the OpAMP PDF manual"),
             ("ui-compaction", "Build compacted provider web UI JavaScript assets"),
+            ("js-complexity", "Run JavaScript and TypeScript cyclomatic-complexity checks"),
             ("docs", "Regenerate markdown quick references"),
             ("diagrams", "Render Mermaid diagrams to images"),
             ("release-assets", "Build release wheels, SBOMs, and optional GitHub assets"),
@@ -597,7 +629,26 @@ def _prompt_for_pdf_tokens() -> list[str]:
 
 def _prompt_for_simple_build_tokens(command: str) -> list[str]:
     """Return token sequences for single-step build commands."""
+    if command == "js-complexity":
+        return _prompt_for_js_complexity_tokens()
     return ["build", command]
+
+
+def _prompt_for_js_complexity_tokens() -> list[str]:
+    """Prompt for optional JavaScript/TypeScript complexity-check arguments."""
+    tokens = ["build", "js-complexity"]
+    max_complexity = input(
+        f"Maximum cyclomatic complexity threshold (leave blank for {DEFAULT_MAX_COMPLEXITY}): "
+    ).strip()
+    if max_complexity:
+        tokens.extend(["--max-complexity", max_complexity])
+    raw_paths = input(
+        "Optional file/folder path(s), comma-separated (leave blank for defaults): "
+    ).strip()
+    if raw_paths:
+        for path in [item.strip() for item in raw_paths.split(",") if item.strip()]:
+            tokens.extend(["--path", path])
+    return tokens
 
 
 def _prompt_for_certificate_tokens() -> list[str]:
