@@ -76,6 +76,12 @@ def register_client_routes(  # noqa: PLR0913
             remote_config_capability_reported=client_supports_remote_config(record),
         )
 
+    def remote_config_history_description(file_count: int) -> str:
+        """Return the history message used when remote config files are queued."""
+        if file_count == 1:
+            return "Queued 1 remote config file."
+        return f"Queued {file_count} remote config files."
+
     @app.post("/api/client-errors")
     async def client_errors() -> ResponseReturnValue:
         """Record one client-side UI error reported by browser JavaScript."""
@@ -515,6 +521,11 @@ def register_client_routes(  # noqa: PLR0913
 
         store.set_pending_remote_config(client_id, remote_config_bytes)
         record = store.enqueue_next_action(client_id, action_apply_config)
+        store.add_event(
+            client_id,
+            description=remote_config_history_description(len(file_specs)),
+            max_events=provider_config.CONFIG.client_event_history_size,
+        )
         return (
             jsonify(
                 {
@@ -576,6 +587,11 @@ def register_client_routes(  # noqa: PLR0913
         )
         if queue_action:
             record = store.enqueue_next_action(client_id, action_apply_config)
+            store.add_event(
+                client_id,
+                description=remote_config_history_description(len(file_specs)),
+                max_events=provider_config.CONFIG.client_event_history_size,
+            )
 
         return (
             jsonify(

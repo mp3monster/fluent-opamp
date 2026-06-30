@@ -96,7 +96,8 @@
     setClientHeartbeatBtn.addEventListener("click", saveClientHeartbeat);
     eventsSortBtn.addEventListener("click", () => {
       state.eventsSortDir = state.eventsSortDir === "desc" ? "asc" : "desc";
-      eventsSortBtn.textContent = state.eventsSortDir === "desc" ? "Desc" : "Asc";
+      eventsSortBtn.textContent = state.eventsSortDir === "desc" ? "↓" : "↑";
+      eventsSortBtn.title = state.eventsSortDir === "desc" ? "Sort descending" : "Sort ascending";
       if (activeClient && modal.classList.contains("open")) {
         renderEventsHistory(activeClient);
       }

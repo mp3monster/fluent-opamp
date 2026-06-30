@@ -2606,7 +2606,16 @@
         if (!eventObj || typeof eventObj !== "object") return;
         if ("event_time" in eventObj || "event_description" in eventObj) {
           const eventTime = String(eventObj.event_time || "");
-          let description = String(eventObj.event_description || "").trim();
+          const direction = String(eventObj.event_direction || "sent").trim().toLowerCase();
+          const eventLines = Array.isArray(eventObj.event_lines)
+            ? eventObj.event_lines
+                .map(line => String(line || "").trim())
+                .filter(Boolean)
+            : [];
+          let description = eventLines.join("\n");
+          if (!description) {
+            description = String(eventObj.event_description || "").trim();
+          }
           if (!description && ("classifier" in eventObj || "action" in eventObj)) {
             const classifier = String(eventObj.classifier || "command").trim();
             const action = String(eventObj.action || eventObj.command || "unknown").trim();
@@ -2614,6 +2623,7 @@
           }
           flattened.push({
             eventTime,
+            direction: direction === "received" ? "received" : "sent",
             description: description || "--",
             ts: new Date(eventTime).getTime(),
           });
@@ -2622,6 +2632,7 @@
         Object.entries(eventObj).forEach(([eventTime, description]) => {
           flattened.push({
             eventTime,
+            direction: "sent",
             description: String(description),
             ts: new Date(eventTime).getTime(),
           });
@@ -2631,6 +2642,7 @@
       if (flattened.length === 0) {
         eventsHistoryList.innerHTML = `
           <tr>
+            <td>--</td>
             <td>--</td>
             <td>No event history yet.</td>
           </tr>
@@ -2654,10 +2666,19 @@
         const when = Number.isNaN(event.ts)
           ? event.eventTime
           : new Date(event.eventTime).toLocaleString();
-        row.innerHTML = `
-          <td>${when}</td>
-          <td>${event.description}</td>
-        `;
+        const arrow = event.direction === "received" ? "→" : "←";
+        const whenCell = document.createElement("td");
+        whenCell.textContent = when;
+        const directionCell = document.createElement("td");
+        directionCell.className = `history-direction-cell history-direction-${event.direction}`;
+        directionCell.textContent = arrow;
+        directionCell.title = event.direction === "received" ? "Received from client" : "Sent to client";
+        const descriptionCell = document.createElement("td");
+        descriptionCell.className = "history-description-cell";
+        descriptionCell.textContent = event.description;
+        row.appendChild(whenCell);
+        row.appendChild(directionCell);
+        row.appendChild(descriptionCell);
         eventsHistoryList.appendChild(row);
       });
       historyTabBtn.classList.remove("hidden");

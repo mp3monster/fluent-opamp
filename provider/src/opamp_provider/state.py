@@ -47,6 +47,16 @@ AUTH_MECHANISM_MTLS = "mtls"  # Client auth mechanism value for mutual TLS ident
 AUTH_MECHANISM_JWT = "jwt"  # Client auth mechanism value for JWT-based identities.
 REQUIRED_RESTORE_FIELDS = ("client_id",)  # Required persisted fields for client restore payloads.
 CONFIG_TEXT_ENCODING = "utf-8"  # Encoding used for current-config compression storage.
+AGENT_MESSAGE_RECEIPT_PREFIX = "Received AgentToServer."  # Prefix used for receive-side event-history lines.
+_AGENT_MESSAGE_RECEIPT_FIELDS: tuple[tuple[str, str, bool], ...] = (
+    ("effective_config", "EffectiveConfig", True),
+    ("remote_config_status", "RemoteConfigStatus", True),
+    ("package_statuses", "PackageStatuses", False),
+    ("connection_settings_request", "ConnectionSettingsRequest", False),
+    ("custom_message", "CustomMessage", True),
+    ("available_components", "AvailableComponents", True),
+    ("connection_settings_status", "ConnectionSettingsStatus", True),
+)
 
 
 def _utc_now() -> datetime:
@@ -121,6 +131,16 @@ def _effective_config_to_string(
             "body": bytes(config_file.body or b"").decode("utf-8", errors="replace"),
         }
     return json.dumps(rendered, indent=2, sort_keys=True)
+
+
+def _agent_message_receipt_lines(agent_msg: opamp_pb2.AgentToServer) -> list[str]:
+    """Return history lines for supported AgentToServer object payloads."""
+    lines: list[str] = []
+    for field_name, label, supported in _AGENT_MESSAGE_RECEIPT_FIELDS:
+        if not supported or not agent_msg.HasField(field_name):
+            continue
+        lines.append(f"{AGENT_MESSAGE_RECEIPT_PREFIX}{label}")
+    return lines
 
 
 class ClientChannel(str, Enum):
@@ -463,6 +483,7 @@ class ClientStore:
         self._apply_effective_config(record, agent_msg)
         self._apply_agent_description(record, agent_msg)
         self._apply_disconnect(record, agent_msg, now)
+        self._record_agent_message_receipt_event(record, agent_msg)
 
     def _queue_force_resync_if_missing_locked(self, record: ClientRecord) -> bool:
         """Queue one unsent force-resync command when none is pending."""
@@ -633,6 +654,24 @@ class ClientStore:
         if agent_msg.HasField("agent_disconnect"):
             record.disconnected = True
             record.disconnected_at = now
+
+    def _record_agent_message_receipt_event(
+        self, record: ClientRecord, agent_msg: opamp_pb2.AgentToServer
+    ) -> None:
+        """Append one receive-history event for supported AgentToServer objects."""
+        event_lines = _agent_message_receipt_lines(agent_msg)
+        if not event_lines:
+            return
+        event = EventHistory(
+            event_description="\n".join(event_lines),
+            event_direction="received",
+            event_lines=event_lines,
+        )
+        self._append_history_event(
+            record,
+            event,
+            max_events=self._resolve_event_history_size(),
+        )
 
     def queue_command(
         self,

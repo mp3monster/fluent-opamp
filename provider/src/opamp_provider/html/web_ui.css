@@ -1152,6 +1152,25 @@
       margin-top: 10px;
     }
 
+    .history-direction-cell {
+      width: 48px;
+      text-align: center;
+      font-size: 1rem;
+      font-weight: 700;
+    }
+
+    .history-direction-sent {
+      color: #2f3f8f;
+    }
+
+    .history-direction-received {
+      color: var(--ok);
+    }
+
+    .history-description-cell {
+      white-space: pre-wrap;
+    }
+
     .health-row-ok {
       background: rgba(46, 125, 100, 0.1);
     }

@@ -31,6 +31,14 @@ class EventHistory(BaseModel):
 
     event_time: datetime = Field(default_factory=_utc_now)
     event_description: str
+    event_direction: str = Field(
+        default="sent",
+        description="Timeline direction: 'sent' for provider-to-agent activity, 'received' for agent-to-provider activity.",
+    )
+    event_lines: list[str] = Field(
+        default_factory=list,
+        description="Optional multi-line detail strings rendered as one timeline event.",
+    )
 
     def get_event_time(self) -> datetime:
         """Return the timestamp assigned when the event object was created."""
