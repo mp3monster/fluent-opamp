@@ -30,7 +30,12 @@ from opamp_provider import auth as provider_auth
 from opamp_provider import config as provider_config
 from opamp_provider.app_client_filters import coerce_bool_setting
 from opamp_provider.app_constants import GLOBAL_SETTINGS_HELP, MODEL_DUMP_MODE
-from opamp_provider.app_persistence import PersistenceTracker, request_process_shutdown
+from opamp_provider.app_persistence import (
+    PersistenceTracker,
+)
+from opamp_provider.app_persistence import (
+    request_process_shutdown as _request_process_shutdown,
+)
 from opamp_provider.app_response_builder import ServerToAgentResponseBuilder
 from opamp_provider.app_routes_clients import register_client_routes
 from opamp_provider.app_routes_settings import register_settings_routes
@@ -49,6 +54,8 @@ from opamp_provider.component_features import (
 from opamp_provider.component_version import component_version_text
 from opamp_provider.exceptions import ServerToAgentException
 from opamp_provider.mcptool import register_mcp_transport, register_tool_routes
+from opamp_provider.metrics import PROVIDER_METRICS
+from opamp_provider.metrics.routes import register_metrics_routes
 from opamp_provider.opamp_protocol import (
     build_error_message as protocol_build_error_message,
 )
@@ -1187,6 +1194,12 @@ register_settings_routes(
     advertised_server_capabilities=_advertised_server_capabilities,
     save_state_snapshot_func=lambda **kwargs: save_state_snapshot(**kwargs),
     prune_snapshot_files_func=lambda **kwargs: prune_snapshot_files(**kwargs),
+)
+register_metrics_routes(
+    app,
+    provider_config=provider_config,
+    metrics_registry=PROVIDER_METRICS,
+    store=STORE,
 )
 register_client_routes(
     app,

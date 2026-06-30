@@ -54,6 +54,10 @@ def register_settings_routes(  # noqa: PLR0913
             "autosave_interval_seconds_since_change": int(
                 provider_config.CONFIG.state_persistence.autosave_interval_seconds_since_change
             ),
+            "metrics_enabled": provider_config.CONFIG.metrics.enabled is True,
+            "metrics_graph_history_minutes": int(
+                provider_config.CONFIG.metrics.graph_history_minutes
+            ),
             "advertised_capabilities": advertised_server_capabilities(),
         }
         payload.update(tls_certificate_expiry_metadata())

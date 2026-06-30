@@ -21,15 +21,17 @@ import string
 import sys
 import threading
 import zlib
+from collections.abc import Iterable
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Iterable, Optional
+from typing import Any, Optional
 
 from google.protobuf import text_format
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
 from opamp_provider.command_record import CommandRecord
 from opamp_provider.event_history import EventHistory
+from opamp_provider.metrics import PROVIDER_METRICS
 from opamp_provider.proto import opamp_pb2
 from opamp_provider.tool_api_contract import OTEL_AGENT_EXPORT_FIELDS
 from shared.opamp_config import anyvalue_to_string
@@ -109,6 +111,12 @@ def _normalize_custom_capabilities(capabilities: Iterable[str]) -> list[str]:
             continue
         normalized.add(value)
     return sorted(normalized)
+
+
+def _metric_label_value(value: object) -> str:
+    """Return a non-empty metric label value for runtime counter labels."""
+    normalized = str(value or "").strip()
+    return normalized or "unknown"
 
 
 def _effective_config_to_string(
@@ -378,6 +386,7 @@ class ClientStore:
             agent_msg.instance_uid.hex() if agent_msg.instance_uid else "unknown"
         )
         now = _utc_now()
+        queued_force_resync = False
         with self._lock:
             record = self._clients.get(client_id)
             if record is None:
@@ -388,7 +397,7 @@ class ClientStore:
                     heartbeat_frequency=self._default_heartbeat_frequency,
                 )
                 self._clients[client_id] = record
-            self._update_record_from_agent_msg_locked(
+            queued_force_resync = self._update_record_from_agent_msg_locked(
                 record,
                 agent_msg,
                 now=now,
@@ -396,6 +405,9 @@ class ClientStore:
                 remote_addr=remote_addr,
                 check_sequence_num=True,
             )
+        if queued_force_resync:
+            PROVIDER_METRICS.record_force_resync_queued()
+        self._capture_metrics_snapshot()
         return record
 
     def add_pending_approval_from_agent_msg(
@@ -430,7 +442,8 @@ class ClientStore:
                 check_sequence_num=False,
             )
             self._pending_approvals[client_id] = record
-            return record
+        self._capture_metrics_snapshot()
+        return record
 
     def _rekey_client_record_for_reissued_uid_locked(
         self, new_client_id: str
@@ -468,11 +481,12 @@ class ClientStore:
         channel: Optional[str],
         remote_addr: Optional[str],
         check_sequence_num: bool,
-    ) -> None:
+    ) -> bool:
         """Apply AgentToServer message data to an existing in-memory record."""
         incoming_message_id = int(agent_msg.sequence_num)
+        queued_force_resync = False
         if check_sequence_num:
-            self.check_sequence_num(record, incoming_message_id)
+            queued_force_resync = self.check_sequence_num(record, incoming_message_id)
         else:
             record.message_id = incoming_message_id
         self._apply_comm_metadata(record, now, channel, remote_addr=remote_addr)
@@ -484,6 +498,7 @@ class ClientStore:
         self._apply_agent_description(record, agent_msg)
         self._apply_disconnect(record, agent_msg, now)
         self._record_agent_message_receipt_event(record, agent_msg)
+        return queued_force_resync
 
     def _queue_force_resync_if_missing_locked(self, record: ClientRecord) -> bool:
         """Queue one unsent force-resync command when none is pending."""
@@ -522,13 +537,13 @@ class ClientStore:
         except Exception:
             return DEFAULT_HISTORY_MAX_EVENTS
 
-    def check_sequence_num(self, record: ClientRecord, message_id: int) -> None:
+    def check_sequence_num(self, record: ClientRecord, message_id: int) -> bool:
         """Validate incoming sequence number continuity and queue force-resync when needed."""
         logger = logging.getLogger(__name__)
         current_message_id = int(record.message_id)
-        requires_full_report = (
-            current_message_id == MIN_INTEGER or message_id != (current_message_id + 1)
-        )
+        first_message = current_message_id == MIN_INTEGER
+        requires_full_report = first_message or message_id != (current_message_id + 1)
+        queued = False
         if requires_full_report:
             queued = self._queue_force_resync_if_missing_locked(record)
             logger.warning(
@@ -541,6 +556,8 @@ class ClientStore:
                 message_id,
                 queued,
             )
+            if not first_message and message_id != (current_message_id + 1):
+                PROVIDER_METRICS.record_sequence_gap()
         else:
             logger.info(
                 (
@@ -552,6 +569,11 @@ class ClientStore:
                 message_id,
             )
         record.message_id = message_id
+        return queued
+
+    def _capture_metrics_snapshot(self) -> None:
+        """Capture graphable gauge values after a store mutation."""
+        PROVIDER_METRICS.capture_gauge_series(self)
 
     def _apply_comm_metadata(
         self,
@@ -700,7 +722,15 @@ class ClientStore:
             )
             record.commands.append(cmd)
             self._append_history_event(record, cmd, max_events=max_events)
-            return cmd
+        PROVIDER_METRICS.increment_counter(
+            "opamp_provider_commands_queued_total",
+            labels={
+                "classifier": _metric_label_value(classifier),
+                "action": _metric_label_value(action),
+            },
+        )
+        self._capture_metrics_snapshot()
+        return cmd
 
     def set_requested_config(
         self,
@@ -722,7 +752,8 @@ class ClientStore:
             record.requested_config = config_text
             record.requested_config_version = version
             record.requested_config_apply_at = apply_at
-            return record
+        self._capture_metrics_snapshot()
+        return record
 
     def set_next_actions(
         self, client_id: str, actions: Optional[list[str]]
@@ -737,7 +768,8 @@ class ClientStore:
                 )
                 self._clients[client_id] = record
             record.next_actions = actions if actions else None
-            return record
+        self._capture_metrics_snapshot()
+        return record
 
     def enqueue_next_action(self, client_id: str, action: str) -> ClientRecord:
         """Append one next-action item to the client's pending action queue."""
@@ -755,7 +787,8 @@ class ClientStore:
             queued_actions = list(record.next_actions or [])
             queued_actions.append(normalized_action)
             record.next_actions = queued_actions
-            return record
+        self._capture_metrics_snapshot()
+        return record
 
     def add_event(
         self, client_id: str, *, description: str, max_events: int
@@ -771,7 +804,8 @@ class ClientStore:
                 self._clients[client_id] = record
             event = EventHistory(event_description=description)
             self._append_history_event(record, event, max_events=max_events)
-            return record
+        self._capture_metrics_snapshot()
+        return record
 
     def get_default_heartbeat_frequency(self) -> int:
         """Return the default heartbeat frequency in seconds used for client records."""
@@ -800,7 +834,8 @@ class ClientStore:
                 len(self._clients),
                 frequency,
             )
-            return len(self._clients)
+        self._capture_metrics_snapshot()
+        return len(self._clients)
 
     def set_client_heartbeat_frequency(
         self,
@@ -825,7 +860,8 @@ class ClientStore:
                 client_id,
                 frequency,
             )
-            return record
+        self._capture_metrics_snapshot()
+        return record
 
     def _append_history_event(
         self,
@@ -853,6 +889,8 @@ class ClientStore:
 
     def mark_command_sent(self, client_id: str, command: CommandRecord) -> None:
         """Mark a queued command as sent."""
+        classifier = ""
+        action = ""
         with self._lock:
             record = self._clients.get(client_id)
             if record is None:
@@ -860,15 +898,32 @@ class ClientStore:
             for cmd in record.commands:
                 if cmd is command:
                     cmd.sent_at = _utc_now()
-                    return
+                    classifier = cmd.classifier
+                    action = cmd.action
+                    break
+            else:
+                return
+        PROVIDER_METRICS.increment_counter(
+            "opamp_provider_commands_sent_total",
+            labels={
+                "classifier": _metric_label_value(classifier),
+                "action": _metric_label_value(action),
+            },
+        )
+        self._capture_metrics_snapshot()
 
     def queue_force_resync(self, client_id: str) -> bool:
         """Queue force-resync command for a client when none is pending."""
+        queued = False
         with self._lock:
             record = self._clients.get(client_id)
             if record is None:
                 return False
-            return self._queue_force_resync_if_missing_locked(record)
+            queued = self._queue_force_resync_if_missing_locked(record)
+        if queued:
+            PROVIDER_METRICS.record_force_resync_queued()
+            self._capture_metrics_snapshot()
+        return queued
 
     def pop_next_action(self, client_id: str) -> Optional[str]:
         """Pop the next queued action for a client."""
@@ -894,7 +949,8 @@ class ClientStore:
                 )
                 self._clients[client_id] = record
             self._pending_remote_configs[client_id] = remote_config_bytes
-            return record
+        self._capture_metrics_snapshot()
+        return record
 
     def get_pending_remote_config(self, client_id: str) -> Optional[bytes]:
         """Return one serialized AgentRemoteConfig payload without consuming it."""
@@ -919,7 +975,8 @@ class ClientStore:
             ]
             for target_id in pending_targets:
                 self._pending_instance_uid_replacements.pop(target_id, None)
-            return record
+        self._capture_metrics_snapshot()
+        return record
 
     def known_client(self, client_id: str) -> bool:
         """Return whether a client ID is currently approved/known."""
@@ -948,7 +1005,8 @@ class ClientStore:
             if pending is None:
                 return None
             self._clients[client_id] = pending
-            return pending
+        self._capture_metrics_snapshot()
+        return pending
 
     def block_agent(
         self,
@@ -968,6 +1026,7 @@ class ClientStore:
                     "headers": dict(headers or {}),
                     "ip": str(ip).strip() if ip is not None else None,
                 }
+        self._capture_metrics_snapshot()
 
     def is_blocked_agent(self, client_id: str) -> bool:
         """Return whether the client ID is currently blocked."""
@@ -993,7 +1052,8 @@ class ClientStore:
                 )
             record.pending_agent_identification = new_instance_uid
             self._pending_instance_uid_replacements[new_instance_uid.hex()] = client_id
-            return record
+        self._capture_metrics_snapshot()
+        return record
 
     def pop_agent_identification(self, client_id: str) -> Optional[bytes]:
         """Pop the pending agent identification value for a client."""
@@ -1030,6 +1090,8 @@ class ClientStore:
                 removed_record = self._clients.pop(client_id, None)
                 if removed_record is not None:
                     removed.append(removed_record)
+        if removed:
+            self._capture_metrics_snapshot()
         return removed
 
     def export_persisted_state(self) -> dict[str, object]:
@@ -1296,12 +1358,16 @@ class ClientStore:
                     "state restore queued full refresh for restored clients count=%s",
                     refresh_queued,
                 )
-            return self._restore_summary(
+            summary = self._restore_summary(
                 restored_clients=restored_clients,
                 restored_pending=restored_pending,
                 refresh_queued=refresh_queued,
                 unknown_fields_seen=unknown_fields_seen,
             )
+        if refresh_queued:
+            PROVIDER_METRICS.record_force_resync_queued(amount=refresh_queued)
+        self._capture_metrics_snapshot()
+        return summary
 
 
 STORE = ClientStore()  # Module-level in-memory client store singleton.

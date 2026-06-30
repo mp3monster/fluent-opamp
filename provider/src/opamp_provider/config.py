@@ -29,7 +29,10 @@ if str(ROOT_PATH) not in sys.path:
     sys.path.insert(0, str(ROOT_PATH))
 
 from shared.opamp_config import UTF8_ENCODING  # noqa: E402,I001 - requires repo-root path adjustment above
-from shared.observability import ObservabilityConfig, load_observability_config_from_payload
+from shared.observability import (  # noqa: E402
+    ObservabilityConfig,
+    load_observability_config_from_payload,
+)
 
 ENV_OPAMP_CONFIG_PATH = "OPAMP_CONFIG_PATH"  # Environment variable overriding provider config file location.
 CFG_PROVIDER = "provider"  # Top-level JSON section name for provider settings.
@@ -50,6 +53,9 @@ CFG_ALLOW_CONNECTION_SETTINGS_REQUEST = "allow-connection-settings-request"  # P
 CFG_ALLOW_MCP = "allow-mcp"  # Provider JSON key toggling Streamable HTTP MCP route exposure at /mcp.
 CFG_OPAMP_USE_AUTHORIZATION = "opamp-use-authorization"  # Provider JSON key controlling OpAMP transport bearer authorization mode.
 CFG_UI_USE_AUTHORIZATION = "ui-use-authorization"  # Provider JSON key controlling non-OpAMP HTTP/WebSocket bearer authorization mode.
+CFG_METRICS = "metrics"  # Provider JSON key for provider metrics settings.
+CFG_METRICS_ENABLED = "enabled"  # Provider metrics key toggling Prometheus and graph endpoints.
+CFG_METRICS_GRAPH_HISTORY_MINUTES = "graph_history_minutes"  # Provider metrics key controlling retained gauge-series history.
 CFG_TLS = "tls"  # Provider JSON key for shared TLS server settings.
 CFG_TLS_ENABLED = "enabled"  # Provider TLS key toggling HTTPS/TLS listener mode.
 CFG_TLS_CERT_FILE = "cert_file"  # Provider TLS key for server certificate path.
@@ -88,6 +94,8 @@ OPAMP_USE_AUTHORIZATION_IDP = (
 )
 DEFAULT_OPAMP_USE_AUTHORIZATION = OPAMP_USE_AUTHORIZATION_NONE  # Default OpAMP auth mode.
 DEFAULT_UI_USE_AUTHORIZATION = OPAMP_USE_AUTHORIZATION_NONE  # Default non-OpAMP auth mode.
+DEFAULT_METRICS_ENABLED = True  # Default behavior exposes provider metrics unless explicitly disabled.
+DEFAULT_METRICS_GRAPH_HISTORY_MINUTES = 0  # Default behavior does not retain gauge history for internal graphs.
 DEFAULT_TLS_ENABLED = True  # Default TLS enabled state when provider.tls section is present.
 TLS_TRUST_ANCHOR_PARTIAL_CHAIN = "partial_chain"  # Trust-anchor mode allowing intermediate anchors.
 TLS_TRUST_ANCHOR_FULL_CHAIN_TO_ROOT = "full_chain_to_root"  # Trust-anchor mode requiring root anchors.
@@ -117,6 +125,12 @@ class ProviderStatePersistenceConfig:
 
 
 @dataclass(frozen=True)
+class ProviderMetricsConfig:
+    enabled: bool = DEFAULT_METRICS_ENABLED
+    graph_history_minutes: int = DEFAULT_METRICS_GRAPH_HISTORY_MINUTES
+
+
+@dataclass(frozen=True)
 class ProviderConfig:
     delayed_comms_seconds: int
     significant_comms_seconds: int
@@ -137,6 +151,7 @@ class ProviderConfig:
     allow_mcp: bool = DEFAULT_ALLOW_MCP
     opamp_use_authorization: str = DEFAULT_OPAMP_USE_AUTHORIZATION
     ui_use_authorization: str = DEFAULT_UI_USE_AUTHORIZATION
+    metrics: ProviderMetricsConfig = field(default_factory=ProviderMetricsConfig)
     tls: ProviderTLSConfig | None = None
     state_persistence: ProviderStatePersistenceConfig = field(
         default_factory=ProviderStatePersistenceConfig
@@ -360,6 +375,30 @@ def _load_state_persistence_config(
     )
 
 
+def _load_metrics_config(provider_raw: dict[str, Any]) -> ProviderMetricsConfig:
+    """Load provider metrics settings from provider config mapping."""
+    raw = provider_raw.get(CFG_METRICS)
+    if raw is None:
+        return ProviderMetricsConfig()
+    if not isinstance(raw, dict):
+        raise ValueError(f"{CFG_PROVIDER}.{CFG_METRICS} must be an object")
+    return ProviderMetricsConfig(
+        enabled=_as_bool(
+            raw.get(CFG_METRICS_ENABLED),
+            DEFAULT_METRICS_ENABLED,
+        ),
+        graph_history_minutes=max(
+            0,
+            int(
+                raw.get(
+                    CFG_METRICS_GRAPH_HISTORY_MINUTES,
+                    DEFAULT_METRICS_GRAPH_HISTORY_MINUTES,
+                )
+            ),
+        ),
+    )
+
+
 def load_config() -> ProviderConfig:
     """Load provider config from disk."""
     logging.getLogger(__name__).debug("About to load_config")
@@ -369,6 +408,7 @@ def load_config() -> ProviderConfig:
     observability = load_observability_config_from_payload(raw)
     tls_config = _load_provider_tls_config(provider_raw)
     state_persistence_config = _load_state_persistence_config(provider_raw)
+    metrics_config = _load_metrics_config(provider_raw)
     delayed = int(provider_raw.get(CFG_DELAYED_COMMS_SECONDS, DEFAULT_DELAYED_COMMS_SECONDS))
     significant = int(
         provider_raw.get(CFG_SIGNIFICANT_COMMS_SECONDS, DEFAULT_SIGNIFICANT_COMMS_SECONDS)
@@ -462,6 +502,7 @@ def load_config() -> ProviderConfig:
             cfg_key=CFG_UI_USE_AUTHORIZATION,
             default_mode=DEFAULT_UI_USE_AUTHORIZATION,
         ),
+        metrics=metrics_config,
         tls=tls_config,
         state_persistence=state_persistence_config,
         observability=observability,
@@ -480,6 +521,7 @@ def load_config_with_overrides(
     observability = load_observability_config_from_payload(base_raw)
     tls_config = _load_provider_tls_config(provider_raw)
     state_persistence_config = _load_state_persistence_config(provider_raw)
+    metrics_config = _load_metrics_config(provider_raw)
     delayed = int(provider_raw.get(CFG_DELAYED_COMMS_SECONDS, DEFAULT_DELAYED_COMMS_SECONDS))
     significant = int(
         provider_raw.get(CFG_SIGNIFICANT_COMMS_SECONDS, DEFAULT_SIGNIFICANT_COMMS_SECONDS)
@@ -575,6 +617,7 @@ def load_config_with_overrides(
             cfg_key=CFG_UI_USE_AUTHORIZATION,
             default_mode=DEFAULT_UI_USE_AUTHORIZATION,
         ),
+        metrics=metrics_config,
         tls=tls_config,
         state_persistence=state_persistence_config,
         observability=observability,
@@ -693,6 +736,7 @@ def update_comms_thresholds(
         allow_mcp=CONFIG.allow_mcp,
         opamp_use_authorization=CONFIG.opamp_use_authorization,
         ui_use_authorization=CONFIG.ui_use_authorization,
+        metrics=CONFIG.metrics,
         tls=CONFIG.tls,
         state_persistence=persistence,
         observability=CONFIG.observability,
@@ -721,6 +765,7 @@ def update_default_heartbeat_frequency(*, default_heartbeat_frequency: int) -> P
         allow_mcp=CONFIG.allow_mcp,
         opamp_use_authorization=CONFIG.opamp_use_authorization,
         ui_use_authorization=CONFIG.ui_use_authorization,
+        metrics=CONFIG.metrics,
         tls=CONFIG.tls,
         state_persistence=CONFIG.state_persistence,
         observability=CONFIG.observability,
@@ -770,6 +815,12 @@ def persist_provider_config(
     provider_raw[CFG_ALLOW_MCP] = bool(effective.allow_mcp)
     provider_raw[CFG_OPAMP_USE_AUTHORIZATION] = str(effective.opamp_use_authorization)
     provider_raw[CFG_UI_USE_AUTHORIZATION] = str(effective.ui_use_authorization)
+    provider_raw[CFG_METRICS] = {
+        CFG_METRICS_ENABLED: bool(effective.metrics.enabled),
+        CFG_METRICS_GRAPH_HISTORY_MINUTES: int(
+            effective.metrics.graph_history_minutes
+        ),
+    }
     provider_raw[CFG_STATE_PERSISTENCE] = {
         CFG_STATE_PERSISTENCE_ENABLED: bool(effective.state_persistence.enabled),
         CFG_STATE_FILE_PREFIX: str(effective.state_persistence.state_file_prefix),
