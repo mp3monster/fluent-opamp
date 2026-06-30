@@ -293,8 +293,17 @@ def load_json_config(path: pathlib.Path) -> dict[str, Any]:
         return dict(JSON_EMPTY_OBJECT)
     try:
         payload = json.loads(path.read_text(encoding=UTF8_ENCODING))
-    except (OSError, ValueError, TypeError):
-        LOGGER.exception("failed to load JSON config path=%s", path)
+    except json.JSONDecodeError as exc:
+        LOGGER.exception(
+            "failed to parse JSON config path=%s line=%s column=%s message=%s",
+            path,
+            exc.lineno,
+            exc.colno,
+            exc.msg,
+        )
+        return dict(JSON_EMPTY_OBJECT)
+    except (OSError, ValueError, TypeError) as exc:
+        LOGGER.exception("failed to load JSON config path=%s message=%s", path, exc)
         return dict(JSON_EMPTY_OBJECT)
     if not isinstance(payload, dict):
         LOGGER.warning(

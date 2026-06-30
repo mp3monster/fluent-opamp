@@ -138,6 +138,83 @@ def test_effective_config_multiple_files_are_stored_as_pretty_json() -> None:
     assert '"body": "{\\"beta\\":2}\\n"' in rendered
 
 
+def test_agent_message_receipt_event_records_supported_objects_as_one_multiline_event() -> None:
+    """Verify one AgentToServer payload with multiple supported objects creates one multiline history event."""
+    store = ClientStore()
+    msg = opamp_pb2.AgentToServer(instance_uid=b"\x0f\x13")
+    msg.sequence_num = 1
+    msg.effective_config.config_map.config_map["/tmp/agent.yaml"].body = b"service: test\n"
+    msg.effective_config.config_map.config_map["/tmp/agent.yaml"].content_type = (
+        "application/x-yaml"
+    )
+    msg.remote_config_status.status = (
+        opamp_pb2.RemoteConfigStatuses.RemoteConfigStatuses_APPLIED
+    )
+    msg.custom_message.capability = "org.example.test"
+    msg.available_components.hash = b"abc123"
+    msg.connection_settings_status.status = (
+        opamp_pb2.ConnectionSettingsStatuses.ConnectionSettingsStatuses_APPLIED
+    )
+
+    record = store.upsert_from_agent_msg(msg)
+
+    assert len(record.events) == 2
+    receipt_event = record.events[-1]
+    assert receipt_event.event_direction == "received"
+    assert receipt_event.get_event_description() == "\n".join(
+        [
+            "Received AgentToServer.EffectiveConfig",
+            "Received AgentToServer.RemoteConfigStatus",
+            "Received AgentToServer.CustomMessage",
+            "Received AgentToServer.AvailableComponents",
+            "Received AgentToServer.ConnectionSettingsStatus",
+        ]
+    )
+    assert receipt_event.event_lines == [
+        "Received AgentToServer.EffectiveConfig",
+        "Received AgentToServer.RemoteConfigStatus",
+        "Received AgentToServer.CustomMessage",
+        "Received AgentToServer.AvailableComponents",
+        "Received AgentToServer.ConnectionSettingsStatus",
+    ]
+
+
+def test_agent_message_receipt_event_ignores_unsupported_objects() -> None:
+    """Verify unsupported AgentToServer objects do not appear in receive history."""
+    store = ClientStore()
+    msg = opamp_pb2.AgentToServer(instance_uid=b"\x0f\x14")
+    msg.sequence_num = 1
+    msg.effective_config.config_map.config_map["/tmp/agent.yaml"].body = b"service: test\n"
+    msg.effective_config.config_map.config_map["/tmp/agent.yaml"].content_type = (
+        "application/x-yaml"
+    )
+    msg.package_statuses.SetInParent()
+    msg.connection_settings_request.opamp.SetInParent()
+
+    record = store.upsert_from_agent_msg(msg)
+
+    assert len(record.events) == 2
+    receipt_event = record.events[-1]
+    assert receipt_event.event_direction == "received"
+    assert receipt_event.event_lines == ["Received AgentToServer.EffectiveConfig"]
+    assert "PackageStatuses" not in receipt_event.get_event_description()
+    assert "ConnectionSettingsRequest" not in receipt_event.get_event_description()
+
+
+def test_agent_message_receipt_event_is_not_added_for_unsupported_only_objects() -> None:
+    """Verify unsupported-only AgentToServer payloads do not create a receive-history event."""
+    store = ClientStore()
+    msg = opamp_pb2.AgentToServer(instance_uid=b"\x0f\x15")
+    msg.sequence_num = 1
+    msg.package_statuses.SetInParent()
+    msg.connection_settings_request.opamp.SetInParent()
+
+    record = store.upsert_from_agent_msg(msg)
+
+    assert len(record.events) == 1
+    assert record.events[0].get_event_description() == "Force Resync"
+
+
 def test_client_record_current_config_setter_and_json_dump_round_trip() -> None:
     """Verify current_config setter compresses storage and JSON dump returns plain text."""
     record = ClientRecord(client_id="client-config")

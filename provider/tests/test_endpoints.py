@@ -36,6 +36,7 @@ from opamp_provider.command_implementations.command_shutdown_agent import (
 )
 from opamp_provider.config import ProviderConfig
 from opamp_provider.mcptool.routes import mcp_tool_invoke_custom_command
+from opamp_provider.metrics import PROVIDER_METRICS
 from opamp_provider.proto import opamp_pb2
 from opamp_provider.state import STORE
 from opamp_provider.transport import decode_message, encode_message
@@ -57,12 +58,16 @@ def use_temp_opamp_config(tmp_path, monkeypatch) -> pathlib.Path:
 def reset_store_state() -> None:
     """Reset in-memory store state between endpoint tests."""
     app.config["DIAGNOSTIC_MODE"] = False
+    provider_auth.reload_auth_settings()
+    PROVIDER_METRICS.reset()
     STORE._clients.clear()
     STORE._pending_approvals.clear()
     STORE._blocked_agents.clear()
     STORE._pending_remote_configs.clear()
     STORE._pending_instance_uid_replacements.clear()
     yield
+    provider_auth.reload_auth_settings()
+    PROVIDER_METRICS.reset()
     STORE._clients.clear()
     STORE._pending_approvals.clear()
     STORE._blocked_agents.clear()
@@ -83,6 +88,10 @@ def _test_provider_config(
     allow_connection_settings_request: bool = (
         provider_config.DEFAULT_ALLOW_CONNECTION_SETTINGS_REQUEST
     ),
+    metrics_enabled: bool = provider_config.DEFAULT_METRICS_ENABLED,
+    metrics_graph_history_minutes: int = (
+        provider_config.DEFAULT_METRICS_GRAPH_HISTORY_MINUTES
+    ),
 ) -> ProviderConfig:
     """Build a ProviderConfig suitable for endpoint tests."""
     return ProviderConfig(
@@ -102,6 +111,10 @@ def _test_provider_config(
         allow_effective_config=allow_effective_config,
         allow_connection_settings=allow_connection_settings,
         allow_connection_settings_request=allow_connection_settings_request,
+        metrics=provider_config.ProviderMetricsConfig(
+            enabled=metrics_enabled,
+            graph_history_minutes=metrics_graph_history_minutes,
+        ),
     )
 
 
@@ -183,6 +196,97 @@ async def test_http_endpoint() -> None:
     server_msg = opamp_pb2.ServerToAgent()
     server_msg.ParseFromString(payload)
     assert server_msg.instance_uid == test_uid
+
+
+@pytest.mark.asyncio
+async def test_metrics_endpoint_renders_prometheus_text() -> None:
+    """Verify `/metrics` exposes Prometheus-compatible provider metrics."""
+    provider_config.set_config(
+        _test_provider_config(
+            metrics_enabled=True,
+            metrics_graph_history_minutes=5,
+        )
+    )
+    _seed_tool_agent_record(
+        client_id="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        remote_addr="10.0.0.10",
+    )
+
+    async with app.test_client() as client:
+        resp = await client.get("/metrics")
+
+    body = await resp.get_data(as_text=True)
+    assert resp.status_code == 200
+    assert resp.headers["Content-Type"].startswith("text/plain; version=0.0.4")
+    assert "# TYPE opamp_provider_clients_total gauge" in body
+    assert "opamp_provider_clients_total 1" in body
+    assert 'opamp_provider_clients_by_channel_total{channel="HTTP"} 1' in body
+
+
+@pytest.mark.asyncio
+async def test_metrics_endpoint_requires_ui_bearer_token_when_enabled(monkeypatch) -> None:
+    """Verify `/metrics` reuses provider.ui-use-authorization bearer protection."""
+    monkeypatch.setenv(provider_auth.ENV_UI_AUTH_STATIC_TOKEN, "local-dev-token")
+    provider_auth.reload_ui_auth_settings()
+    provider_config.set_config(
+        _test_provider_config(
+            ui_use_authorization=provider_config.OPAMP_USE_AUTHORIZATION_CONFIG_TOKEN,
+            metrics_enabled=True,
+        )
+    )
+
+    async with app.test_client() as client:
+        unauthorized = await client.get("/metrics")
+        authorized = await client.get(
+            "/metrics",
+            headers={"Authorization": "Bearer local-dev-token"},
+        )
+
+    assert unauthorized.status_code == HTTPStatus.UNAUTHORIZED
+    assert (
+        unauthorized.headers["WWW-Authenticate"]
+        == provider_auth.WWW_AUTHENTICATE_BEARER
+    )
+    assert authorized.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_metrics_graph_endpoint_returns_retained_series() -> None:
+    """Verify graph API returns current gauge values and retained series when configured."""
+    provider_config.set_config(
+        _test_provider_config(
+            metrics_enabled=True,
+            metrics_graph_history_minutes=5,
+        )
+    )
+    _seed_tool_agent_record(
+        client_id="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        remote_addr="10.0.0.11",
+    )
+
+    async with app.test_client() as client:
+        resp = await client.get("/api/metrics/graphs?metric=opamp_provider_clients_total")
+
+    payload = await resp.get_json()
+    assert resp.status_code == 200
+    assert payload["retention_minutes"] == 5
+    metric = payload["metrics"][0]
+    assert metric["name"] == "opamp_provider_clients_total"
+    assert metric["current"][0]["value"] == 1.0
+    assert metric["series"][0]["points"]
+
+
+@pytest.mark.asyncio
+async def test_metrics_endpoints_return_not_found_when_disabled() -> None:
+    """Verify metrics endpoints can be disabled through provider.metrics.enabled."""
+    provider_config.set_config(_test_provider_config(metrics_enabled=False))
+
+    async with app.test_client() as client:
+        metrics_resp = await client.get("/metrics")
+        graphs_resp = await client.get("/api/metrics/graphs")
+
+    assert metrics_resp.status_code == HTTPStatus.NOT_FOUND
+    assert graphs_resp.status_code == HTTPStatus.NOT_FOUND
 
 
 def test_build_error_message_logs_opamp_error_details(caplog) -> None:
@@ -614,6 +718,8 @@ async def test_get_comms_settings(monkeypatch) -> None:
         "retention_count": 5,
         "state_snapshot_file_count": 2,
         "autosave_interval_seconds_since_change": 600,
+        "metrics_enabled": True,
+        "metrics_graph_history_minutes": 0,
         "advertised_capabilities": [
             {"key": "accepts_status", "label": "Accepts Status", "enabled": True},
             {"key": "offers_remote_config", "label": "Offers Remote Config", "enabled": True},
@@ -845,6 +951,11 @@ async def test_build_test_remote_config_queues_payload_and_http_consumes(
     assert record is not None
     assert record.next_actions is None
     assert STORE.get_pending_remote_config(client_id) is None
+    assert record.events
+    assert any(
+        event.event_description == "Queued 1 remote config file."
+        for event in record.events
+    )
 
 
 @pytest.mark.asyncio
@@ -1057,6 +1168,13 @@ async def test_queue_remote_config_offer_validates_and_http_consumes(
     assert text_config_file.content_type == "text/plain"
     assert server_msg.remote_config.config_hash.hex() == payload["config_hash"]
     assert STORE.get_pending_remote_config(client_id) is None
+    record = STORE.get(client_id)
+    assert record is not None
+    assert record.events
+    assert any(
+        event.event_description == "Queued 2 remote config files."
+        for event in record.events
+    )
 
 
 @pytest.mark.asyncio

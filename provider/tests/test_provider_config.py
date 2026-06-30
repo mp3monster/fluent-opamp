@@ -83,6 +83,43 @@ def test_allow_mcp_defaults_false_when_missing() -> None:
     assert config.allow_mcp is False
 
 
+def test_metrics_defaults_when_missing(tmp_path) -> None:
+    """Verify provider.metrics falls back to enabled with no retained graph history."""
+    config_path = tmp_path / "opamp.json"
+    config_path.write_text(
+        json.dumps({"provider": {}}, indent=2),
+        encoding="utf-8",
+    )
+    os.environ[provider_config.ENV_OPAMP_CONFIG_PATH] = str(config_path)
+    config = provider_config.load_config()
+    assert config.metrics.enabled is True
+    assert config.metrics.graph_history_minutes == 0
+
+
+def test_metrics_load_from_config(tmp_path) -> None:
+    """Verify provider.metrics settings are parsed from config."""
+    config_path = tmp_path / "opamp.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "provider": {
+                    "metrics": {
+                        "enabled": False,
+                        "graph_history_minutes": 15,
+                    }
+                }
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    os.environ[provider_config.ENV_OPAMP_CONFIG_PATH] = str(config_path)
+
+    config = provider_config.load_config()
+    assert config.metrics.enabled is False
+    assert config.metrics.graph_history_minutes == 15
+
+
 def test_allow_mcp_loads_true_from_config(tmp_path) -> None:
     """Verify provider.allow-mcp is parsed from config."""
     config_path = tmp_path / "opamp.json"
