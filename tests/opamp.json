@@ -28,6 +28,10 @@
     "client_event_history_size": 50,
     "log_level": "INFO",
     "human_in_loop_approval": false,
-    "opamp-use-authorization": "none"
+    "opamp-use-authorization": "none",
+    "metrics": {
+      "enabled": true,
+      "graph_history_minutes": 0
+    }
   }
 }
