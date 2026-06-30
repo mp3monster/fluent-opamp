@@ -1,5 +1,7 @@
 # Command Process Implementation Note
 
+For the broader developer guide covering command flow, next-action flow, history semantics, and MCP exclusion, start with [Provider Command And Event Flow Guide](<server(provider)/provider_command_and_event_flow_guide.md>).
+
 This note describes how command intents are accepted by the Provider API, queued in memory, transformed into OpAMP payloads, and marked as sent.
 
 ## Scope

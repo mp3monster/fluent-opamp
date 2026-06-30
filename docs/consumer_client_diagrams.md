@@ -5,9 +5,9 @@ For the latest architecture (including process-tracking strategy split), use the
 
 ## Source and Related Docs
 
-- Mermaid source: [docs/dev/consumer_client_diagram.md](dev/consumer_client_diagram.md)
-- Consumer mixin behavior: [docs/dev/consumer_mixins.md](dev/consumer_mixins.md)
-- Consumer reporting/update cadence: [docs/dev/consumer_update_controllers.md](dev/consumer_update_controllers.md)
+- Mermaid source: [docs/dev/client(consumer)/consumer_client_diagram.md](<dev/client(consumer)/consumer_client_diagram.md>)
+- Consumer mixin behavior: [docs/dev/client(consumer)/consumer_mixins.md](<dev/client(consumer)/consumer_mixins.md>)
+- Consumer reporting/update cadence: [docs/dev/client(consumer)/consumer_update_controllers.md](<dev/client(consumer)/consumer_update_controllers.md>)
 
 ## Diagram 1: Class and Module Relationships
 
@@ -65,7 +65,7 @@ What this shows:
 ## Diagram 6: Runtime Process Tracking Strategy
 
 No rendered PNG panel is currently published for this diagram section.
-Use the Mermaid source in [docs/dev/consumer_client_diagram.md](dev/consumer_client_diagram.md) for the current strategy flow.
+Use the Mermaid source in [docs/dev/client(consumer)/consumer_client_diagram.md](<dev/client(consumer)/consumer_client_diagram.md>) for the current strategy flow.
 
 What this shows:
 

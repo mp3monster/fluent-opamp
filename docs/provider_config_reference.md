@@ -56,6 +56,13 @@ The provider README still covers the operational startup flow in more detail:
 | `provider.opamp-use-authorization` | string | `none` | `none` | No | Allowed values: `none`, `config-token`, `idp`. Controls OpAMP transport auth on `/v1/opamp`. |
 | `provider.ui-use-authorization` | string | `none` | `none` | No | Allowed values: `none`, `config-token`, `idp`. Controls non-OpAMP auth for `/ui`, `/api`, `/tool`, `/mcp` when enabled, and related routes. |
 
+## Metrics values
+
+| Key | Type | Built-in default | Default repo value | Editable in UI | Notes |
+| --- | --- | --- | --- | --- | --- |
+| `provider.metrics.enabled` | boolean | `true` | `true` | No | Enables the Prometheus scrape endpoint at `/metrics` and the internal graph endpoint at `/api/metrics/graphs`. |
+| `provider.metrics.graph_history_minutes` | integer | `0` | `0` | No | Retention window in minutes for in-memory gauge time-series history used by internal dashboard graphs. `0` disables history retention while still exposing current gauge values. |
+
 ## TLS values
 
 The default repository config does not include `provider.tls`, so the provider runs HTTP-only unless you
@@ -98,6 +105,12 @@ variables. For full setup details, use:
 
 - [`authentication.md`](authentication.md)
 
+The metrics scrape endpoint uses the same non-OpAMP auth mode:
+
+- `provider.ui-use-authorization=none` leaves `/metrics` open
+- `provider.ui-use-authorization=config-token` requires `UI_AUTH_STATIC_TOKEN`
+- `provider.ui-use-authorization=idp` requires a valid bearer token accepted by the configured JWT settings
+
 ## UI editability and persistence
 
 These provider-backed settings are editable through **Global Settings** in the server console:
@@ -137,6 +150,11 @@ For the UI behavior and help text, see:
 
 - [`provider/README.md#web-ui`](../provider/README.md#web-ui)
 - [`endpoints.md`](endpoints.md)
+
+For the provider metrics endpoints and scrape examples, see:
+
+- [`provider_metrics_reference.md`](provider_metrics_reference.md)
+- [`provider_metrics_prometheus_setup.md`](provider_metrics_prometheus_setup.md)
 
 ## Related config variants
 

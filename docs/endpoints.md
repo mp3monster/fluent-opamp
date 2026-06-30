@@ -56,6 +56,7 @@ including `service_instance_id`, `client_version`, `host_name`, `host_ip`, and
 | GET | `/api/settings/comms` | Get communication threshold settings. |
 | PUT | `/api/settings/comms` | Update communication threshold settings. |
 | GET | `/api/settings/diagnostic` | Get diagnostic and state-persistence status metadata for UI feature-gating/health display. |
+| GET | `/api/metrics/graphs` | Get current gauge values and optional retained gauge-series history for internal dashboard views. |
 | POST | `/api/settings/state/save` | Force an immediate provider state snapshot save (when persistence is enabled). |
 | GET | `/api/settings/client` | Get global client settings. |
 | PUT | `/api/settings/client` | Update global client settings. |
@@ -77,6 +78,19 @@ including `service_instance_id`, `client_version`, `host_name`, `host_ip`, and
 | --- | --- | --- |
 | POST | `/v1/opamp` | OpAMP HTTP transport endpoint (AgentToServer/ServerToAgent). |
 | WEBSOCKET | `/v1/opamp` | OpAMP WebSocket transport endpoint. |
+
+## Metrics Endpoint
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/metrics` | Expose provider metrics in Prometheus text format. |
+
+Metrics notes:
+
+- `provider.metrics.enabled` controls both `/metrics` and `/api/metrics/graphs`.
+- `provider.metrics.graph_history_minutes` controls in-memory retention for graphable gauge metrics exposed by `/api/metrics/graphs`.
+- `/metrics` is a non-OpAMP route, so it follows `provider.ui-use-authorization`.
+- When `provider.ui-use-authorization=config-token` or `idp`, scrapers must send `Authorization: Bearer <token>`.
 
 Human-in-loop behavior notes:
 

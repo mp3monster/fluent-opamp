@@ -29,6 +29,8 @@ Primary repository-wide build outputs now include independent artefacts for:
 - [Server_(provider) diagrams (as images)](provider_server_diagrams.md) — rendered provider/server diagrams plus links to auth, endpoints, and command docs.
 - [Authentication](authentication.md) — bearer token auth modes, static-token setup, Keycloak/JWT setup, and MCP token usage.
 - [Web Endpoints](endpoints.md) — provider endpoint inventory, including UI/API/tool/MCP routes and `/doc-set`.
+- [Provider metrics reference](provider_metrics_reference.md) — metric-by-metric explanation of the provider scrape endpoint and internal graph data.
+- [Prometheus and collector setup](provider_metrics_prometheus_setup.md) — how to scrape `/metrics` securely from Prometheus or the OpenTelemetry Collector.
 - The provider-hosted `Latest docs` entry point is `http://localhost:8080/doc-set`, which redirects to the URL configured in `provider.latest_docs_url`.
 - [OpAMP JSON reference map](opamp_json_reference.md) — guide to which docs explain each top-level section of `config/opamp.json`.
 - [Provider config reference](provider_config_reference.md) — dedicated reference for `provider.*` values, defaults, and UI editability.
@@ -51,11 +53,11 @@ Primary repository-wide build outputs now include independent artefacts for:
 - [Design & Implementation principles](dev/implementation_philosophy.md) — project architecture and engineering principles.
 - [Command_process_implementation_notes](dev/command_process_implementation_note.md) — command API/queue/dispatch implementation details.
 - [How to add_your_own_custom_action](dev/adding_your_own_custom_action.md) — how to implement and deploy a custom provider+consumer action using `nullcommand` as the baseline.
-- [Client (consumer)_diagram (in Mermaid format)](dev/consumer_client_diagram.md) — consumer client architecture and runtime relationship diagrams.
-- [Server (provider)_server_diagrams (in Mermaid format)](dev/provider_server_diagram.md) — provider/server Mermaid source diagrams.
-- [Client (consumer) use of mixins](dev/consumer_mixins.md) — how consumer mixins are composed, dispatched, and overridden.
-- [Client (consumer) custom_handlers](dev/consumer_custom_handlers.md) — built-in custom handlers, runtime discovery, and how to implement/deploy additional handlers.
-- [Client (consumer)_update_controllers](dev/consumer_update_controllers.md) — how full update controllers drive reporting flags and outbound message field cadence.
+- [Client (consumer)_diagram (in Mermaid format)](<dev/client(consumer)/consumer_client_diagram.md>) — consumer client architecture and runtime relationship diagrams.
+- [Server (provider)_server_diagrams (in Mermaid format)](<dev/server(provider)/provider_server_diagram.md>) — provider/server Mermaid source diagrams.
+- [Client (consumer) use of mixins](<dev/client(consumer)/consumer_mixins.md>) — how consumer mixins are composed, dispatched, and overridden.
+- [Client (consumer) custom_handlers](<dev/client(consumer)/consumer_custom_handlers.md>) — built-in custom handlers, runtime discovery, and how to implement/deploy additional handlers.
+- [Client (consumer)_update_controllers](<dev/client(consumer)/consumer_update_controllers.md>) — how full update controllers drive reporting flags and outbound message field cadence.
 - [OpAMP Config Catalog Service Prompt](dev/opamp_config_catalog_service_prompt.md) — implementation prompt and scope for the catalog service.
 - [UI Consistency Checklist](dev/ui_consistency_checklist.md) — PR checklist for consistent UI architecture, libraries, routing, and verification.
 - [Component Versioning](dev/component_versioning.md) — git commit/date version metadata and where it appears in CLI/UI help.

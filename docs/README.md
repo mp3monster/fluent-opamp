@@ -231,8 +231,8 @@ It is responsible for:
 See:
 
 - [Provider README](../provider/README.md)
-- [Provider UI minification process](dev/minification_process.md)
-- [Provider server UML source](dev/provider_server_diagram.md)
+- [Provider UI minification process](dev/dev-processes/minification_process.md)
+- [Provider server UML source](<dev/server(provider)/provider_server_diagram.md>)
 - [Provider rendered diagram walkthrough](provider_server_diagrams.md)
 - [Endpoints](endpoints.md)
 - [Authentication](authentication.md)
@@ -253,11 +253,11 @@ It includes:
 See:
 
 - [Consumer README](../consumer/README.md)
-- [Consumer UML source](dev/consumer_client_diagram.md)
+- [Consumer UML source](<dev/client(consumer)/consumer_client_diagram.md>)
 - [Consumer rendered diagram walkthrough](consumer_client_diagrams.md)
-- [Consumer custom handlers](dev/consumer_custom_handlers.md)
-- [Consumer update controllers](dev/consumer_update_controllers.md)
-- [Consumer mixin design](dev/consumer_mixins.md)
+- [Consumer custom handlers](<dev/client(consumer)/consumer_custom_handlers.md>)
+- [Consumer update controllers](<dev/client(consumer)/consumer_update_controllers.md>)
+- [Consumer mixin design](<dev/client(consumer)/consumer_mixins.md>)
 
 ### CLI
 
@@ -346,7 +346,7 @@ See:
 - [Adding your own custom action](dev/adding_your_own_custom_action.md)
 - [Component versioning](dev/component_versioning.md)
 - [UI consistency checklist](dev/ui_consistency_checklist.md)
-- [Provider UI minification process](dev/minification_process.md)
+- [Provider UI minification process](dev/dev-processes/minification_process.md)
 
 ## Documentation rules
 

@@ -56,14 +56,15 @@ Connection settings policy note:
 In addition to the core server we have several supporting tools. These aren't specifically identified as part of the OpAMP specification, but are a natural extension of the server features we have built out. But can be used independently.
 
 ## Future Features
-* Across the board, extend testing to provide more than just unit tests, such as:
-  * E2E test scenarios
+* Not really a feature, but somethings we want to drive across the board, extend testing to provide more than just unit tests, such as:
+  * more E2E test scenarios
   * Increased focus on the  unhappy path tests
   * Establish CI/CD using cloud hyperscalers 
   * Quick reference documentation as static pages
-
+  * Publish the coverage stats
+  
 * Fully incorporate OTel metrics and traces internally
-* Testing of Wheel and PIP deployments into fresh environments
+* Extended testing of Wheel and PIP deployments into fresh environments (including publishing PIPs through PyPI)
 
 ### Server (aka Provider) & Client (aka Consumer)
 * GitHub-driven test rig, including validating against 3rd party server or client implementation for functional behaviour tests.
@@ -86,14 +87,14 @@ In the code base, this is often referred to as the consumer.
 
 ### Server Side
 
-The main OpAMP Server, which provides the UI and controls over the client (consumers) deployed. Plus controlable additions like the catalog manager and config editor.
+The main OpAMP Server, which provides the UI and controls for the deployed client (consumers). Plus, controllable additions like the catalogue manager and config editor.
 
 ##### Main Server
 
 * Extend the persistence mechanism beyond the initial file mechanism (investigate Quart features for Postgres and SQLite)
 * Load configurations and distribute to relevant nodes
-* Certificate management - this is messy to set up and test properly - so provide scripts to self-cert and a basic Identity solution
-* Enhance the build and deploy to create several versions of the service can be installed, including:
+* Certificate management - this is messy to set up and test properly, so provide scripts to self-cert and a basic Identity solution
+* Enhance the build and deploy to create several versions of the service that can be installed, including:
 * Debug mode 
   * Intended to help build customisations, and troubleshoot deployment scenarios
   * Will deploy all the components (Client, Server, Configuration, Utility scripts, documentation)
@@ -102,7 +103,7 @@ The main OpAMP Server, which provides the UI and controls over the client (consu
 * Full server:
   * Will include the Config service integrated into the server
   * Will include the client
-  * Will include the agent_broker allowing the Slack integration to be used.
+  * Will include the agent_broker, allowing the Slack integration to be used.
   * WONT include all development dependencies
 * Reference documentation/implementation for custom messages
 
@@ -113,7 +114,8 @@ The config editor and its tools can be used to edit Fluent Bit and Fluentd confi
 - Improve the validation feedback
 - Look at how we could provide a more visual representation of the configuration
 - Consider incorporating a classic to YAML capability - integrate the utility previously built?
-- Root page (e.g. localhost:8080) provides a redirect button (or buttons) for each of the services available. If no other components deployed then directs to correct URL
+- The root page (e.g., localhost:8080) provides a redirect button (or buttons) for each available service. If no other components are deployed, then it directs to the correct URL.
+- Look at incorporating the `Fluent Bit Classic to YAML converter` (from [here](https://github.com/mp3monster/fluent-bit-classic-to-yaml-converter)) when deployed.
 
 ##### Catalog
 
@@ -121,7 +123,7 @@ The catalog component will look into all the defined locations and retrieve the 
 
 - Use the catalog to select the configurations for the remote deployment task on the main server 
 - Interact with Git as a catalog source
-- Root page (e.g. localhost:8080) provides a redirect button (or buttons) for each of the services available. If no other components deployed then directs to correct URL
+- The root page (e.g., localhost:8080) provides a redirect button (or buttons) for each available service. If no other components are deployed, then it directs to the correct URL
 
 
 
@@ -136,33 +138,20 @@ The broker provides the interoperability layer with social channels and Agents w
 
 ### Configuration Editor (Configuration Service)
 * Extended testing to ensure all plugins are correctly configured
-
 * Extend the validation techniques (so we can provide a proper URL validation)
-
 * Evaluate extensibility so we could provide structure to support (in priority order):
 
   * OTel standard collector
-  * Elastic stack / beats
-
+  * Elastic stack/beats
 * Validation additional rules:
 
-  * If one attribute is set, then so should others e.g. oath.validate is true, then oauth2.issuer needs to be set
-  * Validator for IPs so we can confirm IPv4 is correct - needs consideration - confirm whether Fluent Bit will handle hostname/DNS as alternate to IP?
+  * If one attribute is set, then so should others, e.g. `oath.validate` is true, then `oauth2.issuer` needs to be set
+  * Validator for IPs so we can confirm IPv4 is correct - needs consideration - confirm whether Fluent Bit will handle hostname/DNS as an alternate to IP?
   * duration validation as some fields allow you to express the value as n seconds, n minutes e.g. input fluent-bit-metrics
-
 * Take into account custom plugins
-
 * Extend the number of versions that we have configuration definitions
 
-* Optimize the configuration further, so that data types can infer validation rules e.g. an enum has an infered validation of  using enum_options, boolean can infer the boolean options
-
-  
-
-
-
 ### CLI
-
-To reduce the number of scripts, we have a CLI utility, that functions as a convenience tool for launching the different processes
 
 - Explore the overhead and issues that using the CLI as a universal launcher would create (it would simplify the means to integrate the launching of the Client, Server and Broker with the OS)
 
@@ -170,17 +159,13 @@ To reduce the number of scripts, we have a CLI utility, that functions as a conv
 
 - Parameterised Docker - where the container as all the components, but the Docker container RUN is driven through the CLI
 
-- Enhance demoing feature, particularly so we can create a large simulator load
-
-- In dev mode  use it to trigger package/deploy processes
+- Enhance the demo feature, particularly to enable us to create a large number of simulator instances.
 
   
-  
-  
+
 
 ### Others
 
 - Dev tool util:
-  - create wheel files
-  - incorporates app version into the provider and consumer
   - validates the configuration files for the configurations
+  - All `opamp-dev-cli` to be used from `opamp-cli`

@@ -1,5 +1,7 @@
 # Adding Your Own Custom Action
 
+Before using this walkthrough, read [Provider Command And Event Flow Guide](<server(provider)/provider_command_and_event_flow_guide.md>) for the full provider-side model, including history behavior and the rule that MCP activity should be excluded from UI-history requirements.
+
 This guide explains how to add and deploy a new custom action end-to-end across:
 
 - provider command creation and queueing
