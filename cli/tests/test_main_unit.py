@@ -21,8 +21,11 @@ import importlib
 import json
 import re
 import subprocess
-from types import SimpleNamespace
 from pathlib import Path
+from types import SimpleNamespace
+from typing import Any
+
+import pytest
 
 cli_main = importlib.import_module("opamp_cli.main")
 
@@ -165,6 +168,63 @@ def test_disable_enable_process_tail_alias_disables_setting(tmp_path: Path, monk
     assert cli_main._process_tail_enabled() is False  # type: ignore[attr-defined]
 
 
+def test_windows_no_console_kwargs_returns_create_no_window(monkeypatch) -> None:
+    monkeypatch.setattr(cli_main, "_is_windows", lambda: True)
+    monkeypatch.setattr(cli_main.subprocess, "CREATE_NO_WINDOW", 0x08000000, raising=False)
+
+    kwargs = cli_main._windows_no_console_kwargs()  # type: ignore[attr-defined]
+
+    assert kwargs == {"creationflags": 0x08000000}
+
+
+def test_background_start_suppresses_windows_console(tmp_path: Path, monkeypatch) -> None:
+    captured: dict[str, Any] = {}
+
+    class FakeProcess:
+        pid = 456
+
+        def poll(self) -> None:
+            return None
+
+    def fake_popen(argv: list[str], **kwargs: Any) -> FakeProcess:
+        captured["argv"] = argv
+        captured["kwargs"] = kwargs
+        return FakeProcess()
+
+    monkeypatch.setattr(cli_main, "_is_windows", lambda: True)
+    monkeypatch.setattr(cli_main.subprocess, "CREATE_NEW_PROCESS_GROUP", 0x00000200, raising=False)
+    monkeypatch.setattr(cli_main.subprocess, "DETACHED_PROCESS", 0x00000008, raising=False)
+    monkeypatch.setattr(cli_main.subprocess, "CREATE_NO_WINDOW", 0x08000000, raising=False)
+    monkeypatch.setattr(cli_main.subprocess, "Popen", fake_popen)
+    monkeypatch.setattr(cli_main.time, "sleep", lambda _seconds: None)
+    monkeypatch.setattr(
+        cli_main,
+        "_get_logger",
+        lambda: SimpleNamespace(
+            info=lambda *_args, **_kwargs: None,
+            warning=lambda *_args, **_kwargs: None,
+            exception=lambda *_args, **_kwargs: None,
+        ),
+    )
+    monkeypatch.setattr(cli_main, "_wait_for_background_start", lambda **_kwargs: (True, ""))
+    monkeypatch.setattr(cli_main, "_record_cli_process", lambda **_kwargs: None)
+    monkeypatch.setattr(cli_main, "_open_process_tail_if_enabled", lambda **_kwargs: None)
+    monkeypatch.setattr(cli_main, "_cli_log_dir", lambda: tmp_path / "logs")
+
+    exit_code = cli_main._launch_background_process(  # type: ignore[attr-defined]
+        {
+            "label": "Client",
+            "argv": ["python", "-m", "opamp_consumer.client"],
+            "cwd": str(tmp_path),
+            "env": {"PATH": "test-path"},
+        }
+    )
+
+    assert exit_code == 0
+    assert captured["argv"] == ["python", "-m", "opamp_consumer.client"]
+    assert captured["kwargs"]["creationflags"] & 0x08000000
+
+
 def test_main_writes_component_lifecycle_log(tmp_path: Path, monkeypatch) -> None:
     runtime_dir = tmp_path / "runtime"
     monkeypatch.setattr(cli_main, "_cli_runtime_dir", lambda: runtime_dir)
@@ -246,15 +306,140 @@ def test_status_command_reports_invalid_opamp_config(
     assert "OpAMP config loaded: no (invalid JSON:" in output
 
 
+def test_clear_logs_removes_cli_and_configured_log_files(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    runtime_dir = tmp_path / "runtime"
+    repo_root = tmp_path / "repo"
+    cli_logs = runtime_dir / "logs"
+    cli_logs.mkdir(parents=True)
+    cli_log = cli_logs / "opamp_cli.log"
+    launch_log = cli_logs / "consumer.log"
+    report_json = cli_logs / "config-report.json"
+    keep_text = cli_logs / "notes.txt"
+    launch_log.write_text("consumer\n", encoding="utf-8")
+    report_json.write_text("{}\n", encoding="utf-8")
+    keep_text.write_text("keep\n", encoding="utf-8")
+
+    state_path = runtime_dir / "managed_processes.json"
+    state_path.write_text(
+        json.dumps(
+            {
+                "processes": [
+                    {
+                        "name": "consumer",
+                        "pid": 123,
+                        "log_file": str(launch_log),
+                    }
+                ]
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    config_dir = repo_root / "config"
+    agent_log_dir = repo_root / "agent-logs"
+    config_dir.mkdir(parents=True)
+    agent_log_dir.mkdir()
+    (agent_log_dir / "elastic-agent.ndjson").write_text("{}\n", encoding="utf-8")
+    (agent_log_dir / "keep.tmp").write_text("keep\n", encoding="utf-8")
+    (config_dir / "elastic-agent.yml").write_text(
+        "agent.logging.files:\n"
+        "  path: ../agent-logs\n",
+        encoding="utf-8",
+    )
+    (config_dir / "opamp.json").write_text(
+        json.dumps({"consumer": {"agent_config_path": "elastic-agent.yml"}}) + "\n",
+        encoding="utf-8",
+    )
+
+    demo_config = repo_root / "cli" / "config" / "demo_consumer_profiles.json"
+    logstash_out = repo_root / "tests" / "logstash" / "out"
+    logstash_logs = logstash_out / "logs"
+    demo_config.parent.mkdir(parents=True)
+    logstash_logs.mkdir(parents=True)
+    (logstash_out / "all-events.json").write_text("{}\n", encoding="utf-8")
+    (logstash_logs / "logstash.log").write_text("logstash\n", encoding="utf-8")
+    (logstash_out / "keep.tmp").write_text("keep\n", encoding="utf-8")
+    demo_config.write_text(
+        json.dumps(
+            {
+                "profiles": [
+                    {
+                        "name": "Logstash demo",
+                        "containers": [
+                            {
+                                "id": "logstash-local",
+                                "label": "Logstash local pipeline",
+                                "image": "logstash:9.5.1",
+                                "ensure_dirs": ["tests/logstash/out"],
+                                "volumes": [
+                                    {
+                                        "host_path": "tests/logstash/out",
+                                        "container_path": "/usr/share/logstash/out",
+                                    }
+                                ],
+                                "command": [
+                                    "logstash",
+                                    "--path.logs",
+                                    "/usr/share/logstash/out/logs",
+                                ],
+                            }
+                        ],
+                    }
+                ]
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(cli_main, "_cli_runtime_dir", lambda: runtime_dir)
+    monkeypatch.setattr(cli_main, "_repo_root", lambda: repo_root)
+    monkeypatch.delenv("OPAMP_CONFIG_PATH", raising=False)
+
+    exit_code = cli_main.main(["clear-logs"])
+    output = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert "Log directories checked:" in output
+    assert "Log files deleted:" in output
+    assert cli_log.exists() is False
+    assert launch_log.exists() is False
+    assert report_json.exists() is False
+    assert (agent_log_dir / "elastic-agent.ndjson").exists() is False
+    assert (logstash_out / "all-events.json").exists() is False
+    assert (logstash_logs / "logstash.log").exists() is False
+    assert keep_text.exists() is True
+    assert (agent_log_dir / "keep.tmp").exists() is True
+    assert (logstash_out / "keep.tmp").exists() is True
+    assert state_path.exists() is True
+
+
 def test_list_command_reports_config_options_when_available(capsys) -> None:
     exit_code = cli_main.main(["list"])
     output = capsys.readouterr().out
 
     assert exit_code == 0
+    assert "clear-logs" in output
     assert "Config commands:" in output
     assert "  config:" in output
     assert "    - validate <path>" in output
     assert "    - metadata <path>" in output
+
+
+def test_help_includes_process_tail_commands(capsys) -> None:
+    exit_code = cli_main.main(["help"])
+    output = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert "opamp-cli enable-process-tail" in output
+    assert "opamp-cli disable-process-tail" in output
+    assert "`enable-process-tail` opens a new shell" in output
+    assert "`disable-process-tail` stops opening log-tail shells" in output
 
 
 def test_config_validate_single_file_writes_report(
@@ -493,6 +678,12 @@ def test_resolve_guided_action_matches_aliases() -> None:
     assert "-m catalog_service " in str(start_action.get("command_text") or "")
     assert stop_action is not None
     assert stop_action["label"] == "All clients"
+    stop_command = str(stop_action.get("command_text") or "")
+    assert "opamp_consumer\\.fluentbit\\.client" in stop_command
+    assert "opamp_consumer\\.fluentd\\.client" in stop_command
+    assert "opamp_consumer\\.client" in stop_command
+    assert "opamp_consumer\\.fluentbit_client" not in stop_command
+    assert "opamp_consumer\\.fluentd_client" not in stop_command
     assert stop_all_action is not None
     assert stop_all_action["label"] == "All managed processes"
     assert restart_action is not None
@@ -526,6 +717,15 @@ def test_start_and_stop_action_orders_are_stable(monkeypatch) -> None:
         "All managed processes",
     ]
     assert restart_labels == start_labels
+
+
+def test_clear_stale_supervisor_signal_removes_existing_file(tmp_path: Path) -> None:
+    signal_path = tmp_path / cli_main.SUPERVISOR_SEMAPHORE_FILENAME
+    signal_path.write_text("", encoding="utf-8")
+
+    cli_main._clear_stale_supervisor_signal(cwd=tmp_path)  # type: ignore[attr-defined]
+
+    assert signal_path.exists() is False
 
 
 def test_broker_stop_action_uses_cli_managed_process_records() -> None:
@@ -715,6 +915,42 @@ def test_demo_profile_loader_prefers_scenario_description(monkeypatch, tmp_path:
     assert profiles[0]["scenario_description"] == "preferred scenario description"
 
 
+def test_demo_profile_loader_carries_elastic_agent_and_container_config(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    demo_config = tmp_path / "demo_profiles.json"
+    demo_config.write_text(
+        json.dumps(
+            {
+                "profiles": [
+                    {
+                        "name": "elastic-logstash",
+                        "containers": [
+                            {
+                                "id": "logstash-local",
+                                "label": "Logstash local pipeline",
+                            }
+                        ],
+                        "elastic_agent": {
+                            "config_path": "tests/logstash/opamp-consumer-elastic-agent-logstash-plugin.json",
+                            "agent_config_path": "tests/logstash/elastic-agent.yml",
+                        },
+                    }
+                ]
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(cli_main, "_demo_consumer_config_path", lambda: demo_config)
+
+    profiles = cli_main._load_demo_consumer_profiles()  # type: ignore[attr-defined]
+
+    assert profiles[0]["containers"][0]["id"] == "logstash-local"
+    assert profiles[0]["elastic_agent"]["config_path"].endswith("logstash-plugin.json")
+
+
 def test_demo_consumer_action_carries_scenario_description() -> None:
     action = cli_main._demo_consumer_start_action(  # type: ignore[attr-defined]
         {
@@ -791,6 +1027,43 @@ def test_demo_profile_numeric_alias_resolves_guided_action(monkeypatch, tmp_path
     assert action["kind"] == "demo_consumers_start"
     assert action["profile_name"] == "repo-defaults"
     assert action["profile_index"] == 2
+
+
+def test_start_numeric_selection_resolves_displayed_option(monkeypatch) -> None:
+    actions = [
+        ("Server", {"label": "Server", "kind": "background_start"}),
+        ("Broker", {"label": "Broker", "kind": "background_start"}),
+    ]
+    monkeypatch.setattr(cli_main, "_guided_actions_for_intent", lambda _intent: actions)
+
+    action = cli_main._resolve_guided_action("start", "2")  # type: ignore[attr-defined]
+
+    assert action == {"label": "Broker", "kind": "background_start"}
+
+
+def test_stop_numeric_selection_resolves_displayed_option(monkeypatch) -> None:
+    actions = [
+        ("Server", {"label": "Server", "kind": "stop_recorded"}),
+        ("All clients", {"label": "All clients", "kind": "shell"}),
+    ]
+    monkeypatch.setattr(cli_main, "_guided_actions_for_intent", lambda _intent: actions)
+
+    action = cli_main._resolve_guided_action("stop", "2")  # type: ignore[attr-defined]
+
+    assert action == {"label": "All clients", "kind": "shell"}
+
+
+def test_numeric_selection_outside_displayed_options_is_not_resolved(
+    monkeypatch,
+) -> None:
+    actions = [
+        ("Server", {"label": "Server", "kind": "background_start"}),
+    ]
+    monkeypatch.setattr(cli_main, "_guided_actions_for_intent", lambda _intent: actions)
+
+    action = cli_main._resolve_guided_action("start", "2")  # type: ignore[attr-defined]
+
+    assert action is None
 
 
 def test_top_level_commands_include_demo_when_enabled(monkeypatch) -> None:
@@ -942,6 +1215,308 @@ def test_start_demo_consumers_allows_partial_observer_profile(monkeypatch, tmp_p
     assert code == 0
 
 
+def test_container_start_action_uses_configured_runtime_command(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    repo_root = tmp_path
+    (repo_root / "tests" / "logstash").mkdir(parents=True)
+    (repo_root / "tests" / "logstash" / "logstash.container.conf").write_text(
+        "input {}\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(cli_main, "_repo_root", lambda: repo_root)
+    monkeypatch.setattr(cli_main, "_container_runtime_executable", lambda: "/usr/bin/podman")
+
+    action = cli_main._container_start_action_from_entry(  # type: ignore[attr-defined]
+        {
+            "id": "logstash-local",
+            "label": "Logstash local pipeline",
+            "container_name": "opamp-logstash",
+            "replace_existing": True,
+            "image_candidates": ["docker.elastic.co/logstash/logstash:9.5.1", "logstash:9.5.1"],
+            "ports": ["127.0.0.1:5044:5044"],
+            "volumes": [
+                {
+                    "host_path": "tests/logstash/logstash.container.conf",
+                    "container_path": "/usr/share/logstash/pipeline/logstash.conf",
+                    "read_only": True,
+                }
+            ],
+            "ensure_dirs": ["tests/logstash/out"],
+            "command": ["logstash", "-f", "/usr/share/logstash/pipeline/logstash.conf"],
+        }
+    )
+
+    assert action is not None
+    argv = action["argv"]
+    assert argv[:6] == [
+        "/usr/bin/podman",
+        "run",
+        "--rm",
+        "--replace",
+        "--name",
+        "opamp-logstash",
+    ]
+    assert argv[6] == "-p"
+    assert "127.0.0.1:5044:5044" in argv
+    assert "docker.elastic.co/logstash/logstash:9.5.1" in argv
+    assert "/usr/share/logstash/pipeline/logstash.conf" in " ".join(argv)
+    assert action["ensure_dirs"] == [str(repo_root / "tests" / "logstash" / "out")]
+    assert action["metadata"]["container_name"] == "opamp-logstash"
+    assert action["readiness_tcp"] == "127.0.0.1:5044"
+
+
+def test_container_start_action_omits_replace_for_docker(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    repo_root = tmp_path
+    monkeypatch.setattr(cli_main, "_repo_root", lambda: repo_root)
+    monkeypatch.setattr(cli_main, "_container_runtime_executable", lambda: "/usr/bin/docker")
+
+    action = cli_main._container_start_action_from_entry(  # type: ignore[attr-defined]
+        {
+            "id": "logstash-local",
+            "label": "Logstash local pipeline",
+            "container_name": "opamp-logstash",
+            "replace_existing": True,
+            "image": "logstash:9.5.1",
+        }
+    )
+
+    assert action is not None
+    argv = action["argv"]
+    assert argv[:5] == [
+        "/usr/bin/docker",
+        "run",
+        "--rm",
+        "--name",
+        "opamp-logstash",
+    ]
+    assert "--replace" not in argv
+
+
+def test_container_readiness_tcp_supports_host_qualified_port() -> None:
+    endpoint = cli_main._container_readiness_tcp(["127.0.0.1:15044:5044"])  # type: ignore[attr-defined]
+
+    assert endpoint == "127.0.0.1:15044"
+
+
+def test_wait_for_background_start_waits_for_tcp_readiness(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    process = SimpleNamespace(poll=lambda: None)
+    attempts = {"count": 0}
+
+    def fake_tcp_ready(endpoint: str) -> bool:
+        attempts["count"] += 1
+        assert endpoint == "127.0.0.1:5044"
+        return attempts["count"] == 2
+
+    monkeypatch.setattr(cli_main, "_tcp_ready", fake_tcp_ready)
+    monkeypatch.setattr(cli_main.time, "sleep", lambda _seconds: None)
+
+    ready, reason = cli_main._wait_for_background_start(  # type: ignore[attr-defined]
+        process=process,
+        log_file=tmp_path / "process.log",
+        readiness_url="",
+        readiness_tcp="127.0.0.1:5044",
+    )
+
+    assert ready is True
+    assert reason == ""
+    assert attempts["count"] == 2
+
+
+def test_dev_containers_command_is_listed_when_runtime_and_actions_available(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(cli_main, "_container_runtime_executable", lambda: "/usr/bin/podman")
+    monkeypatch.setattr(
+        cli_main,
+        "_configured_container_start_actions",
+        lambda: [("Logstash local pipeline", {"label": "Logstash local pipeline"})],
+    )
+
+    commands = cli_main._top_level_commands()  # type: ignore[attr-defined]
+
+    assert "dev-containers" in commands
+
+
+def test_execute_dev_container_workflow_launches_selected_action(monkeypatch) -> None:
+    launched: list[str] = []
+    action = {
+        "label": "Logstash local pipeline",
+        "aliases": ["logstash"],
+    }
+    monkeypatch.setattr(cli_main, "_container_runtime_executable", lambda: "/usr/bin/podman")
+    monkeypatch.setattr(cli_main, "_container_runtime_ready", lambda _runtime: (True, ""))
+    monkeypatch.setattr(
+        cli_main,
+        "_configured_container_start_actions",
+        lambda: [("Logstash local pipeline", action)],
+    )
+    monkeypatch.setattr(
+        cli_main,
+        "_launch_background_process",
+        lambda selected: launched.append(selected["label"]) or 0,
+    )
+
+    code = cli_main._execute_dev_container_workflow(selection="logstash")  # type: ignore[attr-defined]
+
+    assert code == 0
+    assert launched == ["Logstash local pipeline"]
+
+
+def test_execute_dev_container_workflow_rejects_unready_runtime(
+    monkeypatch,
+    capsys,
+) -> None:
+    monkeypatch.setattr(cli_main, "_container_runtime_executable", lambda: "/usr/bin/podman")
+    monkeypatch.setattr(
+        cli_main,
+        "_container_runtime_ready",
+        lambda _runtime: (False, "unable to connect to Podman socket"),
+    )
+
+    code = cli_main._execute_dev_container_workflow(selection="logstash")  # type: ignore[attr-defined]
+
+    assert code == 1
+    captured = capsys.readouterr()
+    assert "Container runtime is installed but not ready" in captured.err
+    assert "unable to connect to Podman socket" in captured.err
+    assert "podman machine start" in captured.err
+
+
+def test_start_demo_consumers_runs_container_then_elastic_agent_client(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    profile_name = "elastic-logstash"
+    repo_root = tmp_path
+    config_path = repo_root / "tests" / "logstash" / "opamp-consumer-elastic-agent-logstash-plugin.json"
+    agent_path = repo_root / "tests" / "logstash" / "elastic-agent.yml"
+    pipeline_path = repo_root / "tests" / "logstash" / "logstash.container.conf"
+    pipeline_path.parent.mkdir(parents=True)
+    config_path.write_text("{}\n", encoding="utf-8")
+    agent_path.write_text("outputs: {}\n", encoding="utf-8")
+    pipeline_path.write_text("input {}\n", encoding="utf-8")
+    monkeypatch.setattr(cli_main, "_repo_root", lambda: repo_root)
+    monkeypatch.setattr(cli_main, "_container_runtime_executable", lambda: "/usr/bin/podman")
+    monkeypatch.setattr(cli_main, "_container_runtime_ready", lambda _runtime: (True, ""))
+    monkeypatch.setattr(
+        cli_main,
+        "_demo_profile_by_name",
+        lambda _name: {
+            "name": profile_name,
+            "containers": [
+                {
+                    "id": "logstash-local",
+                    "label": "Logstash local pipeline",
+                    "image": "logstash:9.5.1",
+                    "volumes": [
+                        {
+                            "host_path": "tests/logstash/logstash.container.conf",
+                            "container_path": "/usr/share/logstash/pipeline/logstash.conf",
+                            "read_only": True,
+                        }
+                    ],
+                }
+            ],
+            "elastic_agent": {
+                "config_path": "tests/logstash/opamp-consumer-elastic-agent-logstash-plugin.json",
+                "agent_config_path": "tests/logstash/elastic-agent.yml",
+            },
+        },
+    )
+    launched: list[dict[str, Any]] = []
+
+    def fake_launch(action):
+        launched.append(action)
+        return 0
+
+    monkeypatch.setattr(cli_main, "_launch_background_process", fake_launch)
+
+    code = cli_main._start_demo_consumers(  # type: ignore[attr-defined]
+        {"profile_name": profile_name}
+    )
+
+    assert code == 0
+    assert [item["label"] for item in launched] == [
+        f"Logstash local pipeline ({profile_name})",
+        f"Elastic Agent client ({profile_name})",
+    ]
+    assert launched[1]["argv"][:3] == [
+        cli_main.sys.executable,
+        "-m",
+        "opamp_consumer.client",
+    ]
+    assert launched[1]["clear_supervisor_signal"] is True
+
+
+def test_start_demo_consumers_rejects_unready_container_runtime(
+    monkeypatch,
+    tmp_path: Path,
+    capsys,
+) -> None:
+    profile_name = "elastic-logstash"
+    repo_root = tmp_path
+    config_path = repo_root / "tests" / "logstash" / "opamp-consumer-elastic-agent-logstash-plugin.json"
+    agent_path = repo_root / "tests" / "logstash" / "elastic-agent.yml"
+    pipeline_path = repo_root / "tests" / "logstash" / "logstash.container.conf"
+    pipeline_path.parent.mkdir(parents=True)
+    config_path.write_text("{}\n", encoding="utf-8")
+    agent_path.write_text("outputs: {}\n", encoding="utf-8")
+    pipeline_path.write_text("input {}\n", encoding="utf-8")
+    monkeypatch.setattr(cli_main, "_repo_root", lambda: repo_root)
+    monkeypatch.setattr(cli_main, "_container_runtime_executable", lambda: "/usr/bin/podman")
+    monkeypatch.setattr(
+        cli_main,
+        "_container_runtime_ready",
+        lambda _runtime: (False, "Cannot connect to Podman"),
+    )
+    monkeypatch.setattr(
+        cli_main,
+        "_demo_profile_by_name",
+        lambda _name: {
+            "name": profile_name,
+            "containers": [
+                {
+                    "id": "logstash-local",
+                    "label": "Logstash local pipeline",
+                    "image": "logstash:9.5.1",
+                    "volumes": [
+                        {
+                            "host_path": "tests/logstash/logstash.container.conf",
+                            "container_path": "/usr/share/logstash/pipeline/logstash.conf",
+                            "read_only": True,
+                        }
+                    ],
+                }
+            ],
+            "elastic_agent": {
+                "config_path": "tests/logstash/opamp-consumer-elastic-agent-logstash-plugin.json",
+                "agent_config_path": "tests/logstash/elastic-agent.yml",
+            },
+        },
+    )
+    launched: list[dict[str, Any]] = []
+    monkeypatch.setattr(cli_main, "_launch_background_process", launched.append)
+
+    code = cli_main._start_demo_consumers(  # type: ignore[attr-defined]
+        {"profile_name": profile_name}
+    )
+
+    assert code == 1
+    assert launched == []
+    captured = capsys.readouterr()
+    assert "Container runtime is installed but not ready" in captured.err
+    assert "Cannot connect to Podman" in captured.err
+    assert "podman machine start" in captured.err
+
+
 def test_start_demo_consumers_rejects_incomplete_fluentd_configuration(
     monkeypatch,
     tmp_path: Path,
@@ -1010,6 +1585,62 @@ def test_stop_recorded_processes_reports_when_nothing_matches(monkeypatch, capsy
 
     assert code == 0
     assert "No recorded process IDs found for that selection." in output
+
+
+def test_stop_recorded_processes_uses_container_runtime_stop(
+    monkeypatch,
+    capsys,
+) -> None:
+    monkeypatch.setattr(
+        cli_main,
+        "_prune_cli_process_state",
+        lambda: {
+            "processes": [
+                {
+                    "name": "Demo:elastic-logstash:Container:Logstash local pipeline",
+                    "pid": 1001,
+                    "metadata": {
+                        "container_runtime": "/usr/bin/podman",
+                        "container_id": "logstash-local",
+                        "container_name": "opamp-logstash",
+                    },
+                },
+            ]
+        },
+    )
+    removed: list[set[str]] = []
+    commands: list[list[str]] = []
+    monkeypatch.setattr(cli_main, "_remove_cli_process_records", removed.append)
+    monkeypatch.setattr(cli_main, "_is_windows", lambda: False)
+    monkeypatch.setattr(
+        cli_main.os,
+        "kill",
+        lambda _pid, _signal: pytest.fail("container stop should not kill the PID"),
+    )
+
+    def fake_run(command, **_kwargs):
+        commands.append(list(command))
+        return subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(cli_main.subprocess, "run", fake_run)
+
+    record_name = "Demo:elastic-logstash:Container:Logstash local pipeline"
+    code = cli_main._stop_recorded_processes([record_name])  # type: ignore[attr-defined]
+    output = capsys.readouterr().out
+
+    assert code == 0
+    assert commands == [
+        [
+            "/usr/bin/podman",
+            "stop",
+            "--time",
+            str(cli_main.CONTAINER_STOP_TIMEOUT_SECONDS),
+            "opamp-logstash",
+        ]
+    ]
+    assert removed == [{record_name}]
+    assert "Stopped container opamp-logstash" in output
+    assert f"Stopped {record_name} pid=1001" in output
 
 
 def test_execute_stop_server_propagates_failure_when_not_running(monkeypatch, capsys) -> None:

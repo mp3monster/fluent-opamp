@@ -26,12 +26,14 @@ from __future__ import annotations
 
 import csv
 import importlib
+import importlib.util
 import json
 import logging
 import os
 import re
 import shlex
 import shutil
+import socket
 import subprocess
 import sys
 import time
@@ -83,8 +85,10 @@ try:
         CLI_RUNTIME_DIRNAME,
         CLI_SETTING_ENABLE_PROCESS_TAIL,
         CLI_SETTINGS_FILENAME,
+        COMMAND_CLEAR_LOGS,
         COMMAND_CONFIG,
         COMMAND_DEMO,
+        COMMAND_DEV_CONTAINERS,
         COMMAND_DEV_FLB_CONFIG,
         COMMAND_DEV_MCP_CONFIG,
         COMMAND_DEV_PID_LOOKUP,
@@ -178,8 +182,10 @@ except ImportError:
         CLI_RUNTIME_DIRNAME,
         CLI_SETTING_ENABLE_PROCESS_TAIL,
         CLI_SETTINGS_FILENAME,
+        COMMAND_CLEAR_LOGS,
         COMMAND_CONFIG,
         COMMAND_DEMO,
+        COMMAND_DEV_CONTAINERS,
         COMMAND_DEV_FLB_CONFIG,
         COMMAND_DEV_MCP_CONFIG,
         COMMAND_DEV_PID_LOOKUP,
@@ -234,9 +240,14 @@ SIMULATOR_STATE_KEY_NAME = "name"
 SIMULATOR_STATE_KEY_PID = "pid"
 GUIDED_DESCRIPTION_COMMAND_PREFIX = "d"
 GUIDED_DESCRIPTION_LABEL = "scenario description"
+LABEL_ELASTIC_AGENT_CLIENT = "Elastic Agent client"
+CONTAINER_RECORD_PREFIX = "Container"
+CONTAINER_STOP_TIMEOUT_SECONDS = 10
+SUPERVISOR_SEMAPHORE_FILENAME = "OpAMPSupervisor.signal"
 PROCESS_INFO_KEY_PID = "pid"
 PROCESS_INFO_KEY_NAME = "name"
 PROCESS_INFO_KEY_COMMAND_LINE = "command_line"
+LOG_FILE_SUFFIXES = {".json", ".jsonl", ".log", ".ndjson"}
 WINDOWS_PROCESS_SNAPSHOT_COMMAND = [
     "powershell.exe",
     "-NoProfile",
@@ -252,6 +263,16 @@ _CLI_LOGGER_CACHE: dict[str, logging.Logger | Path | None] = {
     "logger": None,
     "path": None,
 }
+
+
+def _windows_no_console_kwargs() -> dict[str, Any]:
+    """Return subprocess kwargs that suppress transient console windows on Windows."""
+    if _is_windows() is not True:
+        return {}
+    creationflags = int(getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    if creationflags <= 0:
+        return {}
+    return {"creationflags": creationflags}
 
 
 def _dev_features_enabled() -> bool:
@@ -274,6 +295,82 @@ def _repo_root() -> Path:
 def _demo_consumer_config_path() -> Path:
     """Return configured demo consumer profile mapping path."""
     return (_repo_root() / CLI_DEMO_CONFIG_PATH).resolve()
+
+
+def _container_runtime_executable() -> str | None:
+    """Return an available container runtime executable, if one is configured."""
+    configured = str(os.environ.get("OPAMP_CONTAINER_RUNTIME") or "").strip()
+    candidates = [configured] if configured else ["podman", "docker"]
+    for candidate in candidates:
+        if not candidate:
+            continue
+        resolved = shutil.which(candidate)
+        if resolved:
+            return resolved
+    return None
+
+
+def _container_runtime_ready(runtime: str) -> tuple[bool, str]:
+    """Return whether the container runtime can talk to its backend service."""
+    try:
+        completed = subprocess.run(
+            [runtime, "info"],
+            text=True,
+            capture_output=True,
+            timeout=10,
+            check=False,
+            **_windows_no_console_kwargs(),
+        )
+    except subprocess.TimeoutExpired:
+        return False, f"{runtime} info timed out"
+    except OSError as exc:
+        return False, str(exc)
+
+    if completed.returncode == 0:
+        return True, ""
+    details = (completed.stderr or completed.stdout or "").strip()
+    if not details:
+        details = f"{runtime} info exited with code {completed.returncode}"
+    return False, details
+
+
+def _container_readiness_tcp(ports: list[str]) -> str:
+    """Return a host TCP endpoint derived from the first published port mapping."""
+    for port_mapping in ports:
+        parts = [part for part in str(port_mapping or "").split(":") if part]
+        if len(parts) < 2:
+            continue
+        host = "127.0.0.1"
+        host_port = parts[-2]
+        if len(parts) > 2:
+            host = parts[-3]
+        try:
+            int(host_port)
+        except ValueError:
+            continue
+        return f"{host}:{host_port}"
+    return ""
+
+
+def _print_container_runtime_unavailable(runtime: str, details: str) -> None:
+    """Print a concise runtime readiness failure with common recovery hints."""
+    runtime_name = Path(runtime).name.lower()
+    print(
+        f"Container runtime is installed but not ready: {runtime}",
+        file=sys.stderr,
+    )
+    if details:
+        print(details, file=sys.stderr)
+    if "podman" in runtime_name:
+        print(
+            "Start Podman's VM with `podman machine start`, then retry.",
+            file=sys.stderr,
+        )
+    elif "docker" in runtime_name:
+        print(
+            "Start Docker Desktop or the Docker daemon, then retry.",
+            file=sys.stderr,
+        )
 
 
 def _cli_runtime_dir() -> Path:
@@ -333,6 +430,20 @@ def _get_logger() -> logging.Logger:
     _CLI_LOGGER_CACHE["logger"] = logger
     _CLI_LOGGER_CACHE["path"] = log_path
     return logger
+
+
+def _close_cli_logger() -> None:
+    """Close the CLI file logger so its log file can be deleted on Windows."""
+    cached_logger = _CLI_LOGGER_CACHE.get("logger")
+    if isinstance(cached_logger, logging.Logger):
+        for handler in list(cached_logger.handlers):
+            cached_logger.removeHandler(handler)
+            try:
+                handler.close()
+            except Exception:
+                pass
+    _CLI_LOGGER_CACHE["logger"] = None
+    _CLI_LOGGER_CACHE["path"] = None
 
 
 def _execute_command(command_text: str) -> int:
@@ -440,6 +551,9 @@ def _handle_command(raw_command: str) -> int:  # noqa: PLR0911
     if lowered == COMMAND_STATUS:
         logger.info("printing CLI status")
         return _print_status()
+    if lowered in {COMMAND_CLEAR_LOGS, "clear logs"}:
+        logger.info("clearing CLI-discovered logs")
+        return _clear_logs()
     if lowered == COMMAND_LIST:
         logger.info("printing CLI option hierarchy")
         return _print_option_hierarchy()
@@ -452,6 +566,10 @@ def _handle_command(raw_command: str) -> int:  # noqa: PLR0911
     if lowered == COMMAND_DEV_PID_LOOKUP:
         logger.info("starting dev pid lookup workflow")
         return _execute_dev_pid_lookup_workflow()
+    if lowered == COMMAND_DEV_CONTAINERS or lowered.startswith(f"{COMMAND_DEV_CONTAINERS} "):
+        logger.info("starting dev container workflow command=%s", command_text)
+        selection = command_text[len(COMMAND_DEV_CONTAINERS) :].strip()
+        return _execute_dev_container_workflow(selection=selection)
     if lowered == COMMAND_CONFIG or lowered.startswith(f"{COMMAND_CONFIG} "):
         logger.info("starting config workflow command=%s", command_text)
         try:
@@ -492,6 +610,7 @@ def _top_level_commands() -> list[str]:
         INTENT_RESTART,
         COMMAND_LIST,
         COMMAND_STATUS,
+        COMMAND_CLEAR_LOGS,
         COMMAND_ENABLE_PROCESS_TAIL,
         COMMAND_DISABLE_PROCESS_TAIL,
         COMMAND_EXIT,
@@ -513,6 +632,8 @@ def _top_level_commands() -> list[str]:
         commands.append(COMMAND_DEV_MCP_CONFIG)
     if _dev_pid_lookup_available():
         commands.append(COMMAND_DEV_PID_LOOKUP)
+    if _container_runtime_executable() and _configured_container_start_actions():
+        commands.append(COMMAND_DEV_CONTAINERS)
     return commands
 
 
@@ -942,6 +1063,54 @@ def _execute_dev_pid_lookup_workflow(
     return 0 if matches else 1
 
 
+def _execute_dev_container_workflow(
+    *,
+    selection: str = "",
+    input_reader: Callable[[str], str] | None = None,
+) -> int:
+    """Prompt for and start one configured development container."""
+    runtime = _container_runtime_executable()
+    if not runtime:
+        print(
+            f"{COMMAND_DEV_CONTAINERS} is unavailable because neither podman nor docker could be found.",
+            file=sys.stderr,
+        )
+        return 1
+    runtime_ready, runtime_details = _container_runtime_ready(runtime)
+    if runtime_ready is not True:
+        _print_container_runtime_unavailable(runtime, runtime_details)
+        return 1
+    actions = _configured_container_start_actions()
+    if not actions:
+        print("No configured container start commands were found.", file=sys.stderr)
+        return 1
+
+    selected_action: dict[str, Any] | None = None
+    if selection:
+        for _label, action in actions:
+            if _action_matches_alias(action, selection):
+                selected_action = action
+                break
+        if selected_action is None:
+            available = ", ".join(label for label, _action in actions)
+            print(
+                f"Unknown container start target '{selection}'. Available: {available}",
+                file=sys.stderr,
+            )
+            return 1
+    else:
+        selected_action = _select_guided_action(
+            input_reader=input_reader,
+            intent=INTENT_START,
+            actions=actions,
+        )
+        if selected_action is None:
+            return 0
+
+    print(f"Selected: {selected_action.get('label', 'container')}")
+    return _launch_background_process(selected_action)
+
+
 def _prompt_pid_lookup_regex(
     *,
     input_reader: Callable[[str], str] | None = None,
@@ -977,6 +1146,7 @@ def _windows_process_entries() -> tuple[bool, list[dict[str, Any]]]:
             check=False,
             capture_output=True,
             text=True,
+            **_windows_no_console_kwargs(),
         )
     except OSError:
         return False, []
@@ -1500,6 +1670,7 @@ def _is_process_running_windows(pid: int) -> bool:
             check=False,
             capture_output=True,
             text=True,
+            **_windows_no_console_kwargs(),
         )
     except OSError:
         return False
@@ -1745,11 +1916,63 @@ def _terminate_process(pid: int) -> None:
                 check=False,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
+                **_windows_no_console_kwargs(),
             )
         else:
             os.kill(pid, 15)
     except OSError:
         return
+
+
+def _stop_recorded_container(record: dict[str, Any]) -> bool:
+    """Stop a recorded container through its runtime, when metadata is available."""
+    logger = _get_logger()
+    metadata = record.get("metadata", {})
+    if not isinstance(metadata, dict):
+        return False
+    runtime = str(metadata.get("container_runtime") or "").strip()
+    target = str(
+        metadata.get("container_name")
+        or metadata.get("container_id")
+        or ""
+    ).strip()
+    if not runtime or not target:
+        return False
+    command = [
+        runtime,
+        "stop",
+        "--time",
+        str(CONTAINER_STOP_TIMEOUT_SECONDS),
+        target,
+    ]
+    try:
+        completed = subprocess.run(
+            command,
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=CONTAINER_STOP_TIMEOUT_SECONDS + 5,
+            **_windows_no_console_kwargs(),
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        logger.warning(
+            "container stop command failed target=%s runtime=%s error=%s",
+            target,
+            runtime,
+            exc,
+        )
+        return False
+    if int(completed.returncode) != 0:
+        logger.warning(
+            "container stop command exited non-zero target=%s runtime=%s exit_code=%s",
+            target,
+            runtime,
+            int(completed.returncode),
+        )
+        return False
+    logger.info("stopped recorded container target=%s runtime=%s", target, runtime)
+    print(f"Stopped container {target}")
+    return True
 
 
 def _log_has_startup_failure(log_file: Path) -> str | None:
@@ -1813,15 +2036,34 @@ def _http_ready(url: str) -> bool:
         return False
 
 
+def _tcp_ready(endpoint: str) -> bool:
+    """Return whether a TCP endpoint accepts a connection."""
+    host, separator, port_text = endpoint.rpartition(":")
+    if not separator:
+        return False
+    host = host.strip("[]") or "127.0.0.1"
+    try:
+        port = int(port_text)
+    except ValueError:
+        return False
+    try:
+        with socket.create_connection((host, port), timeout=1.0):
+            return True
+    except OSError:
+        return False
+
+
 def _wait_for_background_start(
     *,
     process: subprocess.Popen[Any],
     log_file: Path,
     readiness_url: str,
+    readiness_tcp: str = "",
 ) -> tuple[bool, str]:
     """Wait for early exit, startup failure markers, and optional readiness."""
     deadline = time.monotonic() + PROCESS_READY_TIMEOUT_SECONDS
     ready_seen = False
+    readiness_target = readiness_url or readiness_tcp
     while time.monotonic() < deadline:
         exit_code = process.poll()
         if exit_code is not None:
@@ -1832,13 +2074,18 @@ def _wait_for_background_start(
         if readiness_url:
             if _http_ready(readiness_url):
                 ready_seen = True
+        elif readiness_tcp:
+            if _tcp_ready(readiness_tcp):
+                ready_seen = True
         else:
             return True, ""
+        if ready_seen:
+            return True, ""
         time.sleep(PROCESS_READY_POLL_INTERVAL_SECONDS)
-    if readiness_url:
+    if readiness_target:
         if ready_seen and process.poll() is None and _log_has_startup_failure(log_file) is None:
             return True, ""
-        return False, f"readiness probe timed out for {readiness_url}"
+        return False, f"readiness probe timed out for {readiness_target}"
     return True, ""
 
 
@@ -1852,6 +2099,196 @@ def _remove_cli_process_records(names: Iterable[str]) -> None:
         if str(record.get("name")) not in target_names
     ]
     _save_cli_process_state({"processes": kept})
+
+
+def _resolve_path_relative_to(raw_path: str, base_dir: Path) -> Path:
+    """Resolve one path relative to a config file directory."""
+    candidate = Path(str(raw_path or "").strip()).expanduser()
+    if candidate.is_absolute():
+        return candidate.resolve()
+    return (base_dir / candidate).resolve()
+
+
+def _strip_config_scalar(value: str) -> str:
+    """Return a simple YAML-ish scalar without wrapping quotes or comments."""
+    text = str(value or "").strip()
+    if "#" in text:
+        text = text.split("#", 1)[0].strip()
+    if len(text) >= 2 and text[0] == text[-1] and text[0] in {"'", '"'}:
+        return text[1:-1]
+    return text
+
+
+def _elastic_agent_log_dirs_from_config(config_path: Path) -> set[Path]:
+    """Return Elastic Agent log directories declared by one YAML config file."""
+    if config_path.is_file() is not True:
+        return set()
+    try:
+        lines = config_path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return set()
+
+    log_dirs: set[Path] = set()
+    in_logging_files = False
+    logging_indent = -1
+    for line in lines:
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        indent = len(line) - len(line.lstrip())
+        stripped = line.strip()
+        if stripped.startswith("agent.logging.files:"):
+            in_logging_files = True
+            logging_indent = indent
+            continue
+        if in_logging_files and indent <= logging_indent:
+            in_logging_files = False
+        if in_logging_files and stripped.startswith("path:"):
+            raw_value = _strip_config_scalar(stripped.split(":", 1)[1])
+            if raw_value:
+                log_dirs.add(_resolve_path_relative_to(raw_value, config_path.parent))
+    return log_dirs
+
+
+def _configured_agent_config_paths_from_opamp_config(config_path: Path) -> set[Path]:
+    """Return agent config paths referenced by one OpAMP JSON config."""
+    payload = _load_json_file(config_path)
+    consumer = payload.get("consumer", {})
+    if not isinstance(consumer, dict):
+        return set()
+    raw_path = str(consumer.get("agent_config_path") or "").strip()
+    if not raw_path:
+        return set()
+    return {_resolve_path_relative_to(raw_path, config_path.parent)}
+
+
+def _mapped_container_path_to_host_path(
+    *,
+    container_path: str,
+    volumes: list[dict[str, Any]],
+) -> Path | None:
+    """Map a configured container path back to a host path when possible."""
+    normalized_container_path = str(container_path or "").strip().replace("\\", "/")
+    if not normalized_container_path:
+        return None
+    for volume in volumes:
+        host_path = str(volume.get("host_path") or "").strip()
+        mounted_path = str(volume.get("container_path") or "").strip().replace("\\", "/")
+        if not host_path or not mounted_path:
+            continue
+        if normalized_container_path == mounted_path:
+            return _resolve_path_from_repo(host_path)
+        prefix = mounted_path.rstrip("/") + "/"
+        if normalized_container_path.startswith(prefix):
+            suffix = normalized_container_path[len(prefix) :]
+            return (_resolve_path_from_repo(host_path) / suffix).resolve()
+    return None
+
+
+def _log_locations_from_demo_config() -> tuple[set[Path], set[Path]]:
+    """Return log directories and files discovered from demo profile config."""
+    log_dirs: set[Path] = set()
+    log_files: set[Path] = set()
+    for entry in _configured_container_entries():
+        volumes = [
+            dict(volume)
+            for volume in entry.get("volumes", [])
+            if isinstance(volume, dict)
+        ]
+        for raw_dir in entry.get("ensure_dirs", []):
+            if str(raw_dir or "").strip():
+                log_dirs.add(_resolve_path_from_repo(str(raw_dir)))
+        command = [str(item) for item in entry.get("command", [])]
+        for index, part in enumerate(command):
+            if part == "--path.logs" and index + 1 < len(command):
+                mapped_path = _mapped_container_path_to_host_path(
+                    container_path=command[index + 1],
+                    volumes=volumes,
+                )
+                if mapped_path is not None:
+                    log_dirs.add(mapped_path)
+
+    for profile in _load_demo_consumer_profiles():
+        for section_name in ("fluentbit", "fluentd", "elastic_agent"):
+            section = profile.get(section_name, {})
+            if not isinstance(section, dict):
+                continue
+            raw_config = str(section.get("config_path") or "").strip()
+            if raw_config:
+                agent_paths = _configured_agent_config_paths_from_opamp_config(
+                    _resolve_path_from_repo(raw_config)
+                )
+                for agent_path in agent_paths:
+                    log_dirs.update(_elastic_agent_log_dirs_from_config(agent_path))
+            raw_agent = str(section.get("agent_config_path") or "").strip()
+            if raw_agent:
+                log_dirs.update(
+                    _elastic_agent_log_dirs_from_config(_resolve_path_from_repo(raw_agent))
+                )
+    return log_dirs, log_files
+
+
+def _discover_log_locations() -> tuple[set[Path], set[Path]]:
+    """Return log directories and exact log files known to the CLI."""
+    log_dirs: set[Path] = {_cli_log_dir()}
+    log_files: set[Path] = {_cli_component_log_path()}
+
+    state_payload = _load_cli_process_state()
+    for record in state_payload.get("processes", []):
+        if not isinstance(record, dict):
+            continue
+        raw_log_file = str(record.get("log_file") or "").strip()
+        if raw_log_file:
+            log_files.add(Path(raw_log_file).expanduser().resolve())
+
+    opamp_config_path, _source = _effective_opamp_config_path()
+    for agent_path in _configured_agent_config_paths_from_opamp_config(opamp_config_path):
+        log_dirs.update(_elastic_agent_log_dirs_from_config(agent_path))
+
+    demo_dirs, demo_files = _log_locations_from_demo_config()
+    log_dirs.update(demo_dirs)
+    log_files.update(demo_files)
+    return log_dirs, log_files
+
+
+def _iter_log_files(directory: Path) -> Iterable[Path]:
+    """Yield log-like files beneath a directory."""
+    if directory.is_dir() is not True:
+        return
+    for path in directory.rglob("*"):
+        if path.is_file() and path.suffix.lower() in LOG_FILE_SUFFIXES:
+            yield path.resolve()
+
+
+def _clear_logs() -> int:
+    """Clear log files discovered from CLI defaults and configured paths."""
+    log_dirs, exact_log_files = _discover_log_locations()
+    _close_cli_logger()
+
+    candidates: set[Path] = set()
+    candidates.update(path for path in exact_log_files if path.exists())
+    for directory in log_dirs:
+        candidates.update(_iter_log_files(directory))
+
+    deleted = 0
+    errors: list[str] = []
+    for path in sorted(candidates, key=lambda item: str(item).lower()):
+        try:
+            if path.is_file():
+                path.unlink()
+                deleted += 1
+        except OSError as exc:
+            errors.append(f"{path}: {exc}")
+
+    print(f"Log directories checked: {len(log_dirs)}")
+    for directory in sorted(log_dirs, key=lambda item: str(item).lower()):
+        print(f"  {directory}")
+    print(f"Log files deleted: {deleted}")
+    if errors:
+        print("Log files not deleted:", file=sys.stderr)
+        for error in errors:
+            print(f"  {error}", file=sys.stderr)
+        return 1
+    return 0
 
 
 def _effective_opamp_config_path() -> tuple[Path, str]:
@@ -1944,6 +2381,12 @@ def _print_option_hierarchy() -> int:
         print("  config:")
         print("    - validate <path>")
         print("    - metadata <path>")
+    container_actions = _configured_container_start_actions()
+    if container_actions:
+        print("")
+        print("Configured container starts:")
+        for label, _action in container_actions:
+            print(f"  - {label}")
     print("")
     print("Guided actions:")
     for intent in GUIDED_INTENTS:
@@ -2115,8 +2558,17 @@ def _load_demo_consumer_profiles() -> list[dict[str, Any]]:
         fluentbit = entry.get("fluentbit", {})
         fluentd = entry.get("fluentd", {})
         simulator = entry.get("simulator", {})
-        if not isinstance(fluentbit, dict) or not isinstance(fluentd, dict) or not isinstance(simulator, dict):
+        elastic_agent = entry.get("elastic_agent", {})
+        containers = entry.get("containers", [])
+        if (
+            not isinstance(fluentbit, dict)
+            or not isinstance(fluentd, dict)
+            or not isinstance(simulator, dict)
+            or not isinstance(elastic_agent, dict)
+        ):
             continue
+        if not isinstance(containers, list):
+            containers = []
         profiles.append(
             {
                 "profile_index": index,
@@ -2125,6 +2577,12 @@ def _load_demo_consumer_profiles() -> list[dict[str, Any]]:
                 "fluentbit": dict(fluentbit),
                 "fluentd": dict(fluentd),
                 "simulator": dict(simulator),
+                "elastic_agent": dict(elastic_agent),
+                "containers": [
+                    dict(container)
+                    for container in containers
+                    if isinstance(container, dict)
+                ],
             }
         )
     return profiles
@@ -2163,6 +2621,188 @@ def _demo_profile_label(profile: dict[str, Any]) -> str:
 def _demo_record_prefix(profile_name: str) -> str:
     """Return record-name prefix used for one demo profile."""
     return f"Demo:{profile_name}"
+
+
+def _container_entry_id(entry: dict[str, Any]) -> str:
+    """Return stable identifier text for one configured container entry."""
+    return str(
+        entry.get("id")
+        or entry.get("name")
+        or entry.get("label")
+        or ""
+    ).strip()
+
+
+def _configured_container_entries() -> list[dict[str, Any]]:
+    """Return unique container start entries from the dev CLI profile config."""
+    payload = _load_json_file(_demo_consumer_config_path())
+    entries: list[dict[str, Any]] = []
+    top_level = payload.get("containers", [])
+    if isinstance(top_level, list):
+        entries.extend(dict(item) for item in top_level if isinstance(item, dict))
+    for profile in _load_demo_consumer_profiles():
+        profile_name = str(profile.get("name") or "").strip()
+        for item in profile.get("containers", []):
+            if not isinstance(item, dict):
+                continue
+            entry = dict(item)
+            entry.setdefault("profile", profile_name)
+            entries.append(entry)
+
+    deduped: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for entry in entries:
+        entry_id = _container_entry_id(entry)
+        if not entry_id:
+            continue
+        normalized = _normalized_label(entry_id)
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        deduped.append(entry)
+    return deduped
+
+
+def _container_image_from_entry(entry: dict[str, Any]) -> str:
+    """Return the configured image, preferring explicit image candidates."""
+    candidates = entry.get("image_candidates", [])
+    if isinstance(candidates, list):
+        for candidate in candidates:
+            image = str(candidate or "").strip()
+            if image:
+                return image
+    return str(entry.get("image") or "").strip()
+
+
+def _container_runtime_supports_replace(runtime: str) -> bool:
+    """Return whether the runtime supports replacing a named container on run."""
+    return Path(runtime).name.lower().startswith("podman")
+
+
+def _container_start_action_from_entry(
+    entry: dict[str, Any],
+    *,
+    profile_name: str | None = None,
+) -> dict[str, Any] | None:
+    """Build one background start action from a configured container entry."""
+    runtime = _container_runtime_executable()
+    if not runtime:
+        return None
+
+    entry_id = _container_entry_id(entry)
+    if not entry_id:
+        return None
+    base_label = str(entry.get("label") or entry_id).strip()
+    image = _container_image_from_entry(entry)
+    if not image:
+        return None
+
+    repo_root = _repo_root()
+    ensure_dirs: list[str] = []
+    for raw_path in entry.get("ensure_dirs", []):
+        if not str(raw_path or "").strip():
+            continue
+        ensure_dirs.append(str(_resolve_path_from_repo(str(raw_path))))
+
+    argv = [runtime, "run", "--rm"]
+    container_name = str(entry.get("container_name") or "").strip()
+    if (
+        container_name
+        and bool(entry.get("replace_existing"))
+        and _container_runtime_supports_replace(runtime)
+    ):
+        argv.append("--replace")
+    if container_name:
+        argv.extend(["--name", container_name])
+    ports = [str(port or "").strip() for port in entry.get("ports", [])]
+    for port_text in ports:
+        if port_text:
+            argv.extend(["-p", port_text])
+    environment = entry.get("environment", {})
+    if isinstance(environment, dict):
+        for key, value in environment.items():
+            if not str(key).strip():
+                continue
+            argv.extend(["-e", f"{key}={value}"])
+    for volume in entry.get("volumes", []):
+        if not isinstance(volume, dict):
+            continue
+        host_path_raw = str(volume.get("host_path") or "").strip()
+        container_path = str(volume.get("container_path") or "").strip()
+        if not host_path_raw or not container_path:
+            continue
+        host_path = _resolve_path_from_repo(host_path_raw)
+        mode = ":ro" if bool(volume.get("read_only")) else ""
+        argv.extend(["-v", f"{host_path}:{container_path}{mode}"])
+    for extra_arg in entry.get("extra_args", []):
+        extra_text = str(extra_arg or "").strip()
+        if extra_text:
+            argv.append(extra_text)
+    argv.append(image)
+    for command_part in entry.get("command", []):
+        command_text = str(command_part or "").strip()
+        if command_text:
+            argv.append(command_text)
+
+    action_label = base_label
+    record_name = f"{CONTAINER_RECORD_PREFIX}:{base_label}"
+    log_name = f"container-{_slugify(base_label)}"
+    metadata: dict[str, Any] = {
+        "container_id": entry_id,
+        "container_name": container_name,
+        "container_runtime": runtime,
+        "container_image": image,
+    }
+    if profile_name:
+        action_label = f"{base_label} ({profile_name})"
+        record_name = f"{_demo_record_prefix(profile_name)}:{CONTAINER_RECORD_PREFIX}:{base_label}"
+        log_name = f"demo-{_slugify(profile_name)}-container-{_slugify(base_label)}"
+        metadata["demo_profile"] = profile_name
+
+    aliases = [
+        entry_id,
+        base_label,
+        *(str(alias) for alias in entry.get("aliases", []) if str(alias).strip()),
+    ]
+    return _background_start_action(
+        action_id=f"container_{_slugify(entry_id).replace('-', '_')}",
+        label=action_label,
+        command_text=_command_text_from_args(argv),
+        argv=argv,
+        cwd=repo_root,
+        env=_build_exec_env(),
+        readiness_tcp=_container_readiness_tcp(ports),
+    ) | {
+        "record_name": record_name,
+        "metadata": metadata,
+        "log_name": log_name,
+        "aliases": aliases,
+        "ensure_dirs": ensure_dirs,
+    }
+
+
+def _configured_container_start_actions() -> list[tuple[str, dict[str, Any]]]:
+    """Return configured container start actions when a runtime is available."""
+    if not _container_runtime_executable():
+        return []
+    actions: list[tuple[str, dict[str, Any]]] = []
+    for entry in _configured_container_entries():
+        action = _container_start_action_from_entry(entry)
+        if action is None:
+            continue
+        actions.append((str(action.get("label") or ""), action))
+    return actions
+
+
+def _action_matches_alias(action: dict[str, Any], selection: str) -> bool:
+    """Return whether a free-form selection matches one standalone action."""
+    normalized = _normalized_label(selection)
+    if not normalized:
+        return False
+    for alias in _guided_action_aliases(action):
+        if _normalized_label(alias) == normalized:
+            return True
+    return False
 
 
 def _simulator_state_path_from_profile(profile: dict[str, Any]) -> Path:
@@ -2236,6 +2876,8 @@ def _background_start_action(  # noqa: PLR0913
     env: dict[str, str],
     launch_url: str | None = None,
     readiness_url: str | None = None,
+    readiness_tcp: str | None = None,
+    clear_supervisor_signal: bool = False,
 ) -> dict[str, Any]:
     """Create one background-launch guided action."""
     return {
@@ -2250,7 +2892,26 @@ def _background_start_action(  # noqa: PLR0913
         "log_name": _slugify(label),
         "launch_url": str(launch_url or "").strip(),
         "readiness_url": str(readiness_url or "").strip(),
+        "readiness_tcp": str(readiness_tcp or "").strip(),
+        "clear_supervisor_signal": clear_supervisor_signal,
     }
+
+
+def _clear_stale_supervisor_signal(*, cwd: Path) -> None:
+    """Remove an old supervisor stop signal before launching a managed client."""
+    signal_path = cwd / SUPERVISOR_SEMAPHORE_FILENAME
+    if not signal_path.exists():
+        return
+    try:
+        signal_path.unlink()
+    except OSError as exc:
+        _get_logger().warning(
+            "failed to remove stale supervisor signal path=%s error=%s",
+            signal_path,
+            exc,
+        )
+        return
+    _get_logger().info("removed stale supervisor signal path=%s", signal_path)
 
 
 def _simulator_start_action(  # noqa: PLR0913
@@ -2500,7 +3161,7 @@ def _start_actions() -> list[tuple[str, dict[str, Any]]]:  # noqa: PLR0915
         "OPAMP_CONFIG_PATH": str(fluentbit_config or (repo_root / "config" / "opamp.json").resolve())
     }
     fluentbit_cmd = _python_module_command(
-        module_name="opamp_consumer.fluentbit_client",
+        module_name="opamp_consumer.fluentbit.client",
         python_paths=[repo_root / "consumer" / "src"],
         args=fluentbit_args,
         env=fluentbit_env,
@@ -2510,12 +3171,13 @@ def _start_actions() -> list[tuple[str, dict[str, Any]]]:  # noqa: PLR0915
         action_id=ACTION_ID_FLUENTBIT_CLIENT,
         label=LABEL_FLUENTBIT_CLIENT,
         command_text=fluentbit_cmd,
-        argv=_python_module_argv(module_name="opamp_consumer.fluentbit_client", args=fluentbit_args),
+        argv=_python_module_argv(module_name="opamp_consumer.fluentbit.client", args=fluentbit_args),
         cwd=repo_root,
         env=_build_exec_env(
             python_paths=[repo_root / "consumer" / "src"],
             env=fluentbit_env,
         ),
+        clear_supervisor_signal=True,
     )
 
     fluentd_config = _existing_path(
@@ -2533,7 +3195,7 @@ def _start_actions() -> list[tuple[str, dict[str, Any]]]:  # noqa: PLR0915
         "OPAMP_CONFIG_PATH": str(fluentd_config or (repo_root / "config" / "opamp.json").resolve())
     }
     fluentd_cmd = _python_module_command(
-        module_name="opamp_consumer.fluentd_client",
+        module_name="opamp_consumer.fluentd.client",
         python_paths=[repo_root / "consumer" / "src"],
         args=fluentd_args,
         env=fluentd_env,
@@ -2543,12 +3205,13 @@ def _start_actions() -> list[tuple[str, dict[str, Any]]]:  # noqa: PLR0915
         action_id=ACTION_ID_FLUENTD_CLIENT,
         label=LABEL_FLUENTD_CLIENT,
         command_text=fluentd_cmd,
-        argv=_python_module_argv(module_name="opamp_consumer.fluentd_client", args=fluentd_args),
+        argv=_python_module_argv(module_name="opamp_consumer.fluentd.client", args=fluentd_args),
         cwd=repo_root,
         env=_build_exec_env(
             python_paths=[repo_root / "consumer" / "src"],
             env=fluentd_env,
         ),
+        clear_supervisor_signal=True,
     )
 
     actions = _materialize_ordered_actions(
@@ -2630,7 +3293,7 @@ def _stop_actions() -> list[tuple[str, dict[str, Any]]]:
                 f"type nul > {_shell_quote(str(semaphore_path.resolve()))} "
                 "&& powershell -NoProfile -Command "
                 "\"Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match "
-                "'opamp_consumer\\.fluentbit_client|opamp_consumer\\.fluentd_client' } | "
+                "'opamp_consumer\\.fluentbit\\.client|opamp_consumer\\.fluentd\\.client|opamp_consumer\\.client' } | "
                 "ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }\""
             ),
             cwd=repo_root,
@@ -2639,8 +3302,9 @@ def _stop_actions() -> list[tuple[str, dict[str, Any]]]:
         client_stop_cmd = _shell_command(
             command_text=(
                 f"touch {_shell_quote(str(semaphore_path.resolve()))} "
-                "&& pkill -TERM -f 'opamp_consumer\\.fluentbit_client' || true "
-                "&& pkill -TERM -f 'opamp_consumer\\.fluentd_client' || true"
+                "&& pkill -TERM -f 'opamp_consumer\\.fluentbit\\.client' || true "
+                "&& pkill -TERM -f 'opamp_consumer\\.fluentd\\.client' || true "
+                "&& pkill -TERM -f 'opamp_consumer\\.client' || true"
             ),
             cwd=repo_root,
         )
@@ -2851,6 +3515,11 @@ def _resolve_guided_action(intent: str, selection: str) -> dict[str, Any] | None
     for label, action in actions:
         if _matches_guided_label(selection, label):
             return action
+    selected = str(selection or "").strip()
+    if selected.isdigit():
+        index = int(selected)
+        if 1 <= index <= len(actions):
+            return actions[index - 1][1]
     return None
 
 
@@ -3131,15 +3800,25 @@ def _start_demo_consumers(action: dict[str, Any]) -> int:
     fluentbit = dict(profile.get("fluentbit", {}))
     fluentd = dict(profile.get("fluentd", {}))
     simulator = dict(profile.get("simulator", {}))
+    elastic_agent = dict(profile.get("elastic_agent", {}))
+    containers = [
+        dict(item)
+        for item in profile.get("containers", [])
+        if isinstance(item, dict)
+    ]
 
     fluentbit_config = _resolve_optional_path_from_repo(str(fluentbit.get("config_path") or ""))
     fluentbit_agent = _resolve_optional_path_from_repo(str(fluentbit.get("agent_config_path") or ""))
     fluentd_config = _resolve_optional_path_from_repo(str(fluentd.get("config_path") or ""))
     fluentd_agent = _resolve_optional_path_from_repo(str(fluentd.get("agent_config_path") or ""))
     simulator_instances = _resolve_optional_path_from_repo(str(simulator.get("instances_path") or ""))
+    elastic_agent_config = _resolve_optional_path_from_repo(str(elastic_agent.get("config_path") or ""))
+    elastic_agent_agent = _resolve_optional_path_from_repo(str(elastic_agent.get("agent_config_path") or ""))
     simulator_state_file = _simulator_state_path_from_profile(profile)
 
     configured_components = 0
+    if containers:
+        configured_components += 1
     if fluentbit_config is not None or fluentbit_agent is not None:
         configured_components += 1
         if fluentbit_config is None or fluentbit_agent is None:
@@ -3155,6 +3834,15 @@ def _start_demo_consumers(action: dict[str, Any]) -> int:
             print(
                 "Demo profile Fluentd configuration is incomplete: both "
                 "`config_path` and `agent_config_path` are required when Fluentd is configured.",
+                file=sys.stderr,
+            )
+            return 1
+    if elastic_agent_config is not None or elastic_agent_agent is not None:
+        configured_components += 1
+        if elastic_agent_config is None:
+            print(
+                "Demo profile Elastic Agent configuration is incomplete: "
+                "`config_path` is required when Elastic Agent is configured.",
                 file=sys.stderr,
             )
             return 1
@@ -3174,6 +3862,8 @@ def _start_demo_consumers(action: dict[str, Any]) -> int:
             fluentbit_agent,
             fluentd_config,
             fluentd_agent,
+            elastic_agent_config,
+            elastic_agent_agent,
             simulator_instances,
         ]
         if path is not None
@@ -3191,6 +3881,31 @@ def _start_demo_consumers(action: dict[str, Any]) -> int:
     common_metadata = {"demo_profile": profile_name}
 
     sequence: list[dict[str, Any]] = []
+    if containers:
+        runtime = _container_runtime_executable()
+        if not runtime:
+            print(
+                "Demo profile container starts require podman or docker, but neither runtime was found.",
+                file=sys.stderr,
+            )
+            return 1
+        runtime_ready, runtime_details = _container_runtime_ready(runtime)
+        if runtime_ready is not True:
+            _print_container_runtime_unavailable(runtime, runtime_details)
+            return 1
+        for container_entry in containers:
+            container_action = _container_start_action_from_entry(
+                container_entry,
+                profile_name=profile_name,
+            )
+            if container_action is None:
+                print(
+                    f"Demo profile container start is incomplete: {_container_entry_id(container_entry)}",
+                    file=sys.stderr,
+                )
+                return 1
+            sequence.append(container_action)
+
     if simulator_instances is not None:
         simulator_action = _simulator_start_action(
             action_id=f"demo_simulator_{_slugify(profile_name)}",
@@ -3232,18 +3947,19 @@ def _start_demo_consumers(action: dict[str, Any]) -> int:
             action_id=f"demo_fluentbit_{_slugify(profile_name)}",
             label=f"{LABEL_FLUENTBIT_CLIENT} ({profile_name})",
             command_text=_python_module_command(
-                module_name="opamp_consumer.fluentbit_client",
+                module_name="opamp_consumer.fluentbit.client",
                 python_paths=[repo_root / "consumer" / "src"],
                 args=fluentbit_args,
                 env={"OPAMP_CONFIG_PATH": str(fluentbit_config)},
                 cwd=repo_root,
             ),
-            argv=_python_module_argv(module_name="opamp_consumer.fluentbit_client", args=fluentbit_args),
+            argv=_python_module_argv(module_name="opamp_consumer.fluentbit.client", args=fluentbit_args),
             cwd=repo_root,
             env=_build_exec_env(
                 python_paths=[repo_root / "consumer" / "src"],
                 env={"OPAMP_CONFIG_PATH": str(fluentbit_config)},
             ),
+            clear_supervisor_signal=True,
         )
         fluentbit_action["record_name"] = f"{prefix}:{LABEL_FLUENTBIT_CLIENT}"
         fluentbit_action["metadata"] = dict(common_metadata)
@@ -3261,23 +3977,54 @@ def _start_demo_consumers(action: dict[str, Any]) -> int:
             action_id=f"demo_fluentd_{_slugify(profile_name)}",
             label=f"{LABEL_FLUENTD_CLIENT} ({profile_name})",
             command_text=_python_module_command(
-                module_name="opamp_consumer.fluentd_client",
+                module_name="opamp_consumer.fluentd.client",
                 python_paths=[repo_root / "consumer" / "src"],
                 args=fluentd_args,
                 env={"OPAMP_CONFIG_PATH": str(fluentd_config)},
                 cwd=repo_root,
             ),
-            argv=_python_module_argv(module_name="opamp_consumer.fluentd_client", args=fluentd_args),
+            argv=_python_module_argv(module_name="opamp_consumer.fluentd.client", args=fluentd_args),
             cwd=repo_root,
             env=_build_exec_env(
                 python_paths=[repo_root / "consumer" / "src"],
                 env={"OPAMP_CONFIG_PATH": str(fluentd_config)},
             ),
+            clear_supervisor_signal=True,
         )
         fluentd_action["record_name"] = f"{prefix}:{LABEL_FLUENTD_CLIENT}"
         fluentd_action["metadata"] = dict(common_metadata)
         fluentd_action["log_name"] = f"demo-{_slugify(profile_name)}-fluentd-client"
         sequence.append(fluentd_action)
+
+    if elastic_agent_config is not None:
+        elastic_args = [
+            "--config-path",
+            str(elastic_agent_config),
+        ]
+        if elastic_agent_agent is not None:
+            elastic_args.extend(["--agent-config-path", str(elastic_agent_agent)])
+        elastic_action = _background_start_action(
+            action_id=f"demo_elastic_agent_{_slugify(profile_name)}",
+            label=f"{LABEL_ELASTIC_AGENT_CLIENT} ({profile_name})",
+            command_text=_python_module_command(
+                module_name="opamp_consumer.client",
+                python_paths=[repo_root / "consumer" / "src"],
+                args=elastic_args,
+                env={"OPAMP_CONFIG_PATH": str(elastic_agent_config)},
+                cwd=repo_root,
+            ),
+            argv=_python_module_argv(module_name="opamp_consumer.client", args=elastic_args),
+            cwd=repo_root,
+            env=_build_exec_env(
+                python_paths=[repo_root / "consumer" / "src"],
+                env={"OPAMP_CONFIG_PATH": str(elastic_agent_config)},
+            ),
+            clear_supervisor_signal=True,
+        )
+        elastic_action["record_name"] = f"{prefix}:{LABEL_ELASTIC_AGENT_CLIENT}"
+        elastic_action["metadata"] = dict(common_metadata)
+        elastic_action["log_name"] = f"demo-{_slugify(profile_name)}-elastic-agent-client"
+        sequence.append(elastic_action)
     for sub_action in sequence:
         sub_kind = str(sub_action.get("kind") or "").strip()
         if sub_kind == ACTION_KIND_SIMULATOR_START:
@@ -3318,6 +4065,12 @@ def _launch_background_process(action: dict[str, Any]) -> int:
         str(key): str(value)
         for key, value in dict(action.get("env", {})).items()
     }
+    if bool(action.get("clear_supervisor_signal", False)):
+        _clear_stale_supervisor_signal(cwd=cwd)
+    for raw_path in action.get("ensure_dirs", []):
+        directory = Path(str(raw_path or "")).expanduser()
+        if str(directory):
+            directory.mkdir(parents=True, exist_ok=True)
     log_name = str(action.get("log_name") or _slugify(label))
     log_file = _prepare_launch_log(
         label=label,
@@ -3338,6 +4091,7 @@ def _launch_background_process(action: dict[str, Any]) -> int:
         creationflags = 0
         creationflags |= getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
         creationflags |= getattr(subprocess, "DETACHED_PROCESS", 0)
+        creationflags |= getattr(subprocess, "CREATE_NO_WINDOW", 0)
         if creationflags:
             popen_kwargs["creationflags"] = creationflags
     else:
@@ -3386,10 +4140,12 @@ def _launch_background_process(action: dict[str, Any]) -> int:
         return int(exit_code) if int(exit_code) != 0 else 1
 
     readiness_url = str(action.get("readiness_url") or "").strip()
+    readiness_tcp = str(action.get("readiness_tcp") or "").strip()
     ready, reason = _wait_for_background_start(
         process=process,
         log_file=log_file,
         readiness_url=readiness_url,
+        readiness_tcp=readiness_tcp,
     )
     if ready is not True:
         _append_log_line(log_file, f"[{_utc_timestamp()}] startup_check_failed={reason}")
@@ -3473,6 +4229,7 @@ def _record_simulator_batch(action: dict[str, Any]) -> int:
             check=False,
             stdout=log_handle,
             stderr=subprocess.STDOUT,
+            **_windows_no_console_kwargs(),
         )
     if int(completed.returncode) != 0:
         logger.warning(
@@ -3584,6 +4341,10 @@ def _stop_recorded_processes(record_names: list[str]) -> int:
     for record in matches:
         pid = int(record.get("pid", 0) or 0)
         name = str(record.get("name") or "process")
+        if _stop_recorded_container(record):
+            logger.info("stopped recorded process name=%s pid=%s", name, pid)
+            print(f"Stopped {name} pid={pid}")
+            continue
         if pid <= 0:
             continue
         try:
@@ -3593,6 +4354,7 @@ def _stop_recorded_processes(record_names: list[str]) -> int:
                     check=False,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
+                    **_windows_no_console_kwargs(),
                 )
             else:
                 os.kill(pid, 15)
@@ -3640,7 +4402,7 @@ def _interactive_loop() -> int:  # noqa: PLR0912,PLR0915
     print("Prompt CLI ready. Prefix with 'script' to generate a script file.")
     print(
         "Example: script demo-start-clients "
-        "python -m opamp_consumer.fluentbit_client"
+        "python -m opamp_consumer.fluentbit.client"
     )
     print("You can type `start server`, `stop config editor`, or `restart server` directly.")
     if _fluentbit_dev_tool_available():

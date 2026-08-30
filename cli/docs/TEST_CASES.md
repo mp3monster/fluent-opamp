@@ -46,12 +46,22 @@ Test modules should reference this file so the implementation and the documented
   - Verifies broker shutdown uses CLI-managed process records instead of the retired broker PID-file wrapper flow.
 - `test_script_mode_generates_broker_launcher_script`
   - Verifies `opamp-cli script ...` can generate a broker launcher script with the expected module command and config path.
+- `test_demo_profile_loader_carries_elastic_agent_and_container_config`
+  - Verifies demo profiles preserve Elastic Agent and container launch configuration.
+- `test_container_start_action_uses_configured_runtime_command`
+  - Verifies configured container entries produce the expected runtime `run` command.
+- `test_dev_containers_command_is_listed_when_runtime_and_actions_available`
+  - Verifies `dev-containers` is exposed only when a runtime-backed configured action exists.
+- `test_execute_dev_container_workflow_launches_selected_action`
+  - Verifies `dev-containers <target>` resolves aliases and launches the selected configured container.
+- `test_start_demo_consumers_runs_container_then_elastic_agent_client`
+  - Verifies the Elastic Agent Logstash demo starts the configured container before the plugin-driven Elastic Agent consumer.
 
 ## End-to-End Tests
 
 ### `cli/tests/test_main_e2e.py`
 - `test_help_command_prints_usage`
-  - Verifies `help` output is available from the CLI entrypoint.
+  - Verifies `help` output is available from the CLI entrypoint and advertises the container launcher command.
 - `test_status_command_reports_runtime_paths`
   - Verifies `status` reports the effective OpAMP config path, managed-process state path, log path, and CLI log path.
 - `test_list_command_reports_option_hierarchy`

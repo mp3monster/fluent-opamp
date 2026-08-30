@@ -58,11 +58,13 @@ COMMAND_CONFIG = "config"
 COMMAND_EXIT = "exit"
 COMMAND_QUIT = "quit"
 COMMAND_DEMO = "demo"
+COMMAND_CLEAR_LOGS = "clear-logs"
 COMMAND_ENABLE_PROCESS_TAIL = "enable-process-tail"
 COMMAND_DISABLE_PROCESS_TAIL = "disable-process-tail"
 COMMAND_DEV_FLB_CONFIG = "dev-flb-config"
 COMMAND_DEV_MCP_CONFIG = "dev-mcp-config"
 COMMAND_DEV_PID_LOOKUP = "dev-pid-lookup"
+COMMAND_DEV_CONTAINERS = "dev-containers"
 ACTION_KIND_BACKGROUND_START = "background_start"
 ACTION_KIND_SIMULATOR_START = "simulator_start"
 ACTION_KIND_DEMO_CONSUMERS_START = "demo_consumers_start"
@@ -139,19 +141,23 @@ HELP_TEXT = """Usage:
   opamp-cli config validate <path>
   opamp-cli config metadata <path>
   opamp-cli demo
+  opamp-cli clear-logs
   opamp-cli enable-process-tail
   opamp-cli disable-process-tail
   opamp-cli dev-flb-config
   opamp-cli dev-mcp-config
   opamp-cli dev-pid-lookup
+  opamp-cli dev-containers
 
 Behavior:
   - Interactive `start`, `stop`, and `restart` commands open guided multi-stage choices.
   - `list` shows the current CLI option hierarchy and guided targets.
   - `status` shows recorded managed processes, PID liveness, and log paths.
+  - `clear-logs` removes CLI-managed logs and configured demo log files.
   - `config validate` validates one file or directory tree using config-service logic when available.
   - `config metadata` adds missing config-service header metadata without overwriting existing values.
   - `enable-process-tail` opens a new shell tailing each managed process log after start.
+  - `disable-process-tail` stops opening log-tail shells for future managed starts.
   - If first token is `script`, generate an OS-native script file.
   - Otherwise execute the command immediately.
   - Direct `.py`/`.pyw` targets are auto-run via Python.
@@ -187,8 +193,14 @@ Examples:
   # Open demo profile choices when OPAMP_DEMO=true
   opamp-cli demo
 
+  # Clear CLI-managed and configured demo logs
+  opamp-cli clear-logs
+
   # Enable log tail windows for future managed starts
   opamp-cli enable-process-tail
+
+  # Disable log tail windows for future managed starts
+  opamp-cli disable-process-tail
 
   # Open the dev-only Fluent Bit generator workflow
   opamp-cli dev-flb-config
@@ -199,6 +211,9 @@ Examples:
   # Prompt for a regex and search running process IDs
   opamp-cli dev-pid-lookup
 
+  # Choose a configured development container start command
+  opamp-cli dev-containers
+
 Notes:
   - Interactive autocomplete uses prompt_toolkit when installed.
   - Fallback completion uses readline when available.
@@ -208,8 +223,10 @@ Notes:
   - When APP_ENABLE_DEV_FEATURES=true and the Fluent Bit dev tools are present, `dev-flb-config` opens a guided generator workflow.
   - When APP_ENABLE_DEV_FEATURES=true and the MCP config utility is present, `dev-mcp-config` opens a guided MCP client configuration workflow.
   - When APP_ENABLE_DEV_FEATURES=true, `dev-pid-lookup` prompts for a regex and searches running processes for PID/name/command-line matches.
+  - `dev-containers` appears when a container runtime and configured container starts are available.
   - Guided start/stop/restart actions run components directly instead of relying on repo wrapper scripts.
   - Set OPAMP_DEMO=true to enable demo consumer options from cli/config/demo_consumer_profiles.json.
   - Guided starts record launched PIDs in cli/runtime/managed_processes.json.
   - Process-tail shells are opened on a best-effort basis and may be unavailable in headless terminals.
+  - `clear-logs` discovers log locations from CLI defaults, managed-process state, the effective OpAMP config file, and demo profile config.
 """

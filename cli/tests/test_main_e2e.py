@@ -84,6 +84,7 @@ def test_help_command_prints_usage() -> None:
     assert completed.returncode == 0
     assert "Usage:" in completed.stdout
     assert "opamp-cli start server" in completed.stdout
+    assert "opamp-cli dev-containers" in completed.stdout
 
 
 def test_status_command_reports_runtime_paths() -> None:

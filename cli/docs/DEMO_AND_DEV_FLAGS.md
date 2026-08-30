@@ -26,6 +26,9 @@ Each profile in that file provides:
 - a Fluent Bit agent config path
 - a Fluentd OpAMP config path
 - a Fluentd agent config path
+- an Elastic Agent OpAMP config path
+- an Elastic Agent config path
+- optional container start commands
 
 When `OPAMP_DEMO` is enabled:
 
@@ -36,6 +39,20 @@ When `OPAMP_DEMO` is enabled:
 - the guided selector accepts `d<number>` so the scenario description can be viewed before choosing a profile
 - demo-launched process records are written into `cli/runtime/managed_processes.json`
 - those records are profile-scoped, so one demo profile can be stopped independently of another
+- profiles can start configured containers before consumers, so dependency services such as Logstash can come up first
+
+The `Demo setup (Elastic Agent self-monitoring to Logstash)` profile uses:
+
+- `tests/logstash/opamp-consumer-elastic-agent-logstash-plugin.json`
+- `tests/logstash/elastic-agent.yml`
+- the `logstash-local` container entry from `cli/config/demo_consumer_profiles.json`
+
+The launch sequence is:
+
+1. Start the configured Logstash container on host port `5044`.
+2. Start `opamp_consumer.client` with the Elastic Agent consumer config.
+3. The consumer loads the `elastic_agent` plugin and launches Elastic Agent with the self-monitoring YAML.
+4. Elastic Agent sends its monitoring logs and metrics to local Logstash.
 
 ## `APP_ENABLE_DEV_FEATURES`
 
@@ -55,7 +72,8 @@ Relevant CLI behavior:
 - startup messaging in interactive CLI only mentions this flag when it is actually detected as enabled
 - when the Fluent Bit dev-generator scripts are present, `opamp-cli dev-flb-config` is exposed as a guided developer workflow
 - `opamp-cli dev-pid-lookup` is exposed as a dev-only workflow for regex-based running-process PID lookup
-- that workflow discovers tool metadata from:
+- `opamp-cli dev-containers` is exposed when a supported container runtime and configured container starts are available
+- the Fluent Bit workflow discovers tool metadata from:
   - `config-service/dev-tools/generate_fluentbit_assets.py`
   - `config-service/dev-tools/generate_fluentbit_markdown.py`
 - the CLI uses the metadata exported by those scripts to keep prompts and supported flags aligned with the tools themselves
@@ -76,6 +94,7 @@ The CLI now covers the main lifecycle operations that older wrapper scripts prev
 - `opamp-cli stop fluentbit client`
 - `opamp-cli start fluentd client`
 - `opamp-cli stop fluentd client`
+- `opamp-cli dev-containers logstash`
 
 ## Scripts That Should Not Be Treated As Direct CLI Replacements
 
