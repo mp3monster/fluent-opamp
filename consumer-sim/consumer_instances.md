@@ -58,7 +58,7 @@ Each object in `instances` supports the fields below.
 
 ## Built-In `entrypoint` Values
 
-- `simulator` -> `python -m opamp_consumer.simulator_client`
+- `simulator` -> `python -m opamp_consumer.simulator.client`
 
 ## `command` Behavior
 
@@ -66,7 +66,7 @@ Each object in `instances` supports the fields below.
 - Supported `command` formats:
   - String: shell-split (e.g. `"python -m opamp_consumer.client"`)
   - Array: each non-empty item becomes one argv token
-- Command must target simulator client (for example contains `opamp_consumer.simulator_client` or `opamp-consumer-simulator`).
+- Command must target simulator client (for example contains `opamp_consumer.simulator.client` or `opamp-consumer-simulator`).
 
 ## `overrides` Behavior
 
