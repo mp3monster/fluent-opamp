@@ -1,0 +1,96 @@
+# Licensed under the Apache License, Version 2.0.
+# Copyright 2026 mp3monster.org
+
+name: opamp-st004
+
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.2
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KEYCLOAK_ADMIN: "${ST004_KEYCLOAK_ADMIN:-admin}"
+      KEYCLOAK_ADMIN_PASSWORD: "${ST004_KEYCLOAK_ADMIN_PASSWORD:-admin}"
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME: "http://keycloak:8080"
+      KC_HOSTNAME_STRICT: "false"
+    ports:
+      - "${ST004_KEYCLOAK_PORT:-18082}:8080"
+    volumes:
+      - ./config/keycloak:/opt/keycloak/data/import:ro
+      - ../../../dist/test-reports/st004/keycloak:/evidence
+    healthcheck:
+      test: ["CMD", "bash", "-lc", "exec 3<>/dev/tcp/127.0.0.1/8080"]
+      interval: 5s
+      timeout: 3s
+      retries: 40
+
+  provider:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: opamp-st004-runtime:latest
+    command: ["/usr/local/bin/st004-provider-entrypoint"]
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    environment:
+      OPAMP_USE_LOCAL_SOURCE: "${ST004_USE_LOCAL_SOURCE:-true}"
+      OPAMP_SOURCE_REPO: "${ST004_SOURCE_REPO:-https://github.com/mp3monster/fluent-opamp.git}"
+      OPAMP_SOURCE_REF: "${ST004_SOURCE_REF:-main}"
+      OPAMP_AUTH_JWT_ISSUER: "http://keycloak:8080/realms/opamp"
+      OPAMP_AUTH_JWT_JWKS_URL: "http://keycloak:8080/realms/opamp/protocol/openid-connect/certs"
+      OPAMP_AUTH_JWT_AUDIENCE: "opamp-consumer"
+      UI_AUTH_JWT_ISSUER: "http://keycloak:8080/realms/opamp"
+      UI_AUTH_JWT_JWKS_URL: "http://keycloak:8080/realms/opamp/protocol/openid-connect/certs"
+      UI_AUTH_JWT_AUDIENCE: "opamp-ui"
+      UI_AUTH_IDP_CLIENT_ID: "opamp-ui"
+    ports:
+      - "${ST004_PROVIDER_PORT:-18083}:8080"
+    volumes:
+      - ../../..:/workspace/source:ro
+      - ./config/provider:/config:ro
+      - ../../../dist/test-reports/st004/provider:/evidence
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.create_connection(('127.0.0.1', 8080), 2); s.close()"]
+      interval: 3s
+      timeout: 2s
+      retries: 40
+
+  consumer-valid:
+    image: opamp-st004-runtime:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["/usr/local/bin/st004-consumer-entrypoint"]
+    depends_on:
+      provider:
+        condition: service_healthy
+    environment:
+      OPAMP_USE_LOCAL_SOURCE: "${ST004_USE_LOCAL_SOURCE:-true}"
+      OPAMP_SOURCE_REPO: "${ST004_SOURCE_REPO:-https://github.com/mp3monster/fluent-opamp.git}"
+      OPAMP_SOURCE_REF: "${ST004_SOURCE_REF:-main}"
+      APP_ENABLE_DEV_FEATURES: "true"
+    volumes:
+      - ../../..:/workspace/source:ro
+      - ./config/consumer/valid:/config:ro
+      - ../../../dist/test-reports/st004/consumer-valid:/evidence
+
+  consumer-wrong-audience:
+    image: opamp-st004-runtime:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["/usr/local/bin/st004-consumer-entrypoint"]
+    depends_on:
+      provider:
+        condition: service_healthy
+    environment:
+      OPAMP_USE_LOCAL_SOURCE: "${ST004_USE_LOCAL_SOURCE:-true}"
+      OPAMP_SOURCE_REPO: "${ST004_SOURCE_REPO:-https://github.com/mp3monster/fluent-opamp.git}"
+      OPAMP_SOURCE_REF: "${ST004_SOURCE_REF:-main}"
+      APP_ENABLE_DEV_FEATURES: "true"
+    volumes:
+      - ../../..:/workspace/source:ro
+      - ./config/consumer/wrong-audience:/config:ro
+      - ../../../dist/test-reports/st004/consumer-wrong-audience:/evidence
+

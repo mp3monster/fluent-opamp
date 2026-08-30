@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# Licensed under the Apache License, Version 2.0.
+# Copyright 2026 mp3monster.org
+#
+# Build, run, verify, capture evidence, and tear down one ST-001 profile. The
+# script keeps orchestration repeatable so the Markdown and JSON evidence can be
+# compared across WebSocket and HTTP runs.
+set -euo pipefail
+
+scenario="${1:-socket}"
+case "${scenario}" in
+  socket|http|all) ;;
+  *)
+    echo "usage: $0 [socket|http|all]" >&2
+    exit 2
+    ;;
+esac
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+scenario_dir="$(cd "${script_dir}/.." && pwd)"
+repo_root="$(cd "${scenario_dir}/../../.." && pwd)"
+compose_file="${scenario_dir}/docker-compose.yml"
+provider_port="${ST001_PROVIDER_PORT:-18080}"
+output_root="${ST001_OUTPUT_DIR:-${repo_root}/dist/test-reports/st001}"
+
+run_one() {
+  # Parameters:
+  # - name: profile name to run; must match a compose profile and consumer suffix.
+  # The same value is used for evidence paths, compose project isolation, and
+  # verifier expectations so profile-specific output stays grouped.
+  local name="$1"
+  local profile="$1"
+  local consumer_service="consumer-${name}"
+  local project="opamp-st001-${name}"
+  local output_dir="${output_root}/${name}"
+
+  mkdir -p "${output_dir}"
+  # Start from a clean compose project to avoid stale containers or networks
+  # influencing registration and disconnect assertions.
+  docker compose -p "${project}" -f "${compose_file}" --profile "${profile}" down --remove-orphans
+  docker compose -p "${project}" -f "${compose_file}" --profile "${profile}" up --build -d
+
+  # Capture the verifier status manually so logs and cleanup still run when a
+  # check fails; failing evidence is as useful as passing evidence.
+  set +e
+  python3 "${scenario_dir}/scripts/verify_st001.py" \
+    --scenario "${name}" \
+    --base-url "http://127.0.0.1:${provider_port}" \
+    --compose-file "${compose_file}" \
+    --compose-project "${project}" \
+    --consumer-service "${consumer_service}" \
+    --output-dir "${output_dir}"
+  local verify_status=$?
+  set -e
+
+  # Always retain compose logs beside the JSON evidence, then tear down the
+  # profile-specific project to keep repeated local runs deterministic.
+  docker compose -p "${project}" -f "${compose_file}" --profile "${profile}" logs \
+    --no-color > "${output_dir}/compose.log" || true
+  docker compose -p "${project}" -f "${compose_file}" --profile "${profile}" down --remove-orphans
+  return "${verify_status}"
+}
+
+if [[ "${scenario}" == "all" ]]; then
+  run_one socket
+  run_one http
+else
+  run_one "${scenario}"
+fi

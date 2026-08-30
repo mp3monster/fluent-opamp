@@ -1,0 +1,10 @@
+# Licensed under the Apache License, Version 2.0.
+# Copyright 2026 mp3monster.org
+#
+# Verifier searches for this id to prove the authenticated consumer registered.
+# agent_description: ST004 valid Keycloak simulator
+# config_version: st004-valid-agent
+# service_instance_id: st004-simulator-valid
+simulator:
+  mode: keycloak-valid
+

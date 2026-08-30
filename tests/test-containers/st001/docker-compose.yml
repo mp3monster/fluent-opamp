@@ -1,0 +1,75 @@
+# Licensed under the Apache License, Version 2.0.
+# Copyright 2026 mp3monster.org
+
+name: opamp-st001
+
+services:
+  provider:
+    # Provider and consumers share the runtime image so dependency drift between
+    # services cannot mask transport behavior.
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: opamp-st001-runtime:latest
+    command: ["/usr/local/bin/st001-provider-entrypoint"]
+    environment:
+      # Local source is the default because this harness is usually used to
+      # verify the current checkout before changes are committed.
+      OPAMP_USE_LOCAL_SOURCE: "${ST001_USE_LOCAL_SOURCE:-true}"
+      OPAMP_SOURCE_REPO: "${ST001_SOURCE_REPO:-https://github.com/mp3monster/fluent-opamp.git}"
+      OPAMP_SOURCE_REF: "${ST001_SOURCE_REF:-main}"
+    ports:
+      - "${ST001_PROVIDER_PORT:-18080}:8080"
+    volumes:
+      - ../../..:/workspace/source:ro
+      - ./config/provider:/config:ro
+      - ../../../dist/test-reports/st001/provider:/evidence
+    healthcheck:
+      # Consumers wait for this API readiness check before attempting OpAMP
+      # traffic; it keeps connection failures meaningful.
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/api/clients"]
+      interval: 3s
+      timeout: 2s
+      retries: 30
+
+  consumer-socket:
+    # The socket profile is the priority path for ST-001.
+    image: opamp-st001-runtime:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["/usr/local/bin/st001-consumer-entrypoint"]
+    profiles: ["socket"]
+    depends_on:
+      provider:
+        condition: service_healthy
+    environment:
+      OPAMP_USE_LOCAL_SOURCE: "${ST001_USE_LOCAL_SOURCE:-true}"
+      OPAMP_SOURCE_REPO: "${ST001_SOURCE_REPO:-https://github.com/mp3monster/fluent-opamp.git}"
+      OPAMP_SOURCE_REF: "${ST001_SOURCE_REF:-main}"
+      APP_ENABLE_DEV_FEATURES: "true"
+    volumes:
+      - ../../..:/workspace/source:ro
+      - ./config/consumer/socket:/config:ro
+      - ../../../dist/test-reports/st001/consumer-socket:/evidence
+
+  consumer-http:
+    # The HTTP profile proves the same simulator behaviour over polling.
+    image: opamp-st001-runtime:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["/usr/local/bin/st001-consumer-entrypoint"]
+    profiles: ["http"]
+    depends_on:
+      provider:
+        condition: service_healthy
+    environment:
+      OPAMP_USE_LOCAL_SOURCE: "${ST001_USE_LOCAL_SOURCE:-true}"
+      OPAMP_SOURCE_REPO: "${ST001_SOURCE_REPO:-https://github.com/mp3monster/fluent-opamp.git}"
+      OPAMP_SOURCE_REF: "${ST001_SOURCE_REF:-main}"
+      APP_ENABLE_DEV_FEATURES: "true"
+    volumes:
+      - ../../..:/workspace/source:ro
+      - ./config/consumer/http:/config:ro
+      - ../../../dist/test-reports/st001/consumer-http:/evidence
