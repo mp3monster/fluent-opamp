@@ -64,6 +64,136 @@
         </article>
       </section>
 
+      <section class="opamp-article" aria-labelledby="opamp-article-title">
+        <p class="article-source">
+          Adapted from
+          <a href="https://blog.mp3monster.org/opamp/" target="_blank" rel="noopener noreferrer">OpAMP explained: the control plane for observability agents</a>.
+        </p>
+
+        <h2 id="opamp-article-title">OpAMP Explained: The Control Plane For Observability Agents</h2>
+        <p>
+          OpenTelemetry is often associated with traces, metrics, logs, and the collectors that receive, process, and forward that telemetry. That solves the data movement problem, but it does not fully solve the operational problem of managing hundreds or thousands of agents across clusters, virtual machines, physical servers, remote sites, and edge devices.
+        </p>
+        <p>
+          OpAMP, the Open Agent Management Protocol, addresses that management layer. It gives a central service and a fleet of collection agents a standard way to exchange identity, health, status, configuration state, and operational instructions.
+        </p>
+        <p>
+          OTLP carries observability data. OpAMP manages the agents and collectors that handle that data. Put another way, OTLP belongs to the data plane, while OpAMP belongs to the control plane.
+        </p>
+
+        <h3>What OpAMP Does</h3>
+        <p>
+          OpAMP is a vendor-neutral protocol defined by the OpenTelemetry project. It describes a conversation between an OpAMP Server, which provides central management, and an OpAMP Client, which represents a data-collection agent to that server. The agent can be an OpenTelemetry Collector, Fluent Bit, Fluentd, Elastic Agent, or another telemetry collection process.
+        </p>
+        <p>
+          Clients send <code>AgentToServer</code> messages containing information such as identity, version, supported capabilities, health, current status, and configuration state. Servers reply with <code>ServerToAgent</code> messages that can offer configuration, commands, connection settings, package information, or other instructions.
+        </p>
+        <p>
+          These messages are encoded with Protobuf and can be exchanged over HTTP or WebSocket. WebSocket is useful when the server needs to reach an agent quickly, while HTTP works well for a client-driven request and response pattern.
+        </p>
+        <ul class="article-list">
+          <li>Agent discovery and identity reporting.</li>
+          <li>Version, operating-system, and descriptive metadata reporting.</li>
+          <li>Health, status, and heartbeat messages.</li>
+          <li>Remote configuration and reporting whether that configuration was accepted.</li>
+          <li>Restart commands and other operational instructions.</li>
+          <li>Connection detail, credential, package, and software update management.</li>
+          <li>Extensions for agent-specific capabilities.</li>
+        </ul>
+        <p>
+          Implementations do not need to support every possible feature. Clients and servers advertise their capabilities, which lets a server avoid asking an agent to perform an operation it does not understand. That capability exchange is central to using OpAMP across mixed products and implementation maturity levels.
+        </p>
+
+        <h3>Native Agent Support Is Optional</h3>
+        <p>
+          An OpAMP client can be built into an agent, supplied as a plugin or sidecar, or run as a separate supervisor process. The supervisor pattern is useful for existing agents because the supervisor can speak OpAMP to the central server while translating instructions into local operations for the managed process.
+        </p>
+        <p>
+          The protocol defines the client and server communication, but it deliberately does not define exactly how a supervisor must start, stop, configure, or inspect a local process. Those details remain specific to the agent and operating system.
+        </p>
+
+        <h3>How Fluent OpAMP Applies These Ideas</h3>
+        <p>
+          The <code>mp3monster/fluent-opamp</code> project turns this control-plane pattern into a working implementation for Fluent Bit and Fluentd. It includes both sides of the OpAMP conversation plus supporting services for operating and experimenting with the model.
+        </p>
+        <p>
+          In this project, the provider maps to the OpAMP Server and the consumer maps to the OpAMP Client plus local agent adapter. A minimal deployment needs one provider and at least one consumer, and those pieces can run independently across many machines and environments.
+        </p>
+
+        <h3>Consumer Lifecycle Modes</h3>
+        <table class="article-table">
+          <thead>
+            <tr>
+              <th>Mode</th>
+              <th>What It Does</th>
+              <th>When It Helps</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>Supervisor</code></td>
+              <td>Launches the agent and directly manages its lifecycle.</td>
+              <td>New deployments where the OpAMP consumer can own the agent process.</td>
+            </tr>
+            <tr>
+              <td><code>Observer</code></td>
+              <td>Finds and attaches to an already running process.</td>
+              <td>Existing deployments where OpAMP should be introduced without changing how the process is initially started.</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          Observer mode is less invasive, but it does not remove the need for operating-system integration. If OpAMP requests a restart, the consumer still needs to know how that service should actually be restarted on the host.
+        </p>
+
+        <h3>Covered Agents And Current Scope</h3>
+        <p>
+          Fluent Bit and Fluentd have implemented consumer adapters. The repository also includes a simulator for development, demonstrations, and repeatable tests. The architecture leaves room for additional agent types: Elastic Agent is on the roadmap, and the OpenTelemetry Collector is a natural extension target.
+        </p>
+        <p>
+          Strong areas today include agent identification, capability exchange, health and heartbeat handling, disconnect handling, server error responses, restart commands, and custom messages. Remote configuration is still evolving, while package management and some advanced connection-management features are longer-term work or outside the current plan.
+        </p>
+
+        <h3>More Than Provider And Consumer</h3>
+        <p>
+          The repository has grown into a small control-plane platform. The provider and consumers remain the core OpAMP loop, while the extra components add operational and collaboration features around that protocol.
+        </p>
+        <ul class="article-list">
+          <li>The Config Service provides editing and validation, primarily for Fluent Bit YAML with some Fluentd support.</li>
+          <li>The Catalog Service discovers known configuration files, displays metadata, and opens files in an editor or read-only viewer.</li>
+          <li>The CLI supports local start, stop, status, and demonstration workflows.</li>
+          <li>The consumer simulator launches multiple scripted consumers for tests and demos.</li>
+          <li>The MCP surface exposes selected provider operations to MCP-capable clients.</li>
+          <li>The agent broker adds a collaboration layer using Slack, LangGraph, and MCP.</li>
+        </ul>
+        <p>
+          These components show the boundary between protocol and product. OpAMP defines the machine-to-machine management conversation; interfaces, catalogues, policy, approvals, and natural-language workflows sit above it. Natural language should still respect normal operational safeguards such as identity, authorization, scope controls, approvals, and audit trails.
+        </p>
+
+        <h3>A Typical Interaction</h3>
+        <ol class="article-steps">
+          <li>A consumer starts and represents a Fluent Bit or Fluentd process.</li>
+          <li>It connects to the provider and sends identity, description, and supported capabilities.</li>
+          <li>It continues reporting heartbeats, health information, and meaningful status changes.</li>
+          <li>An operator selects the agent through the web console, API, CLI, or optional ChatOps route.</li>
+          <li>The provider checks capabilities and sends a suitable <code>ServerToAgent</code> instruction.</li>
+          <li>The consumer translates that instruction into a local agent operation.</li>
+          <li>If the operation changes state, the consumer reports the new state to the provider.</li>
+          <li>The managed agent continues sending collected telemetry to its normal gateway or observability backend.</li>
+        </ol>
+        <p>
+          That last point is important: OpAMP controls the collection agent, but it does not replace OTLP and it is not the observability data pipeline.
+        </p>
+
+        <h3>Why It Matters</h3>
+        <p>
+          <code>fluent-opamp</code> makes OpAMP tangible beyond a conversation focused only on the OpenTelemetry Collector. It demonstrates an OpAMP control plane, provides a bridge for bringing Fluent Bit and Fluentd deployments into that model, explores supervisor and observer patterns, and acts as a test bed for capabilities, commands, configuration, fleet simulation, MCP, and ChatOps.
+        </p>
+        <p>
+          It also surfaces the questions any production control plane must answer: how configuration is versioned and rolled back, how credentials are delivered, how identity is established, who can issue commands, what happens when only part of a fleet accepts a change, and how results are audited. OpAMP does not answer every governance question by itself, but it provides a common protocol on which consistent answers can be built.
+        </p>
+      </section>
+
       <footer class="footer">
         <div>
           Licensed under Apache 2.0 • Attribution:
