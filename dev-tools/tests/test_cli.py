@@ -165,6 +165,43 @@ def test_main_without_arguments_can_quit_immediately(monkeypatch, capsys) -> Non
     assert "Command groups:" in stdout
 
 
+def test_main_without_arguments_quitting_submenu_returns_to_main_menu(
+    monkeypatch,
+    capsys,
+) -> None:
+    responses = iter(["1", "q", "q"])
+
+    monkeypatch.setattr("builtins.input", lambda _: next(responses))
+
+    exit_code = cli.main([])
+    stdout = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert stdout.count("Command groups:") == 2
+    assert "Dev commands:" in stdout
+    assert "Returning to main menu." in stdout
+    assert "Exiting developer CLI." in stdout
+
+
+def test_main_without_arguments_quitting_nested_submenu_returns_to_main_menu(
+    monkeypatch,
+    capsys,
+) -> None:
+    responses = iter(["2", "1", "q", "q"])
+
+    monkeypatch.setattr("builtins.input", lambda _: next(responses))
+
+    exit_code = cli.main([])
+    stdout = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert stdout.count("Command groups:") == 2
+    assert "Build commands:" in stdout
+    assert "artefact scope:" in stdout
+    assert "Returning to main menu." in stdout
+    assert "Exiting developer CLI." in stdout
+
+
 def test_main_without_arguments_supports_certificate_ensure_provider_config(
     monkeypatch,
     capsys,
