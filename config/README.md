@@ -6,6 +6,8 @@ Provider-oriented configuration files in this folder:
   - default development configuration
 - `opamp.provider-with-editor-service.json`
   - provider with embedded `config-service` editor UI
+- `opamp.provider-with-editor-and-credentials-service.json`
+  - provider with embedded `config-service` editor UI and embedded server credentials manager UI
 - `opamp.provider-with-editor-and-catalog-services.json`
   - provider with embedded `config-service` editor UI and embedded `catalog-service` catalog UI
 
