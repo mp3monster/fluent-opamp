@@ -17,11 +17,11 @@ from __future__ import annotations
 from typing import Any
 
 from opamp_broker.planner.ai_connection import AIConnection
-from opamp_broker.planner.ai_svc_planner import AISvcPlanner
 from opamp_broker.planner.ai_connection_factory import (
     create_ai_connection,
     resolve_ai_runtime_settings,
 )
+from opamp_broker.planner.ai_svc_planner import AISvcPlanner
 from opamp_broker.planner.rule_first_planner import RuleFirstPlanner
 from opamp_broker.planner.types import Planner
 

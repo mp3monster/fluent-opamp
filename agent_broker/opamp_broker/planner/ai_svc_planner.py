@@ -150,6 +150,8 @@ class AISvcPlanner:
             schema=BROKER_PLAN_JSON_SCHEMA,
             temperature=self.temperature,
         )
+        if raw_content is None:
+            raise RuntimeError("AI service returned empty planner response")
         parsed = json.loads(raw_content)
         return sanitize_plan(parsed=parsed, tools=tools)
 
@@ -224,6 +226,8 @@ class AISvcPlanner:
             schema=SLACK_FORMAT_RESULT_JSON_SCHEMA,
             temperature=self.temperature,
         )
+        if raw_content is None:
+            return None
         parsed = json.loads(raw_content)
         formatted_text = parsed.get(SLACK_FORMATTED_TEXT_KEY)
         if isinstance(formatted_text, str):

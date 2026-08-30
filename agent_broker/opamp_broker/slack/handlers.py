@@ -18,13 +18,13 @@ and emits thread responses with a consistent output contract.
 
 from __future__ import annotations
 
-from contextlib import suppress
-from datetime import datetime, timezone
 import json
 import logging
 import random
 import re
 import shlex
+from contextlib import suppress
+from datetime import datetime, timezone
 from typing import Any
 
 import httpx
@@ -288,7 +288,7 @@ def _resolve_processing_ack_messages(
 
 def _build_processing_ack_text(processing_ack_messages: tuple[str, ...]) -> str:
     """Return a short randomized acknowledgement for inbound requests."""
-    return random.choice(processing_ack_messages)
+    return random.choice(processing_ack_messages)  # noqa: S311
 
 
 def _resolve_ai_mode_off_ack_text(message_config: dict[str, Any]) -> str:
@@ -873,6 +873,8 @@ def register_handlers(
             [{}],
         )[0].get(SLACK_KEY_TEAM_ID, SLACK_KEY_UNKNOWN)
         channel_id = event.get(SLACK_KEY_CHANNEL) or body.get(SLACK_KEY_CHANNEL_ID)
+        if not isinstance(channel_id, str) or not channel_id.strip():
+            channel_id = SLACK_KEY_UNKNOWN
         reply_thread_ts = (
             str(event.get(SLACK_KEY_THREAD_TS, "")).strip()
             or None

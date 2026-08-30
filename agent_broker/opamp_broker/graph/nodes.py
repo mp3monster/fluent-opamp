@@ -21,14 +21,14 @@ from __future__ import annotations
 import json
 import logging
 import re
-from collections.abc import Awaitable, Callable
-from typing import Any, Final
+from typing import Any, Final, Protocol
 
 try:
     import pandas as pd
 except Exception:  # pragma: no cover - fallback for minimal runtime environments.
     pd = None  # type: ignore[assignment]
 
+from opamp_broker.graph.slash_commands import apply_slash_command_overrides
 from opamp_broker.graph.state import (
     STATE_KEY_API_COMMAND_MODE,
     STATE_KEY_COMMAND,
@@ -45,15 +45,14 @@ from opamp_broker.graph.state import (
     STATE_KEY_TOOLS_AVAILABLE,
     BrokerState,
 )
-from opamp_broker.graph.slash_commands import apply_slash_command_overrides
 from opamp_broker.graph.table_rendering import render_fixed_width_table
-from opamp_broker.mcp.tools import MCPToolRegistry
 from opamp_broker.mcp.client import MCPServerUnavailableError
+from opamp_broker.mcp.tools import MCPToolRegistry
 from opamp_broker.planner.engine import (
-    Planner,
     RESPONSE_TEXT_KEY,
     TOOL_ARGS_KEY,
     TOOL_NAME_KEY,
+    Planner,
 )
 from opamp_broker.planner.rule_first_planner import RuleFirstPlanner
 
@@ -177,10 +176,18 @@ PLANNER_FOLLOW_UP_ARGS_MAX_CHARS: Final[int] = 400
 
 logger = logging.getLogger(__name__)
 
-ToolResponseFormatter = Callable[
-    [str, str, dict[str, Any], dict[str, Any], str],
-    Awaitable[str | None],
-]
+class ToolResponseFormatter(Protocol):
+    """Callable protocol for keyword-only AI tool response formatting."""
+
+    async def __call__(
+        self,
+        *,
+        user_text: str,
+        tool_name: str,
+        tool_args: dict[str, Any],
+        tool_result: dict[str, Any],
+        default_response_text: str,
+    ) -> str | None: ...
 
 
 def _normalize_tool_args(raw_tool_args: Any) -> dict[str, Any]:
@@ -738,6 +745,7 @@ def _render_agents_table(agents: list[Any]) -> str | None:
     """
     if pd is None:
         return None
+    pandas = pd
 
     rows: list[dict[str, Any]] = []
     for agent in agents[:AGENT_TABLE_MAX_ROWS]:
@@ -757,7 +765,7 @@ def _render_agents_table(agents: list[Any]) -> str | None:
         return None
 
     try:
-        frame = pd.json_normalize(rows, sep=".").fillna("")
+        frame = pandas.json_normalize(rows, sep=".").fillna("")
     except Exception:
         return None
 
@@ -1311,7 +1319,7 @@ async def execute_or_summarize(
         final_result = result
         final_default_response_text = default_response_text
 
-        if not replanning_enabled or step_count >= max_steps:
+        if not replanning_enabled or planner is None or step_count >= max_steps:
             break
 
         tools_for_replanning = _planner_tools(tool_registry, sorted(known_tool_names))

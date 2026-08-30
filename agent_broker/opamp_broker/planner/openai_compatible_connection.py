@@ -376,9 +376,14 @@ class OpenAICompatibleConnection:
                 verification_attempt_count=0,
             )
 
+        verification_attempt_count = 0
+        used_max_completion_tokens = self.verify_max_completion_tokens_attempts[0]
+        usage: dict[str, Any] = {}
         for attempt_index, max_completion_tokens in enumerate(
             self.verify_max_completion_tokens_attempts
         ):
+            verification_attempt_count = attempt_index + 1
+            used_max_completion_tokens = max_completion_tokens
             payload = {
                 "model": model,
                 "messages": [{"role": "user", "content": verification_prompt}],
@@ -397,7 +402,7 @@ class OpenAICompatibleConnection:
                     data = response.json()
                     usage = self._extract_usage(data)
                     self._log_token_usage(
-                        call_type=f"verify.attempt.{attempt_index + 1}",
+                        call_type=f"verify.attempt.{verification_attempt_count}",
                         model=model,
                         usage=usage,
                         max_completion_tokens=max_completion_tokens,
@@ -420,31 +425,31 @@ class OpenAICompatibleConnection:
                         f"AI service returned {exc.response.status_code}: "
                         f"{response_text[:500] or 'no response body'}"
                     ),
-                    verification_attempt_count=attempt_index + 1,
+                    verification_attempt_count=verification_attempt_count,
                 )
             except httpx.RequestError as exc:
                 return self._verification_failure(
                     model=model,
                     error=f"AI service request failed: {exc}",
-                    verification_attempt_count=attempt_index + 1,
+                    verification_attempt_count=verification_attempt_count,
                 )
             except Exception as exc:  # pragma: no cover - defensive fallback.
                 return self._verification_failure(
                     model=model,
                     error=f"unexpected AI service verification error: {exc}",
-                    verification_attempt_count=attempt_index + 1,
+                    verification_attempt_count=verification_attempt_count,
                 )
 
         result = self._verification_metadata(
             model=model,
-            verification_attempt_count=attempt_index + 1,
+            verification_attempt_count=verification_attempt_count,
         )
         result.update(
             {
                 "ok": True,
                 "message": "AI service connection verified successfully.",
                 "temperature": self.temperature,
-                "verification_max_completion_tokens_used": max_completion_tokens,
+                "verification_max_completion_tokens_used": used_max_completion_tokens,
                 "usage": usage,
             }
         )

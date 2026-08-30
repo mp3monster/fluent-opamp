@@ -14,10 +14,10 @@
 
 from __future__ import annotations
 
-from opamp_broker.social_collaboration.base import SocialCollaborationAdapter
 from opamp_broker.social_collaboration.adapters.none import (
     NoopSocialCollaborationAdapter,
 )
+from opamp_broker.social_collaboration.base import SocialCollaborationAdapter
 
 SUPPORTED_SOCIAL_COLLABORATION_IMPLEMENTATIONS = ("slack", "none")
 
