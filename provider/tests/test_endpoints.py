@@ -10,6 +10,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import base64
 import json
 import logging
 import pathlib
@@ -64,6 +65,7 @@ def reset_store_state() -> None:
     STORE._pending_approvals.clear()
     STORE._blocked_agents.clear()
     STORE._pending_remote_configs.clear()
+    STORE._pending_connection_settings.clear()
     STORE._pending_instance_uid_replacements.clear()
     yield
     provider_auth.reload_auth_settings()
@@ -72,6 +74,7 @@ def reset_store_state() -> None:
     STORE._pending_approvals.clear()
     STORE._blocked_agents.clear()
     STORE._pending_remote_configs.clear()
+    STORE._pending_connection_settings.clear()
     STORE._pending_instance_uid_replacements.clear()
     app.config["DIAGNOSTIC_MODE"] = False
 
@@ -1173,6 +1176,94 @@ async def test_queue_remote_config_offer_validates_and_http_consumes(
     assert record.events
     assert any(
         event.event_description == "Queued 2 remote config files."
+        for event in record.events
+    )
+
+
+@pytest.mark.asyncio
+async def test_queue_connection_settings_offer_rejects_when_disabled() -> None:
+    """Verify the connection-settings queue endpoint is forbidden when provider support is off."""
+    provider_config.set_config(_test_provider_config(allow_connection_settings=False))
+    client_id = "30303030303030303030303030303030"
+    _seed_tool_agent_record(client_id=client_id)
+    payload = base64.b64encode(
+        opamp_pb2.ConnectionSettingsOffers(
+            opamp=opamp_pb2.OpAMPConnectionSettings(
+                destination_endpoint="https://collector.example"
+            )
+        ).SerializeToString()
+    ).decode("ascii")
+
+    async with app.test_client() as client:
+        resp = await client.post(
+            f"/api/clients/{client_id}/connection-settings",
+            json={
+                "connection_name": "shared",
+                "payload_base64": payload,
+            },
+        )
+
+    assert resp.status_code == 403
+    assert (await resp.get_json())["error"] == (
+        "connection settings are disabled by provider configuration"
+    )
+    assert STORE.get_pending_connection_settings(client_id) is None
+
+
+@pytest.mark.asyncio
+async def test_queue_connection_settings_offer_http_consumes() -> None:
+    """Verify the connection-settings queue endpoint stores payloads that are later delivered over OpAMP."""
+    provider_config.set_config(_test_provider_config(allow_connection_settings=True))
+    client_id = "40404040404040404040404040404040"
+    _seed_tool_agent_record(client_id=client_id)
+    offers = opamp_pb2.ConnectionSettingsOffers()
+    offers.hash = b"connection-settings-hash"
+    offers.opamp.destination_endpoint = "https://collector.example"
+    header = offers.opamp.headers.headers.add()
+    header.key = "Authorization"
+    header.value = "Bearer queued-secret"
+    payload = base64.b64encode(offers.SerializeToString()).decode("ascii")
+
+    async with app.test_client() as client:
+        resp = await client.post(
+            f"/api/clients/{client_id}/connection-settings",
+            json={
+                "connection_name": "shared",
+                "payload_base64": payload,
+            },
+        )
+        assert resp.status_code == 201
+        response_payload = await resp.get_json()
+        assert response_payload["client_id"] == client_id
+        assert response_payload["connection_name"] == "shared"
+        assert response_payload["queued_action"] == ACTION_CHANGE_CONNECTIONS
+        assert response_payload["payload_size_bytes"] > 0
+
+        agent_msg = opamp_pb2.AgentToServer(instance_uid=bytes.fromhex(client_id))
+        resp = await client.post(
+            "/v1/opamp",
+            data=agent_msg.SerializeToString(),
+            headers={"Content-Type": "application/x-protobuf"},
+        )
+        assert resp.status_code == 200
+        server_msg = opamp_pb2.ServerToAgent()
+        server_msg.ParseFromString(await resp.get_data())
+
+    assert server_msg.HasField("connection_settings")
+    assert (
+        server_msg.connection_settings.opamp.destination_endpoint
+        == "https://collector.example"
+    )
+    assert server_msg.connection_settings.opamp.headers.headers[0].key == "Authorization"
+    assert server_msg.connection_settings.opamp.headers.headers[0].value == (
+        "Bearer queued-secret"
+    )
+    assert STORE.get_pending_connection_settings(client_id) is None
+    record = STORE.get(client_id)
+    assert record is not None
+    assert record.next_actions is None
+    assert any(
+        event.event_description == "Queued connection settings for shared."
         for event in record.events
     )
 
