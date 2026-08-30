@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import base64
+import binascii
 from datetime import datetime, timedelta, timezone
 from http import HTTPStatus
 from typing import Any
@@ -48,6 +50,7 @@ def register_client_routes(  # noqa: PLR0913
     command_builders: dict[tuple[str, str], Any],
     action_options: set[str],
     action_apply_config: str,
+    action_change_connections: str,
     client_remote_config_capability: str,
     remote_config_disabled_error: str,
     diagnostic_mode_enabled: Any,
@@ -62,6 +65,10 @@ def register_client_routes(  # noqa: PLR0913
     def provider_allows_remote_config() -> bool:
         """Return whether remote config support is enabled in provider config."""
         return provider_config.CONFIG.allow_remote_config is True
+
+    def provider_allows_connection_settings() -> bool:
+        """Return whether connection-settings offers are enabled in provider config."""
+        return provider_config.CONFIG.allow_connection_settings is True
 
     def client_supports_remote_config(client: Any) -> bool:
         """Return whether a client advertised remote-config support."""
@@ -81,6 +88,24 @@ def register_client_routes(  # noqa: PLR0913
         if file_count == 1:
             return "Queued 1 remote config file."
         return f"Queued {file_count} remote config files."
+
+    def _decode_connection_settings_payload(payload: dict[str, Any]) -> bytes:
+        """Decode and validate one base64-encoded ConnectionSettingsOffers payload."""
+        payload_base64 = str(payload.get("payload_base64") or "").strip()
+        if not payload_base64:
+            raise ValueError("payload_base64 is required")
+        try:
+            payload_bytes = base64.b64decode(payload_base64, validate=True)
+        except (ValueError, binascii.Error) as exc:
+            raise ValueError("payload_base64 must be valid base64") from exc
+        offers = opamp_pb2.ConnectionSettingsOffers()
+        try:
+            offers.ParseFromString(payload_bytes)
+        except Exception as exc:  # pragma: no cover - protobuf raises implementation-specific exceptions
+            raise ValueError("payload_base64 does not contain valid connection settings") from exc
+        if not offers.ListFields():
+            raise ValueError("payload_base64 does not contain valid connection settings")
+        return payload_bytes
 
     @app.post("/api/client-errors")
     async def client_errors() -> ResponseReturnValue:
@@ -547,6 +572,77 @@ def register_client_routes(  # noqa: PLR0913
                     "editor_validation_available": config_editor_validation_available(
                         app.extensions
                     ),
+                }
+            ),
+            HTTPStatus.CREATED,
+        )
+
+    @app.post("/api/clients/<client_id>/connection-settings")
+    async def queue_connection_settings_offer(client_id: str) -> ResponseReturnValue:
+        """Validate, store, and queue one connection-settings offer for a client."""
+        if not provider_allows_connection_settings():
+            logger.warning(
+                "connection settings request rejected because provider setting is disabled client_id=%s",
+                client_id,
+            )
+            return (
+                jsonify(
+                    {
+                        "error": (
+                            "connection settings are disabled by provider configuration"
+                        )
+                    }
+                ),
+                HTTPStatus.FORBIDDEN,
+            )
+
+        payload = await request.get_json(silent=True)
+        if not payload:
+            return jsonify({"error": "payload is required"}), HTTPStatus.BAD_REQUEST
+
+        client = store.get(client_id)
+        if client is None:
+            logger.warning(
+                "connection settings request rejected for unknown client client_id=%s",
+                client_id,
+            )
+            return jsonify({"error": "client not found"}), HTTPStatus.NOT_FOUND
+
+        connection_name = str(payload.get("connection_name") or "").strip()
+        if not connection_name:
+            return jsonify({"error": "connection_name is required"}), HTTPStatus.BAD_REQUEST
+
+        try:
+            connection_settings_bytes = _decode_connection_settings_payload(payload)
+        except ValueError as exc:
+            logger.warning(
+                "connection settings request validation failed client_id=%s error=%s",
+                client_id,
+                exc,
+            )
+            return jsonify({"error": str(exc)}), HTTPStatus.BAD_REQUEST
+
+        store.set_pending_connection_settings(client_id, connection_settings_bytes)
+        record = store.enqueue_next_action(client_id, action_change_connections)
+        store.add_event(
+            client_id,
+            description=f"Queued connection settings for {connection_name}.",
+            max_events=provider_config.CONFIG.client_event_history_size,
+        )
+        logger.info(
+            "queued connection settings offer client_id=%s connection_name=%s payload_size_bytes=%s",
+            client_id,
+            connection_name,
+            len(connection_settings_bytes),
+        )
+        return (
+            jsonify(
+                {
+                    "client_id": client_id,
+                    "connection_name": connection_name,
+                    "payload_size_bytes": len(connection_settings_bytes),
+                    "queued_action": action_change_connections,
+                    "next_actions": record.next_actions,
                 }
             ),
             HTTPStatus.CREATED,

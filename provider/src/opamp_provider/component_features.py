@@ -50,6 +50,8 @@ def _ensure_optional_component_paths() -> None:
     candidates = [
         root / "config-service" / "src",
         root / "consumer" / "src",
+        root / "svr-credentials-mgr" / "src",
+        root / "svr-credentials-mgr" / "plaintext-keyring" / "src",
     ]
     for candidate in candidates:
         if not candidate.exists():
