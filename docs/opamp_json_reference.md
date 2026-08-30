@@ -148,6 +148,7 @@ Common fields from the default `config/opamp.json` that are covered there includ
 If you are looking for other repo-provided server config variants, also check:
 
 - `config/opamp.provider-with-editor-service.json`
+- `config/opamp.provider-with-editor-and-credentials-service.json`
 - `config/opamp.provider-with-editor-and-catalog-services.json`
 
 Those variants are introduced in [`provider/README.md#configuration`](../provider/README.md#configuration).
