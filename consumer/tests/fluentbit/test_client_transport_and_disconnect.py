@@ -497,6 +497,10 @@ def test_idp_mode_retries_http_after_auth_error(monkeypatch) -> None:
         return "Bearer new-token"
 
     async def _fake_send_http_message(**kwargs):
+        if kwargs["msg"].HasField("agent_disconnect"):
+            reply = opamp_pb2.ServerToAgent()
+            reply.instance_uid = instance.data.uid_instance
+            return reply
         calls["count"] += 1
         if calls["count"] == 1:
             request = httpx.Request("POST", "http://localhost/v1/opamp")
