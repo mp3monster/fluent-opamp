@@ -309,6 +309,7 @@ def test_server_main_restore_explicit_snapshot_path_uses_argument(monkeypatch, c
     """Verify `--restore <path>` uses explicit snapshot path and restores before app.run."""
     called = {"order": []}
     explicit_snapshot = "/tmp/opamp_server_state.20260409T103000Z.json"
+    expected_snapshot = str(pathlib.Path(explicit_snapshot))
     caplog.set_level(logging.INFO)
 
     def fake_run(*, host: str, port: int) -> None:
@@ -382,13 +383,13 @@ def test_server_main_restore_explicit_snapshot_path_uses_argument(monkeypatch, c
 
     assert resolved["state_file_prefix"] == "runtime/opamp_server_state"
     assert resolved["restore_option"] == explicit_snapshot
-    assert called["snapshot_path"] == explicit_snapshot
+    assert called["snapshot_path"] == expected_snapshot
     assert called["host"] == "127.0.0.1"
     assert called["port"] == 8080
     assert called["order"] == ["restore", "run"]
     assert statuses
     assert statuses[-1][0] == "restored"
-    assert f"state restore using snapshot file: {explicit_snapshot}" in caplog.text
+    assert f"state restore using snapshot file: {expected_snapshot}" in caplog.text
 
 
 def test_server_main_restore_invalid_snapshot_sets_failed_status(monkeypatch) -> None:

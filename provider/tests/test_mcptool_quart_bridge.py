@@ -63,6 +63,19 @@ async def test_register_mcp_transport_wraps_quart_asgi_dispatch() -> None:
 @pytest.mark.asyncio
 async def test_register_mcp_transport_wraps_streamable_http_dispatch() -> None:
     """Verify streamable-http transport wrapping by dispatching `/mcp` requests to the streamable MCP ASGI app."""
+    original_config = provider_config.CONFIG
+    provider_config.set_config(
+        provider_config.ProviderConfig(
+            delayed_comms_seconds=60,
+            significant_comms_seconds=300,
+            webui_port=8080,
+            minutes_keep_disconnected=30,
+            retry_after_seconds=30,
+            client_event_history_size=50,
+            log_level="INFO",
+            allow_mcp=True,
+        )
+    )
     app = Quart(__name__)
     calls: list[str] = []
 
@@ -99,6 +112,7 @@ async def test_register_mcp_transport_wraps_streamable_http_dispatch() -> None:
         )
     finally:
         mcptool.mcpserver = original_server  # type: ignore[assignment]
+        provider_config.set_config(original_config)
 
     assert calls == ["streamable:/mcp", "streamable:/mcp/tools"]
 
@@ -106,6 +120,19 @@ async def test_register_mcp_transport_wraps_streamable_http_dispatch() -> None:
 @pytest.mark.asyncio
 async def test_register_mcp_transport_wraps_both_sse_and_streamable_http() -> None:
     """Verify dual transport mode dispatches `/sse` and `/messages` to SSE app and `/mcp` to streamable app."""
+    original_config = provider_config.CONFIG
+    provider_config.set_config(
+        provider_config.ProviderConfig(
+            delayed_comms_seconds=60,
+            significant_comms_seconds=300,
+            webui_port=8080,
+            minutes_keep_disconnected=30,
+            retry_after_seconds=30,
+            client_event_history_size=50,
+            log_level="INFO",
+            allow_mcp=True,
+        )
+    )
     app = Quart(__name__)
     calls: list[str] = []
 
@@ -150,6 +177,7 @@ async def test_register_mcp_transport_wraps_both_sse_and_streamable_http() -> No
         await app.asgi_app({"type": "http", "path": "/mcp"}, _noop_receive, _noop_send)
     finally:
         mcptool.mcpserver = original_server  # type: ignore[assignment]
+        provider_config.set_config(original_config)
 
     assert calls == ["sse:/sse", "sse:/messages", "streamable:/mcp"]
 

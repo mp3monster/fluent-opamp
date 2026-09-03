@@ -121,6 +121,11 @@ def _test_provider_config(
     )
 
 
+def _utf8_file_size(path: pathlib.Path) -> int:
+    """Return the actual byte size written on the current platform."""
+    return len(path.read_bytes())
+
+
 def _add_agent_description_attribute(
     agent_msg: opamp_pb2.AgentToServer,
     *,
@@ -824,7 +829,9 @@ async def test_post_state_save_persists_snapshot_when_enabled(monkeypatch) -> No
     assert captured["reason"] == "manual_ui_trigger"
     assert captured["state_file_prefix"] == "runtime/opamp_server_state"
     assert payload["status"] == "saved"
-    assert payload["snapshot_path"] == "/tmp/opamp_server_state.20260409T103000Z.json"
+    assert payload["snapshot_path"] == str(
+        pathlib.Path("/tmp/opamp_server_state.20260409T103000Z.json")
+    )
     assert isinstance(payload["saved_at_utc"], str)
 
 
@@ -929,7 +936,7 @@ async def test_build_test_remote_config_queues_payload_and_http_consumes(
                 "source_path": str(source_path.resolve()),
                 "target_name": "configs/agent.yaml",
                 "content_type": "application/x-yaml",
-                "size_bytes": len(b"enabled: true\n"),
+                "size_bytes": _utf8_file_size(source_path),
             }
         ]
         assert isinstance(payload["config_hash"], str)
@@ -947,7 +954,7 @@ async def test_build_test_remote_config_queues_payload_and_http_consumes(
 
     assert server_msg.HasField("remote_config")
     config_file = server_msg.remote_config.config.config_map["configs/agent.yaml"]
-    assert config_file.body == b"enabled: true\n"
+    assert config_file.body == source_path.read_bytes()
     assert config_file.content_type == "application/x-yaml"
     assert server_msg.remote_config.config_hash.hex() == payload["config_hash"]
     record = STORE.get(client_id)
@@ -1133,13 +1140,13 @@ async def test_queue_remote_config_offer_validates_and_http_consumes(
                 "source_path": str(yaml_path.resolve()),
                 "target_name": "configs/agent.yaml",
                 "content_type": "application/x-yaml",
-                "size_bytes": len(b"enabled: true\n"),
+                "size_bytes": _utf8_file_size(yaml_path),
             },
             {
                 "source_path": str(text_path.resolve()),
                 "target_name": "notes.txt",
                 "content_type": "text/plain",
-                "size_bytes": len(b"plain text config\n"),
+                "size_bytes": _utf8_file_size(text_path),
             },
         ]
         assert payload["validation"] == [
@@ -1165,9 +1172,9 @@ async def test_queue_remote_config_offer_validates_and_http_consumes(
 
     yaml_config_file = server_msg.remote_config.config.config_map["configs/agent.yaml"]
     text_config_file = server_msg.remote_config.config.config_map["notes.txt"]
-    assert yaml_config_file.body == b"enabled: true\n"
+    assert yaml_config_file.body == yaml_path.read_bytes()
     assert yaml_config_file.content_type == "application/x-yaml"
-    assert text_config_file.body == b"plain text config\n"
+    assert text_config_file.body == text_path.read_bytes()
     assert text_config_file.content_type == "text/plain"
     assert server_msg.remote_config.config_hash.hex() == payload["config_hash"]
     assert STORE.get_pending_remote_config(client_id) is None
@@ -1310,13 +1317,13 @@ async def test_queue_remote_config_offer_without_config_editor_falls_back_to_bas
             "source_path": str(yaml_path.resolve()),
             "target_name": "fluent-bit.yaml",
             "content_type": "application/x-yaml",
-            "size_bytes": len(b"pipeline:\n  inputs: []\n"),
+            "size_bytes": _utf8_file_size(yaml_path),
         },
         {
             "source_path": str(fluentd_path.resolve()),
             "target_name": "fluentd.conf",
             "content_type": "text/plain",
-            "size_bytes": len(b"<source>\n  @type tail\n</source>\n"),
+            "size_bytes": _utf8_file_size(fluentd_path),
         },
     ]
 
@@ -1514,7 +1521,7 @@ async def test_queue_remote_config_offer_uses_config_editor_validation_for_fluen
     assert calls["default_version_config_type"] == "fluentbit"
     assert calls["catalog"] == ("5.1.0", "fluentbit")
     assert calls["parser_definition"] == ("5.1.0", "fluentbit")
-    assert calls["fluentbit_parse"] == "pipeline:\n  inputs: []\n"
+    assert calls["fluentbit_parse"] == source_path.read_bytes().decode("utf-8")
     assert calls["validation"] == {
         "version": "5.1.0",
         "payload": {"config": {"pipeline": {"inputs": []}}},
@@ -1597,7 +1604,7 @@ async def test_queue_remote_config_offer_uses_config_editor_validation_for_fluen
             "source_path": str(source_path.resolve()),
             "target_name": "fluentd.conf",
             "content_type": "text/plain",
-            "size_bytes": len(b"<source>\n  @type tail\n</source>\n"),
+            "size_bytes": _utf8_file_size(source_path),
         }
     ]
     assert payload["validation"] == [
@@ -1608,7 +1615,7 @@ async def test_queue_remote_config_offer_uses_config_editor_validation_for_fluen
     ]
     assert calls["default_version_config_type"] == "fluentd"
     assert calls["catalog"] == ("1.16.0", "fluentd")
-    assert calls["fluentd_parse"] == "<source>\n  @type tail\n</source>\n"
+    assert calls["fluentd_parse"] == source_path.read_bytes().decode("utf-8")
     assert calls["validation"] == {
         "version": "1.16.0",
         "payload": {"config": {"pipeline": {"inputs": [{"name": "tail"}]}}},
@@ -1681,11 +1688,11 @@ async def test_queue_remote_config_offer_queues_large_file_payload(
             "source_path": str(source_path.resolve()),
             "target_name": "large-agent.yaml",
             "content_type": "application/x-yaml",
-            "size_bytes": len(large_body.encode("utf-8")),
+            "size_bytes": _utf8_file_size(source_path),
         }
     ]
     queued_file = server_msg.remote_config.config.config_map["large-agent.yaml"]
-    assert queued_file.body.decode("utf-8") == large_body
+    assert queued_file.body == source_path.read_bytes()
     assert payload["payload_size_bytes"] > 10000
 
 
@@ -2042,7 +2049,9 @@ async def test_put_comms_settings(monkeypatch) -> None:
     assert provider.get("human_in_loop_approval") is True
     persisted_state_cfg = provider.get("state_persistence", {})
     assert persisted_state_cfg.get("enabled") is True
-    assert persisted_state_cfg.get("state_file_prefix") == "runtime/opamp_server_state"
+    assert persisted_state_cfg.get("state_file_prefix") == str(
+        pathlib.Path("runtime/opamp_server_state")
+    )
     assert persisted_state_cfg.get("retention_count") == 7
     assert persisted_state_cfg.get("autosave_interval_seconds_since_change") == 600
 
@@ -2213,7 +2222,7 @@ async def test_put_comms_settings_triggers_purge_when_retention_below_current_co
         )
         assert resp.status_code == 200
 
-    assert captured["state_file_prefix"] == "runtime/opamp_server_state"
+    assert captured["state_file_prefix"] == str(pathlib.Path("runtime/opamp_server_state"))
     assert captured["retention_count"] == 1
 
 
