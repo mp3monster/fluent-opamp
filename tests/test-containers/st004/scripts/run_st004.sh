@@ -28,7 +28,17 @@ output_dir="${output_root}/${scenario}"
 mkdir -p "${output_dir}"
 
 docker compose -p "${project}" -f "${compose_file}" down --remove-orphans
+set +e
 docker compose -p "${project}" -f "${compose_file}" up --build -d
+up_status=$?
+set -e
+
+if [ "${up_status}" -ne 0 ]; then
+  docker compose -p "${project}" -f "${compose_file}" logs --no-color \
+    > "${output_dir}/compose.log" || true
+  docker compose -p "${project}" -f "${compose_file}" down --remove-orphans
+  exit "${up_status}"
+fi
 
 set +e
 python3 "${scenario_dir}/scripts/verify_st004.py" \
@@ -36,7 +46,8 @@ python3 "${scenario_dir}/scripts/verify_st004.py" \
   --keycloak-url "http://127.0.0.1:${keycloak_port}" \
   --compose-file "${compose_file}" \
   --compose-project "${project}" \
-  --output-dir "${output_dir}"
+  --output-dir "${output_dir}" \
+  > "${output_dir}/verify.log" 2>&1
 verify_status=$?
 set -e
 
@@ -44,4 +55,3 @@ docker compose -p "${project}" -f "${compose_file}" logs --no-color \
   > "${output_dir}/compose.log" || true
 docker compose -p "${project}" -f "${compose_file}" down --remove-orphans
 exit "${verify_status}"
-
