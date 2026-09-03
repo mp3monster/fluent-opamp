@@ -12,6 +12,7 @@ Podman commands.
 | `cli/config/demo_consumer_profiles.json` | checked in | Defines demo consumer profiles and optional dependency containers. |
 | `cli/runtime/settings.json` | generated | Stores local CLI preferences such as process-tail behavior. |
 | `cli/runtime/managed_processes.json` | generated | Records processes and containers started by the CLI so `stop`, `restart`, and `status` can find them. |
+| `.venv/` | generated | Default repository-level virtual environment created by `opamp-cli setup-venv`. |
 
 Do not edit files under `cli/runtime/` to add new workflows. They are runtime
 state, not source configuration. Add source-controlled demo and container
@@ -296,3 +297,33 @@ shows configured container starts when any are available. `clear-logs` removes
 CLI-managed logs plus log files discovered from the effective OpAMP config and
 demo profile defaults.
 
+## Repository Virtual Environment Setup
+
+`opamp-cli setup-venv` creates or updates the default repository-level Python
+environment:
+
+```text
+.venv
+```
+
+The command also installs repository tooling:
+
+- root `requirements.txt`
+- editable local Python components with `dev` extras
+- Python build tooling: `pip`, `setuptools`, `wheel`, `build`, and `hatchling`
+- Node tooling packages through `npm install`
+
+After a successful setup in an interactive terminal, the CLI prompts to open a
+shell with the virtual environment activated. Type `exit` in that shell to
+return to the original terminal session.
+
+Options:
+
+| Option | Description |
+|---|---|
+| `--venv <path>` | Override the environment directory. Relative paths resolve from the repository root. |
+| `--dry-run` | Print planned commands without creating the environment or installing packages. |
+| `--skip-node` | Skip Node tooling installs. |
+
+The full tooling inventory is maintained in
+[`../../docs/dev/tooling.md`](../../docs/dev/tooling.md).

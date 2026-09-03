@@ -59,6 +59,7 @@ COMMAND_EXIT = "exit"
 COMMAND_QUIT = "quit"
 COMMAND_DEMO = "demo"
 COMMAND_CLEAR_LOGS = "clear-logs"
+COMMAND_SETUP_VENV = "setup-venv"
 COMMAND_ENABLE_PROCESS_TAIL = "enable-process-tail"
 COMMAND_DISABLE_PROCESS_TAIL = "disable-process-tail"
 COMMAND_DEV_FLB_CONFIG = "dev-flb-config"
@@ -142,6 +143,7 @@ HELP_TEXT = """Usage:
   opamp-cli config metadata <path>
   opamp-cli demo
   opamp-cli clear-logs
+  opamp-cli setup-venv [--venv <path>] [--dry-run] [--skip-node]
   opamp-cli enable-process-tail
   opamp-cli disable-process-tail
   opamp-cli dev-flb-config
@@ -154,6 +156,7 @@ Behavior:
   - `list` shows the current CLI option hierarchy and guided targets.
   - `status` shows recorded managed processes, PID liveness, and log paths.
   - `clear-logs` removes CLI-managed logs and configured demo log files.
+  - `setup-venv` creates or updates a repository-level Python virtual environment, installs local tooling, and can open an activated shell.
   - `config validate` validates one file or directory tree using config-service logic when available.
   - `config metadata` adds missing config-service header metadata without overwriting existing values.
   - `enable-process-tail` opens a new shell tailing each managed process log after start.
@@ -196,6 +199,9 @@ Examples:
   # Clear CLI-managed and configured demo logs
   opamp-cli clear-logs
 
+  # Create/update the repository-level virtual environment and tooling
+  opamp-cli setup-venv
+
   # Enable log tail windows for future managed starts
   opamp-cli enable-process-tail
 
@@ -224,6 +230,7 @@ Notes:
   - When APP_ENABLE_DEV_FEATURES=true and the MCP config utility is present, `dev-mcp-config` opens a guided MCP client configuration workflow.
   - When APP_ENABLE_DEV_FEATURES=true, `dev-pid-lookup` prompts for a regex and searches running processes for PID/name/command-line matches.
   - `dev-containers` appears when a container runtime and configured container starts are available.
+  - `setup-venv` installs Python packages into `.venv`, runs npm installs for checked-in Node tooling, and prompts before opening an activated shell in interactive terminals.
   - Guided start/stop/restart actions run components directly instead of relying on repo wrapper scripts.
   - Set OPAMP_DEMO=true to enable demo consumer options from cli/config/demo_consumer_profiles.json.
   - Guided starts record launched PIDs in cli/runtime/managed_processes.json.

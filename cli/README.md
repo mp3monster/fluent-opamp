@@ -92,6 +92,8 @@ Both shortcuts run the compatibility entrypoint:
     config load status, managed processes, PID liveness, and log paths.
   - Type `clear-logs` to remove CLI-managed log files plus log files discovered
     from the effective OpAMP config and demo profile defaults.
+  - Type `setup-venv` to create or update the repository-level `.venv`, install
+    Python dependencies and editable dev extras, and install Node tooling.
   - Type `list` in interactive mode to display the current command hierarchy, guided options, and available `config` subcommands when config-service support is present.
   - Type `enable-process-tail` to open a separate tail shell for each future managed start log.
   - Type `disable-process-tail` to turn that behavior off again.
@@ -124,6 +126,8 @@ opamp-cli status
 opamp-cli list
 opamp-cli config validate ./example/fluent-bit.yaml
 opamp-cli config metadata ./example/configs
+opamp-cli setup-venv --dry-run
+opamp-cli setup-venv
 opamp-cli enable-process-tail
 APP_ENABLE_DEV_FEATURES=true opamp-cli dev-flb-config
 APP_ENABLE_DEV_FEATURES=true opamp-cli dev-pid-lookup
@@ -174,6 +178,23 @@ Development container starts:
 - The Logstash entry mirrors `tests/logstash/run-logstash.bat`: it runs Logstash on host port `5044`, mounts the pipeline config, and writes output under `tests/logstash/out`.
 - You can launch it directly with `opamp-cli dev-containers logstash`.
 - Set `OPAMP_CONTAINER_RUNTIME` to choose a specific runtime executable; otherwise the CLI prefers `podman`, then `docker`.
+
+Repository virtual environment setup:
+
+- `opamp-cli setup-venv` creates or updates `.venv` at the repository root.
+- It upgrades `pip`, `setuptools>=82`, `wheel`, `build`, and `hatchling>=1.25`.
+- It installs root `requirements.txt`.
+- It installs local Python components editable with their `dev` extras:
+  `cli`, `provider`, `consumer`, `consumer-sim`, `config-service`,
+  `catalog-service`, `agent_broker`, `mcp`, `dev-tools`,
+  `svr-credentials-mgr/plaintext-keyring`, and `svr-credentials-mgr`.
+- It runs `npm install` in checked-in Node tooling directories:
+  `catalog-service`, `config-service`, `config-service/frontend`,
+  `svr-credentials-mgr`, and `tools/mermaid`.
+- In an interactive terminal, it prompts to open a shell with the virtual
+  environment activated. Type `exit` in that shell to return.
+- Use `--dry-run` to preview commands, `--venv <path>` to choose a different
+  environment path, or `--skip-node` to skip Node tooling.
 
 Type `exit` or `quit` to leave interactive mode.
 Type `help` (or `-h` / `--help`) to print CLI usage and examples.

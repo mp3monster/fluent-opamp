@@ -98,6 +98,7 @@ try:
         COMMAND_HELP,
         COMMAND_LIST,
         COMMAND_QUIT,
+        COMMAND_SETUP_VENV,
         COMMAND_STATUS,
         DEFAULT_CATALOG_WEB_PORT,
         DEFAULT_SERVER_PORT,
@@ -195,6 +196,7 @@ except ImportError:
         COMMAND_HELP,
         COMMAND_LIST,
         COMMAND_QUIT,
+        COMMAND_SETUP_VENV,
         COMMAND_STATUS,
         DEFAULT_CATALOG_WEB_PORT,
         DEFAULT_SERVER_PORT,
@@ -248,6 +250,26 @@ PROCESS_INFO_KEY_PID = "pid"
 PROCESS_INFO_KEY_NAME = "name"
 PROCESS_INFO_KEY_COMMAND_LINE = "command_line"
 LOG_FILE_SUFFIXES = {".json", ".jsonl", ".log", ".ndjson"}
+OPAMP_VENV_PYTHON_COMPONENTS = (
+    Path("cli"),
+    Path("provider"),
+    Path("consumer"),
+    Path("consumer-sim"),
+    Path("config-service"),
+    Path("catalog-service"),
+    Path("agent_broker"),
+    Path("mcp"),
+    Path("dev-tools"),
+    Path("svr-credentials-mgr") / "plaintext-keyring",
+    Path("svr-credentials-mgr"),
+)
+OPAMP_VENV_NODE_TOOLING = (
+    Path("catalog-service"),
+    Path("config-service"),
+    Path("config-service") / "frontend",
+    Path("svr-credentials-mgr"),
+    Path("tools") / "mermaid",
+)
 WINDOWS_PROCESS_SNAPSHOT_COMMAND = [
     "powershell.exe",
     "-NoProfile",
@@ -512,6 +534,29 @@ def _command_text_from_args(args: list[str]) -> str:
     return " ".join(_shell_quote(arg) for arg in args)
 
 
+def _command_match_text(command_text: str) -> str:
+    """Return command text normalized for internal command matching."""
+    text = str(command_text or "").strip()
+    if not text:
+        return ""
+    try:
+        tokens = shlex.split(text, posix=True)
+    except ValueError:
+        tokens = text.split()
+    if not tokens:
+        return ""
+    return " ".join(str(token or "").strip().strip("\"'") for token in tokens)
+
+
+def _split_internal_command_args(command_text: str) -> list[str]:
+    """Split internal command text and trim paired shell quotes from tokens."""
+    try:
+        tokens = shlex.split(str(command_text or ""), posix=not _is_windows())
+    except ValueError:
+        tokens = str(command_text or "").split()
+    return [str(token or "").strip().strip("\"'") for token in tokens]
+
+
 def _script_mode_enabled(command_text: str) -> bool:
     """Return whether command begins with `script`."""
     stripped = command_text.lstrip()
@@ -529,7 +574,8 @@ def _handle_command(raw_command: str) -> int:  # noqa: PLR0911
         logger.info("ignored empty command input")
         return 0
 
-    lowered = command_text.lower()
+    match_text = _command_match_text(command_text)
+    lowered = match_text.lower()
     if lowered in {
         COMMAND_ENABLE_PROCESS_TAIL,
         "enable process-tail",
@@ -554,6 +600,10 @@ def _handle_command(raw_command: str) -> int:  # noqa: PLR0911
     if lowered in {COMMAND_CLEAR_LOGS, "clear logs"}:
         logger.info("clearing CLI-discovered logs")
         return _clear_logs()
+    if lowered == COMMAND_SETUP_VENV or lowered.startswith(f"{COMMAND_SETUP_VENV} "):
+        logger.info("starting virtual environment setup workflow command=%s", command_text)
+        setup_args = _split_internal_command_args(command_text)
+        return _execute_setup_venv_workflow(setup_args[1:])
     if lowered == COMMAND_LIST:
         logger.info("printing CLI option hierarchy")
         return _print_option_hierarchy()
@@ -568,14 +618,11 @@ def _handle_command(raw_command: str) -> int:  # noqa: PLR0911
         return _execute_dev_pid_lookup_workflow()
     if lowered == COMMAND_DEV_CONTAINERS or lowered.startswith(f"{COMMAND_DEV_CONTAINERS} "):
         logger.info("starting dev container workflow command=%s", command_text)
-        selection = command_text[len(COMMAND_DEV_CONTAINERS) :].strip()
+        selection = match_text[len(COMMAND_DEV_CONTAINERS) :].strip()
         return _execute_dev_container_workflow(selection=selection)
     if lowered == COMMAND_CONFIG or lowered.startswith(f"{COMMAND_CONFIG} "):
         logger.info("starting config workflow command=%s", command_text)
-        try:
-            config_args = shlex.split(command_text, posix=not _is_windows())
-        except ValueError as exc:
-            raise ValueError(f"invalid config command syntax: {exc}") from exc
+        config_args = _split_internal_command_args(command_text)
         if not config_args:
             raise ValueError("config command is missing arguments")
         return execute_config_command(
@@ -584,8 +631,8 @@ def _handle_command(raw_command: str) -> int:  # noqa: PLR0911
             log_dir=_cli_log_dir(),
         )
 
-    if _script_mode_enabled(command_text):
-        output_name, script_command = _split_script_directive(command_text)
+    if _script_mode_enabled(match_text):
+        output_name, script_command = _split_script_directive(match_text)
         output_path = _resolve_script_path(output_name)
         _write_script(output_path, script_command)
         logger.info(
@@ -611,6 +658,7 @@ def _top_level_commands() -> list[str]:
         COMMAND_LIST,
         COMMAND_STATUS,
         COMMAND_CLEAR_LOGS,
+        COMMAND_SETUP_VENV,
         COMMAND_ENABLE_PROCESS_TAIL,
         COMMAND_DISABLE_PROCESS_TAIL,
         COMMAND_EXIT,
@@ -784,6 +832,296 @@ def _mcp_dev_tool_available() -> bool:
 def _dev_pid_lookup_available() -> bool:
     """Return whether the dev PID lookup workflow should be exposed."""
     return _dev_features_enabled()
+
+
+def _resolve_setup_venv_path(raw_path: str) -> Path:
+    """Resolve a setup-venv target path relative to the repository root."""
+    candidate = Path(str(raw_path or "").strip()).expanduser()
+    if candidate.is_absolute():
+        return candidate.resolve()
+    return (_repo_root() / candidate).resolve()
+
+
+def _parse_setup_venv_args(args: list[str]) -> dict[str, Any]:
+    """Parse setup-venv options from command-line arguments."""
+    options: dict[str, Any] = {
+        "venv_dir": (_repo_root() / ".venv").resolve(),
+        "dry_run": False,
+        "skip_node": False,
+    }
+    index = 0
+    while index < len(args):
+        option = str(args[index])
+        if option == "--dry-run":
+            options["dry_run"] = True
+        elif option == "--skip-node":
+            options["skip_node"] = True
+        elif option == "--venv":
+            index += 1
+            if index >= len(args):
+                raise ValueError("setup-venv --venv requires a path")
+            options["venv_dir"] = _resolve_setup_venv_path(args[index])
+        elif option.startswith("--venv="):
+            options["venv_dir"] = _resolve_setup_venv_path(option.split("=", 1)[1])
+        else:
+            raise ValueError(f"unknown setup-venv option: {option}")
+        index += 1
+    return options
+
+
+def _venv_bin_dir(venv_dir: Path) -> Path:
+    """Return the scripts/bin directory for one virtual environment."""
+    return venv_dir / ("Scripts" if _is_windows() else "bin")
+
+
+def _venv_python_executable(venv_dir: Path) -> Path:
+    """Return the Python executable path inside one virtual environment."""
+    executable_name = "python.exe" if _is_windows() else "python"
+    return (_venv_bin_dir(venv_dir) / executable_name).resolve()
+
+
+def _powershell_single_quote(value: str | Path) -> str:
+    """Return one PowerShell single-quoted literal."""
+    return "'" + str(value).replace("'", "''") + "'"
+
+
+def _setup_venv_activation_prompt_available() -> bool:
+    """Return whether setup-venv should ask about opening an activated shell."""
+    return bool(sys.stdin.isatty() and sys.stdout.isatty())
+
+
+def _open_setup_venv_shell(venv_dir: Path) -> int:
+    """Open a child shell with the repository virtual environment activated."""
+    repo_root = _repo_root().resolve()
+    resolved_venv = venv_dir.resolve()
+    if _is_windows():
+        activate_ps1 = resolved_venv / "Scripts" / "Activate.ps1"
+        powershell = (
+            shutil.which("pwsh")
+            or shutil.which("powershell")
+            or shutil.which("powershell.exe")
+        )
+        if powershell and activate_ps1.is_file():
+            command = (
+                "& { "
+                f". {_powershell_single_quote(activate_ps1)}; "
+                f"Set-Location -LiteralPath {_powershell_single_quote(repo_root)}; "
+                "Write-Host 'OpAMP virtual environment activated. Type exit to return.' "
+                "}"
+            )
+            print("Opening an activated PowerShell session. Type `exit` to return.")
+            completed = subprocess.run(  # noqa: S603
+                [
+                    powershell,
+                    "-NoExit",
+                    "-ExecutionPolicy",
+                    "Bypass",
+                    "-Command",
+                    command,
+                ],
+                check=False,
+            )
+            return int(completed.returncode)
+
+        activate_bat = resolved_venv / "Scripts" / "activate.bat"
+        command_processor = (
+            os.environ.get("ComSpec") or shutil.which("cmd.exe") or "cmd.exe"
+        )
+        if activate_bat.is_file():
+            command = f'call "{activate_bat}" && cd /d "{repo_root}"'
+            print("Opening an activated cmd.exe session. Type `exit` to return.")
+            completed = subprocess.run(  # noqa: S603
+                [command_processor, "/K", command],
+                check=False,
+            )
+            return int(completed.returncode)
+
+        print(
+            f"Could not find virtual environment activation files under {resolved_venv}",
+            file=sys.stderr,
+        )
+        return 1
+
+    activate_script = resolved_venv / "bin" / "activate"
+    shell = os.environ.get("SHELL") or shutil.which("bash") or shutil.which("sh") or "sh"
+    if activate_script.is_file():
+        command = (
+            f". {shlex.quote(str(activate_script))}; "
+            f"cd {shlex.quote(str(repo_root))}; "
+            "echo 'OpAMP virtual environment activated. Type exit to return.'; "
+            f"exec {shlex.quote(shell)} -i"
+        )
+        print(f"Opening an activated shell: {shell}. Type `exit` to return.")
+        completed = subprocess.run([shell, "-c", command], check=False)  # noqa: S603
+        return int(completed.returncode)
+
+    env = os.environ.copy()
+    env["VIRTUAL_ENV"] = str(resolved_venv)
+    env.pop("PYTHONHOME", None)
+    env["PATH"] = f"{resolved_venv / 'bin'}{os.pathsep}{env.get('PATH', '')}"
+    print(f"Opening a shell with VIRTUAL_ENV set: {shell}. Type `exit` to return.")
+    completed = subprocess.run(  # noqa: S603
+        [shell],
+        cwd=str(repo_root),
+        env=env,
+        check=False,
+    )
+    return int(completed.returncode)
+
+
+def _prompt_setup_venv_activation(
+    venv_dir: Path,
+    *,
+    input_reader: Callable[[str], str] | None = None,
+) -> int:
+    """Prompt the user to open an activated virtual environment shell."""
+    resolved_venv = venv_dir.resolve()
+    if input_reader is None and _setup_venv_activation_prompt_available() is not True:
+        print(f"Virtual environment is ready: {resolved_venv}")
+        return 0
+
+    while True:
+        try:
+            raw_value = _prompt_text(
+                "Activate the virtual environment now? [Y/n]: ",
+                input_reader=input_reader,
+            )
+        except (EOFError, KeyboardInterrupt):
+            print()
+            print(f"Virtual environment is ready: {resolved_venv}")
+            return 0
+        choice = _parse_yes_no(raw_value, default=True)
+        if choice is None:
+            print("Please answer yes or no.")
+            continue
+        if choice is not True:
+            print(f"Virtual environment is ready: {resolved_venv}")
+            return 0
+        return _open_setup_venv_shell(resolved_venv)
+
+
+def _run_setup_venv_step(
+    argv: list[str],
+    *,
+    cwd: Path,
+    dry_run: bool,
+) -> int:
+    """Run or print one setup-venv command."""
+    prefix = "Would run" if dry_run else "Running"
+    print(f"{prefix}: {_command_text_from_args(argv)} (cwd={cwd.resolve()})")
+    if dry_run:
+        return 0
+    completed = subprocess.run(  # noqa: S603
+        argv,
+        cwd=str(cwd),
+        check=False,
+        **_windows_no_console_kwargs(),
+    )
+    return int(completed.returncode)
+
+
+def _python_setup_venv_steps(
+    *,
+    repo_root: Path,
+    venv_dir: Path,
+) -> list[tuple[list[str], Path]]:
+    """Return ordered Python setup commands for the OpAMP repository environment."""
+    venv_python = _venv_python_executable(venv_dir)
+    steps: list[tuple[list[str], Path]] = [
+        ([sys.executable, "-m", "venv", str(venv_dir)], repo_root),
+        (
+            [
+                str(venv_python),
+                "-m",
+                "pip",
+                "install",
+                "--upgrade",
+                "pip",
+                "setuptools>=82",
+                "wheel",
+                "build",
+                "hatchling>=1.25",
+            ],
+            repo_root,
+        ),
+    ]
+
+    root_requirements = repo_root / "requirements.txt"
+    if root_requirements.is_file() and root_requirements.stat().st_size > 0:
+        steps.append(
+            (
+                [str(venv_python), "-m", "pip", "install", "-r", str(root_requirements)],
+                repo_root,
+            )
+        )
+
+    for relative_path in OPAMP_VENV_PYTHON_COMPONENTS:
+        component_dir = (repo_root / relative_path).resolve()
+        if (component_dir / "pyproject.toml").is_file():
+            steps.append(
+                (
+                    [str(venv_python), "-m", "pip", "install", "-e", f"{component_dir}[dev]"],
+                    repo_root,
+                )
+            )
+    return steps
+
+
+def _node_setup_venv_steps(repo_root: Path, *, npm_executable: str) -> list[tuple[list[str], Path]]:
+    """Return ordered Node tooling install commands for local dev tools."""
+    steps: list[tuple[list[str], Path]] = []
+    for relative_path in OPAMP_VENV_NODE_TOOLING:
+        package_dir = (repo_root / relative_path).resolve()
+        if (package_dir / "package.json").is_file():
+            steps.append(([npm_executable, "install"], package_dir))
+    return steps
+
+
+def _execute_setup_venv_workflow(args: list[str]) -> int:
+    """Create/update the OpAMP repository virtual environment and local tooling."""
+    options = _parse_setup_venv_args(args)
+    repo_root = _repo_root().resolve()
+    venv_dir = Path(options["venv_dir"]).resolve()
+    dry_run = bool(options["dry_run"])
+    skip_node = bool(options["skip_node"])
+
+    print(f"OpAMP repository: {repo_root}")
+    print(f"Virtual environment: {venv_dir}")
+    if dry_run:
+        print("Dry run: commands will be printed but not executed.")
+
+    for argv, cwd in _python_setup_venv_steps(repo_root=repo_root, venv_dir=venv_dir):
+        code = _run_setup_venv_step(argv, cwd=cwd, dry_run=dry_run)
+        if code != 0:
+            print(f"setup-venv failed with exit code {code}", file=sys.stderr)
+            return code
+
+    if skip_node:
+        print("Skipping Node tooling install because --skip-node was supplied.")
+    else:
+        npm_executable = shutil.which("npm")
+        if npm_executable is None:
+            if dry_run:
+                npm_executable = "npm"
+            else:
+                print(
+                    "setup-venv could not find npm on PATH; rerun with --skip-node "
+                    "to install only Python dependencies.",
+                    file=sys.stderr,
+                )
+                return 1
+        for argv, cwd in _node_setup_venv_steps(repo_root, npm_executable=npm_executable):
+            code = _run_setup_venv_step(argv, cwd=cwd, dry_run=dry_run)
+            if code != 0:
+                print(f"setup-venv failed with exit code {code}", file=sys.stderr)
+                return code
+
+    if dry_run:
+        print("Dry run complete.")
+    else:
+        print("OpAMP virtual environment setup complete.")
+        return _prompt_setup_venv_activation(venv_dir)
+    return 0
 
 
 def _prompt_text(
@@ -3473,13 +3811,16 @@ def _split_guided_command(command_text: str) -> tuple[str, str] | None:
     if not stripped:
         return None
     try:
-        tokens = shlex.split(stripped, posix=not _is_windows())
+        tokens = shlex.split(stripped, posix=True)
     except ValueError:
         tokens = stripped.split()
     if tokens:
         intent = str(tokens[0] or "").strip().strip("\"'").lower()
         if intent in GUIDED_INTENTS:
-            selection = " ".join(str(token) for token in tokens[1:]).strip()
+            selection = " ".join(
+                str(token or "").strip().strip("\"'")
+                for token in tokens[1:]
+            ).strip()
             return intent, selection
     for intent in GUIDED_INTENTS:
         if stripped.lower() == intent:
@@ -4411,6 +4752,7 @@ def _interactive_loop() -> int:  # noqa: PLR0912,PLR0915
         print(f"Use `{COMMAND_DEV_MCP_CONFIG}` for the MCP client configuration workflow.")
     if _dev_pid_lookup_available():
         print(f"Use `{COMMAND_DEV_PID_LOOKUP}` to find running process IDs by regex.")
+    print(f"Use `{COMMAND_SETUP_VENV}` to create/update the repository virtual environment.")
     print("Use `enable-process-tail` to tail managed process logs in a new shell.")
     detected_flags = _detected_behavior_flags()
     if detected_flags:

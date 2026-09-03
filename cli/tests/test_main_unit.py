@@ -442,6 +442,149 @@ def test_help_includes_process_tail_commands(capsys) -> None:
     assert "`disable-process-tail` stops opening log-tail shells" in output
 
 
+def test_help_includes_setup_venv_command(capsys) -> None:
+    exit_code = cli_main.main(["help"])
+    output = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert "opamp-cli setup-venv" in output
+    assert "`setup-venv` creates or updates" in output
+
+
+def test_top_level_commands_include_setup_venv(monkeypatch) -> None:
+    monkeypatch.setattr(cli_main, "_demo_mode_enabled", lambda: False)
+    monkeypatch.setattr(cli_main, "_fluentbit_dev_tool_available", lambda: False)
+    monkeypatch.setattr(cli_main, "_mcp_dev_tool_available", lambda: False)
+    monkeypatch.setattr(cli_main, "_dev_pid_lookup_available", lambda: False)
+    monkeypatch.setattr(cli_main, "_container_runtime_executable", lambda: None)
+
+    commands = cli_main._top_level_commands()  # type: ignore[attr-defined]
+
+    assert "setup-venv" in commands
+
+
+def test_parse_setup_venv_args_supports_options(tmp_path: Path, monkeypatch) -> None:
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    monkeypatch.setattr(cli_main, "_repo_root", lambda: repo_root)
+
+    options = cli_main._parse_setup_venv_args(  # type: ignore[attr-defined]
+        ["--venv", "envs/opamp", "--dry-run", "--skip-node"]
+    )
+
+    assert options["venv_dir"] == (repo_root / "envs" / "opamp").resolve()
+    assert options["dry_run"] is True
+    assert options["skip_node"] is True
+
+
+def test_setup_venv_dry_run_lists_python_and_node_steps(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    repo_root = tmp_path / "repo"
+    (repo_root / "cli").mkdir(parents=True)
+    (repo_root / "cli" / "pyproject.toml").write_text("[project]\nname = 'opamp-cli'\n")
+    (repo_root / "tools" / "mermaid").mkdir(parents=True)
+    (repo_root / "tools" / "mermaid" / "package.json").write_text('{"scripts": {}}\n')
+    (repo_root / "requirements.txt").write_text("prompt_toolkit>=3.0\n")
+    monkeypatch.setattr(cli_main, "_repo_root", lambda: repo_root)
+    monkeypatch.setattr(cli_main, "_is_windows", lambda: False)
+    monkeypatch.setattr(cli_main.shutil, "which", lambda name: f"/usr/bin/{name}")
+
+    exit_code = cli_main.main(["setup-venv", "--dry-run"])
+    output = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert "Dry run: commands will be printed but not executed." in output
+    assert '"-m" "venv"' in output or "-m venv" in output
+    assert (
+        '"pip" "install" "--upgrade" "pip"' in output
+        or "pip install --upgrade pip" in output
+    )
+    assert '"pip" "install" "-r"' in output or "pip install -r" in output
+    assert '"pip" "install" "-e"' in output or "pip install -e" in output
+    assert "cli[dev]" in output
+    assert "npm" in output and "install" in output
+    assert "Dry run complete." in output
+
+
+def test_prompt_setup_venv_activation_opens_shell_when_accepted(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    repo_root = tmp_path / "repo"
+    venv_dir = repo_root / ".venv"
+    activate_script = venv_dir / "bin" / "activate"
+    activate_script.parent.mkdir(parents=True)
+    activate_script.write_text("# activate\n", encoding="utf-8")
+    captured: dict[str, Any] = {}
+
+    def fake_run(argv: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+        captured["argv"] = list(argv)
+        captured["kwargs"] = dict(kwargs)
+        return subprocess.CompletedProcess(args=argv, returncode=0)
+
+    monkeypatch.setattr(cli_main, "_repo_root", lambda: repo_root)
+    monkeypatch.setattr(cli_main, "_is_windows", lambda: False)
+    monkeypatch.setenv("SHELL", "/bin/bash")
+    monkeypatch.setattr(cli_main.subprocess, "run", fake_run)
+
+    code = cli_main._prompt_setup_venv_activation(  # type: ignore[attr-defined]
+        venv_dir,
+        input_reader=lambda _prompt: "y",
+    )
+
+    assert code == 0
+    assert captured["argv"][0] == "/bin/bash"
+    assert captured["argv"][1] == "-c"
+    assert str(activate_script.resolve()) in captured["argv"][2]
+    assert captured["kwargs"]["check"] is False
+
+
+def test_prompt_setup_venv_activation_can_be_declined(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    venv_dir = tmp_path / ".venv"
+
+    def fail_open_shell(_venv_dir: Path) -> int:
+        raise AssertionError("activation shell should not open")
+
+    monkeypatch.setattr(cli_main, "_open_setup_venv_shell", fail_open_shell)
+
+    code = cli_main._prompt_setup_venv_activation(  # type: ignore[attr-defined]
+        venv_dir,
+        input_reader=lambda _prompt: "n",
+    )
+    output = capsys.readouterr().out
+
+    assert code == 0
+    assert f"Virtual environment is ready: {venv_dir.resolve()}" in output
+
+
+def test_prompt_setup_venv_activation_skips_prompt_without_tty(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    venv_dir = tmp_path / ".venv"
+
+    def fail_open_shell(_venv_dir: Path) -> int:
+        raise AssertionError("activation shell should not open")
+
+    monkeypatch.setattr(cli_main.sys.stdin, "isatty", lambda: False)
+    monkeypatch.setattr(cli_main.sys.stdout, "isatty", lambda: False)
+    monkeypatch.setattr(cli_main, "_open_setup_venv_shell", fail_open_shell)
+
+    code = cli_main._prompt_setup_venv_activation(venv_dir)  # type: ignore[attr-defined]
+    output = capsys.readouterr().out
+
+    assert code == 0
+    assert f"Virtual environment is ready: {venv_dir.resolve()}" in output
+
+
 def test_config_validate_single_file_writes_report(
     tmp_path: Path,
     monkeypatch,
@@ -1924,7 +2067,7 @@ def test_execute_dev_fluentbit_config_workflow_prompts_and_runs_selected_tool(mo
     assert code == 0
     assert captured["argv"] == [
         cli_main.sys.executable,
-        "/tmp/generate_fluentbit_assets.py",
+        str(Path("/tmp/generate_fluentbit_assets.py").resolve()),
         "--version",
         "5.0.7",
         "--version",
@@ -1990,7 +2133,7 @@ def test_execute_dev_mcp_config_workflow_prompts_and_runs_selected_tool(monkeypa
     assert code == 0
     assert captured["argv"] == [
         cli_main.sys.executable,
-        "/tmp/configure_mcp_clients.py",
+        str(Path("/tmp/configure_mcp_clients.py").resolve()),
         "--yes",
         "--clients",
         "claude,codex",

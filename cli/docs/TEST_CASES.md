@@ -28,6 +28,20 @@ Test modules should reference this file so the implementation and the documented
   - Verifies `status` reports invalid JSON instead of treating an unreadable config as loaded.
 - `test_list_command_reports_config_options_when_available`
   - Verifies `list` includes the `config` command subtree when config-service support is available.
+- `test_help_includes_setup_venv_command`
+  - Verifies `help` advertises the repository virtual environment setup command.
+- `test_top_level_commands_include_setup_venv`
+  - Verifies `setup-venv` is always available as a top-level command.
+- `test_parse_setup_venv_args_supports_options`
+  - Verifies `setup-venv` parses `--venv`, `--dry-run`, and `--skip-node`.
+- `test_setup_venv_dry_run_lists_python_and_node_steps`
+  - Verifies dry-run setup prints Python and Node installer steps without executing them.
+- `test_prompt_setup_venv_activation_opens_shell_when_accepted`
+  - Verifies the setup flow can open an activated child shell when the user accepts the prompt.
+- `test_prompt_setup_venv_activation_can_be_declined`
+  - Verifies declining the activation prompt leaves the virtual environment ready without opening a shell.
+- `test_prompt_setup_venv_activation_skips_prompt_without_tty`
+  - Verifies non-interactive setup reports the ready virtual environment without prompting.
 - `test_config_validate_single_file_writes_report`
   - Verifies `config validate` processes one file, prints `no error`, and writes a report file.
 - `test_config_validate_directory_reports_each_file_with_spacing`
@@ -61,7 +75,7 @@ Test modules should reference this file so the implementation and the documented
 
 ### `cli/tests/test_main_e2e.py`
 - `test_help_command_prints_usage`
-  - Verifies `help` output is available from the CLI entrypoint and advertises the container launcher command.
+  - Verifies `help` output is available from the CLI entrypoint and advertises setup plus container commands.
 - `test_status_command_reports_runtime_paths`
   - Verifies `status` reports the effective OpAMP config path, managed-process state path, log path, and CLI log path.
 - `test_list_command_reports_option_hierarchy`
