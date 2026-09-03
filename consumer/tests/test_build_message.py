@@ -13,13 +13,13 @@
 import pytest
 from shared.opamp_config import UTF8_ENCODING
 
-import opamp_consumer.fluentbit_client as client
+import opamp_consumer.fluentbit.client as client
 from opamp_consumer.config import ConsumerConfig
 from opamp_consumer.config_metadata import (
     CONFIG_METADATA_KEY_AGENT_DESCRIPTION,
     CONFIG_METADATA_KEY_SERVICE_INSTANCE_ID,
 )
-from opamp_consumer.fluentbit_client import (
+from opamp_consumer.fluentbit.client import (
     build_minimal_agent,
     load_agent_config,
     resolve_service_instance_id_template,

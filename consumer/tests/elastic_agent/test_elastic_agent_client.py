@@ -203,7 +203,15 @@ def test_elastic_lifecycle_run_cli_logs_command(monkeypatch, caplog) -> None:
         lambda *_args, **_kwargs: None,
     )
 
-    def fake_run(command, cwd=None, text=False, capture_output=False, timeout=None, check=True):
+    def fake_run(
+        command,
+        cwd=None,
+        text=False,
+        capture_output=False,
+        timeout=None,
+        check=True,
+        **_kwargs,
+    ):
         calls.append(
             {
                 "command": command,

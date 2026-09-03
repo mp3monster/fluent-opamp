@@ -11,11 +11,12 @@
 # limitations under the License.
 
 import pytest
+from pathlib import Path
 from typing import cast
 from opamp_consumer.config import ConsumerConfig
 from opamp_consumer.custom_handlers import build_factory_lookup, create_handler
 from opamp_consumer.custom_handlers.shutdowncommand import ShutdownCommand
-from opamp_consumer.fluentbit_client import OpAMPClientData
+from opamp_consumer.fluentbit.client import OpAMPClientData
 from opamp_consumer.opamp_client_interface import OpAMPClientInterface
 
 
@@ -37,8 +38,9 @@ def _make_client_data() -> OpAMPClientData:
 
 def test_shutdowncommand_factory_creates_handler_by_fqdn() -> None:
     """Factory lookup should resolve the provider shutdown-agent custom command."""
+    handlers_dir = Path(__file__).resolve().parents[1] / "src" / "opamp_consumer" / "custom_handlers"
     lookup = build_factory_lookup(
-        "consumer/src/opamp_consumer/custom_handlers",
+        str(handlers_dir),
         client_data=_make_client_data(),
         allow_custom_capabilities=True,
     )
@@ -47,7 +49,7 @@ def test_shutdowncommand_factory_creates_handler_by_fqdn() -> None:
 
     instance = create_handler(
         fqdn,
-        "consumer/src/opamp_consumer/custom_handlers",
+        str(handlers_dir),
         client_data=_make_client_data(),
         factory_lookup=lookup,
         allow_custom_capabilities=True,

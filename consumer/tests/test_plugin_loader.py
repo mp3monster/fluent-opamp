@@ -29,8 +29,8 @@ from opamp_consumer.plugin_loader import (
 )
 
 
-def test_no_plugins_reports_unsupported_service_type(monkeypatch, caplog) -> None:
-    """No installed or configured plugins should fail with an explicit registry error."""
+def test_unknown_service_type_reports_supported_plugins(monkeypatch, caplog) -> None:
+    """Unknown services should fail with the built-in plugin registry listed."""
     monkeypatch.setattr(
         "opamp_consumer.plugin_loader._entry_points_for_group",
         lambda: [],
@@ -40,15 +40,18 @@ def test_no_plugins_reports_unsupported_service_type(monkeypatch, caplog) -> Non
 
     registry = build_consumer_plugin_registry(config)
 
-    assert registry == {}
+    assert sorted(registry) == ["elastic_agent", "fluentbit", "fluentd", "simulator"]
     with pytest.raises(
         ValueError,
-        match="unsupported consumer.service_type 'custom_agent'; configured/installed plugins: none",
+        match=(
+            "unsupported consumer.service_type 'custom_agent'; "
+            "configured/installed plugins: elastic_agent, fluentbit, fluentd, simulator"
+        ),
     ):
         load_consumer_plugin(config)
     assert (
         "failed to load consumer plugin service_type=custom_agent; "
-        "configured/installed plugins: none"
+        "configured/installed plugins: elastic_agent, fluentbit, fluentd, simulator"
     ) in caplog.text
 
 
@@ -70,7 +73,13 @@ def test_one_configured_plugin_builds_single_plugin_registry(monkeypatch) -> Non
 
     registry = build_consumer_plugin_registry(config)
 
-    assert sorted(registry) == ["custom_agent"]
+    assert sorted(registry) == [
+        "custom_agent",
+        "elastic_agent",
+        "fluentbit",
+        "fluentd",
+        "simulator",
+    ]
     assert registry["custom_agent"].entry_point == "tests_fake_consumer_plugin:main"
 
 

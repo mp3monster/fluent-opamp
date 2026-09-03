@@ -20,17 +20,17 @@ from pathlib import Path
 
 import pytest
 
-from opamp_consumer import simulator_client
 from opamp_consumer.config import ConsumerConfig
 from opamp_consumer.config_metadata import CONFIG_METADATA_KEY_SERVICE_INSTANCE_UID
 from opamp_consumer.exceptions import AgentException
-from opamp_consumer.fluentbit_client import (
+from opamp_consumer.fluentbit.client import (
     KEY_SERVICE_INSTANCE_ID,
     KEY_SERVICE_TYPE,
     KEY_SERVICE_VERSION,
 )
 from opamp_consumer.proto import opamp_pb2
-from opamp_consumer.simulator_client import SimulatorOpAMPClient
+from opamp_consumer.simulator import client as simulator_client
+from opamp_consumer.simulator.client import SimulatorOpAMPClient
 
 
 def _write_simulator_responses(

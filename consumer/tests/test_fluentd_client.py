@@ -18,12 +18,12 @@ import json
 from pathlib import Path
 
 import opamp_consumer.client_mixins as client_mixins
-import opamp_consumer.fluentd_client as fluentd_client
+import opamp_consumer.fluentd.client as fluentd_client
 from opamp_consumer.config import ConsumerConfig
 from opamp_consumer.config_metadata import (
     CONFIG_METADATA_KEY_SERVICE_INSTANCE_ID,
 )
-from opamp_consumer.fluentbit_client import KEY_SERVICE_TYPE, KEY_SERVICE_VERSION
+from opamp_consumer.fluentbit.client import KEY_SERVICE_TYPE, KEY_SERVICE_VERSION
 from opamp_consumer.proto import opamp_pb2
 
 

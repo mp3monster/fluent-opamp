@@ -15,9 +15,9 @@ import logging
 from pathlib import Path
 
 import opamp_consumer.client_bootstrap as client_bootstrap
-import opamp_consumer.fluentbit_client as client
+import opamp_consumer.fluentbit.client as client
 from opamp_consumer.config import ConsumerConfig
-from opamp_consumer.fluentbit_client import CONFIG_DOCS_URL
+from opamp_consumer.fluentbit.client import CONFIG_DOCS_URL
 
 
 def test_main_help_prints_config_parameters_and_skips_client(
@@ -42,7 +42,7 @@ def test_main_help_prints_config_parameters_and_skips_client(
             AssertionError("OpAMPClient should not be created for --help")
         ),
     )
-    monkeypatch.setattr(client.sys, "argv", ["fluentbit_client.py", "--help"])
+    monkeypatch.setattr(client.sys, "argv", ["opamp-consumer", "--help"])
 
     client.main()
 
@@ -114,7 +114,7 @@ def test_main_cli_config_prints_config_file_and_skips_client(
     monkeypatch.setattr(
         client.sys,
         "argv",
-        ["fluentbit_client.py", "--cli-config", "--config-path", str(config_path)],
+        ["opamp-consumer", "--cli-config", "--config-path", str(config_path)],
     )
 
     client.main()

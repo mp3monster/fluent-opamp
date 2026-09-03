@@ -16,7 +16,7 @@ from typing import cast
 
 import pytest
 
-import opamp_consumer.fluentbit_client as client
+import opamp_consumer.fluentbit.client as client
 from opamp_consumer.config import ConsumerConfig
 from opamp_consumer.custom_handlers.handler_interface import (
     CustomMessageHandlerInterface,

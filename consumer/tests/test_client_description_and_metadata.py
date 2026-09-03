@@ -11,10 +11,10 @@
 # limitations under the License.
 
 import opamp_consumer.abstract_client as abstract_client
-import opamp_consumer.fluentbit_client as client
+import opamp_consumer.fluentbit.client as client
 from opamp_consumer.config import ConsumerConfig
 from opamp_consumer.config_metadata import ConfigMetadata
-from opamp_consumer.fluentbit_client import (
+from opamp_consumer.fluentbit.client import (
     HOST_META_KEY_HOSTNAME,
     HOST_META_KEY_MAC_ADDRESS,
     HOST_META_KEY_OS_TYPE,

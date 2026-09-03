@@ -30,6 +30,28 @@ from opamp_consumer.config import (
 
 CONSUMER_PLUGIN_ENTRY_POINT_GROUP = "opamp_consumer.plugins"
 DEFAULT_PLUGIN_FUNCTION = "main"
+BUILTIN_CONSUMER_PLUGINS: tuple[dict[str, str | bool], ...] = (
+    {
+        "service_type": "fluentbit",
+        "entry_point": "opamp_consumer.fluentbit.client:main",
+        "enabled": True,
+    },
+    {
+        "service_type": "fluentd",
+        "entry_point": "opamp_consumer.fluentd.client:main",
+        "enabled": True,
+    },
+    {
+        "service_type": "elastic_agent",
+        "entry_point": "opamp_consumer.elastic_agent.client:main",
+        "enabled": True,
+    },
+    {
+        "service_type": "simulator",
+        "entry_point": "opamp_consumer.simulator.client:main",
+        "enabled": True,
+    },
+)
 
 
 @dataclass(frozen=True)
@@ -85,6 +107,16 @@ def _discover_installed_plugins() -> dict[str, ConsumerPlugin]:
     return plugins
 
 
+def _builtin_plugins() -> dict[str, ConsumerPlugin]:
+    """Return built-in consumer plugins available from the source package."""
+    plugins: dict[str, ConsumerPlugin] = {}
+    for plugin_config in BUILTIN_CONSUMER_PLUGINS:
+        plugin = _configured_plugin(dict(plugin_config))
+        if plugin is not None:
+            plugins[plugin.service_type] = plugin
+    return plugins
+
+
 def _configured_plugin(plugin_config: dict[str, Any]) -> ConsumerPlugin | None:
     """Build a registry entry from one `consumer.plugins` definition."""
     service_type = _normalize_service_type(plugin_config.get(CFG_SERVICE_TYPE))
@@ -100,7 +132,8 @@ def _configured_plugin(plugin_config: dict[str, Any]) -> ConsumerPlugin | None:
 
 def build_consumer_plugin_registry(config: ConsumerConfig) -> dict[str, ConsumerPlugin]:
     """Return installed plugins overlaid with config-defined plugins."""
-    plugins = _discover_installed_plugins()
+    plugins = _builtin_plugins()
+    plugins.update(_discover_installed_plugins())
     for plugin_config in config.consumer_plugins:
         service_type = _normalize_service_type(plugin_config.get(CFG_SERVICE_TYPE))
         if not service_type:

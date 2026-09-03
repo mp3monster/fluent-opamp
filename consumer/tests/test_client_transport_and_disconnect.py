@@ -17,7 +17,7 @@ import httpx
 import opamp_consumer.abstract_client as abstract_client
 import opamp_consumer.client_observer_mixin as client_observer_mixin
 import opamp_consumer.client_mixins as client_mixins
-import opamp_consumer.fluentbit_client as client
+import opamp_consumer.fluentbit.client as client
 import opamp_consumer.process_utils as process_utils
 import pytest
 from opamp_consumer.config import ConsumerConfig
@@ -497,6 +497,10 @@ def test_idp_mode_retries_http_after_auth_error(monkeypatch) -> None:
         return "Bearer new-token"
 
     async def _fake_send_http_message(**kwargs):
+        if kwargs["msg"].HasField("agent_disconnect"):
+            reply = opamp_pb2.ServerToAgent()
+            reply.instance_uid = instance.data.uid_instance
+            return reply
         calls["count"] += 1
         if calls["count"] == 1:
             request = httpx.Request("POST", "http://localhost/v1/opamp")

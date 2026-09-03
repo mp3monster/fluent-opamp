@@ -70,7 +70,10 @@ def test_startup_banner_includes_mode_paths_and_plugin(caplog) -> None:
     assert "service_type: fluentbit" in caplog.text
     assert "plugin_entry_point: opamp_consumer.fluentbit.client:main" in caplog.text
     assert "consumer_config_path: /tmp/opamp/consumer.json" in caplog.text
-    assert "agent_config_path: /tmp/opamp/agent.conf" in caplog.text
+    expected_agent_path = (
+        Path("/tmp/opamp/consumer.json").resolve().parent / "agent.conf"
+    ).resolve()
+    assert f"agent_config_path: {expected_agent_path}" in caplog.text
     assert "server_url: http://localhost:8080" in caplog.text
     assert "transport: http" in caplog.text
 

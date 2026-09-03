@@ -197,7 +197,7 @@ class AbstractOpAMPClient(
             config = globals().get("CONFIG")
         if config is None:
             try:
-                from opamp_consumer import fluentbit_client as client_module
+                from opamp_consumer.fluentbit import client as client_module
 
                 config = getattr(client_module, "CONFIG", None)
             except Exception:  # pragma: no cover - defensive import fallback

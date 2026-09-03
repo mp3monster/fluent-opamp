@@ -80,6 +80,9 @@ CFG_FULL_UPDATE_CONTROLLER_TYPE = "full_update_controller_type"
 # Consumer JSON key for full-update controller implementation type.
 CFG_SERVICE_TYPE = "service_type"
 # Consumer JSON key selecting the concrete consumer implementation.
+CFG_CONSUMER_PLUGINS = "plugins"
+CFG_CONSUMER_PLUGIN_ENTRY_POINT = "entry_point"
+CFG_CONSUMER_PLUGIN_ENABLED = "enabled"
 CFG_SIMULATOR_RESPONSES_PATH = "simulator_responses_path"
 # Consumer JSON key for scripted simulator response file path.
 CFG_PROCESS_TRACKING = "processTracking"
@@ -109,6 +112,8 @@ DEFAULT_IDP_GRANT_TYPE = "client_credentials"  # Default OAuth grant type for Id
 SERVICE_TYPE_FLUENTBIT = "fluentbit"  # Service type value selecting Fluent Bit client behavior.
 SERVICE_TYPE_FLUENTD = "fluentd"
 # Service type value selecting Fluentd client behavior.
+SERVICE_TYPE_ELASTIC_AGENT = "elastic_agent"
+# Service type value selecting Elastic Agent client behavior.
 SERVICE_TYPE_SIMULATOR = "simulator"
 # Service type value selecting scripted simulator client behavior.
 DEFAULT_SERVICE_TYPE = SERVICE_TYPE_FLUENTBIT  # Default service type when none is configured.
@@ -209,9 +214,17 @@ class ConsumerConfig:
     )
     service_type: str = DEFAULT_SERVICE_TYPE
     # Selected concrete consumer service implementation type.
+    consumer_plugins: list[dict[str, Any]] = field(default_factory=list)
+    # Configured consumer plugin registry entries.
     simulator_responses_path: str | None = (
         None  # Filesystem path to scripted simulator server-request responses.
     )
+    elastic_agent_executable_path: str | None = None
+    elastic_agent_home_path: str | None = None
+    elastic_agent_api_host: str = "localhost"
+    elastic_agent_api_port: int = 6791
+    elastic_agent_api_failon: str = "degraded"
+    elastic_agent_status_timeout_seconds: float = 5.0
     process_tracking: str = DEFAULT_PROCESS_TRACKING
     # Process lifecycle strategy: supervisor | observer.
     process_detection_regex: str | None = (
@@ -398,26 +411,38 @@ def _normalize_server_authorization(value: Any) -> str:
 
 
 def _normalize_service_type(value: Any) -> str:
-    """Normalize configured service type to a supported value."""
+    """Normalize configured service type to a plugin registry key."""
     if value is None:
         return DEFAULT_SERVICE_TYPE
     normalized = str(value).strip().lower()
     if not normalized:
         return DEFAULT_SERVICE_TYPE
-    if normalized in {
-        SERVICE_TYPE_FLUENTBIT,
-        SERVICE_TYPE_FLUENTD,
-        SERVICE_TYPE_SIMULATOR,
-    }:
-        return normalized
-    logging.getLogger(__name__).warning(
-        "invalid %s.%s value %r; defaulting to %s",
-        CFG_CONSUMER,
-        CFG_SERVICE_TYPE,
-        value,
-        DEFAULT_SERVICE_TYPE,
-    )
-    return DEFAULT_SERVICE_TYPE
+    return normalized
+
+
+def _normalize_consumer_plugins(value: Any) -> list[dict[str, Any]]:
+    """Return normalized configured consumer plugin entries."""
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        logging.getLogger(__name__).warning(
+            "%s.%s must be a list; ignoring invalid plugin config",
+            CFG_CONSUMER,
+            CFG_CONSUMER_PLUGINS,
+        )
+        return []
+    plugins: list[dict[str, Any]] = []
+    for item in value:
+        if isinstance(item, dict):
+            plugins.append(dict(item))
+        else:
+            logging.getLogger(__name__).warning(
+                "%s.%s entries must be objects; ignoring value=%r",
+                CFG_CONSUMER,
+                CFG_CONSUMER_PLUGINS,
+                item,
+            )
+    return plugins
 
 
 def _normalize_process_tracking(value: Any) -> str:
@@ -587,10 +612,33 @@ def _validate_heartbeat_frequency(value: Any) -> int:
     return value
 
 
+def _apply_consumer_plugin_config_updates(
+    *,
+    config: ConsumerConfig,
+    service_type: str,
+    consumer_plugins: list[dict[str, Any]],
+    consumer_raw: dict[str, Any],
+    config_path: pathlib.Path,
+) -> ConsumerConfig:
+    """Apply plugin-owned consumer config fields to the shared config object."""
+    from opamp_consumer.plugin_config import collect_consumer_plugin_config_updates
+
+    updates = collect_consumer_plugin_config_updates(
+        service_type=service_type,
+        consumer_plugins=consumer_plugins,
+        consumer_raw=consumer_raw,
+        config_path=config_path,
+    )
+    for key, value in updates.items():
+        setattr(config, key, value)
+    return config
+
+
 def load_config() -> ConsumerConfig:
     """Load consumer configuration from disk."""
     logger = logging.getLogger(__name__)
-    raw = _load_json(_config_path())
+    config_path = _config_path()
+    raw = _load_json(config_path)
     consumer_raw = raw.get(CFG_CONSUMER, {})
     observability = load_observability_config_from_payload(raw)
     server_url = consumer_raw.get(CFG_SERVER_URL)
@@ -620,6 +668,9 @@ def load_config() -> ConsumerConfig:
         consumer_raw.get(CFG_ALLOW_CUSTOM_CAPABILITIES, False)
     )
     service_type = _normalize_service_type(consumer_raw.get(CFG_SERVICE_TYPE))
+    consumer_plugins = _normalize_consumer_plugins(
+        consumer_raw.get(CFG_CONSUMER_PLUGINS)
+    )
     process_tracking = _normalize_process_tracking(
         consumer_raw.get(CFG_PROCESS_TRACKING)
     )
@@ -715,6 +766,7 @@ def load_config() -> ConsumerConfig:
         ),
     )
     logger.info("loaded consumer service_type: %s", service_type)
+    logger.info("loaded consumer plugins: %s", consumer_plugins)
     logger.info("loaded consumer process_tracking: %s", process_tracking)
     logger.info(
         "loaded consumer process_detection_regex: %s",
@@ -743,7 +795,7 @@ def load_config() -> ConsumerConfig:
         "loaded consumer full_update_controller_type: %s",
         full_update_controller_type,
     )
-    return ConsumerConfig(
+    config = ConsumerConfig(
         server_url=server_url,
         server_port=server_port,
         agent_config_path=agent_config_path,
@@ -770,6 +822,7 @@ def load_config() -> ConsumerConfig:
             default=DEFAULT_PRESERVE_PREVIOUS_CONFIG,
         ),
         service_type=service_type,
+        consumer_plugins=consumer_plugins,
         simulator_responses_path=simulator_responses_path,
         process_tracking=process_tracking,
         process_detection_regex=process_detection_regex,
@@ -780,6 +833,13 @@ def load_config() -> ConsumerConfig:
         full_update_controller=full_update_controller,
         full_update_controller_type=str(full_update_controller_type),
         observability=observability,
+    )
+    return _apply_consumer_plugin_config_updates(
+        config=config,
+        service_type=service_type,
+        consumer_plugins=consumer_plugins,
+        consumer_raw=consumer_raw,
+        config_path=config_path,
     )
 
 
@@ -796,7 +856,8 @@ def load_config_with_overrides(
 ) -> ConsumerConfig:
     """Load config and apply CLI overrides for the consumer."""
     logger = logging.getLogger(__name__)
-    base_raw = _load_json(config_path or _config_path())
+    effective_config_path = get_effective_config_path(config_path)
+    base_raw = _load_json(effective_config_path)
     consumer_raw = dict(base_raw.get(CFG_CONSUMER, {}))
     observability = load_observability_config_from_payload(base_raw)
 
@@ -886,6 +947,9 @@ def load_config_with_overrides(
             default=DEFAULT_SERVICE_TYPE,
         )
     )
+    resolved_consumer_plugins = _normalize_consumer_plugins(
+        consumer_raw.get(CFG_CONSUMER_PLUGINS)
+    )
     resolved_process_tracking = _normalize_process_tracking(
         _resolve_config_value(
             mapping=consumer_raw,
@@ -935,7 +999,7 @@ def load_config_with_overrides(
         resolved_heartbeat_frequency
     )
 
-    return ConsumerConfig(
+    config = ConsumerConfig(
         server_url=resolved_server_url,
         server_port=resolved_server_port,
         agent_config_path=resolved_agent_config_path,
@@ -965,6 +1029,7 @@ def load_config_with_overrides(
             default=DEFAULT_PRESERVE_PREVIOUS_CONFIG,
         ),
         service_type=resolved_service_type,
+        consumer_plugins=resolved_consumer_plugins,
         simulator_responses_path=resolved_simulator_responses_path,
         process_tracking=resolved_process_tracking,
         process_detection_regex=resolved_process_detection_regex,
@@ -978,6 +1043,13 @@ def load_config_with_overrides(
             resolved_full_update_controller_type or DEFAULT_FULL_UPDATE_CONTROLLER_TYPE
         ),
         observability=observability,
+    )
+    return _apply_consumer_plugin_config_updates(
+        config=config,
+        service_type=resolved_service_type,
+        consumer_plugins=resolved_consumer_plugins,
+        consumer_raw=consumer_raw,
+        config_path=effective_config_path,
     )
 
 

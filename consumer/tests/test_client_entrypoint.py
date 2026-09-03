@@ -25,7 +25,7 @@ from opamp_consumer.config import ConsumerConfig
 def test_entrypoint_routes_to_simulator(monkeypatch) -> None:
     """Top-level consumer entrypoint should route simulator service type correctly."""
     import opamp_consumer.client as entry_module
-    import opamp_consumer.simulator_client as simulator_module
+    import opamp_consumer.simulator.client as simulator_module
 
     monkeypatch.setattr(
         entry_module,

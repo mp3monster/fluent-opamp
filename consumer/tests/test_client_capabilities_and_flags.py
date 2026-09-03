@@ -17,10 +17,10 @@ import pathlib
 import pytest
 from shared.opamp_config import AGENT_CAPABILITIES_MAP
 
-import opamp_consumer.fluentbit_client as client
+import opamp_consumer.fluentbit.client as client
 from opamp_consumer.config import ConsumerConfig
 from opamp_consumer.exceptions import RemoteAgentConfigWriteError
-from opamp_consumer.fluentbit_client import CONFIG_DOCS_URL
+from opamp_consumer.fluentbit.client import CONFIG_DOCS_URL
 from opamp_consumer.proto import opamp_pb2
 from opamp_consumer.remote_config_status import resolve_remote_config_hash
 
@@ -177,7 +177,7 @@ def test_populate_agent_to_server_includes_effective_config_when_enabled(
 ) -> None:
     """Effective config should be attached when enabled and accepted by the server."""
     config_path = tmp_path / "effective.yaml"
-    config_path.write_text("service:\n  flush: 1\n", encoding="utf-8")
+    config_path.write_bytes(b"service:\n  flush: 1\n")
     config = ConsumerConfig(
         server_url="http://localhost",
         agent_config_path=str(config_path),
@@ -207,7 +207,7 @@ def test_populate_agent_to_server_omits_effective_config_when_not_enabled(
 ) -> None:
     """Effective config should be omitted when the reporting capability is disabled."""
     config_path = tmp_path / "effective.yaml"
-    config_path.write_text("service:\n  flush: 1\n", encoding="utf-8")
+    config_path.write_bytes(b"service:\n  flush: 1\n")
     config = ConsumerConfig(
         server_url="http://localhost",
         agent_config_path=str(config_path),
@@ -232,7 +232,7 @@ def test_handle_server_to_agent_sends_effective_config_when_server_accepts_it(
 ) -> None:
     """A server capability advertisement should trigger an effective-config send."""
     config_path = tmp_path / "effective.yaml"
-    config_path.write_text("service:\n  flush: 1\n", encoding="utf-8")
+    config_path.write_bytes(b"service:\n  flush: 1\n")
     config = ConsumerConfig(
         server_url="http://localhost",
         agent_config_path=str(config_path),
@@ -288,7 +288,7 @@ def test_handle_server_to_agent_only_sends_effective_config_once_per_advertiseme
 ) -> None:
     """Repeated AcceptsEffectiveConfig replies should not trigger duplicate sends."""
     config_path = tmp_path / "effective.yaml"
-    config_path.write_text("service:\n  flush: 1\n", encoding="utf-8")
+    config_path.write_bytes(b"service:\n  flush: 1\n")
     config = ConsumerConfig(
         server_url="http://localhost",
         agent_config_path=str(config_path),
@@ -336,7 +336,7 @@ def test_handle_capabilities_marks_effective_config_for_next_outbound_message(
 ) -> None:
     """Without a running loop, effective config should be queued for the next send."""
     config_path = tmp_path / "effective.yaml"
-    config_path.write_text("service:\n  flush: 1\n", encoding="utf-8")
+    config_path.write_bytes(b"service:\n  flush: 1\n")
     config = ConsumerConfig(
         server_url="http://localhost",
         agent_config_path=str(config_path),

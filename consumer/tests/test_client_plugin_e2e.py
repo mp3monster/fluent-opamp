@@ -143,6 +143,7 @@ def test_client_plugin_e2e_no_configured_plugins_fails(tmp_path: pathlib.Path) -
         "ERROR opamp_consumer.plugin_loader failed to load consumer plugin "
         "service_type=missing_configured_plugin"
     ) in combined_output
+    assert "elastic_agent, fluentbit, fluentd, simulator" in combined_output
 
 
 def test_client_plugin_e2e_one_configured_plugin_runs(tmp_path: pathlib.Path) -> None:
