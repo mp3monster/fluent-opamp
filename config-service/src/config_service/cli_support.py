@@ -94,6 +94,9 @@ class CliConfigSupport:
         self.fluentd_config_service = FluentdConfigService()
 
     def _config_dir(self) -> Path:
+        packaged_config_dir = self.repo_root / "config-service" / "src" / "config_service" / "config"
+        if packaged_config_dir.is_dir():
+            return packaged_config_dir
         monorepo_config_dir = self.repo_root / "config-service" / "config"
         if monorepo_config_dir.is_dir():
             return monorepo_config_dir

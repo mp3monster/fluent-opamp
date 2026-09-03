@@ -182,6 +182,11 @@ class UiDocumentService:
                 version=version,
                 comment_prefix=comment_prefix,
             )
+        rendered_output = self.prepend_header_comments(
+            rendered_output,
+            header_comments,
+            comment_prefix=comment_prefix,
+        )
         return rendered_output
 
     def build_source_line_map(self, text: str, config_type: str, file_name: str) -> dict[str, int]:

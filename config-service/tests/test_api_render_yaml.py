@@ -24,6 +24,7 @@ import sys
 from pathlib import Path
 
 import pytest
+import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
@@ -69,6 +70,30 @@ async def test_render_yaml_includes_parsers_before_pipeline() -> None:
     assert "parsers:" in rendered
     assert "pipeline:" not in rendered
     assert rendered.index("parsers:") < rendered.index("-\n    name: custom_json")
+
+@pytest.mark.asyncio
+async def test_render_yaml_quotes_yaml_indicator_scalar_values() -> None:
+    app = create_app(mode="standalone")
+    client = app.test_client()
+
+    payload = {
+        "config": {
+            "pipeline": {
+                "inputs": [{"name": "dummy", "tag": "dummy"}],
+                "outputs": [{"name": "stdout", "match": "*"}],
+            }
+        }
+    }
+
+    response = await client.post(
+        "/config-service/api/v1/render/yaml/5.0.4?config_type=fluentbit",
+        json=payload,
+    )
+    assert response.status_code == 200
+    body = await response.get_json()
+    rendered = body["yaml"]
+    assert 'match: "*"' in rendered
+    assert yaml.safe_load(rendered)["pipeline"]["outputs"][0]["match"] == "*"
 
 @pytest.mark.asyncio
 async def test_render_yaml_translates_route_object_to_native_routes_block() -> None:

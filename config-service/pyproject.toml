@@ -26,6 +26,7 @@ keywords = ["opamp", "observability", "configuration", "editor", "validation"]
 dependencies = [
   "quart>=0.19.4",
   "pydantic>=2,<3",
+  "PyYAML>=6.0",
   "lark>=1.2.2",
   "luaparser>=4.0.0",
   "opentelemetry-api",

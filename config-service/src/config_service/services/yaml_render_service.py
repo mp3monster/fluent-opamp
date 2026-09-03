@@ -30,6 +30,8 @@ SCALAR_TRUE = "true"
 SCALAR_FALSE = "false"
 SCALAR_NULL = "null"
 YAML_SPECIAL_CHARS = [":", "#", "\n", "\t", " "]
+YAML_INDICATOR_PREFIXES = ("-", "?", ":", ",", "[", "]", "{", "}", "#", "&", "*", "!", "|", ">", "'", '"', "%", "@", "`")
+YAML_RESERVED_WORDS = {"true", "false", "null", "~", "yes", "no", "on", "off"}
 PREFERRED_ROOT_KEYS = [KEY_ENV, KEY_SERVICE, KEY_PARSERS, KEY_UPSTREAM_SERVERS, KEY_PIPELINE]
 PREFERRED_PIPELINE_KEYS = [KEY_INPUTS, KEY_FILTERS, KEY_OUTPUTS]
 SKIPPABLE_LIST_KEYS = {KEY_LABELS, KEY_WORKERS, KEY_INCLUDES}
@@ -240,7 +242,15 @@ class YamlRenderService:
         if isinstance(value, (int, float)):
             return str(value)
         text = str(value)
-        if text == "" or any(ch in text for ch in YAML_SPECIAL_CHARS):
+        normalized = text.strip().lower()
+        needs_quotes = (
+            text == ""
+            or text != text.strip()
+            or normalized in YAML_RESERVED_WORDS
+            or text.startswith(YAML_INDICATOR_PREFIXES)
+            or any(ch in text for ch in YAML_SPECIAL_CHARS)
+        )
+        if needs_quotes:
             escaped = text.replace("\\", "\\\\").replace('"', '\\"')
             return f'"{escaped}"'
         return text
