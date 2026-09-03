@@ -36,7 +36,7 @@ KEY=value
 |---|---|---|---|
 | `DEPLOYMENT_TYPE` | Yes | Agent type to launch. Allowed: `fluentbit`, `fluentd`. | `fluentbit` |
 | `AGENT_VERSION` | Yes | Version of Fluent Bit or Fluentd to install. | `5.0.3` |
-| `WHEEL_PATH` | Yes | Path (inside container) to consumer wheel from host mount. | `/host-assets/dist/consumer/opamp_consumer-0.4.0-py3-none-any.whl` |
+| `WHEEL_PATH` | Yes | Path (inside container) to a consumer wheel, a directory containing wheels, or a glob expression. Directory/glob values use the newest matching wheel. | `/host-assets/dist/consumer` |
 | `AGENT_CONFIG_PATH` | No | Path (inside container) to host agent config file. If empty, a default dummy input + file output config is generated. | `/host-assets/consumer/fluent-bit.yaml` |
 | `CONSUMER_CONFIG_PATH` | No | Path (inside container) to host consumer config JSON. If empty, a minimal config is generated. | `/host-assets/tests/opamp.json` |
 | `CONSUMER_TRANSPORT` | No | Transport mode written into consumer config. Allowed: `http`, `websocket`. Default: `http`. | `http` |
@@ -44,6 +44,8 @@ KEY=value
 | `OPAMP_WEBSOCKET_URL` | No | Provider URL used when transport is `websocket` (unless `SERVER_URL` is set). | `ws://host.docker.internal:4320` |
 | `SERVER_URL` | No | Explicit server URL override for consumer config. | `http://host.docker.internal:8080` |
 | `AGENT_ONLY` | No | If `true`, run Fluent Bit/Fluentd without `opamp-consumer`. Default: `false`. | `false` |
+| `SMOKE_ONLY` | No | If `true`, install the consumer wheel, verify plugin entry points, stage the selected agent/consumer config, then exit before launching long-running processes. Default: `false`. | `true` |
+| `SKIP_AGENT_INSTALL` | No | If `true`, skip Fluent Bit/Fluentd installation. Intended for smoke-only regression runs that validate consumer packaging and config staging without external agent downloads. Default: `false`. | `true` |
 | `HOSTNAME_OVERRIDE` | No | Optional hostname label injected into staged agent config as `service_instance_id` comment. | `consumer-a-01` |
 | `SERVICE_NAME_OVERRIDE` | No | Optional override for `consumer.service_name`. | `Fluentbit` |
 | `SERVICE_NAMESPACE_OVERRIDE` | No | Optional override for `consumer.service_namespace`. | `ContainerTests` |
@@ -79,6 +81,8 @@ docker build \
 See:
 
 - `tests/test-containers/opamp-consumer-deployment/examples/test-container.env`
+- `tests/test-containers/opamp-consumer-deployment/examples/regression-fluentbit.env`
+- `tests/test-containers/opamp-consumer-deployment/examples/regression-fluentd.env`
 
 ## Run Example
 
@@ -98,6 +102,15 @@ docker run --rm -it \
   --add-host host.docker.internal:host-gateway \
   -e TEST_CONTAINER_CONFIG=/config/test-container.env \
   opamp-consumer-deployment-test:latest
+```
+
+## Regression Pack
+
+The smoke-only Fluent Bit and Fluentd variants are included in the container
+regression pack:
+
+```bash
+python tests/test-containers/run_regression_pack.py --only opamp-consumer-deployment-smoke
 ```
 
 ## Host Connectivity Notes

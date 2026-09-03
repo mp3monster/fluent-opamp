@@ -12,6 +12,7 @@ import sys
 import tarfile
 import urllib.request
 import zipfile
+from importlib import metadata
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +27,29 @@ LOG_GENERATOR_DOWNLOADS_DIR = DOWNLOADS_DIR / "log-generator"
 
 SUPPORTED_DEPLOYMENTS = {"fluentbit", "fluentd"}
 SUPPORTED_TRANSPORTS = {"http", "websocket"}
+CONSUMER_PLUGIN_ENTRY_POINT_GROUP = "opamp_consumer.plugins"
+BUILTIN_CONSUMER_PLUGINS = [
+    {
+        "service_type": "fluentbit",
+        "entry_point": "opamp_consumer.fluentbit.client:main",
+        "enabled": True,
+    },
+    {
+        "service_type": "fluentd",
+        "entry_point": "opamp_consumer.fluentd.client:main",
+        "enabled": True,
+    },
+    {
+        "service_type": "elastic_agent",
+        "entry_point": "opamp_consumer.elastic_agent.client:main",
+        "enabled": True,
+    },
+    {
+        "service_type": "simulator",
+        "entry_point": "opamp_consumer.simulator.client:main",
+        "enabled": True,
+    },
+]
 SUPPORTED_ELK_COMPONENTS = {
     "elasticsearch": "https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-{version}-linux-x86_64.tar.gz",
     "kibana": "https://artifacts.elastic.co/downloads/kibana/kibana-{version}-linux-x86_64.tar.gz",
@@ -94,6 +118,23 @@ def _require(cfg: dict[str, str], key: str) -> str:
     if value is None or not value.strip():
         raise ConfigError(f"missing required key: {key}")
     return value.strip()
+
+
+def _resolve_wheel_path(raw_path: str) -> Path:
+    """Resolve WHEEL_PATH from a file, directory, or glob expression."""
+    candidate = Path(raw_path)
+    if candidate.is_file():
+        return candidate
+    if candidate.is_dir():
+        wheels = sorted(candidate.glob("*.whl"), key=lambda path: path.stat().st_mtime)
+        if wheels:
+            return wheels[-1]
+        raise ConfigError(f"WHEEL_PATH directory contains no wheel files: {candidate}")
+    if any(token in raw_path for token in ("*", "?", "[")):
+        wheels = sorted(Path().glob(raw_path), key=lambda path: path.stat().st_mtime)
+        if wheels:
+            return wheels[-1]
+    raise ConfigError(f"WHEEL_PATH does not exist or contains no wheel files: {raw_path}")
 
 
 def _download(url: str, destination: Path) -> None:
@@ -273,6 +314,53 @@ def _install_consumer_wheel(wheel_path: Path) -> None:
     _run([sys.executable, "-m", "pip", "install", "--no-cache-dir", f"{wheel_path}[dev]"])
 
 
+def _install_consumer_plugin_packages(cfg: dict[str, str]) -> None:
+    """Install optional external consumer plugin distributions before verification."""
+    for raw_path in _parse_csv_list(cfg.get("CONSUMER_PLUGIN_INSTALLS")):
+        plugin_path = Path(raw_path)
+        if not plugin_path.exists():
+            raise ConfigError(f"CONSUMER_PLUGIN_INSTALLS entry does not exist: {plugin_path}")
+        _run([sys.executable, "-m", "pip", "install", "--no-cache-dir", str(plugin_path)])
+
+
+def _installed_consumer_plugin_entry_points() -> dict[str, str]:
+    """Return installed consumer plugin entry points by service type."""
+    entry_points = metadata.entry_points()
+    if hasattr(entry_points, "select"):
+        candidates = list(entry_points.select(group=CONSUMER_PLUGIN_ENTRY_POINT_GROUP))
+    else:
+        candidates = list(entry_points.get(CONSUMER_PLUGIN_ENTRY_POINT_GROUP, []))
+    return {
+        str(entry_point.name).strip().lower(): str(entry_point.value).strip()
+        for entry_point in candidates
+        if str(entry_point.name).strip()
+    }
+
+
+def _verify_installed_consumer_plugins(*, deployment: str) -> None:
+    """Fail fast when expected built-in consumer plugin entry points are unavailable."""
+    installed = _installed_consumer_plugin_entry_points()
+    expected = {
+        str(plugin["service_type"]): str(plugin["entry_point"])
+        for plugin in BUILTIN_CONSUMER_PLUGINS
+    }
+    missing = {
+        service_type: entry_point
+        for service_type, entry_point in expected.items()
+        if installed.get(service_type) != entry_point
+    }
+    if missing:
+        raise ConfigError(
+            "missing expected plugin entry points after install: "
+            f"{missing}; installed={installed}"
+        )
+    if deployment not in installed and deployment not in expected:
+        raise ConfigError(
+            f"DEPLOYMENT_TYPE {deployment!r} is not available in installed consumer plugins"
+        )
+    _log(f"verified consumer plugin entry points: {sorted(installed)}")
+
+
 def _ensure_hostname(cfg: dict[str, str]) -> None:
     hostname = cfg.get("HOSTNAME_OVERRIDE", "").strip()
     if not hostname:
@@ -315,6 +403,7 @@ def _build_default_consumer_config(
             "log_level": "debug",
             "service_name": "Fluentbit" if deployment == "fluentbit" else "Fluentd",
             "service_namespace": "TestContainer",
+            "plugins": [dict(plugin) for plugin in BUILTIN_CONSUMER_PLUGINS],
         }
     }
 
@@ -443,6 +532,8 @@ def main() -> int:
         raise ConfigError(f"CONSUMER_TRANSPORT must be one of: {sorted(SUPPORTED_TRANSPORTS)}")
 
     agent_only = _parse_bool(cfg.get("AGENT_ONLY"), default=False)
+    smoke_only = _parse_bool(cfg.get("SMOKE_ONLY"), default=False)
+    skip_agent_install = _parse_bool(cfg.get("SKIP_AGENT_INSTALL"), default=False)
 
     output_dir = Path(cfg.get("OUTPUT_HOST_DIR", "/host-output").strip())
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -457,15 +548,17 @@ def main() -> int:
 
     _ensure_hostname(cfg)
 
-    wheel_path = Path(_require(cfg, "WHEEL_PATH"))
-    if not wheel_path.exists():
-        raise ConfigError(f"WHEEL_PATH does not exist: {wheel_path}")
+    wheel_path = _resolve_wheel_path(_require(cfg, "WHEEL_PATH"))
     _install_consumer_wheel(wheel_path)
+    _install_consumer_plugin_packages(cfg)
+    _verify_installed_consumer_plugins(deployment=deployment)
 
     _download_elk_stack_components(cfg, agent_version)
     _download_log_generator(cfg)
 
-    if deployment == "fluentbit":
+    if skip_agent_install:
+        _log("agent installation skipped by SKIP_AGENT_INSTALL=true")
+    elif deployment == "fluentbit":
         _install_fluentbit(agent_version, cfg)
     else:
         _install_fluentd(agent_version)
@@ -490,6 +583,10 @@ def main() -> int:
     _log(f"staged agent config: {staged_agent_path}")
     _log(f"staged consumer config: {staged_consumer_path}")
     _log(f"output directory: {output_dir}")
+
+    if smoke_only:
+        _log("smoke-only mode enabled; skipping long-running agent/consumer launch")
+        return 0
 
     if agent_only:
         _launch_agent_only(deployment, staged_agent_path, output_dir)
