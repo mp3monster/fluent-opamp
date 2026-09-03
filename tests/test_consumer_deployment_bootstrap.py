@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 from pathlib import Path
 
 import pytest
@@ -88,6 +89,121 @@ def test_verify_installed_consumer_plugins_rejects_missing_builtin() -> None:
 
     with pytest.raises(bootstrap.ConfigError, match="missing expected plugin entry points"):
         bootstrap._verify_installed_consumer_plugins(deployment="fluentbit")  # type: ignore[attr-defined]
+
+
+def test_resolve_wheel_path_selects_latest_wheel_from_directory(tmp_path: Path) -> None:
+    """Regression env files can point WHEEL_PATH at a generated wheel directory."""
+    bootstrap = _load_bootstrap_module()
+    older = tmp_path / "opamp_consumer-0.4.0-py3-none-any.whl"
+    newer = tmp_path / "opamp_consumer-0.4.1-py3-none-any.whl"
+    older.write_bytes(b"older")
+    newer.write_bytes(b"newer")
+    os.utime(older, (1, 1))
+    os.utime(newer, (2, 2))
+
+    assert bootstrap._resolve_wheel_path(str(tmp_path)) == newer  # type: ignore[attr-defined]
+
+
+def test_main_smoke_only_stops_after_staging(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Smoke-only regression mode should not launch long-running processes."""
+    bootstrap = _load_bootstrap_module()
+    wheel_path = tmp_path / "opamp_consumer-0.4.1-py3-none-any.whl"
+    wheel_path.write_bytes(b"fake wheel")
+    output_dir = tmp_path / "output"
+    config_path = tmp_path / "test-container.env"
+    config_path.write_text(
+        "\n".join(
+            [
+                "DEPLOYMENT_TYPE=fluentbit",
+                "AGENT_VERSION=5.0.3",
+                f"WHEEL_PATH={wheel_path}",
+                f"OUTPUT_HOST_DIR={output_dir}",
+                "SMOKE_ONLY=true",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("TEST_CONTAINER_CONFIG", str(config_path))
+    monkeypatch.setattr(bootstrap, "RUNTIME_ROOT", tmp_path / "runtime")
+    monkeypatch.setattr(bootstrap, "STAGED_CONFIG_DIR", tmp_path / "runtime" / "config")
+    monkeypatch.setattr(bootstrap, "DOWNLOADS_DIR", tmp_path / "runtime" / "downloads")
+    monkeypatch.setattr(
+        bootstrap,
+        "ELK_DOWNLOADS_DIR",
+        tmp_path / "runtime" / "downloads" / "elk",
+    )
+    monkeypatch.setattr(
+        bootstrap,
+        "LOG_GENERATOR_DOWNLOADS_DIR",
+        tmp_path / "runtime" / "downloads" / "log-generator",
+    )
+
+    events: list[str] = []
+    monkeypatch.setattr(
+        bootstrap,
+        "_install_consumer_wheel",
+        lambda _wheel_path: events.append("install-consumer-wheel"),
+    )
+    monkeypatch.setattr(
+        bootstrap,
+        "_install_consumer_plugin_packages",
+        lambda _cfg: events.append("install-consumer-plugins"),
+    )
+    monkeypatch.setattr(
+        bootstrap,
+        "_verify_installed_consumer_plugins",
+        lambda *, deployment: events.append(f"verify-plugins:{deployment}"),
+    )
+    monkeypatch.setattr(
+        bootstrap,
+        "_download_elk_stack_components",
+        lambda _cfg, _agent_version: events.append("download-elk"),
+    )
+    monkeypatch.setattr(
+        bootstrap,
+        "_download_log_generator",
+        lambda _cfg: events.append("download-log-generator"),
+    )
+    monkeypatch.setattr(
+        bootstrap,
+        "_install_fluentbit",
+        lambda _agent_version, _cfg: events.append("install-agent"),
+    )
+    monkeypatch.setattr(
+        bootstrap,
+        "_stage_agent_config",
+        lambda **_kwargs: events.append("stage-agent") or tmp_path / "fluent-bit.yaml",
+    )
+    monkeypatch.setattr(
+        bootstrap,
+        "_stage_consumer_config",
+        lambda **_kwargs: events.append("stage-consumer") or tmp_path / "opamp.json",
+    )
+    monkeypatch.setattr(
+        bootstrap,
+        "_launch_consumer",
+        lambda *_args: events.append("launch-consumer"),
+    )
+    monkeypatch.setattr(
+        bootstrap,
+        "_launch_agent_only",
+        lambda *_args: events.append("launch-agent-only"),
+    )
+
+    assert bootstrap.main() == 0
+    assert events == [
+        "install-consumer-wheel",
+        "install-consumer-plugins",
+        "verify-plugins:fluentbit",
+        "download-elk",
+        "download-log-generator",
+        "install-agent",
+        "stage-agent",
+        "stage-consumer",
+    ]
 
 
 def test_main_installs_base_then_external_plugins_then_verifies(

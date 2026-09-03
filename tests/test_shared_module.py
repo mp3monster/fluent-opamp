@@ -115,7 +115,7 @@ def test_load_json_config_logs_invalid_json(tmp_path: Path, caplog: pytest.LogCa
     payload = load_json_config(path)
 
     assert payload == {}
-    assert "failed to load JSON config" in caplog.text
+    assert "failed to parse JSON config" in caplog.text
 
 
 def test_resolve_component_callable_rejects_non_callable(monkeypatch: pytest.MonkeyPatch) -> None:
