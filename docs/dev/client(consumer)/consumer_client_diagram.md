@@ -167,14 +167,14 @@ classDiagram
 
 ```mermaid
 flowchart TD
-    A["installed CLI: opamp-consumer"] --> B["python -m opamp_consumer.fluentbit_client"]
-    C["installed CLI: opamp-consumer-fluentd"] --> D["python -m opamp_consumer.fluentd_client"]
+    A["installed CLI: opamp-consumer"] --> B["python -m opamp_consumer.fluentbit.client"]
+    C["installed CLI: opamp-consumer-fluentd"] --> D["python -m opamp_consumer.fluentd.client"]
 
-    B --> G["fluentbit_client.main()"]
+    B --> G["fluentbit.client.main()"]
     G --> H["client_bootstrap.run_default_client_main(...)"]
     H --> I["OpAMPClient (Fluent Bit)"]
 
-    D --> J["fluentd_client.main()"]
+    D --> J["fluentd.client.main()"]
     J --> K["FluentdOpAMPClient (Fluentd)"]
 
     I --> L["AbstractOpAMPClient + mixins"]

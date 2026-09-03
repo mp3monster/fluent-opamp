@@ -6,7 +6,7 @@ This document explains how mixins are used in the consumer and how method dispat
 
 A mixin is a class that contributes behavior to another class through inheritance, without being a full standalone domain model.
 
-In this project, mixins are used to keep `fluentbit_client.py` and `abstract_client.py` smaller by separating large behavior groups into focused files.
+In this project, mixins are used to keep `fluentbit/client.py` and `abstract_client.py` smaller by separating large behavior groups into focused files.
 
 ## Where mixins are used
 
@@ -125,5 +125,5 @@ Lifecycle selection is cached per client instance.
 - `consumer/src/opamp_consumer/client_observer_mixin.py`
 - `consumer/src/opamp_consumer/client_server_message_mixin.py`
 - `consumer/src/opamp_consumer/client_mixins.py`
-- `consumer/src/opamp_consumer/fluentbit_client.py`
-- `consumer/src/opamp_consumer/fluentd_client.py`
+- `consumer/src/opamp_consumer/fluentbit/client.py`
+- `consumer/src/opamp_consumer/fluentd/client.py`
