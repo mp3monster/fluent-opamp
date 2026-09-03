@@ -38,7 +38,17 @@ run_one() {
   # Start from a clean compose project to avoid stale containers or networks
   # influencing registration and disconnect assertions.
   docker compose -p "${project}" -f "${compose_file}" --profile "${profile}" down --remove-orphans
+  set +e
   docker compose -p "${project}" -f "${compose_file}" --profile "${profile}" up --build -d
+  local up_status=$?
+  set -e
+
+  if [ "${up_status}" -ne 0 ]; then
+    docker compose -p "${project}" -f "${compose_file}" --profile "${profile}" logs \
+      --no-color > "${output_dir}/compose.log" || true
+    docker compose -p "${project}" -f "${compose_file}" --profile "${profile}" down --remove-orphans
+    return "${up_status}"
+  fi
 
   # Capture the verifier status manually so logs and cleanup still run when a
   # check fails; failing evidence is as useful as passing evidence.
@@ -49,7 +59,8 @@ run_one() {
     --compose-file "${compose_file}" \
     --compose-project "${project}" \
     --consumer-service "${consumer_service}" \
-    --output-dir "${output_dir}"
+    --output-dir "${output_dir}" \
+    > "${output_dir}/verify.log" 2>&1
   local verify_status=$?
   set -e
 
