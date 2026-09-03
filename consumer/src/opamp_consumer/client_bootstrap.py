@@ -37,6 +37,7 @@ from shared.opamp_config import UTF8_ENCODING
 from opamp_consumer import config as consumer_config
 from opamp_consumer.config import CFG_AGENT_CONFIG_PATH, ConsumerConfig
 from opamp_consumer.proto import opamp_pb2
+from opamp_consumer.startup_banner import log_consumer_startup_banner
 
 KEY_AGENT_DESCRIPTION = "agent_description"  # Comment key carrying free-form agent description.
 KEY_CONFIG_VERSION_COMMENT = (
@@ -507,10 +508,16 @@ def run_default_client_main(
             return
         config = load_config_from_cli_args(args)
         logger = configure_logging_for_config(config)
-        log_runtime_config_path(
+        consumer_config_path = log_runtime_config_path(
             logger=logger,
             runtime_name="consumer",
             config_path=getattr(args, "config_path", None),
+        )
+        log_consumer_startup_banner(
+            logger=logger,
+            config=config,
+            runtime_name="consumer",
+            consumer_config_path=consumer_config_path,
         )
 
         if maybe_print_config_help(
