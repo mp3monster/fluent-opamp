@@ -1,0 +1,477 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Azure region for all resources."
+      }
+    },
+    "namePrefix": {
+      "type": "string",
+      "defaultValue": "opamp",
+      "metadata": {
+        "description": "Short prefix used for resource names and DNS labels."
+      }
+    },
+    "adminUsername": {
+      "type": "string",
+      "defaultValue": "azureuser",
+      "metadata": {
+        "description": "Linux administrator username for SSH."
+      }
+    },
+    "sshPublicKey": {
+      "type": "string",
+      "metadata": {
+        "description": "Public SSH key, for example the contents of ~/.ssh/id_rsa.pub."
+      }
+    },
+    "adminSourceCidr": {
+      "type": "string",
+      "defaultValue": "0.0.0.0/0",
+      "metadata": {
+        "description": "CIDR allowed to SSH to the VMs. Replace with your public IP plus /32 when possible."
+      }
+    },
+    "vmSize": {
+      "type": "string",
+      "defaultValue": "Standard_B2s",
+      "metadata": {
+        "description": "VM size for both the OpAMP server and consumer VMs."
+      }
+    },
+    "artifactBaseUrl": {
+      "type": "string",
+      "metadata": {
+        "description": "HTTPS base URL containing cloud/azure scripts. Do not include a trailing slash."
+      }
+    },
+    "wheelArtifactBaseUrl": {
+      "type": "string",
+      "metadata": {
+        "description": "HTTPS base URL containing a wheels/wheels.txt manifest and wheel files. Do not include a trailing slash."
+      }
+    },
+    "sourceRepoUrl": {
+      "type": "string",
+      "defaultValue": "https://github.com/mp3monster/fluent-opamp.git",
+      "metadata": {
+        "description": "Fallback Git repository used to build wheels on the VMs when wheelArtifactBaseUrl is empty."
+      }
+    },
+    "sourceRef": {
+      "type": "string",
+      "defaultValue": "main",
+      "metadata": {
+        "description": "Fallback Git branch, tag, or commit used when building wheels on the VMs."
+      }
+    },
+    "keycloakAdminUser": {
+      "type": "string",
+      "defaultValue": "admin",
+      "metadata": {
+        "description": "Initial Keycloak administrator username."
+      }
+    },
+    "keycloakAdminPassword": {
+      "type": "secureString",
+      "metadata": {
+        "description": "Initial Keycloak administrator password."
+      }
+    }
+  },
+  "variables": {
+    "vnetName": "[concat(parameters('namePrefix'), '-vnet')]",
+    "subnetName": "opamp-subnet",
+    "serverVmName": "[concat(parameters('namePrefix'), '-server')]",
+    "consumerVmName": "[concat(parameters('namePrefix'), '-consumer')]",
+    "serverNicName": "[concat(parameters('namePrefix'), '-server-nic')]",
+    "consumerNicName": "[concat(parameters('namePrefix'), '-consumer-nic')]",
+    "serverPublicIpName": "[concat(parameters('namePrefix'), '-server-pip')]",
+    "consumerPublicIpName": "[concat(parameters('namePrefix'), '-consumer-pip')]",
+    "serverNsgName": "[concat(parameters('namePrefix'), '-server-nsg')]",
+    "consumerNsgName": "[concat(parameters('namePrefix'), '-consumer-nsg')]",
+    "serverDnsLabel": "[toLower(concat(parameters('namePrefix'), '-server-', uniqueString(resourceGroup().id)))]",
+    "consumerDnsLabel": "[toLower(concat(parameters('namePrefix'), '-consumer-', uniqueString(resourceGroup().id)))]",
+    "serverFqdn": "[concat(variables('serverDnsLabel'), '.', parameters('location'), '.cloudapp.azure.com')]",
+    "consumerFqdn": "[concat(variables('consumerDnsLabel'), '.', parameters('location'), '.cloudapp.azure.com')]",
+    "serverPrivateIp": "10.42.0.10",
+    "consumerPrivateIp": "10.42.0.20"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "apiVersion": "2023-09-01",
+      "name": "[variables('serverNsgName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "AllowHttpsUi",
+            "properties": {
+              "priority": 100,
+              "access": "Allow",
+              "direction": "Inbound",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "443",
+              "sourceAddressPrefix": "Internet",
+              "destinationAddressPrefix": "*"
+            }
+          },
+          {
+            "name": "AllowHttpsKeycloak",
+            "properties": {
+              "priority": 110,
+              "access": "Allow",
+              "direction": "Inbound",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "8443",
+              "sourceAddressPrefix": "Internet",
+              "destinationAddressPrefix": "*"
+            }
+          },
+          {
+            "name": "AllowSshAdmin",
+            "properties": {
+              "priority": 120,
+              "access": "Allow",
+              "direction": "Inbound",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "22",
+              "sourceAddressPrefix": "[parameters('adminSourceCidr')]",
+              "destinationAddressPrefix": "*"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "apiVersion": "2023-09-01",
+      "name": "[variables('consumerNsgName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "AllowSshAdmin",
+            "properties": {
+              "priority": 100,
+              "access": "Allow",
+              "direction": "Inbound",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "22",
+              "sourceAddressPrefix": "[parameters('adminSourceCidr')]",
+              "destinationAddressPrefix": "*"
+            }
+          },
+          {
+            "name": "AllowOpampToServer",
+            "properties": {
+              "priority": 110,
+              "access": "Allow",
+              "direction": "Outbound",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRanges": [
+                "443",
+                "8443",
+                "8080"
+              ],
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "10.42.0.0/24"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworks",
+      "apiVersion": "2023-09-01",
+      "name": "[variables('vnetName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "10.42.0.0/16"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "[variables('subnetName')]",
+            "properties": {
+              "addressPrefix": "10.42.0.0/24"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/publicIPAddresses",
+      "apiVersion": "2023-09-01",
+      "name": "[variables('serverPublicIpName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Standard"
+      },
+      "properties": {
+        "publicIPAllocationMethod": "Static",
+        "dnsSettings": {
+          "domainNameLabel": "[variables('serverDnsLabel')]"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Network/publicIPAddresses",
+      "apiVersion": "2023-09-01",
+      "name": "[variables('consumerPublicIpName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Standard"
+      },
+      "properties": {
+        "publicIPAllocationMethod": "Static",
+        "dnsSettings": {
+          "domainNameLabel": "[variables('consumerDnsLabel')]"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "apiVersion": "2023-09-01",
+      "name": "[variables('serverNicName')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]",
+        "[resourceId('Microsoft.Network/publicIPAddresses', variables('serverPublicIpName'))]",
+        "[resourceId('Microsoft.Network/networkSecurityGroups', variables('serverNsgName'))]"
+      ],
+      "properties": {
+        "networkSecurityGroup": {
+          "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('serverNsgName'))]"
+        },
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Static",
+              "privateIPAddress": "[variables('serverPrivateIp')]",
+              "subnet": {
+                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), variables('subnetName'))]"
+              },
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('serverPublicIpName'))]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "apiVersion": "2023-09-01",
+      "name": "[variables('consumerNicName')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]",
+        "[resourceId('Microsoft.Network/publicIPAddresses', variables('consumerPublicIpName'))]",
+        "[resourceId('Microsoft.Network/networkSecurityGroups', variables('consumerNsgName'))]"
+      ],
+      "properties": {
+        "networkSecurityGroup": {
+          "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('consumerNsgName'))]"
+        },
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Static",
+              "privateIPAddress": "[variables('consumerPrivateIp')]",
+              "subnet": {
+                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), variables('subnetName'))]"
+              },
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('consumerPublicIpName'))]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "apiVersion": "2023-09-01",
+      "name": "[variables('serverVmName')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/networkInterfaces', variables('serverNicName'))]"
+      ],
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[parameters('vmSize')]"
+        },
+        "osProfile": {
+          "computerName": "[variables('serverVmName')]",
+          "adminUsername": "[parameters('adminUsername')]",
+          "linuxConfiguration": {
+            "disablePasswordAuthentication": true,
+            "ssh": {
+              "publicKeys": [
+                {
+                  "path": "[concat('/home/', parameters('adminUsername'), '/.ssh/authorized_keys')]",
+                  "keyData": "[parameters('sshPublicKey')]"
+                }
+              ]
+            }
+          }
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "Canonical",
+            "offer": "0001-com-ubuntu-server-jammy",
+            "sku": "22_04-lts-gen2",
+            "version": "latest"
+          },
+          "osDisk": {
+            "createOption": "FromImage",
+            "managedDisk": {
+              "storageAccountType": "StandardSSD_LRS"
+            }
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('serverNicName'))]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "apiVersion": "2023-09-01",
+      "name": "[variables('consumerVmName')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/networkInterfaces', variables('consumerNicName'))]"
+      ],
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[parameters('vmSize')]"
+        },
+        "osProfile": {
+          "computerName": "[variables('consumerVmName')]",
+          "adminUsername": "[parameters('adminUsername')]",
+          "linuxConfiguration": {
+            "disablePasswordAuthentication": true,
+            "ssh": {
+              "publicKeys": [
+                {
+                  "path": "[concat('/home/', parameters('adminUsername'), '/.ssh/authorized_keys')]",
+                  "keyData": "[parameters('sshPublicKey')]"
+                }
+              ]
+            }
+          }
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "Canonical",
+            "offer": "0001-com-ubuntu-server-jammy",
+            "sku": "22_04-lts-gen2",
+            "version": "latest"
+          },
+          "osDisk": {
+            "createOption": "FromImage",
+            "managedDisk": {
+              "storageAccountType": "StandardSSD_LRS"
+            }
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('consumerNicName'))]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "apiVersion": "2023-09-01",
+      "name": "[concat(variables('serverVmName'), '/installAndStartOpamp')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Compute/virtualMachines', variables('serverVmName'))]"
+      ],
+      "properties": {
+        "publisher": "Microsoft.Azure.Extensions",
+        "type": "CustomScript",
+        "typeHandlerVersion": "2.1",
+        "autoUpgradeMinorVersion": true,
+        "settings": {
+          "fileUris": [
+            "[concat(parameters('artifactBaseUrl'), '/scripts/install-opamp.sh')]",
+            "[concat(parameters('artifactBaseUrl'), '/scripts/start-opamp-server.sh')]",
+            "[concat(parameters('artifactBaseUrl'), '/scripts/upgrade-opamp-wheels.sh')]"
+          ]
+        },
+        "protectedSettings": {
+          "commandToExecute": "[concat('sudo OPAMP_ROLE=server OPAMP_WHEEL_SOURCE_URL=\"', parameters('wheelArtifactBaseUrl'), '\" OPAMP_SOURCE_REPO=\"', parameters('sourceRepoUrl'), '\" OPAMP_SOURCE_REF=\"', parameters('sourceRef'), '\" bash install-opamp.sh && sudo KEYCLOAK_ADMIN=\"', parameters('keycloakAdminUser'), '\" KEYCLOAK_ADMIN_PASSWORD=\"', parameters('keycloakAdminPassword'), '\" OPAMP_PUBLIC_HOST=\"', variables('serverFqdn'), '\" bash start-opamp-server.sh')]"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "apiVersion": "2023-09-01",
+      "name": "[concat(variables('consumerVmName'), '/installAndStartOpamp')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Compute/virtualMachines', variables('consumerVmName'))]",
+        "[resourceId('Microsoft.Compute/virtualMachines/extensions', variables('serverVmName'), 'installAndStartOpamp')]"
+      ],
+      "properties": {
+        "publisher": "Microsoft.Azure.Extensions",
+        "type": "CustomScript",
+        "typeHandlerVersion": "2.1",
+        "autoUpgradeMinorVersion": true,
+        "settings": {
+          "fileUris": [
+            "[concat(parameters('artifactBaseUrl'), '/scripts/install-opamp.sh')]",
+            "[concat(parameters('artifactBaseUrl'), '/scripts/start-opamp-consumer.sh')]",
+            "[concat(parameters('artifactBaseUrl'), '/scripts/upgrade-opamp-wheels.sh')]"
+          ]
+        },
+        "protectedSettings": {
+          "commandToExecute": "[concat('sudo OPAMP_ROLE=consumer OPAMP_WHEEL_SOURCE_URL=\"', parameters('wheelArtifactBaseUrl'), '\" OPAMP_SOURCE_REPO=\"', parameters('sourceRepoUrl'), '\" OPAMP_SOURCE_REF=\"', parameters('sourceRef'), '\" bash install-opamp.sh && sudo OPAMP_SERVER_URL=\"https://', variables('serverPrivateIp'), '\" OPAMP_SERVER_HOST=\"', variables('serverFqdn'), '\" bash start-opamp-consumer.sh')]"
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "opampUiUrl": {
+      "type": "string",
+      "value": "[concat('https://', variables('serverFqdn'), '/')]"
+    },
+    "keycloakUrl": {
+      "type": "string",
+      "value": "[concat('https://', variables('serverFqdn'), ':8443/')]"
+    },
+    "serverSsh": {
+      "type": "string",
+      "value": "[concat('ssh ', parameters('adminUsername'), '@', variables('serverFqdn'))]"
+    },
+    "consumerSsh": {
+      "type": "string",
+      "value": "[concat('ssh ', parameters('adminUsername'), '@', variables('consumerFqdn'))]"
+    }
+  }
+}

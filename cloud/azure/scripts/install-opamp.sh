@@ -1,0 +1,134 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+OPAMP_ROLE="${OPAMP_ROLE:-server}"
+OPAMP_HOME="${OPAMP_HOME:-/opt/opamp}"
+OPAMP_USER="${OPAMP_USER:-opamp}"
+OPAMP_WHEEL_SOURCE_URL="${OPAMP_WHEEL_SOURCE_URL:-}"
+OPAMP_SOURCE_REPO="${OPAMP_SOURCE_REPO:-https://github.com/mp3monster/fluent-opamp.git}"
+OPAMP_SOURCE_REF="${OPAMP_SOURCE_REF:-main}"
+PYTHON_BIN="${PYTHON_BIN:-python3}"
+
+COMPONENT_PATHS=(
+  "provider"
+  "consumer"
+  "consumer-sim"
+  "config-service"
+  "catalog-service"
+  "cli"
+  "agent_broker"
+  "mcp"
+  "svr-credentials-mgr/plaintext-keyring"
+  "svr-credentials-mgr"
+  "dev-tools"
+)
+
+if [[ "$(id -u)" -ne 0 ]]; then
+  echo "Run this script as root or with sudo." >&2
+  exit 1
+fi
+
+export DEBIAN_FRONTEND=noninteractive
+apt-get update
+apt-get install -y --no-install-recommends \
+  ca-certificates \
+  curl \
+  docker.io \
+  docker-compose-plugin \
+  git \
+  jq \
+  nginx \
+  openssl \
+  python3 \
+  python3-pip \
+  python3-venv
+rm -rf /var/lib/apt/lists/*
+
+if ! id "$OPAMP_USER" >/dev/null 2>&1; then
+  useradd --system --create-home --home-dir "$OPAMP_HOME" --shell /usr/sbin/nologin "$OPAMP_USER"
+fi
+
+install -d -o "$OPAMP_USER" -g "$OPAMP_USER" "$OPAMP_HOME"/{bin,config,logs,runtime,wheels,venvs,source}
+install -d -m 0755 /etc/opamp /var/log/opamp
+
+systemctl enable --now docker
+
+stage_wheels_from_url() {
+  local base_url="$1"
+  local manifest="$OPAMP_HOME/wheels/wheels.txt"
+  curl -fsSL "$base_url/wheels/wheels.txt" -o "$manifest"
+  while IFS= read -r wheel_name; do
+    [[ -z "$wheel_name" ]] && continue
+    curl -fsSL "$base_url/wheels/$wheel_name" -o "$OPAMP_HOME/wheels/$wheel_name"
+  done < "$manifest"
+}
+
+stage_wheels_from_source() {
+  local checkout="$OPAMP_HOME/source/current"
+  rm -rf "$checkout"
+  git clone "$OPAMP_SOURCE_REPO" "$checkout"
+  git -C "$checkout" checkout "$OPAMP_SOURCE_REF"
+  "$PYTHON_BIN" -m pip install --upgrade build
+  for component_path in "${COMPONENT_PATHS[@]}"; do
+    "$PYTHON_BIN" -m build --wheel --outdir "$OPAMP_HOME/wheels" "$checkout/$component_path"
+  done
+  (cd "$OPAMP_HOME/wheels" && ls -1 *.whl > wheels.txt)
+}
+
+rm -rf "$OPAMP_HOME/wheels"
+install -d -o "$OPAMP_USER" -g "$OPAMP_USER" "$OPAMP_HOME/wheels"
+if [[ -n "$OPAMP_WHEEL_SOURCE_URL" ]]; then
+  stage_wheels_from_url "$OPAMP_WHEEL_SOURCE_URL"
+else
+  stage_wheels_from_source
+fi
+
+create_venv() {
+  local name="$1"
+  "$PYTHON_BIN" -m venv "$OPAMP_HOME/venvs/$name"
+  "$OPAMP_HOME/venvs/$name/bin/python" -m pip install --upgrade pip setuptools wheel
+}
+
+install_matching_wheel() {
+  local venv="$1"
+  local pattern="$2"
+  local match
+  match="$(find "$OPAMP_HOME/wheels" -maxdepth 1 -name "$pattern" | sort | tail -n 1)"
+  if [[ -z "$match" ]]; then
+    echo "No wheel matched $pattern" >&2
+    exit 1
+  fi
+  "$OPAMP_HOME/venvs/$venv/bin/python" -m pip install --find-links "$OPAMP_HOME/wheels" "$match"
+}
+
+rm -rf "$OPAMP_HOME/venvs/server" "$OPAMP_HOME/venvs/consumer"
+case "$OPAMP_ROLE" in
+  server)
+    create_venv server
+    install_matching_wheel server "opamp_server-*.whl"
+    install_matching_wheel server "config_service-*.whl"
+    install_matching_wheel server "catalog_service-*.whl"
+    install_matching_wheel server "svr_credentials_manager_service-*.whl"
+    install_matching_wheel server "opamp_broker-*.whl"
+    install_matching_wheel server "opamp_cli-*.whl"
+    "$OPAMP_HOME/venvs/server/bin/python" -m pip check
+    ;;
+  consumer)
+    create_venv consumer
+    install_matching_wheel consumer "opamp_consumer-*.whl"
+    install_matching_wheel consumer "opamp_consumer_sim-*.whl"
+    install_matching_wheel consumer "opamp_cli-*.whl"
+    "$OPAMP_HOME/venvs/consumer/bin/python" -m pip check
+    ;;
+  all)
+    OPAMP_ROLE=server "$0"
+    OPAMP_ROLE=consumer "$0"
+    ;;
+  *)
+    echo "Unsupported OPAMP_ROLE=$OPAMP_ROLE. Use server, consumer, or all." >&2
+    exit 1
+    ;;
+esac
+
+chown -R "$OPAMP_USER:$OPAMP_USER" "$OPAMP_HOME" /var/log/opamp /etc/opamp
+echo "Installed OpAMP role $OPAMP_ROLE from wheels in $OPAMP_HOME/wheels"
