@@ -85,6 +85,7 @@ try:
         CLI_RUNTIME_DIRNAME,
         CLI_SETTING_ENABLE_PROCESS_TAIL,
         CLI_SETTINGS_FILENAME,
+        CLI_VERSION_TARGETS_CONFIG_PATH,
         COMMAND_CLEAR_LOGS,
         COMMAND_CONFIG,
         COMMAND_DEMO,
@@ -92,6 +93,7 @@ try:
         COMMAND_DEV_FLB_CONFIG,
         COMMAND_DEV_MCP_CONFIG,
         COMMAND_DEV_PID_LOOKUP,
+        COMMAND_DEV_VERSION_BUMP,
         COMMAND_DISABLE_PROCESS_TAIL,
         COMMAND_ENABLE_PROCESS_TAIL,
         COMMAND_EXIT,
@@ -183,6 +185,7 @@ except ImportError:
         CLI_RUNTIME_DIRNAME,
         CLI_SETTING_ENABLE_PROCESS_TAIL,
         CLI_SETTINGS_FILENAME,
+        CLI_VERSION_TARGETS_CONFIG_PATH,
         COMMAND_CLEAR_LOGS,
         COMMAND_CONFIG,
         COMMAND_DEMO,
@@ -190,6 +193,7 @@ except ImportError:
         COMMAND_DEV_FLB_CONFIG,
         COMMAND_DEV_MCP_CONFIG,
         COMMAND_DEV_PID_LOOKUP,
+        COMMAND_DEV_VERSION_BUMP,
         COMMAND_DISABLE_PROCESS_TAIL,
         COMMAND_ENABLE_PROCESS_TAIL,
         COMMAND_EXIT,
@@ -301,6 +305,38 @@ def _dev_features_enabled() -> bool:
     """Return whether APP_ENABLE_DEV_FEATURES is enabled for this process."""
     raw_value = os.environ.get(APP_ENABLE_DEV_FEATURES_ENV, "")
     return str(raw_value or "").strip().lower() in TRUE_VALUES
+
+
+def _parse_semver(version: str) -> tuple[int, int, int] | None:
+    """Return `(major, minor, patch)` for a strict semantic version string."""
+    match = re.fullmatch(r"(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)", str(version or "").strip())
+    if match is None:
+        return None
+    return (int(match.group(1)), int(match.group(2)), int(match.group(3)))
+
+
+def _semver_text(parts: tuple[int, int, int]) -> str:
+    """Return `MAJOR.MINOR.PATCH` text from numeric semantic version parts."""
+    return f"{parts[0]}.{parts[1]}.{parts[2]}"
+
+
+def _next_minor_semver(version: str) -> str:
+    """Increment a semantic version by one minor version and reset patch to zero."""
+    parts = _parse_semver(version)
+    if parts is None:
+        raise ValueError(f"current version must use MAJOR.MINOR.PATCH format: {version}")
+    return _semver_text((parts[0], parts[1] + 1, 0))
+
+
+def _semver_greater(candidate: str, current: str) -> bool:
+    """Return whether `candidate` is a strict semantic-version increase."""
+    candidate_parts = _parse_semver(candidate)
+    current_parts = _parse_semver(current)
+    if candidate_parts is None:
+        raise ValueError("new version must use MAJOR.MINOR.PATCH format")
+    if current_parts is None:
+        raise ValueError(f"current version must use MAJOR.MINOR.PATCH format: {current}")
+    return candidate_parts > current_parts
 
 
 def _demo_mode_enabled() -> bool:
@@ -616,6 +652,10 @@ def _handle_command(raw_command: str) -> int:  # noqa: PLR0911
     if lowered == COMMAND_DEV_PID_LOOKUP:
         logger.info("starting dev pid lookup workflow")
         return _execute_dev_pid_lookup_workflow()
+    if lowered == COMMAND_DEV_VERSION_BUMP or lowered.startswith(f"{COMMAND_DEV_VERSION_BUMP} "):
+        logger.info("starting dev version bump workflow command=%s", command_text)
+        version_args = _split_internal_command_args(command_text)
+        return _execute_dev_version_bump_workflow(version_args[1:])
     if lowered == COMMAND_DEV_CONTAINERS or lowered.startswith(f"{COMMAND_DEV_CONTAINERS} "):
         logger.info("starting dev container workflow command=%s", command_text)
         selection = match_text[len(COMMAND_DEV_CONTAINERS) :].strip()
@@ -680,6 +720,8 @@ def _top_level_commands() -> list[str]:
         commands.append(COMMAND_DEV_MCP_CONFIG)
     if _dev_pid_lookup_available():
         commands.append(COMMAND_DEV_PID_LOOKUP)
+    if _dev_version_bump_available():
+        commands.append(COMMAND_DEV_VERSION_BUMP)
     if _container_runtime_executable() and _configured_container_start_actions():
         commands.append(COMMAND_DEV_CONTAINERS)
     return commands
@@ -832,6 +874,220 @@ def _mcp_dev_tool_available() -> bool:
 def _dev_pid_lookup_available() -> bool:
     """Return whether the dev PID lookup workflow should be exposed."""
     return _dev_features_enabled()
+
+
+def _dev_version_bump_available() -> bool:
+    """Return whether the dev version bump workflow should be exposed."""
+    return _dev_features_enabled()
+
+
+def _parse_dev_version_bump_args(args: list[str]) -> dict[str, Any]:
+    """Parse `dev-version-bump [VERSION] [--config path]` arguments."""
+    repo_root = _repo_root()
+    config_path = (repo_root / CLI_VERSION_TARGETS_CONFIG_PATH).resolve()
+    requested_version = ""
+    index = 0
+    while index < len(args):
+        token = str(args[index])
+        if token == "--config":
+            index += 1
+            if index >= len(args):
+                raise ValueError("--config requires a path")
+            raw_path = Path(args[index]).expanduser()
+            config_path = raw_path.resolve() if raw_path.is_absolute() else (repo_root / raw_path).resolve()
+        elif token.startswith("--config="):
+            raw_path = Path(token.split("=", 1)[1]).expanduser()
+            config_path = raw_path.resolve() if raw_path.is_absolute() else (repo_root / raw_path).resolve()
+        elif token.startswith("--"):
+            raise ValueError(f"unsupported {COMMAND_DEV_VERSION_BUMP} option: {token}")
+        elif requested_version:
+            raise ValueError(f"{COMMAND_DEV_VERSION_BUMP} accepts at most one VERSION argument")
+        else:
+            requested_version = token
+        index += 1
+    return {"config_path": config_path, "requested_version": requested_version or None}
+
+
+def _read_dev_version_config(config_path: Path) -> dict[str, Any]:
+    """Load the JSON file that lists version-bearing targets."""
+    if not config_path.exists():
+        raise FileNotFoundError(f"version target config not found: {config_path}")
+    try:
+        payload = json.loads(config_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"invalid version target config JSON: {config_path}: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise ValueError("version target config must be a JSON object")
+    _version_config_components(payload)
+    return payload
+
+
+def _version_config_components(config: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return validated version components from the new or legacy config shape."""
+    raw_components = config.get("components")
+    if raw_components is None:
+        if not isinstance(config.get("currentVersionSource"), dict):
+            raise ValueError("version target config requires components or currentVersionSource")
+        if not isinstance(config.get("targets"), list) or not config["targets"]:
+            raise ValueError("version target config requires a non-empty targets list")
+        return [
+            {
+                "id": "default",
+                "currentVersionSource": config["currentVersionSource"],
+                "targets": config["targets"],
+            }
+        ]
+    if not isinstance(raw_components, list) or not raw_components:
+        raise ValueError("version target config requires a non-empty components list")
+
+    components: list[dict[str, Any]] = []
+    for index, raw_component in enumerate(raw_components, start=1):
+        if not isinstance(raw_component, dict):
+            raise ValueError(f"version component {index} must be a JSON object")
+        if not isinstance(raw_component.get("currentVersionSource"), dict):
+            raise ValueError(f"version component {index} requires currentVersionSource")
+        if not isinstance(raw_component.get("targets"), list) or not raw_component["targets"]:
+            raise ValueError(f"version component {index} requires a non-empty targets list")
+        components.append(raw_component)
+    return components
+
+
+def _version_component_label(component: dict[str, Any], index: int) -> str:
+    """Return the human-readable component name used in bump output."""
+    return str(
+        component.get("label")
+        or component.get("name")
+        or component.get("id")
+        or f"component-{index}"
+    ).strip()
+
+
+def _resolve_repo_path(repo_root: Path, raw_path: object) -> Path:
+    """Resolve one target path relative to the repository root."""
+    path_text = str(raw_path or "").strip()
+    if not path_text:
+        raise ValueError("version target path must not be empty")
+    candidate = Path(path_text).expanduser()
+    return candidate.resolve() if candidate.is_absolute() else (repo_root / candidate).resolve()
+
+
+def _read_version_from_config_source(repo_root: Path, source: dict[str, Any]) -> str:
+    """Read the canonical current version using the configured source pattern."""
+    source_path = _resolve_repo_path(repo_root, source.get("path"))
+    pattern = str(source.get("pattern") or "").strip()
+    if not pattern:
+        raise ValueError("currentVersionSource.pattern is required")
+    content = source_path.read_text(encoding="utf-8")
+    match = re.search(pattern, content, flags=re.MULTILINE)
+    if match is None:
+        raise ValueError(f"current version pattern not found in {source_path}")
+    if not match.groups():
+        raise ValueError("currentVersionSource.pattern must capture the version as group 1")
+    version = str(match.group(1)).strip()
+    if _parse_semver(version) is None:
+        raise ValueError(f"current version must use MAJOR.MINOR.PATCH format: {version}")
+    return version
+
+
+def _update_configured_version_target(
+    *,
+    repo_root: Path,
+    target: dict[str, Any],
+    version: str,
+) -> tuple[Path, int]:
+    """Apply one configured version replacement and return the path/count."""
+    target_path = _resolve_repo_path(repo_root, target.get("path"))
+    pattern = str(target.get("pattern") or "").strip()
+    replacement_template = str(target.get("replacement") or "")
+    if not pattern:
+        raise ValueError(f"version target pattern is required for {target_path}")
+    if "{version}" not in replacement_template:
+        raise ValueError(f"version target replacement must include {{version}} for {target_path}")
+    count = int(target.get("count", 0) or 0)
+    original = target_path.read_text(encoding="utf-8")
+    updated, replacements = re.subn(
+        pattern,
+        replacement_template.format(version=version),
+        original,
+        count=max(0, count),
+        flags=re.MULTILINE,
+    )
+    if replacements > 0:
+        target_path.write_text(updated, encoding="utf-8")
+    return target_path, replacements
+
+
+def _execute_dev_version_bump_workflow(args: list[str] | None = None) -> int:
+    """Update configured component semantic versions in dev mode."""
+    if _dev_features_enabled() is not True:
+        print(
+            f"{COMMAND_DEV_VERSION_BUMP} is only available when {APP_ENABLE_DEV_FEATURES_ENV}=true.",
+            file=sys.stderr,
+        )
+        return 1
+
+    parsed_args = _parse_dev_version_bump_args(list(args or []))
+    config_path = Path(parsed_args["config_path"])
+    config = _read_dev_version_config(config_path)
+    repo_root = _repo_root()
+    requested_version = parsed_args["requested_version"]
+
+    planned_updates: list[dict[str, Any]] = []
+    for index, component in enumerate(_version_config_components(config), start=1):
+        label = _version_component_label(component, index)
+        current_version = _read_version_from_config_source(repo_root, component["currentVersionSource"])
+        next_version = str(requested_version or _next_minor_semver(current_version))
+        try:
+            is_greater = _semver_greater(next_version, current_version)
+        except ValueError as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            return 1
+        if is_greater is not True:
+            print(
+                f"New version {next_version} for {label} must be greater than "
+                f"current version {current_version}.",
+                file=sys.stderr,
+            )
+            return 1
+        planned_updates.append(
+            {
+                "label": label,
+                "current_version": current_version,
+                "next_version": next_version,
+                "targets": component["targets"],
+            }
+        )
+
+    print(f"Version target config: {config_path}")
+    print(f"Version components: {len(planned_updates)}")
+
+    misses: list[Path] = []
+    updated_count = 0
+    for planned_update in planned_updates:
+        print(
+            f"{planned_update['label']}: "
+            f"{planned_update['current_version']} -> {planned_update['next_version']}"
+        )
+        for raw_target in planned_update["targets"]:
+            if not isinstance(raw_target, dict):
+                raise ValueError("each version target must be a JSON object")
+            target_path, replacements = _update_configured_version_target(
+                repo_root=repo_root,
+                target=raw_target,
+                version=str(planned_update["next_version"]),
+            )
+            if replacements <= 0:
+                misses.append(target_path)
+                print(f"Skipped {target_path} (pattern not found)")
+                continue
+            updated_count += 1
+            print(f"Updated {target_path} ({replacements} replacement(s))")
+
+    if misses:
+        print(f"Version update incomplete: {len(misses)} target(s) were not updated.", file=sys.stderr)
+        return 1
+    print(f"Version update complete: {updated_count} target(s) updated.")
+    return 0
 
 
 def _resolve_setup_venv_path(raw_path: str) -> Path:
@@ -4745,6 +5001,7 @@ def _interactive_loop() -> int:  # noqa: PLR0912,PLR0915
         "Example: script demo-start-clients "
         "python -m opamp_consumer.fluentbit.client"
     )
+    print(f"Use '{COMMAND_LIST}' to see all available commands.")
     print("You can type `start server`, `stop config editor`, or `restart server` directly.")
     if _fluentbit_dev_tool_available():
         print(f"Use `{COMMAND_DEV_FLB_CONFIG}` for the Fluent Bit dev generator workflow.")
@@ -4752,6 +5009,8 @@ def _interactive_loop() -> int:  # noqa: PLR0912,PLR0915
         print(f"Use `{COMMAND_DEV_MCP_CONFIG}` for the MCP client configuration workflow.")
     if _dev_pid_lookup_available():
         print(f"Use `{COMMAND_DEV_PID_LOOKUP}` to find running process IDs by regex.")
+    if _dev_version_bump_available():
+        print(f"Use `{COMMAND_DEV_VERSION_BUMP}` to bump configured component versions.")
     print(f"Use `{COMMAND_SETUP_VENV}` to create/update the repository virtual environment.")
     print("Use `enable-process-tail` to tail managed process logs in a new shell.")
     detected_flags = _detected_behavior_flags()
@@ -4803,6 +5062,13 @@ def _interactive_loop() -> int:  # noqa: PLR0912,PLR0915
         if raw.strip().lower() == COMMAND_DEV_PID_LOOKUP:
             logger.info("interactive dev pid lookup requested")
             code = _execute_dev_pid_lookup_workflow(input_reader=input_reader)
+            if code != 0:
+                print(f"Command exited with code {code}")
+            continue
+        if raw.strip().lower() == COMMAND_DEV_VERSION_BUMP or raw.strip().lower().startswith(f"{COMMAND_DEV_VERSION_BUMP} "):
+            logger.info("interactive dev version bump requested")
+            version_args = _split_internal_command_args(raw)
+            code = _execute_dev_version_bump_workflow(version_args[1:])
             if code != 0:
                 print(f"Command exited with code {code}")
             continue

@@ -431,6 +431,37 @@ def test_list_command_reports_config_options_when_available(capsys) -> None:
     assert "    - metadata <path>" in output
 
 
+def test_interactive_startup_notes_include_list_command_without_running_list(
+    monkeypatch,
+    capsys,
+) -> None:
+    def eof_input(_prompt: str) -> str:
+        raise EOFError
+
+    def fake_print_option_hierarchy() -> int:
+        raise AssertionError("interactive startup should not run list automatically")
+
+    monkeypatch.setattr(cli_main, "_top_level_commands", lambda: ["list", "exit"])
+    monkeypatch.setattr(cli_main, "_prompt_toolkit_input_reader", lambda _words: None)
+    monkeypatch.setattr(cli_main, "_builtin_tty_input_reader", lambda _words: None)
+    monkeypatch.setattr(cli_main, "_setup_readline_completion", lambda _words: None)
+    monkeypatch.setattr(cli_main, "_is_windows", lambda: False)
+    monkeypatch.setattr(cli_main, "_fluentbit_dev_tool_available", lambda: False)
+    monkeypatch.setattr(cli_main, "_mcp_dev_tool_available", lambda: False)
+    monkeypatch.setattr(cli_main, "_dev_pid_lookup_available", lambda: False)
+    monkeypatch.setattr(cli_main, "_dev_version_bump_available", lambda: False)
+    monkeypatch.setattr(cli_main, "_detected_behavior_flags", lambda: [])
+    monkeypatch.setattr(cli_main, "_print_option_hierarchy", fake_print_option_hierarchy)
+    monkeypatch.setattr("builtins.input", eof_input)
+
+    exit_code = cli_main._interactive_loop()  # type: ignore[attr-defined]
+    output = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert "Use 'list' to see all available commands." in output
+    assert "Current command hierarchy" not in output
+
+
 def test_help_includes_process_tail_commands(capsys) -> None:
     exit_code = cli_main.main(["help"])
     output = capsys.readouterr().out
@@ -2141,6 +2172,230 @@ def test_execute_dev_mcp_config_workflow_prompts_and_runs_selected_tool(monkeypa
         "broker.local",
         "--preview",
     ]
+
+
+def _write_version_bump_fixture(repo_root: Path) -> Path:
+    """Create a small version target fixture under a temporary repo root."""
+    (repo_root / "cli").mkdir(parents=True)
+    (repo_root / "component").mkdir()
+    (repo_root / "cli" / "pyproject.toml").write_text(
+        '[project]\nname = "opamp-cli"\nversion = "1.2.3"\n',
+        encoding="utf-8",
+    )
+    (repo_root / "component" / "pyproject.toml").write_text(
+        '[project]\nname = "component"\nversion = "0.9.0"\n',
+        encoding="utf-8",
+    )
+    (repo_root / "component" / "package-lock.json").write_text(
+        '{\n'
+        '  "name": "component",\n'
+        '  "version": "0.9.0",\n'
+        '  "packages": {\n'
+        '    "": {"version": "0.9.0"},\n'
+        '    "node_modules/example": {"version": "3.4.5"}\n'
+        '  }\n'
+        '}\n',
+        encoding="utf-8",
+    )
+    config_path = repo_root / "version-targets.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "components": [
+                    {
+                        "id": "cli",
+                        "currentVersionSource": {
+                            "path": "cli/pyproject.toml",
+                            "pattern": '^version = "([^"]+)"$',
+                        },
+                        "targets": [
+                            {
+                                "path": "cli/pyproject.toml",
+                                "pattern": '^version = "[^"]+"$',
+                                "replacement": 'version = "{version}"',
+                            },
+                        ],
+                    },
+                    {
+                        "id": "component",
+                        "currentVersionSource": {
+                            "path": "component/pyproject.toml",
+                            "pattern": '^version = "([^"]+)"$',
+                        },
+                        "targets": [
+                            {
+                                "path": "component/pyproject.toml",
+                                "pattern": '^version = "[^"]+"$',
+                                "replacement": 'version = "{version}"',
+                            },
+                            {
+                                "path": "component/package-lock.json",
+                                "pattern": '"version": "[^"]+"',
+                                "replacement": '"version": "{version}"',
+                                "count": 2,
+                            },
+                        ],
+                    },
+                ],
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return config_path
+
+
+def test_default_version_targets_config_matches_repo() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    config_path = repo_root / "cli" / "config" / "version_targets.json"
+
+    config = cli_main._read_dev_version_config(config_path)  # type: ignore[attr-defined]
+    components = cli_main._version_config_components(config)  # type: ignore[attr-defined]
+
+    assert len(components) > 1
+    for component in components:
+        current_version = cli_main._read_version_from_config_source(  # type: ignore[attr-defined]
+            repo_root,
+            component["currentVersionSource"],
+        )
+        assert re.fullmatch(r"\d+\.\d+\.\d+", current_version)
+        for target in component["targets"]:
+            target_path = cli_main._resolve_repo_path(  # type: ignore[attr-defined]
+                repo_root,
+                target["path"],
+            )
+            assert target_path.exists(), f"missing version target: {target['path']}"
+            target_text = target_path.read_text(encoding="utf-8")
+            assert re.search(
+                target["pattern"],
+                target_text,
+                flags=re.MULTILINE,
+            ), f"version pattern did not match: {target['path']}"
+
+
+def test_dev_version_bump_requires_developer_features(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(cli_main, "_dev_features_enabled", lambda: False)
+
+    code = cli_main._execute_dev_version_bump_workflow([])  # type: ignore[attr-defined]
+    captured = capsys.readouterr()
+
+    assert code == 1
+    assert "dev-version-bump is only available when APP_ENABLE_DEV_FEATURES=true" in captured.err
+
+
+def test_dev_version_bump_defaults_to_next_minor_version(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    repo_root = tmp_path / "repo"
+    config_path = _write_version_bump_fixture(repo_root)
+    monkeypatch.setattr(cli_main, "_repo_root", lambda: repo_root)
+    monkeypatch.setattr(cli_main, "_dev_features_enabled", lambda: True)
+
+    code = cli_main._execute_dev_version_bump_workflow(  # type: ignore[attr-defined]
+        ["--config", str(config_path)]
+    )
+    output = capsys.readouterr().out
+
+    assert code == 0
+    assert "cli: 1.2.3 -> 1.3.0" in output
+    assert "component: 0.9.0 -> 0.10.0" in output
+    assert 'version = "1.3.0"' in (repo_root / "cli" / "pyproject.toml").read_text(encoding="utf-8")
+    assert 'version = "0.10.0"' in (repo_root / "component" / "pyproject.toml").read_text(encoding="utf-8")
+    package_lock_text = (repo_root / "component" / "package-lock.json").read_text(encoding="utf-8")
+    assert '"version": "0.10.0"' in package_lock_text
+    assert '"version": "3.4.5"' in package_lock_text
+
+
+def test_dev_version_bump_accepts_explicit_greater_version(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    repo_root = tmp_path / "repo"
+    config_path = _write_version_bump_fixture(repo_root)
+    monkeypatch.setattr(cli_main, "_repo_root", lambda: repo_root)
+    monkeypatch.setattr(cli_main, "_dev_features_enabled", lambda: True)
+
+    code = cli_main._execute_dev_version_bump_workflow(  # type: ignore[attr-defined]
+        ["2.0.0", "--config", str(config_path)]
+    )
+
+    assert code == 0
+    assert 'version = "2.0.0"' in (repo_root / "cli" / "pyproject.toml").read_text(encoding="utf-8")
+    assert 'version = "2.0.0"' in (repo_root / "component" / "pyproject.toml").read_text(encoding="utf-8")
+
+
+def test_dev_version_bump_rejects_non_greater_explicit_version(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    repo_root = tmp_path / "repo"
+    config_path = _write_version_bump_fixture(repo_root)
+    monkeypatch.setattr(cli_main, "_repo_root", lambda: repo_root)
+    monkeypatch.setattr(cli_main, "_dev_features_enabled", lambda: True)
+
+    code = cli_main._execute_dev_version_bump_workflow(  # type: ignore[attr-defined]
+        ["1.2.3", "--config", str(config_path)]
+    )
+    captured = capsys.readouterr()
+
+    assert code == 1
+    assert "for cli must be greater than current version 1.2.3" in captured.err
+    assert 'version = "1.2.3"' in (repo_root / "cli" / "pyproject.toml").read_text(encoding="utf-8")
+    assert 'version = "0.9.0"' in (repo_root / "component" / "pyproject.toml").read_text(encoding="utf-8")
+
+
+def test_dev_version_bump_rejects_invalid_semantic_version(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    repo_root = tmp_path / "repo"
+    config_path = _write_version_bump_fixture(repo_root)
+    monkeypatch.setattr(cli_main, "_repo_root", lambda: repo_root)
+    monkeypatch.setattr(cli_main, "_dev_features_enabled", lambda: True)
+
+    code = cli_main._execute_dev_version_bump_workflow(  # type: ignore[attr-defined]
+        ["1.3", "--config", str(config_path)]
+    )
+    captured = capsys.readouterr()
+
+    assert code == 1
+    assert "new version must use MAJOR.MINOR.PATCH format" in captured.err
+
+
+def test_handle_command_routes_dev_version_bump_to_workflow(monkeypatch) -> None:
+    called: dict[str, list[str]] = {"args": []}
+
+    def fake_workflow(args):  # type: ignore[no-untyped-def]
+        called["args"] = list(args)
+        return 0
+
+    monkeypatch.setattr(cli_main, "_execute_dev_version_bump_workflow", fake_workflow)
+
+    code = cli_main._handle_command("dev-version-bump 1.4.0 --config custom.json")  # type: ignore[attr-defined]
+
+    assert code == 0
+    assert called["args"] == ["1.4.0", "--config", "custom.json"]
+
+
+def test_top_level_commands_include_dev_version_bump_only_when_enabled(monkeypatch) -> None:
+    monkeypatch.setattr(cli_main, "_demo_mode_enabled", lambda: False)
+    monkeypatch.setattr(cli_main, "_fluentbit_dev_tool_available", lambda: False)
+    monkeypatch.setattr(cli_main, "_mcp_dev_tool_available", lambda: False)
+    monkeypatch.setattr(cli_main, "_dev_pid_lookup_available", lambda: False)
+    monkeypatch.setattr(cli_main, "_container_runtime_executable", lambda: None)
+    monkeypatch.setattr(cli_main, "_dev_version_bump_available", lambda: True)
+
+    commands = cli_main._top_level_commands()  # type: ignore[attr-defined]
+
+    assert "dev-version-bump" in commands
+
+    monkeypatch.setattr(cli_main, "_dev_version_bump_available", lambda: False)
+    commands = cli_main._top_level_commands()  # type: ignore[attr-defined]
+    assert "dev-version-bump" not in commands
 
 
 def test_config_subcommand_prefix_detects_second_level_keyword() -> None:

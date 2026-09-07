@@ -131,6 +131,8 @@ opamp-cli setup-venv
 opamp-cli enable-process-tail
 APP_ENABLE_DEV_FEATURES=true opamp-cli dev-flb-config
 APP_ENABLE_DEV_FEATURES=true opamp-cli dev-pid-lookup
+APP_ENABLE_DEV_FEATURES=true opamp-cli dev-version-bump
+APP_ENABLE_DEV_FEATURES=true opamp-cli dev-version-bump 0.5.0
 opamp-cli dev-containers
 ```
 

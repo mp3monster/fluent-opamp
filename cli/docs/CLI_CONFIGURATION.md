@@ -289,6 +289,7 @@ opamp-cli status
 opamp-cli list
 opamp-cli clear-logs
 opamp-cli dev-containers
+APP_ENABLE_DEV_FEATURES=true opamp-cli dev-version-bump
 OPAMP_DEMO=true opamp-cli demo
 ```
 
@@ -296,6 +297,49 @@ OPAMP_DEMO=true opamp-cli demo
 shows configured container starts when any are available. `clear-logs` removes
 CLI-managed logs plus log files discovered from the effective OpAMP config and
 demo profile defaults.
+
+## Version Target Configuration
+
+Developer-mode version updates are configured in:
+
+```text
+cli/config/version_targets.json
+```
+
+The file contains:
+
+- `components` - release components that should be bumped independently.
+- `components[].currentVersionSource` - the canonical file and regular
+  expression used to read that component's current semantic version. The
+  pattern must capture the version in group 1.
+- `components[].targets` - files and regular expression replacements to update
+  for that component when running `opamp-cli dev-version-bump`.
+- `components[].targets[].count` - optional replacement limit for files with dependency
+  versions, such as `package-lock.json`. A value of `2` updates the package
+  root and root package entry while leaving dependency versions untouched.
+- `excludedReferences` - explanatory metadata for version-looking values that
+  are intentionally not release targets, such as generated Git metadata,
+  third-party dependency versions, schema versions, and test fixtures.
+
+Run without a version argument to increment each configured component by one
+minor version from that component's own current version:
+
+```bash
+APP_ENABLE_DEV_FEATURES=true opamp-cli dev-version-bump
+```
+
+Run with an explicit version when you need a specific release number:
+
+```bash
+APP_ENABLE_DEV_FEATURES=true opamp-cli dev-version-bump 0.5.0
+```
+
+The explicit version must be greater than the current version and must use
+`MAJOR.MINOR.PATCH` format.
+
+When multiple components are configured, an explicit version must be greater
+than every component version it would update. If any component is already at
+that version or higher, the command stops before writing changes.
 
 ## Repository Virtual Environment Setup
 

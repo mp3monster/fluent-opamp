@@ -72,11 +72,20 @@ Relevant CLI behavior:
 - startup messaging in interactive CLI only mentions this flag when it is actually detected as enabled
 - when the Fluent Bit dev-generator scripts are present, `opamp-cli dev-flb-config` is exposed as a guided developer workflow
 - `opamp-cli dev-pid-lookup` is exposed as a dev-only workflow for regex-based running-process PID lookup
+- `opamp-cli dev-version-bump` is exposed as a dev-only workflow for updating configured semantic version identifiers
 - `opamp-cli dev-containers` is exposed when a supported container runtime and configured container starts are available
 - the Fluent Bit workflow discovers tool metadata from:
   - `config-service/dev-tools/generate_fluentbit_assets.py`
   - `config-service/dev-tools/generate_fluentbit_markdown.py`
 - the CLI uses the metadata exported by those scripts to keep prompts and supported flags aligned with the tools themselves
+
+`dev-version-bump` uses `cli/config/version_targets.json` by default. That file
+defines independently bumped components, each with its own current-version
+source and version-bearing files. When no version argument is supplied, the
+command increments each component's current semantic version by one minor
+version and resets patch to zero. When a version argument is supplied, it must
+use `MAJOR.MINOR.PATCH` format and be greater than every component version it
+would update.
 
 One important non-CLI interaction is the security checks flow:
 
