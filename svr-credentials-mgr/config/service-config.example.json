@@ -1,0 +1,8 @@
+{
+  "storage": {
+    "mapping_path": "./data/client-mappings.json"
+  },
+  "authorization": {
+    "ui_use_authorization": "none"
+  }
+}

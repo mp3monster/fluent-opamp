@@ -1,0 +1,164 @@
+<!-- Copyright 2026 mp3monster.org; Licensed under the Apache License, Version 2.0. -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Server Credentials Manager</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/svr-credentials-manager-service/ui/assets/app.css?v=__SVR_CREDENTIALS_ASSET_VERSION__">
+</head>
+<body>
+<main class="page-shell">
+  <header class="title">
+    <div class="brand-block">
+      <img
+        class="brand-logo"
+        src="/svr-credentials-manager-service/ui/assets/opamp-logo.png"
+        alt="OpAMP logo"
+      >
+      <div>
+        <h1>Server Credentials Manager</h1>
+        <p>OpAMP connection settings and client assignments</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <a class="button-link help-link" href="/svr-credentials-manager-service/ui/help" target="_blank" rel="noopener noreferrer">Help</a>
+    </div>
+  </header>
+
+  <div class="editor-layout">
+    <section class="panel connection-definition-panel">
+      <h2>Connection Definition</h2>
+      <div class="row">
+        <label>Name<input id="connection-name" autocomplete="off" required></label>
+        <button id="new-connection" type="button">New</button>
+        <button id="save-connection" type="button">Save</button>
+      </div>
+      <div class="defined-connections">
+        <h3>Defined connections</h3>
+        <div class="table-shell">
+          <table class="connections-table">
+            <thead>
+              <tr>
+                <th scope="col">Connection name</th>
+                <th scope="col">Assigned client nodes</th>
+                <th scope="col" class="actions-column">Actions</th>
+              </tr>
+              <tr class="column-filter-row">
+                <th scope="col">
+                  <input id="filter-connection-name" type="text" placeholder="Filter connections" aria-label="Filter defined connections by connection name">
+                </th>
+                <th scope="col">
+                  <input id="filter-assigned-client" type="text" placeholder="Filter assigned clients" aria-label="Filter defined connections by assigned client node">
+                </th>
+                <th scope="col" class="actions-column"></th>
+              </tr>
+            </thead>
+            <tbody id="connection-items" aria-live="polite"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel payload-attributes-panel">
+      <div class="section-head">
+        <div>
+          <h2>Connection settings</h2>
+          <p>Each section maps directly to ConnectionSettingsOffers.</p>
+        </div>
+      </div>
+      <div class="tabs" role="tablist" aria-label="Connection type">
+        <button id="tab-opamp" class="connection-tab active" type="button" role="tab" aria-controls="connection-tab-panel" aria-selected="true" tabindex="0" data-kind="opamp">OpAMP</button>
+        <button id="tab-own-metrics" class="connection-tab" type="button" role="tab" aria-controls="connection-tab-panel" aria-selected="false" tabindex="-1" data-kind="own_metrics">Own metrics</button>
+        <button id="tab-own-traces" class="connection-tab" type="button" role="tab" aria-controls="connection-tab-panel" aria-selected="false" tabindex="-1" data-kind="own_traces">Own traces</button>
+        <button id="tab-own-logs" class="connection-tab" type="button" role="tab" aria-controls="connection-tab-panel" aria-selected="false" tabindex="-1" data-kind="own_logs">Own logs</button>
+        <button id="tab-other" class="connection-tab" type="button" role="tab" aria-controls="connection-tab-panel" aria-selected="false" tabindex="-1" data-kind="other">Other connection</button>
+      </div>
+      <div id="connection-tab-panel" class="tab-frame" role="tabpanel" aria-labelledby="tab-opamp">
+        <div class="tab-tools">
+          <label>Copy from
+            <select id="copy-from">
+              <option value="">Select a connection…</option>
+            </select>
+          </label>
+        </div>
+        <label id="other-name-wrap" class="hidden">Other connection name<input id="other-name" disabled></label>
+        <div class="checks">
+          <label class="checkbox-field">
+            <span>Enable this connection</span>
+            <input id="connection-enabled" type="checkbox" checked>
+          </label>
+        </div>
+        <div class="grid">
+          <label>Destination endpoint<input id="destination-endpoint" placeholder="https://collector.example:4317"></label>
+          <label>Headers (JSON object)<textarea id="headers" placeholder='{"Authorization":"Bearer token"}'></textarea></label>
+          <label>Other settings (JSON object)<textarea id="other-settings" placeholder='{"tenant":"example"}'></textarea></label>
+          <label>Certificate file<input class="pem-selector" data-reference="certificate-ref" type="file" accept=".pem,.crt,.cer"><input id="certificate-ref" type="text" readonly placeholder="No file selected"></label>
+          <label>Private key file<input class="pem-selector" data-reference="private-key-ref" type="file" accept=".pem,.key"><input id="private-key-ref" type="text" readonly placeholder="No file selected"></label>
+          <label>Certificate CA file<input class="pem-selector" data-reference="certificate-ca-ref" type="file" accept=".pem,.crt,.cer"><input id="certificate-ca-ref" type="text" readonly placeholder="No file selected"></label>
+          <label>TLS CA file<input class="pem-selector" data-reference="tls-ca-ref" type="file" accept=".pem,.crt,.cer"><input id="tls-ca-ref" type="text" readonly placeholder="No file selected"></label>
+          <label>TLS minimum version<select id="tls-min"><option value="">Not specified</option></select></label>
+          <label>TLS maximum version<select id="tls-max"><option value="">Not specified</option></select></label>
+          <label>Cipher suites (one per line)<textarea id="cipher-suites"></textarea></label>
+          <label>Proxy URL<input id="proxy-url"></label>
+          <label>Proxy connect headers (JSON object)<textarea id="proxy-headers"></textarea></label>
+        </div>
+        <div class="checks">
+          <label class="checkbox-field">
+            <span>Include system CA pool</span>
+            <input id="system-ca" type="checkbox">
+          </label>
+          <label class="checkbox-field">
+            <span>Insecure skip verify</span>
+            <input id="skip-verify" type="checkbox">
+          </label>
+        </div>
+        <div class="panel-actions">
+          <button id="save-connection-bottom" type="button">Save</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel status-panel"><p id="status" role="status">Ready.</p></section>
+</main>
+<footer class="page-footer">
+  <div>Licensed under Apache 2.0 • Attribution: mp3monster.org</div>
+</footer>
+
+<div id="assignment-dialog" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="assignment-title">
+  <div class="assignment-modal">
+    <h2 id="assignment-title">Assign connection</h2>
+    <p class="assignment-summary">Manage client-node assignments for <strong id="assignment-connection-name">-</strong>.</p>
+    <div class="assignment-layout">
+      <div class="assignment-list-panel">
+        <label for="assignment-available">Available client nodes</label>
+        <select id="assignment-available" class="assignment-node-list" multiple size="12" aria-label="Available client nodes"></select>
+      </div>
+      <div class="assignment-arrow-panel" aria-label="Assignment controls">
+        <button id="assign-selected-clients" class="icon-button" type="button" title="Assign selected client nodes" aria-label="Assign selected client nodes">&gt;</button>
+        <button id="unassign-selected-clients" class="icon-button" type="button" title="Remove selected client nodes" aria-label="Remove selected client nodes">&lt;</button>
+      </div>
+      <div class="assignment-list-panel">
+        <label for="assignment-selected">Assigned client nodes</label>
+        <select id="assignment-selected" class="assignment-node-list" multiple size="12" aria-label="Assigned client nodes"></select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button id="assignment-cancel" type="button">Cancel</button>
+      <button id="assignment-save" type="button">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="floating-actions">
+  <button id="add-test-clients" class="reload-ui secondary-action hidden" type="button" title="Add 20 mock clients for assignment testing">Add Test Clients</button>
+  <button id="reload-ui" class="reload-ui hidden" type="button" title="Reload HTML, CSS, and JavaScript">Reload UI</button>
+</div>
+<script src="/svr-credentials-manager-service/ui/assets/state.js?v=__SVR_CREDENTIALS_ASSET_VERSION__"></script>
+<script src="/svr-credentials-manager-service/ui/assets/functions.js?v=__SVR_CREDENTIALS_ASSET_VERSION__"></script>
+<script src="/svr-credentials-manager-service/ui/assets/app.js?v=__SVR_CREDENTIALS_ASSET_VERSION__"></script>
+<script src="/svr-credentials-manager-service/ui/assets/bindings.js?v=__SVR_CREDENTIALS_ASSET_VERSION__"></script>
+</body>
+</html>

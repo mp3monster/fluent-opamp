@@ -1,0 +1,591 @@
+/* Copyright 2026 mp3monster.org; Licensed under the Apache License, Version 2.0. */
+:root {
+  --page-bg: #f5f7fb;
+  --panel-bg: #fff;
+  --text: #1b1f24;
+  --muted: #4c5563;
+  --accent: #425cc7;
+  --border: #d7deee;
+  --red: #b42318;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Space Grotesk", "Trebuchet MS", sans-serif;
+  color: var(--text);
+  background: radial-gradient(circle at top left, #e7eeff 0%, #f5f7fb 55%, #fff4d8 100%);
+  min-height: 100vh;
+}
+
+.page-shell {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 1.25rem;
+}
+
+.page-footer {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 1.25rem 5.5rem;
+  text-align: center;
+  color: var(--muted);
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 28px 20px 16px;
+}
+
+.brand-block {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.brand-logo {
+  width: clamp(4.5rem, 9vw, 6.5rem);
+  height: auto;
+  flex: 0 0 auto;
+  filter: drop-shadow(0 8px 18px rgba(36, 58, 120, 0.16));
+}
+
+h1 {
+  margin: 0;
+  font-size: 2.2rem;
+}
+
+header p,
+.panel p {
+  color: var(--muted);
+}
+
+.panel {
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 10px 20px rgba(44, 31, 21, 0.06);
+}
+
+.editor-layout {
+  display: grid;
+  grid-template-columns: minmax(23rem, 31rem) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+  margin-bottom: 1rem;
+}
+
+.editor-layout > .panel {
+  margin-bottom: 0;
+}
+
+.connection-definition-panel,
+.payload-attributes-panel {
+  min-width: 0;
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.row,
+.checks {
+  display: flex;
+  align-items: end;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+
+.tabs {
+  display: flex;
+  gap: 0;
+  flex-wrap: wrap;
+  margin: 0.8rem 0 0;
+  padding: 0 0.7rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.connection-tab {
+  position: relative;
+  bottom: -1px;
+  margin-right: 0.2rem;
+  border: 1px solid transparent;
+  border-bottom-color: var(--border);
+  border-radius: 9px 9px 0 0;
+  background: #e9edfa;
+  color: var(--muted);
+}
+
+.connection-tab:hover {
+  background: #f3f5fc;
+  color: var(--accent);
+}
+
+.connection-tab:focus-visible {
+  z-index: 2;
+  outline: 3px solid rgba(66, 92, 199, 0.28);
+  outline-offset: 1px;
+}
+
+.connection-tab.active {
+  z-index: 1;
+  background: #fff;
+  color: var(--accent);
+  border-color: var(--border);
+  border-bottom-color: #fff;
+  box-shadow: 0 -3px 8px rgba(36, 58, 120, 0.07);
+}
+
+.tab-frame {
+  padding: 1.15rem;
+  border: 1px solid var(--border);
+  border-top: 0;
+  border-radius: 0 0 12px 12px;
+  background: #fff;
+  box-shadow: 0 8px 18px rgba(36, 58, 120, 0.07), inset 0 1px 0 rgba(66, 92, 199, 0.04);
+}
+
+.tab-tools {
+  margin-bottom: 1rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid #edf0f7;
+}
+
+.tab-frame .grid {
+  display: block;
+  margin-top: 0.4rem;
+}
+
+.tab-frame .grid > label,
+.tab-frame > label,
+.tab-frame .tab-tools > label,
+.tab-frame .checks > label {
+  display: grid;
+  grid-template-columns: minmax(12rem, 32%) minmax(0, 1fr);
+  align-items: start;
+  gap: 0.45rem 1rem;
+  width: 100%;
+  margin-bottom: 0.8rem;
+}
+
+.tab-frame .grid > label > *,
+.tab-frame > label > *,
+.tab-frame .tab-tools > label > *,
+.tab-frame .checks > label > * {
+  grid-column: 2;
+  width: 100%;
+}
+
+.tab-frame .checks {
+  display: block;
+}
+
+.tab-frame .checks > label.checkbox-field {
+  grid-template-columns: minmax(12rem, 32%) 1.5rem;
+  align-items: center;
+}
+
+.tab-frame .checks > label.checkbox-field > span {
+  grid-column: 1;
+  align-self: center;
+}
+
+.tab-frame .checks input[type="checkbox"] {
+  grid-column: 2;
+  width: auto;
+  justify-self: start;
+  align-self: center;
+  margin: 0;
+  padding: 0;
+}
+
+.tab-tools select {
+  min-width: 13rem;
+}
+
+.panel-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid #edf0f7;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-weight: 600;
+  color: #303846;
+}
+
+.checks label {
+  flex-direction: row;
+  align-items: center;
+}
+
+input,
+select,
+textarea,
+button,
+.button-link {
+  font: inherit;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+input,
+select,
+textarea,
+button {
+  padding: 0.6rem;
+}
+
+textarea {
+  min-height: 5rem;
+  font-family: "IBM Plex Mono", monospace;
+}
+
+button,
+.button-link {
+  background: #eef2ff;
+  color: #2f3f8f;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:hover,
+.button-link:hover,
+.button-link:focus-visible {
+  border-color: var(--accent);
+}
+
+.button-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.35rem;
+  padding: 0.45rem 0.95rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.help-link {
+  min-width: 6rem;
+}
+
+.danger {
+  color: var(--red);
+}
+
+.hidden {
+  display: none !important;
+}
+
+.status-panel {
+  background: #f7fbff;
+}
+
+.defined-connections {
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid #edf0f7;
+}
+
+.defined-connections h3 {
+  margin: 0.1rem 0 0.7rem;
+}
+
+.table-shell {
+  overflow-x: auto;
+}
+
+.connections-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.connections-table th,
+.connections-table td {
+  padding: 0.8rem 0.75rem;
+  border-bottom: 1px solid #edf0f7;
+  vertical-align: middle;
+}
+
+.connections-table th {
+  text-align: left;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+tr.column-filter-row:hover {
+  background: transparent;
+}
+
+tr.column-filter-row th {
+  cursor: default;
+  background: #f6f9ff;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  vertical-align: top;
+}
+
+tr.column-filter-row input {
+  width: 100%;
+  min-width: 7rem;
+  padding: 0.4rem 0.55rem;
+  font-size: 0.86rem;
+  font-family: inherit;
+  border: 1px solid var(--border);
+  box-sizing: border-box;
+}
+
+.connection-row {
+  cursor: pointer;
+}
+
+.connection-row:hover td {
+  background: #f8faff;
+}
+
+.connection-row:focus-visible {
+  outline: 3px solid rgba(66, 92, 199, 0.28);
+  outline-offset: -2px;
+}
+
+.connection-row.is-selected td {
+  background: #eef2ff;
+}
+
+.actions-column {
+  text-align: right;
+}
+
+.connection-name-text {
+  color: #2f3f8f;
+  font-weight: 700;
+}
+
+.connection-assignment-summary {
+  color: var(--muted);
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.connection-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.icon-button,
+.icon-remove {
+  min-width: 1.95rem;
+  width: 1.95rem;
+  height: 1.95rem;
+  padding: 0;
+  border-radius: 999px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+}
+
+.empty-connections {
+  text-align: center;
+  color: var(--muted);
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgb(15 23 42 / 0.58);
+}
+
+.assignment-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  width: min(62rem, 92vw);
+  max-height: 90vh;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgb(15 23 42 / 0.35);
+}
+
+.assignment-modal h2 {
+  margin: 0;
+}
+
+.assignment-summary {
+  margin: 0;
+}
+
+.assignment-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 1rem;
+  align-items: center;
+}
+
+.assignment-list-panel {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.assignment-node-list {
+  min-height: 18rem;
+  background: #fbfcff;
+}
+
+.assignment-arrow-panel {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
+.floating-actions {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  z-index: 20;
+  display: flex;
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.reload-ui {
+  padding: 0.7rem 1rem;
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 8px 22px rgba(36, 58, 120, 0.28);
+}
+
+.secondary-action {
+  background: #eef2ff;
+  color: #2f3f8f;
+}
+
+.reload-ui:hover,
+.reload-ui:focus-visible {
+  background: #344cad;
+  color: #fff;
+}
+
+.secondary-action:hover,
+.secondary-action:focus-visible {
+  background: #dfe7ff;
+  color: #22316e;
+}
+
+@media (max-width: 900px) {
+  .editor-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .assignment-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .assignment-arrow-panel {
+    grid-auto-flow: column;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 650px) {
+  .connections-table thead {
+    display: none;
+  }
+
+  .floating-actions {
+    right: 0.85rem;
+    left: 0.85rem;
+    bottom: 0.85rem;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .connections-table,
+  .connections-table tbody,
+  .connections-table tr,
+  .connections-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .connections-table tr {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #edf0f7;
+  }
+
+  .connections-table td {
+    border-bottom: 0;
+    padding: 0.35rem 0;
+  }
+
+  .connection-actions {
+    justify-content: flex-start;
+  }
+
+  .tab-frame .grid > label,
+  .tab-frame > label,
+  .tab-frame .tab-tools > label,
+  .tab-frame .checks > label {
+    grid-template-columns: 1fr;
+  }
+
+  .tab-frame .grid > label > *,
+  .tab-frame > label > *,
+  .tab-frame .tab-tools > label > *,
+  .tab-frame .checks > label > * {
+    grid-column: 1;
+  }
+
+  .tab-frame .checks > label.checkbox-field {
+    grid-template-columns: 1fr 1.5rem;
+    align-items: center;
+  }
+}
