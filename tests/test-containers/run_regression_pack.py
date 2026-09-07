@@ -62,6 +62,7 @@ def _ensure_regression_directories(repo_root: Path) -> None:
     """Create host directories that are mounted by regression containers."""
     for directory in (
         repo_root / "dist" / "consumer",
+        repo_root / "dist" / "test-reports" / "component-wheel-deployment",
         repo_root / "dist" / "test-reports" / "opamp-consumer-deployment" / "fluentbit",
         repo_root / "dist" / "test-reports" / "opamp-consumer-deployment" / "fluentd",
         repo_root / "dist" / "test-reports" / "config-service-ui-playwright-batch",
@@ -73,9 +74,42 @@ def _ensure_regression_directories(repo_root: Path) -> None:
 def _default_tests(repo_root: Path) -> list[RegressionTest]:
     bash = _bash_executable()
     consumer_plugin_image = "opamp-consumer-plugin-startup-regression:latest"
+    component_wheel_image = "opamp-component-wheel-deployment:latest"
     consumer_deployment_image = "opamp-consumer-deployment-test:latest"
     config_service_ui_image = "config-service-ui-playwright-batch:latest"
     return [
+        RegressionTest(
+            test_id="component-wheel-deployment",
+            description=(
+                "Builds every Python component wheel and installs each one into a clean "
+                "virtual environment to validate deployment packaging."
+            ),
+            commands=(
+                (
+                    "docker",
+                    "build",
+                    "-f",
+                    str(repo_root / "tests/test-containers/component-wheel-deployment/Dockerfile"),
+                    "-t",
+                    component_wheel_image,
+                    str(repo_root / "tests/test-containers/component-wheel-deployment"),
+                ),
+                (
+                    "docker",
+                    "run",
+                    "--rm",
+                    "-e",
+                    "OPAMP_REPO=/workspace/opamp",
+                    "-e",
+                    "RESULTS_DIR=/host-output",
+                    "-v",
+                    f"{repo_root}:/workspace/opamp",
+                    "-v",
+                    f"{repo_root / 'dist/test-reports/component-wheel-deployment'}:/host-output",
+                    component_wheel_image,
+                ),
+            ),
+        ),
         RegressionTest(
             test_id="consumer-plugin-startup",
             description="Builds and runs the consumer plugin startup regression container.",
