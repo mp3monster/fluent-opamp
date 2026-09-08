@@ -114,6 +114,8 @@ SERVICE_TYPE_FLUENTD = "fluentd"
 # Service type value selecting Fluentd client behavior.
 SERVICE_TYPE_ELASTIC_AGENT = "elastic_agent"
 # Service type value selecting Elastic Agent client behavior.
+SERVICE_TYPE_ELASTIC_HEARTBEAT = "elastic_heartbeat"
+# Service type value selecting Elastic Heartbeat client behavior.
 SERVICE_TYPE_SIMULATOR = "simulator"
 # Service type value selecting scripted simulator client behavior.
 DEFAULT_SERVICE_TYPE = SERVICE_TYPE_FLUENTBIT  # Default service type when none is configured.
@@ -225,6 +227,11 @@ class ConsumerConfig:
     elastic_agent_api_port: int = 6791
     elastic_agent_api_failon: str = "degraded"
     elastic_agent_status_timeout_seconds: float = 5.0
+    elastic_heartbeat_executable_path: str | None = None
+    elastic_heartbeat_home_path: str | None = None
+    elastic_heartbeat_api_host: str = "localhost"
+    elastic_heartbeat_api_port: int = 5066
+    elastic_heartbeat_status_timeout_seconds: float = 5.0
     process_tracking: str = DEFAULT_PROCESS_TRACKING
     # Process lifecycle strategy: supervisor | observer.
     process_detection_regex: str | None = (

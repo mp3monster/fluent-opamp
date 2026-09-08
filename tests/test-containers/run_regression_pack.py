@@ -65,6 +65,7 @@ def _ensure_regression_directories(repo_root: Path) -> None:
         repo_root / "dist" / "test-reports" / "component-wheel-deployment",
         repo_root / "dist" / "test-reports" / "opamp-consumer-deployment" / "fluentbit",
         repo_root / "dist" / "test-reports" / "opamp-consumer-deployment" / "fluentd",
+        repo_root / "dist" / "test-reports" / "opamp-consumer-deployment" / "elastic-heartbeat",
         repo_root / "dist" / "test-reports" / "config-service-ui-playwright-batch",
         repo_root / "config-service" / "dist",
     ):
@@ -136,7 +137,7 @@ def _default_tests(repo_root: Path) -> list[RegressionTest]:
         RegressionTest(
             test_id="opamp-consumer-deployment-smoke",
             description=(
-                "Builds the consumer wheel, then smoke-tests Fluent Bit and Fluentd "
+                "Builds the consumer wheel, then smoke-tests Fluent Bit, Fluentd, and Elastic Heartbeat "
                 "deployment containers through install, plugin verification, and config staging."
             ),
             commands=(
@@ -196,6 +197,22 @@ def _default_tests(repo_root: Path) -> list[RegressionTest]:
                     "host.docker.internal:host-gateway",
                     "-e",
                     "TEST_CONTAINER_CONFIG=/config/regression-fluentd.env",
+                    consumer_deployment_image,
+                ),
+                (
+                    "docker",
+                    "run",
+                    "--rm",
+                    "-v",
+                    f"{repo_root}:/host-assets",
+                    "-v",
+                    f"{repo_root / 'tests/test-containers/opamp-consumer-deployment/examples'}:/config",
+                    "-v",
+                    f"{repo_root / 'dist/test-reports/opamp-consumer-deployment/elastic-heartbeat'}:/host-output",
+                    "--add-host",
+                    "host.docker.internal:host-gateway",
+                    "-e",
+                    "TEST_CONTAINER_CONFIG=/config/regression-elastic-heartbeat.env",
                     consumer_deployment_image,
                 ),
             ),
@@ -311,6 +328,8 @@ def _run_test(test: RegressionTest, *, repo_root: Path) -> dict[str, object]:
     started = time.monotonic()
     command_results: list[dict[str, object]] = []
     exit_code = 0
+    command_env = os.environ.copy()
+    command_env.setdefault("OPAMP_PYTHON", sys.executable)
     for command in test.commands:
         print(f"[regression-pack] {test.test_id}: {' '.join(command)}", flush=True)
         completed = subprocess.run(
@@ -321,7 +340,7 @@ def _run_test(test: RegressionTest, *, repo_root: Path) -> dict[str, object]:
             errors="replace",
             capture_output=True,
             check=False,
-            env=os.environ.copy(),
+            env=command_env,
         )
         command_results.append(
             {

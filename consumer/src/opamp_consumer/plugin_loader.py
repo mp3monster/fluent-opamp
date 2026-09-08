@@ -47,6 +47,11 @@ BUILTIN_CONSUMER_PLUGINS: tuple[dict[str, str | bool], ...] = (
         "enabled": True,
     },
     {
+        "service_type": "elastic_heartbeat",
+        "entry_point": "opamp_consumer.elastic_heartbeat.client:main",
+        "enabled": True,
+    },
+    {
         "service_type": "simulator",
         "entry_point": "opamp_consumer.simulator.client:main",
         "enabled": True,

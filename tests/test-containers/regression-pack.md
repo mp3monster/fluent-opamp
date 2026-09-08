@@ -24,8 +24,8 @@ dist/test-reports/regression-pack/
 | Test id | Coverage |
 |---|---|
 | `component-wheel-deployment` | Starts from a clean container filesystem, builds every Python component wheel, installs each wheel into its own fresh virtual environment, runs `pip check`, imports primary modules, and verifies declared scripts and entry points. |
-| `consumer-plugin-startup` | Builds and runs the consumer plugin startup container. It checks `fluentbit`, `fluentd`, `elastic_agent`, and `simulator` plugin selection, config loading, plugin-specific config processing, and client initialization. |
-| `opamp-consumer-deployment-smoke` | Builds the current consumer wheel, builds the deployment test container, then runs Fluent Bit and Fluentd smoke-only deployments through wheel install, consumer plugin entry-point verification, and config staging. |
+| `consumer-plugin-startup` | Builds and runs the consumer plugin startup container. It checks `fluentbit`, `fluentd`, `elastic_agent`, `elastic_heartbeat`, and `simulator` plugin selection, config loading, plugin-specific config processing, and client initialization. |
+| `opamp-consumer-deployment-smoke` | Builds the current consumer wheel, builds the deployment test container, then runs Fluent Bit, Fluentd, and Elastic Heartbeat smoke-only deployments through wheel install, consumer plugin entry-point verification, and config staging. |
 | `st001` | Runs the ST-001 provider/consumer simulator socket and HTTP container scenarios. |
 | `st002` | Runs the ST-002 provider/consumer simulator socket and HTTP container scenarios. |
 | `st004` | Runs the ST-004 provider/consumer Keycloak authorization container scenario. |

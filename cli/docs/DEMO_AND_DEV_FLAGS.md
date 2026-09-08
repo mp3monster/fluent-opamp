@@ -28,6 +28,8 @@ Each profile in that file provides:
 - a Fluentd agent config path
 - an Elastic Agent OpAMP config path
 - an Elastic Agent config path
+- an Elastic Heartbeat OpAMP config path
+- an Elastic Heartbeat config path
 - optional container start commands
 
 When `OPAMP_DEMO` is enabled:
@@ -53,6 +55,19 @@ The launch sequence is:
 2. Start `opamp_consumer.client` with the Elastic Agent consumer config.
 3. The consumer loads the `elastic_agent` plugin and launches Elastic Agent with the self-monitoring YAML.
 4. Elastic Agent sends its monitoring logs and metrics to local Logstash.
+
+The `Demo setup (Elastic Heartbeat supervisor to Logstash)` profile uses:
+
+- `tests/logstash/opamp-consumer-elastic-heartbeat-logstash-plugin.json`
+- `tests/logstash/heartbeat.yml`
+- the `logstash-heartbeat-local` container entry from `cli/config/demo_consumer_profiles.json`
+
+The launch sequence is:
+
+1. Start the configured Logstash container on host port `5044`.
+2. Start `opamp_consumer.client` with the Elastic Heartbeat consumer config.
+3. The consumer loads the `elastic_heartbeat` plugin and launches Heartbeat as a supervisor-managed process.
+4. Heartbeat monitors `localhost` and `blog.mp3monster.org` every 5 seconds, sends events to Logstash, and Logstash writes `tests/logstash/out/heartbeat-events.jsonl`.
 
 ## `APP_ENABLE_DEV_FEATURES`
 

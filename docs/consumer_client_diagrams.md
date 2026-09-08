@@ -18,7 +18,7 @@ What this shows:
 - `AbstractOpAMPClient` composes core send/reporting behavior.
 - `ClientTransportAuthorizationMixin`, `ClientRuntimeMixin`, and `ServerMessageHandlingMixin` contribute transport/auth, runtime, and server-message handling behavior.
 - Runtime lifecycle delegation now routes to `ClientSupervisorMixin` or `ClientObserverMixin` based on config.
-- Concrete clients (`OpAMPClient` for Fluent Bit and `FluentdOpAMPClient` for Fluentd) extend/override where needed.
+- Concrete clients (`OpAMPClient` for Fluent Bit, `FluentdOpAMPClient` for Fluentd, Elastic clients, and simulator clients) extend/override where needed.
 - Update controller implementations (`AlwaysSend`, `SentCount`, `TimeSend`) control reporting flag reset cadence.
 
 ## Diagram 2: Runtime Entrypoints
@@ -27,7 +27,7 @@ What this shows:
 
 What this shows:
 
-- Script and CLI entrypoints for Fluent Bit and Fluentd clients.
+- Script and CLI entrypoints for Fluent Bit, Fluentd, Elastic Agent, Elastic Heartbeat, and simulator clients.
 - Bootstrap path through `client_bootstrap.run_default_client_main(...)`.
 - Shared runtime behavior flowing into `AbstractOpAMPClient` + mixins.
 - Provider endpoint target still comes from `consumer.server_url`.

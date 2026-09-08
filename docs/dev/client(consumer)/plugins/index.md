@@ -67,6 +67,7 @@ Use the built-ins as reference implementations:
 - Fluent Bit: `consumer/src/opamp_consumer/fluentbit/`
 - Fluentd: `consumer/src/opamp_consumer/fluentd/`
 - Elastic Agent: `consumer/src/opamp_consumer/elastic_agent/`
+- Elastic Heartbeat: `consumer/src/opamp_consumer/elastic_heartbeat/`
 - Simulator: `consumer/src/opamp_consumer/simulator/`
 
 Their operator-facing configuration pages live under

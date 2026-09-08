@@ -23,6 +23,7 @@ import pytest
 
 import opamp_consumer.client_bootstrap as client_bootstrap
 import opamp_consumer.elastic_agent.client as elastic_agent_client
+import opamp_consumer.elastic_heartbeat.client as elastic_heartbeat_client
 import opamp_consumer.fluentd.client as fluentd_client
 import opamp_consumer.simulator.client as simulator_client
 from opamp_consumer.config import ConsumerConfig
@@ -163,6 +164,16 @@ def test_elastic_agent_startup_logs_banner(monkeypatch: pytest.MonkeyPatch) -> N
         module=elastic_agent_client,
         service_type="elastic_agent",
         runtime_name="consumer-elastic-agent",
+    )
+
+
+def test_elastic_heartbeat_startup_logs_banner(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Elastic Heartbeat startup should emit the common banner."""
+    _exercise_main_until_help(
+        monkeypatch,
+        module=elastic_heartbeat_client,
+        service_type="elastic_heartbeat",
+        runtime_name="consumer-elastic-heartbeat",
     )
 
 

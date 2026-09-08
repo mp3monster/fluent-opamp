@@ -84,7 +84,7 @@ Constraints:
 - Do not add plugin-specific branches to consumer/src/opamp_consumer/config.py
   when a process_consumer_config hook can own the behavior.
 - Preserve existing tests and behavior for Fluent Bit, Fluentd, Elastic Agent,
-  and simulator.
+  Elastic Heartbeat, and simulator.
 - Use existing code style and type hints.
 - Avoid broad refactors.
 

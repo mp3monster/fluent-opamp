@@ -32,6 +32,7 @@ COMPONENTS: tuple[Component, ...] = (
             "opamp_consumer.fluentbit.client",
             "opamp_consumer.fluentd.client",
             "opamp_consumer.elastic_agent.client",
+            "opamp_consumer.elastic_heartbeat.client",
             "opamp_consumer.simulator.client",
         ),
     ),

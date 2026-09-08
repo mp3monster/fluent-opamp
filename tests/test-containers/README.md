@@ -3,7 +3,7 @@
 This folder holds Docker-based test harnesses used by the project test workflow.
 
 - `component-wheel-deployment/` - clean container harness that builds every Python component wheel and installs each component into a fresh virtual environment.
-- `opamp-consumer-deployment/` - config-driven container for testing OpAMP consumer deployments with Fluent Bit or Fluentd.
+- `opamp-consumer-deployment/` - config-driven container for testing OpAMP consumer deployments with Fluent Bit, Fluentd, or Elastic Heartbeat.
 - `consumer-plugin-startup/` - containerized regression probe that verifies every built-in consumer plugin can load, configure, and instantiate its client.
 - `run_regression_pack.py` - runs all container harnesses in the regression pack and writes JSON/Markdown outcome reports under `dist/test-reports/regression-pack/`.
 - `regression-pack.md` - documents the e2e tests included in the regression pack.

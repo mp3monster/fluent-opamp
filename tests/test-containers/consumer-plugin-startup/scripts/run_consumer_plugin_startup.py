@@ -38,6 +38,13 @@ PLUGIN_SPECS = [
         "agent_filename": "elastic-agent.yml",
     },
     {
+        "service_type": "elastic_heartbeat",
+        "entry_point": "opamp_consumer.elastic_heartbeat.client:main",
+        "module": "opamp_consumer.elastic_heartbeat.client",
+        "client_class": "ElasticHeartbeatOpAMPClient",
+        "agent_filename": "heartbeat.yml",
+    },
+    {
         "service_type": "simulator",
         "entry_point": "opamp_consumer.simulator.client:main",
         "module": "opamp_consumer.simulator.client",
@@ -103,6 +110,19 @@ def _write_agent_configs(work_dir: Path) -> dict[str, Path]:
             "    host: 127.0.0.1\n"
             "    port: 6791\n"
         ),
+        "heartbeat.yml": (
+            "heartbeat.monitors:\n"
+            "  - type: http\n"
+            "    id: localhost-http\n"
+            "    name: localhost\n"
+            "    urls: ['http://localhost']\n"
+            "    schedule: '@every 5s'\n"
+            "http.enabled: true\n"
+            "http.host: 127.0.0.1\n"
+            "http.port: 5066\n"
+            "output.logstash:\n"
+            "  hosts: ['127.0.0.1:5044']\n"
+        ),
         "simulator-agent.yaml": "simulator: true\n",
     }
     paths: dict[str, Path] = {}
@@ -157,6 +177,13 @@ def _consumer_config(
             "api_host": "127.0.0.1",
             "api_port": 6791,
             "api_failon": "degraded",
+            "status_timeout_seconds": 1,
+        },
+        "elastic_heartbeat": {
+            "executable_path": "/bin/true",
+            "home_path": str(work_dir / "elastic-heartbeat-home"),
+            "api_host": "127.0.0.1",
+            "api_port": 5066,
             "status_timeout_seconds": 1,
         },
     }
@@ -238,6 +265,18 @@ def _probe_service(service_type: str, config_path: Path) -> dict[str, Any]:
                 default_service_name="opamp-consumer-elastic-agent",
             )
             client = module.ElasticAgentOpAMPClient(config.server_url, config)
+        elif service_type == "elastic_heartbeat":
+            config = module.load_elastic_heartbeat_config(config)
+            config = validate_runtime_server_config(
+                config=config,
+                localhost_base=LOCALHOST_BASE,
+                missing_status_port_error="client_status_port not found for Elastic Heartbeat",
+            )
+            configure_observability_for_config(
+                config=config,
+                default_service_name="opamp-consumer-elastic-heartbeat",
+            )
+            client = module.ElasticHeartbeatOpAMPClient(config.server_url, config)
         elif service_type == "simulator":
             if config.client_status_port is None:
                 config.client_status_port = 1

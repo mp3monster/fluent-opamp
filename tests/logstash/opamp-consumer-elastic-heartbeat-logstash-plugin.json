@@ -1,0 +1,59 @@
+{
+  "consumer": {
+    "server_url": "http://localhost:8080",
+    "client_status_port": 5066,
+    "chat_ops_port": 8888,
+    "transport": "http",
+    "tls": {
+      "verify_server": false
+    },
+    "server-authorization": "none",
+    "log_agent_api_responses": false,
+    "agent_config_path": "tests/logstash/heartbeat.yml",
+    "agent_additional_params": [],
+    "heartbeat_frequency": 5,
+    "service_type": "elastic_heartbeat",
+    "processTracking": "Supervisor",
+    "full_update_controller": {
+      "fullResendAfter": 1
+    },
+    "full_update_controller_type": "SentCount",
+    "allow_custom_capabilities": true,
+    "log_level": "debug",
+    "service_name": "ElasticHeartbeat",
+    "service_namespace": "ElasticBeatDemo",
+    "plugins": [
+      {
+        "service_type": "fluentbit",
+        "entry_point": "opamp_consumer.fluentbit.client:main",
+        "enabled": true
+      },
+      {
+        "service_type": "fluentd",
+        "entry_point": "opamp_consumer.fluentd.client:main",
+        "enabled": true
+      },
+      {
+        "service_type": "elastic_agent",
+        "entry_point": "opamp_consumer.elastic_agent.client:main",
+        "enabled": true
+      },
+      {
+        "service_type": "elastic_heartbeat",
+        "entry_point": "opamp_consumer.elastic_heartbeat.client:main",
+        "enabled": true
+      },
+      {
+        "service_type": "simulator",
+        "entry_point": "opamp_consumer.simulator.client:main",
+        "enabled": true
+      }
+    ],
+    "elastic_heartbeat": {
+      "executable_path": "heartbeat",
+      "api_host": "127.0.0.1",
+      "api_port": 5066,
+      "status_timeout_seconds": 5
+    }
+  }
+}

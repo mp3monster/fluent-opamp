@@ -50,6 +50,10 @@ The top-level shape is:
         "config_path": "tests/logstash/opamp-consumer-elastic-agent-logstash-plugin.json",
         "agent_config_path": "tests/logstash/elastic-agent.yml"
       },
+      "elastic_heartbeat": {
+        "config_path": "tests/logstash/opamp-consumer-elastic-heartbeat-logstash-plugin.json",
+        "agent_config_path": "tests/logstash/heartbeat.yml"
+      },
       "containers": []
     }
   ]
@@ -70,11 +74,12 @@ already absolute.
 | `fluentbit` | object | No | Fluent Bit consumer launch configuration. |
 | `fluentd` | object | No | Fluentd consumer launch configuration. |
 | `elastic_agent` | object | No | Elastic Agent consumer launch configuration. |
+| `elastic_heartbeat` | object | No | Elastic Heartbeat consumer launch configuration. |
 | `containers` | array | No | Dependency containers started before consumers in the same profile. |
 
 A profile must configure at least one launchable component: a container, a
 simulator instances file, a complete Fluent Bit pair, a complete Fluentd pair,
-or an Elastic Agent config.
+an Elastic Agent config, or a complete Elastic Heartbeat pair.
 
 ## Consumer Component Blocks
 
@@ -100,6 +105,18 @@ Elastic Agent supports:
 
 The Elastic Agent demo path starts `python -m opamp_consumer.client`, not the
 legacy direct module entrypoint, so plugin routing is exercised.
+
+Elastic Heartbeat supports the same pair of attributes as Fluent Bit and
+Fluentd:
+
+| Attribute | Type | Required | Description |
+|---|---|---:|---|
+| `config_path` | string | Yes, when Elastic Heartbeat is configured | Consumer OpAMP JSON config. This should select the `elastic_heartbeat` plugin. |
+| `agent_config_path` | string | Yes, when Elastic Heartbeat is configured | Heartbeat YAML passed as `--agent-config-path`. |
+
+The Heartbeat demo profile starts a Logstash container first. Heartbeat sends
+events to that Logstash backend, and the Logstash pipeline writes the local test
+file used as delivery evidence.
 
 ## Container Entries
 
@@ -317,9 +334,16 @@ The file contains:
 - `components[].targets[].count` - optional replacement limit for files with dependency
   versions, such as `package-lock.json`. A value of `2` updates the package
   root and root package entry while leaving dependency versions untouched.
+- `components[].targets[].optional` - when `true`, a missing target file is
+  skipped. Use this only for generated files such as package lockfiles that may
+  not exist in every checkout.
 - `excludedReferences` - explanatory metadata for version-looking values that
   are intentionally not release targets, such as generated Git metadata,
   third-party dependency versions, schema versions, and test fixtures.
+
+The command plans and validates every required target before writing changes.
+If a required file is missing or a required pattern does not match, it reports
+the issue and exits without partially updating the repository.
 
 Run without a version argument to increment each configured component by one
 minor version from that component's own current version:

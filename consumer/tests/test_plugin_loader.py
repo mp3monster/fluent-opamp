@@ -40,18 +40,26 @@ def test_unknown_service_type_reports_supported_plugins(monkeypatch, caplog) -> 
 
     registry = build_consumer_plugin_registry(config)
 
-    assert sorted(registry) == ["elastic_agent", "fluentbit", "fluentd", "simulator"]
+    assert sorted(registry) == [
+        "elastic_agent",
+        "elastic_heartbeat",
+        "fluentbit",
+        "fluentd",
+        "simulator",
+    ]
     with pytest.raises(
         ValueError,
         match=(
             "unsupported consumer.service_type 'custom_agent'; "
-            "configured/installed plugins: elastic_agent, fluentbit, fluentd, simulator"
+            "configured/installed plugins: elastic_agent, elastic_heartbeat, "
+            "fluentbit, fluentd, simulator"
         ),
     ):
         load_consumer_plugin(config)
     assert (
         "failed to load consumer plugin service_type=custom_agent; "
-        "configured/installed plugins: elastic_agent, fluentbit, fluentd, simulator"
+        "configured/installed plugins: elastic_agent, elastic_heartbeat, "
+        "fluentbit, fluentd, simulator"
     ) in caplog.text
 
 
@@ -76,6 +84,7 @@ def test_one_configured_plugin_builds_single_plugin_registry(monkeypatch) -> Non
     assert sorted(registry) == [
         "custom_agent",
         "elastic_agent",
+        "elastic_heartbeat",
         "fluentbit",
         "fluentd",
         "simulator",
@@ -105,6 +114,10 @@ def test_all_builtin_plugin_config_builds_full_registry(monkeypatch) -> None:
                 "entry_point": "opamp_consumer.elastic_agent.client:main",
             },
             {
+                "service_type": "elastic_heartbeat",
+                "entry_point": "opamp_consumer.elastic_heartbeat.client:main",
+            },
+            {
                 "service_type": "simulator",
                 "entry_point": "opamp_consumer.simulator.client:main",
             },
@@ -113,12 +126,22 @@ def test_all_builtin_plugin_config_builds_full_registry(monkeypatch) -> None:
 
     registry = build_consumer_plugin_registry(config)
 
-    assert sorted(registry) == ["elastic_agent", "fluentbit", "fluentd", "simulator"]
+    assert sorted(registry) == [
+        "elastic_agent",
+        "elastic_heartbeat",
+        "fluentbit",
+        "fluentd",
+        "simulator",
+    ]
     assert registry["fluentbit"].entry_point == "opamp_consumer.fluentbit.client:main"
     assert registry["fluentd"].entry_point == "opamp_consumer.fluentd.client:main"
     assert (
         registry["elastic_agent"].entry_point
         == "opamp_consumer.elastic_agent.client:main"
+    )
+    assert (
+        registry["elastic_heartbeat"].entry_point
+        == "opamp_consumer.elastic_heartbeat.client:main"
     )
     assert registry["simulator"].entry_point == "opamp_consumer.simulator.client:main"
 

@@ -25,7 +25,7 @@ UNPACKED_WHEEL_DIR = RUNTIME_ROOT / "wheel-unpacked"
 ELK_DOWNLOADS_DIR = DOWNLOADS_DIR / "elk"
 LOG_GENERATOR_DOWNLOADS_DIR = DOWNLOADS_DIR / "log-generator"
 
-SUPPORTED_DEPLOYMENTS = {"fluentbit", "fluentd"}
+SUPPORTED_DEPLOYMENTS = {"fluentbit", "fluentd", "elastic_heartbeat"}
 SUPPORTED_TRANSPORTS = {"http", "websocket"}
 CONSUMER_PLUGIN_ENTRY_POINT_GROUP = "opamp_consumer.plugins"
 BUILTIN_CONSUMER_PLUGINS = [
@@ -45,6 +45,11 @@ BUILTIN_CONSUMER_PLUGINS = [
         "enabled": True,
     },
     {
+        "service_type": "elastic_heartbeat",
+        "entry_point": "opamp_consumer.elastic_heartbeat.client:main",
+        "enabled": True,
+    },
+    {
         "service_type": "simulator",
         "entry_point": "opamp_consumer.simulator.client:main",
         "enabled": True,
@@ -56,10 +61,13 @@ SUPPORTED_ELK_COMPONENTS = {
     "logstash": "https://artifacts.elastic.co/downloads/logstash/logstash-{version}-linux-x86_64.tar.gz",
     "elastic-agent": "https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-{version}-linux-x86_64.tar.gz",
     "fleet-server": "https://artifacts.elastic.co/downloads/fleet-server/fleet-server-{version}-linux-x86_64.tar.gz",
+    "heartbeat": "https://artifacts.elastic.co/downloads/beats/heartbeat/heartbeat-{version}-linux-x86_64.tar.gz",
 }
 ELK_COMPONENT_ALIASES = {
     "elasticagent": "elastic-agent",
     "fleetserver": "fleet-server",
+    "elastic-heartbeat": "heartbeat",
+    "elasticheartbeat": "heartbeat",
 }
 DEFAULT_ELK_COMPONENTS = ("elasticsearch", "kibana", "logstash")
 DEFAULT_LOG_GENERATOR_REPO = "https://github.com/mingrammer/flog.git"
@@ -221,6 +229,33 @@ def _install_fluentd(version: str) -> None:
     _run(["fluentd", "--version"])
 
 
+def _install_heartbeat(version: str, cfg: dict[str, str]) -> None:
+    explicit_url = cfg.get("HEARTBEAT_DOWNLOAD_URL", "").strip()
+    tarball_path = DOWNLOADS_DIR / f"heartbeat-{version}.tar.gz"
+    download_url = explicit_url or SUPPORTED_ELK_COMPONENTS["heartbeat"].format(version=version)
+    _download(download_url, tarball_path)
+
+    extract_root = DOWNLOADS_DIR / f"heartbeat-{version}"
+    _extract_tarball(tarball_path, extract_root)
+
+    binary_candidates = []
+    for path in extract_root.rglob("heartbeat"):
+        if path.is_file():
+            binary_candidates.append(path)
+
+    if not binary_candidates:
+        raise ConfigError(
+            "heartbeat binary was not found in the downloaded archive. "
+            "Set HEARTBEAT_DOWNLOAD_URL to a known Linux x86_64 package."
+        )
+
+    source_binary = sorted(binary_candidates, key=lambda p: len(str(p)))[0]
+    target_binary = Path("/usr/local/bin/heartbeat")
+    shutil.copy2(source_binary, target_binary)
+    target_binary.chmod(target_binary.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    _run([str(target_binary), "version"])
+
+
 def _extract_tarball(archive_path: Path, target_dir: Path) -> None:
     if target_dir.exists():
         shutil.rmtree(target_dir)
@@ -372,6 +407,8 @@ def _ensure_hostname(cfg: dict[str, str]) -> None:
 def _default_agent_template(deployment: str) -> Path:
     if deployment == "fluentbit":
         return DEFAULTS_DIR / "fluent-bit.yaml"
+    if deployment == "elastic_heartbeat":
+        return DEFAULTS_DIR / "heartbeat.yml"
     return DEFAULTS_DIR / "fluentd.conf"
 
 
@@ -384,7 +421,13 @@ def _build_default_consumer_config(
     websocket_url: str,
 ) -> dict[str, Any]:
     server_url = websocket_url if transport == "websocket" else http_url
-    return {
+    service_name_by_deployment = {
+        "fluentbit": "Fluentbit",
+        "fluentd": "Fluentd",
+        "elastic_heartbeat": "ElasticHeartbeat",
+    }
+    heartbeat_frequency = 5 if deployment == "elastic_heartbeat" else 15
+    config: dict[str, Any] = {
         "consumer": {
             "server_url": server_url,
             "client_status_port": 2020,
@@ -395,17 +438,28 @@ def _build_default_consumer_config(
             "log_agent_api_responses": False,
             "agent_config_path": str(agent_config_path),
             "agent_additional_params": [],
-            "heartbeat_frequency": 15,
+            "heartbeat_frequency": heartbeat_frequency,
             "service_type": deployment,
             "full_update_controller": {"fullResendAfter": 1},
             "full_update_controller_type": "SentCount",
             "allow_custom_capabilities": True,
             "log_level": "debug",
-            "service_name": "Fluentbit" if deployment == "fluentbit" else "Fluentd",
+            "service_name": service_name_by_deployment.get(deployment, deployment),
             "service_namespace": "TestContainer",
             "plugins": [dict(plugin) for plugin in BUILTIN_CONSUMER_PLUGINS],
         }
     }
+    if deployment == "elastic_heartbeat":
+        consumer = config["consumer"]
+        consumer["client_status_port"] = 5066
+        consumer["elastic_heartbeat"] = {
+            "executable_path": "heartbeat",
+            "api_host": "127.0.0.1",
+            "api_port": 5066,
+            "status_timeout_seconds": 5,
+        }
+        consumer["processTracking"] = "Supervisor"
+    return config
 
 
 def _stage_agent_config(
@@ -415,7 +469,12 @@ def _stage_agent_config(
     output_dir: Path,
     hostname_override: str | None,
 ) -> Path:
-    staged_path = STAGED_CONFIG_DIR / ("fluent-bit.yaml" if deployment == "fluentbit" else "fluentd.conf")
+    agent_filename = {
+        "fluentbit": "fluent-bit.yaml",
+        "fluentd": "fluentd.conf",
+        "elastic_heartbeat": "heartbeat.yml",
+    }.get(deployment, "agent.conf")
+    staged_path = STAGED_CONFIG_DIR / agent_filename
     source_path_raw = cfg.get("AGENT_CONFIG_PATH", "").strip()
 
     if source_path_raw:
@@ -490,9 +549,16 @@ def _stage_consumer_config(
 
 
 def _launch_agent_only(deployment: str, agent_config_path: Path, output_dir: Path) -> None:
-    log_path = output_dir / ("fluent-bit-agent.log" if deployment == "fluentbit" else "fluentd-agent.log")
+    log_name = {
+        "fluentbit": "fluent-bit-agent.log",
+        "fluentd": "fluentd-agent.log",
+        "elastic_heartbeat": "heartbeat-agent.log",
+    }.get(deployment, "agent.log")
+    log_path = output_dir / log_name
     if deployment == "fluentbit":
         command = ["fluent-bit", "-c", str(agent_config_path)]
+    elif deployment == "elastic_heartbeat":
+        command = ["heartbeat", "-e", "-c", str(agent_config_path)]
     else:
         command = ["fluentd", "-c", str(agent_config_path), "--no-supervisor"]
     _log(f"agent-only mode enabled; logging to {log_path}")
@@ -503,7 +569,12 @@ def _launch_agent_only(deployment: str, agent_config_path: Path, output_dir: Pat
 
 
 def _launch_consumer(deployment: str, consumer_config_path: Path, agent_config_path: Path, output_dir: Path) -> None:
-    log_path = output_dir / ("opamp-consumer-fluentbit.log" if deployment == "fluentbit" else "opamp-consumer-fluentd.log")
+    log_name = {
+        "fluentbit": "opamp-consumer-fluentbit.log",
+        "fluentd": "opamp-consumer-fluentd.log",
+        "elastic_heartbeat": "opamp-consumer-elastic-heartbeat.log",
+    }.get(deployment, "opamp-consumer.log")
+    log_path = output_dir / log_name
     command = [
         "opamp-consumer",
         "--config-path",
@@ -560,6 +631,8 @@ def main() -> int:
         _log("agent installation skipped by SKIP_AGENT_INSTALL=true")
     elif deployment == "fluentbit":
         _install_fluentbit(agent_version, cfg)
+    elif deployment == "elastic_heartbeat":
+        _install_heartbeat(agent_version, cfg)
     else:
         _install_fluentd(agent_version)
 

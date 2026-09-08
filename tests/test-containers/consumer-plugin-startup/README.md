@@ -9,6 +9,7 @@ Covered service types:
 - `fluentbit`
 - `fluentd`
 - `elastic_agent`
+- `elastic_heartbeat`
 - `simulator`
 
 The probe intentionally stops before launching external agent binaries or

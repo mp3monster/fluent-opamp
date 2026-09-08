@@ -20,6 +20,7 @@ client module to invoke. It parses shared CLI/config options once, resolves
 - `opamp_consumer.fluentbit.client`
 - `opamp_consumer.fluentd.client`
 - `opamp_consumer.elastic_agent.client`
+- `opamp_consumer.elastic_heartbeat.client`
 - `opamp_consumer.simulator.client`
 
 In short: this file is a lightweight router, not a full client implementation.
