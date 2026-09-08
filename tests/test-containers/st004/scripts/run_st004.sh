@@ -24,6 +24,7 @@ keycloak_port="${ST004_KEYCLOAK_PORT:-18082}"
 output_root="${ST004_OUTPUT_DIR:-${repo_root}/dist/test-reports/st004}"
 project="${ST004_COMPOSE_PROJECT:-opamp-st004-keycloak}"
 output_dir="${output_root}/${scenario}"
+python_cmd="${OPAMP_PYTHON:-python3}"
 
 mkdir -p "${output_dir}"
 
@@ -41,7 +42,7 @@ if [ "${up_status}" -ne 0 ]; then
 fi
 
 set +e
-python3 "${scenario_dir}/scripts/verify_st004.py" \
+"${python_cmd}" "${scenario_dir}/scripts/verify_st004.py" \
   --base-url "http://127.0.0.1:${provider_port}" \
   --keycloak-url "http://127.0.0.1:${keycloak_port}" \
   --compose-file "${compose_file}" \

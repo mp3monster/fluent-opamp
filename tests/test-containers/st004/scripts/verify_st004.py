@@ -279,6 +279,8 @@ def _compose_logs(
             service_name,
         ],
         text=True,
+        encoding=UTF_8_ENCODING,
+        errors=DECODE_ERROR_HANDLER,
         capture_output=True,
         check=False,
     )
@@ -563,7 +565,7 @@ def main() -> int:
             compose_project=args.compose_project,
             service_name="consumer-wrong-audience",
         )
-        bad_log_text = bad_logs.stdout + bad_logs.stderr
+        bad_log_text = (bad_logs.stdout or "") + (bad_logs.stderr or "")
         bad_log_path = args.output_dir / BAD_CONSUMER_LOG_FILE_NAME
         _write_text(bad_log_path, bad_log_text)
         evidence_paths["consumer_wrong_audience_log"] = str(bad_log_path)
