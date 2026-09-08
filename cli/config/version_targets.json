@@ -143,7 +143,8 @@
           "path": "config-service/package-lock.json",
           "pattern": "\"version\": \"[^\"]+\"",
           "replacement": "\"version\": \"{version}\"",
-          "count": 2
+          "count": 2,
+          "optional": true
         }
       ]
     },
@@ -292,7 +293,8 @@
           "path": "svr-credentials-mgr/package-lock.json",
           "pattern": "\"version\": \"[^\"]+\"",
           "replacement": "\"version\": \"{version}\"",
-          "count": 2
+          "count": 2,
+          "optional": true
         }
       ]
     }
