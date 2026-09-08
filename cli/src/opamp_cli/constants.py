@@ -22,6 +22,10 @@ from pathlib import Path
 TRUE_VALUES = {"1", "true", "yes", "on"}
 ENABLED_FLAG_VALUE = "true"
 SCRIPT_KEYWORD = "script"
+LOCALHOST_ADDRESS = "127.0.0.1"
+INTERACTIVE_PROMPT = "opamp> "
+COMMAND_EXITED_TEMPLATE = "Command exited with code {code}"
+DEMO_CONSUMERS_SELECTION = "demo consumers"
 DEFAULT_OUTPUT_DIR = Path("scripts")
 CLI_RUNTIME_DIRNAME = "runtime"
 CLI_LOG_DIRNAME = "logs"
@@ -31,7 +35,12 @@ CLI_COMPONENT_LOG_FILENAME = "opamp_cli.log"
 CLI_SETTING_ENABLE_PROCESS_TAIL = "enable_process_tail"
 CLI_DEMO_FLAG_ENV = "OPAMP_DEMO"
 APP_ENABLE_DEV_FEATURES_ENV = "APP_ENABLE_DEV_FEATURES"
+OPAMP_CONFIG_PATH_ENV = "OPAMP_CONFIG_PATH"
+PYTHONPATH_ENV = "PYTHONPATH"
 CLI_DEMO_CONFIG_PATH = Path("cli/config/demo_consumer_profiles.json")
+CLI_VERSION_TARGETS_CONFIG_PATH = Path("cli/config/version_targets.json")
+ARG_CONFIG_PATH = "--config-path"
+ARG_AGENT_CONFIG_PATH = "--agent-config-path"
 DEFAULT_SERVER_PORT = 8080
 DEFAULT_CATALOG_WEB_PORT = 8090
 PROCESS_START_CHECK_DELAY_SECONDS = 1.0
@@ -58,11 +67,15 @@ COMMAND_CONFIG = "config"
 COMMAND_EXIT = "exit"
 COMMAND_QUIT = "quit"
 COMMAND_DEMO = "demo"
+COMMAND_CLEAR_LOGS = "clear-logs"
+COMMAND_SETUP_VENV = "setup-venv"
 COMMAND_ENABLE_PROCESS_TAIL = "enable-process-tail"
 COMMAND_DISABLE_PROCESS_TAIL = "disable-process-tail"
 COMMAND_DEV_FLB_CONFIG = "dev-flb-config"
 COMMAND_DEV_MCP_CONFIG = "dev-mcp-config"
 COMMAND_DEV_PID_LOOKUP = "dev-pid-lookup"
+COMMAND_DEV_CONTAINERS = "dev-containers"
+COMMAND_DEV_VERSION_BUMP = "dev-version-bump"
 ACTION_KIND_BACKGROUND_START = "background_start"
 ACTION_KIND_SIMULATOR_START = "simulator_start"
 ACTION_KIND_DEMO_CONSUMERS_START = "demo_consumers_start"
@@ -71,6 +84,11 @@ ACTION_KIND_STOP_ALL_RECORDED = "stop_all_recorded"
 ACTION_KIND_DEMO_CONSUMERS_STOP = "demo_consumers_stop"
 ACTION_KIND_RESTART = "restart"
 ACTION_KIND_SHELL = "shell"
+ACTION_KEY_RECORD_NAME = "record_name"
+ACTION_KEY_METADATA = "metadata"
+ACTION_KEY_LOG_NAME = "log_name"
+CONFIG_KEY_CONFIG_PATH = "config_path"
+CONFIG_KEY_AGENT_CONFIG_PATH = "agent_config_path"
 ACTION_ID_SERVER = "server"
 ACTION_ID_CATALOG_UI = "catalog_ui"
 ACTION_ID_CONFIG_SERVICE = "config_service"
@@ -90,6 +108,16 @@ LABEL_FLUENTD_CLIENT = "Fluentd client"
 LABEL_ALL_CLIENTS = "All clients"
 LABEL_ALL_MANAGED_PROCESSES = "All managed processes"
 SIMULATOR_RECORD_PREFIX = "Simulator"
+DEMO_PROFILE_KEY_FLUENTBIT = "fluentbit"
+DEMO_PROFILE_KEY_FLUENTD = "fluentd"
+DEMO_PROFILE_KEY_ELASTIC_AGENT = "elastic_agent"
+DEMO_PROFILE_KEY_ELASTIC_HEARTBEAT = "elastic_heartbeat"
+DEMO_CONSUMER_CLIENT_CONFIG_KEYS = (
+    DEMO_PROFILE_KEY_FLUENTBIT,
+    DEMO_PROFILE_KEY_FLUENTD,
+    DEMO_PROFILE_KEY_ELASTIC_AGENT,
+    DEMO_PROFILE_KEY_ELASTIC_HEARTBEAT,
+)
 
 # The order of these identifiers is user-visible and position-sensitive.
 # It defines:
@@ -139,19 +167,26 @@ HELP_TEXT = """Usage:
   opamp-cli config validate <path>
   opamp-cli config metadata <path>
   opamp-cli demo
+  opamp-cli clear-logs
+  opamp-cli setup-venv [--venv <path>] [--dry-run] [--skip-node]
   opamp-cli enable-process-tail
   opamp-cli disable-process-tail
   opamp-cli dev-flb-config
   opamp-cli dev-mcp-config
   opamp-cli dev-pid-lookup
+  opamp-cli dev-containers
+  opamp-cli dev-version-bump [VERSION] [--config <path>]
 
 Behavior:
   - Interactive `start`, `stop`, and `restart` commands open guided multi-stage choices.
   - `list` shows the current CLI option hierarchy and guided targets.
   - `status` shows recorded managed processes, PID liveness, and log paths.
+  - `clear-logs` removes CLI-managed logs and configured demo log files.
+  - `setup-venv` creates or updates a repository-level Python virtual environment, installs local tooling, and can open an activated shell.
   - `config validate` validates one file or directory tree using config-service logic when available.
   - `config metadata` adds missing config-service header metadata without overwriting existing values.
   - `enable-process-tail` opens a new shell tailing each managed process log after start.
+  - `disable-process-tail` stops opening log-tail shells for future managed starts.
   - If first token is `script`, generate an OS-native script file.
   - Otherwise execute the command immediately.
   - Direct `.py`/`.pyw` targets are auto-run via Python.
@@ -187,8 +222,17 @@ Examples:
   # Open demo profile choices when OPAMP_DEMO=true
   opamp-cli demo
 
+  # Clear CLI-managed and configured demo logs
+  opamp-cli clear-logs
+
+  # Create/update the repository-level virtual environment and tooling
+  opamp-cli setup-venv
+
   # Enable log tail windows for future managed starts
   opamp-cli enable-process-tail
+
+  # Disable log tail windows for future managed starts
+  opamp-cli disable-process-tail
 
   # Open the dev-only Fluent Bit generator workflow
   opamp-cli dev-flb-config
@@ -199,17 +243,28 @@ Examples:
   # Prompt for a regex and search running process IDs
   opamp-cli dev-pid-lookup
 
+  # Choose a configured development container start command
+  opamp-cli dev-containers
+
+  # Bump each configured component version by one minor version
+  opamp-cli dev-version-bump
+
 Notes:
   - Interactive autocomplete uses prompt_toolkit when installed.
   - Fallback completion uses readline when available.
+  - When interactive mode starts, the startup notes say to use `list` to see all available commands.
   - Guided actions can be run directly, for example `start config editor`.
   - `config` commands are only available when config-service logic can be detected.
   - When OPAMP_DEMO=true, `demo` acts like `start demo consumers`.
   - When APP_ENABLE_DEV_FEATURES=true and the Fluent Bit dev tools are present, `dev-flb-config` opens a guided generator workflow.
   - When APP_ENABLE_DEV_FEATURES=true and the MCP config utility is present, `dev-mcp-config` opens a guided MCP client configuration workflow.
   - When APP_ENABLE_DEV_FEATURES=true, `dev-pid-lookup` prompts for a regex and searches running processes for PID/name/command-line matches.
+  - `dev-containers` appears when a container runtime and configured container starts are available.
+  - When APP_ENABLE_DEV_FEATURES=true, `dev-version-bump` updates configured component semantic versions independently.
+  - `setup-venv` installs Python packages into `.venv`, runs npm installs for checked-in Node tooling, and prompts before opening an activated shell in interactive terminals.
   - Guided start/stop/restart actions run components directly instead of relying on repo wrapper scripts.
   - Set OPAMP_DEMO=true to enable demo consumer options from cli/config/demo_consumer_profiles.json.
   - Guided starts record launched PIDs in cli/runtime/managed_processes.json.
   - Process-tail shells are opened on a best-effort basis and may be unavailable in headless terminals.
+  - `clear-logs` discovers log locations from CLI defaults, managed-process state, the effective OpAMP config file, and demo profile config.
 """

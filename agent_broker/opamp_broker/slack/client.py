@@ -21,8 +21,8 @@ from __future__ import annotations
 import logging
 
 import httpx
-from slack_bolt.async_app import AsyncApp
 from slack_bolt.adapter.socket_mode.async_handler import AsyncSocketModeHandler
+from slack_bolt.async_app import AsyncApp
 
 try:
     from slack_sdk.errors import SlackApiError

@@ -1,0 +1,338 @@
+{
+  "description": "Version targets consumed by `opamp-cli dev-version-bump`. Each component has its own currentVersionSource so default bumps advance that component from its own current version. Targets are limited to release-owned project/package metadata; generated Git metadata, dependency versions, schema/API versions, and test fixture values are documented as exclusions.",
+  "components": [
+    {
+      "id": "agent-broker",
+      "label": "Agent broker",
+      "currentVersionSource": {
+        "path": "agent_broker/pyproject.toml",
+        "pattern": "^version = \"([^\"]+)\"$"
+      },
+      "targets": [
+        {
+          "path": "agent_broker/pyproject.toml",
+          "pattern": "^version = \"[^\"]+\"$",
+          "replacement": "version = \"{version}\""
+        }
+      ]
+    },
+    {
+      "id": "catalog-service-python",
+      "label": "Catalog service Python package",
+      "currentVersionSource": {
+        "path": "catalog-service/pyproject.toml",
+        "pattern": "^version = \"([^\"]+)\"$"
+      },
+      "targets": [
+        {
+          "path": "catalog-service/pyproject.toml",
+          "pattern": "^version = \"[^\"]+\"$",
+          "replacement": "version = \"{version}\""
+        }
+      ]
+    },
+    {
+      "id": "catalog-service-ui-tests",
+      "label": "Catalog service UI test package",
+      "currentVersionSource": {
+        "path": "catalog-service/package.json",
+        "pattern": "  \"version\": \"([^\"]+)\","
+      },
+      "targets": [
+        {
+          "path": "catalog-service/package.json",
+          "pattern": "  \"version\": \"[^\"]+\",",
+          "replacement": "  \"version\": \"{version}\",",
+          "count": 1
+        },
+        {
+          "path": "catalog-service/package-lock.json",
+          "pattern": "\"version\": \"[^\"]+\"",
+          "replacement": "\"version\": \"{version}\"",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "opamp-cli-python",
+      "label": "OpAMP CLI Python package",
+      "currentVersionSource": {
+        "path": "cli/pyproject.toml",
+        "pattern": "^version = \"([^\"]+)\"$"
+      },
+      "targets": [
+        {
+          "path": "cli/pyproject.toml",
+          "pattern": "^version = \"[^\"]+\"$",
+          "replacement": "version = \"{version}\""
+        }
+      ]
+    },
+    {
+      "id": "opamp-cli-version-metadata",
+      "label": "OpAMP CLI version metadata",
+      "currentVersionSource": {
+        "path": "cli/src/opamp_cli/version.json",
+        "pattern": "  \"version\": \"([^\"]+)\""
+      },
+      "targets": [
+        {
+          "path": "cli/src/opamp_cli/version.json",
+          "pattern": "  \"effective_label\": \"[^\"]+\",",
+          "replacement": "  \"effective_label\": \"{version}\",",
+          "count": 1
+        },
+        {
+          "path": "cli/src/opamp_cli/version.json",
+          "pattern": "  \"version\": \"[^\"]+\"",
+          "replacement": "  \"version\": \"{version}\"",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "config-service-python",
+      "label": "Config service Python package",
+      "currentVersionSource": {
+        "path": "config-service/pyproject.toml",
+        "pattern": "^version = \"([^\"]+)\"$"
+      },
+      "targets": [
+        {
+          "path": "config-service/pyproject.toml",
+          "pattern": "^version = \"[^\"]+\"$",
+          "replacement": "version = \"{version}\""
+        },
+        {
+          "path": "config-service/build_config.py",
+          "pattern": "^PACKAGE_VERSION = \"[^\"]+\"$",
+          "replacement": "PACKAGE_VERSION = \"{version}\""
+        }
+      ]
+    },
+    {
+      "id": "config-service-backend-module",
+      "label": "Config service backend module",
+      "currentVersionSource": {
+        "path": "config-service/src/config_service/__init__.py",
+        "pattern": "^__version__ = \"([^\"]+)\"$"
+      },
+      "targets": [
+        {
+          "path": "config-service/src/config_service/__init__.py",
+          "pattern": "^__version__ = \"[^\"]+\"$",
+          "replacement": "__version__ = \"{version}\""
+        }
+      ]
+    },
+    {
+      "id": "config-service-ui-tests",
+      "label": "Config service UI test package",
+      "currentVersionSource": {
+        "path": "config-service/package.json",
+        "pattern": "  \"version\": \"([^\"]+)\","
+      },
+      "targets": [
+        {
+          "path": "config-service/package.json",
+          "pattern": "  \"version\": \"[^\"]+\",",
+          "replacement": "  \"version\": \"{version}\",",
+          "count": 1
+        },
+        {
+          "path": "config-service/package-lock.json",
+          "pattern": "\"version\": \"[^\"]+\"",
+          "replacement": "\"version\": \"{version}\"",
+          "count": 2,
+          "optional": true
+        }
+      ]
+    },
+    {
+      "id": "config-service-frontend",
+      "label": "Config service frontend package",
+      "currentVersionSource": {
+        "path": "config-service/frontend/package.json",
+        "pattern": "  \"version\": \"([^\"]+)\","
+      },
+      "targets": [
+        {
+          "path": "config-service/frontend/package.json",
+          "pattern": "  \"version\": \"[^\"]+\",",
+          "replacement": "  \"version\": \"{version}\",",
+          "count": 1
+        },
+        {
+          "path": "config-service/frontend/package-lock.json",
+          "pattern": "\"version\": \"[^\"]+\"",
+          "replacement": "\"version\": \"{version}\"",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "consumer",
+      "label": "Consumer Python package",
+      "currentVersionSource": {
+        "path": "consumer/pyproject.toml",
+        "pattern": "^version = \"([^\"]+)\"$"
+      },
+      "targets": [
+        {
+          "path": "consumer/pyproject.toml",
+          "pattern": "^version = \"[^\"]+\"$",
+          "replacement": "version = \"{version}\""
+        }
+      ]
+    },
+    {
+      "id": "consumer-sim",
+      "label": "Consumer simulator Python package",
+      "currentVersionSource": {
+        "path": "consumer-sim/pyproject.toml",
+        "pattern": "^version = \"([^\"]+)\"$"
+      },
+      "targets": [
+        {
+          "path": "consumer-sim/pyproject.toml",
+          "pattern": "^version = \"[^\"]+\"$",
+          "replacement": "version = \"{version}\""
+        }
+      ]
+    },
+    {
+      "id": "dev-tools",
+      "label": "Development tools Python package",
+      "currentVersionSource": {
+        "path": "dev-tools/pyproject.toml",
+        "pattern": "^version = \"([^\"]+)\"$"
+      },
+      "targets": [
+        {
+          "path": "dev-tools/pyproject.toml",
+          "pattern": "^version = \"[^\"]+\"$",
+          "replacement": "version = \"{version}\""
+        }
+      ]
+    },
+    {
+      "id": "mcp",
+      "label": "MCP Python package",
+      "currentVersionSource": {
+        "path": "mcp/pyproject.toml",
+        "pattern": "^version = \"([^\"]+)\"$"
+      },
+      "targets": [
+        {
+          "path": "mcp/pyproject.toml",
+          "pattern": "^version = \"[^\"]+\"$",
+          "replacement": "version = \"{version}\""
+        }
+      ]
+    },
+    {
+      "id": "provider",
+      "label": "Provider Python package",
+      "currentVersionSource": {
+        "path": "provider/pyproject.toml",
+        "pattern": "^version = \"([^\"]+)\"$"
+      },
+      "targets": [
+        {
+          "path": "provider/pyproject.toml",
+          "pattern": "^version = \"[^\"]+\"$",
+          "replacement": "version = \"{version}\""
+        }
+      ]
+    },
+    {
+      "id": "credentials-manager-python",
+      "label": "Credentials manager Python package",
+      "currentVersionSource": {
+        "path": "svr-credentials-mgr/pyproject.toml",
+        "pattern": "^version = \"([^\"]+)\"$"
+      },
+      "targets": [
+        {
+          "path": "svr-credentials-mgr/pyproject.toml",
+          "pattern": "^version = \"[^\"]+\"$",
+          "replacement": "version = \"{version}\""
+        }
+      ]
+    },
+    {
+      "id": "plaintext-keyring",
+      "label": "Plaintext keyring Python package",
+      "currentVersionSource": {
+        "path": "svr-credentials-mgr/plaintext-keyring/pyproject.toml",
+        "pattern": "^version = \"([^\"]+)\"$"
+      },
+      "targets": [
+        {
+          "path": "svr-credentials-mgr/plaintext-keyring/pyproject.toml",
+          "pattern": "^version = \"[^\"]+\"$",
+          "replacement": "version = \"{version}\""
+        }
+      ]
+    },
+    {
+      "id": "credentials-manager-ui-tests",
+      "label": "Credentials manager UI test package",
+      "currentVersionSource": {
+        "path": "svr-credentials-mgr/package.json",
+        "pattern": "  \"version\": \"([^\"]+)\","
+      },
+      "targets": [
+        {
+          "path": "svr-credentials-mgr/package.json",
+          "pattern": "  \"version\": \"[^\"]+\",",
+          "replacement": "  \"version\": \"{version}\",",
+          "count": 1
+        },
+        {
+          "path": "svr-credentials-mgr/package-lock.json",
+          "pattern": "\"version\": \"[^\"]+\"",
+          "replacement": "\"version\": \"{version}\"",
+          "count": 2,
+          "optional": true
+        }
+      ]
+    }
+  ],
+  "excludedReferences": [
+    {
+      "paths": [
+        "agent_broker/opamp_broker/version.json",
+        "consumer-sim/version.json",
+        "consumer-sim/src/opamp_consumer_sim/version.json",
+        "consumer/src/opamp_consumer/version.json",
+        "provider/src/opamp_provider/version.json"
+      ],
+      "reason": "Generated component metadata includes Git labels and commit details; it is refreshed by build/version tooling instead of direct release bumps."
+    },
+    {
+      "paths": [
+        "tests/**",
+        "*/tests/**",
+        "docs/**"
+      ],
+      "reason": "Fixture, example, and documentation versions must remain representative of the scenario being tested or described."
+    },
+    {
+      "paths": [
+        "**/node_modules/**",
+        "**/uv.lock",
+        "config-service/sbom/**"
+      ],
+      "reason": "Dependency, lock, and SBOM versions describe third-party packages or generated inventories."
+    },
+    {
+      "paths": [
+        "config-service/src/config_service/json-schemas/**",
+        "provider/src/opamp_provider/mcptool/tool_openapi_spec.json",
+        "cloud/azure/mainTemplate.json"
+      ],
+      "reason": "Schema, protocol, API, and infrastructure image versions are not OpAMP component release identifiers."
+    }
+  ]
+}

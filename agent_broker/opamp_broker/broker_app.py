@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-from datetime import datetime, timezone
 import json
 import logging
 import logging.config
@@ -31,18 +30,24 @@ import random
 import signal
 import sys
 from contextlib import suppress
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
 from hypercorn.asyncio import serve
 from hypercorn.config import Config as HypercornConfig
+from shared.observability import (
+    attach_observability,
+    configure_process_observability,
+    load_observability_config_from_payload,
+)
 
-from opamp_broker.config.loader import get_effective_config_path, load_runtime_config
 from opamp_broker.component_version import (
     component_version_text,
     load_component_version_info,
 )
+from opamp_broker.config.loader import get_effective_config_path, load_runtime_config
 from opamp_broker.graph.graph import build_graph
 from opamp_broker.mcp.client import MCPClient
 from opamp_broker.mcp.proxy import MCPProxyService, create_mcp_proxy_app
@@ -63,11 +68,6 @@ from opamp_broker.session.manager import (
 from opamp_broker.session.sweeper import SessionSweeper
 from opamp_broker.social_collaboration.factory import (
     create_social_collaboration_adapter,
-)
-from shared.observability import (
-    attach_observability,
-    configure_process_observability,
-    load_observability_config_from_payload,
 )
 
 ENV_BROKER_LOGGING_CONFIG_PATH = "OPAMP_BROKER_LOGGING_CONFIG"
@@ -517,7 +517,7 @@ async def _refresh_tools_with_backoff(
         except Exception as exc:
             if attempt_index >= max_attempts:
                 raise
-            jitter_value = random.uniform(0.0, jitter_seconds) if jitter_seconds > 0 else 0.0
+            jitter_value = random.uniform(0.0, jitter_seconds) if jitter_seconds > 0 else 0.0  # noqa: S311
             sleep_seconds = min(max_backoff_seconds, current_backoff_seconds) + jitter_value
             logger.info(
                 "MCP tool discovery attempt %s/%s failed; retrying in %.2fs",

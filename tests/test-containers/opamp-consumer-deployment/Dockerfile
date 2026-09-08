@@ -22,7 +22,8 @@ COPY scripts/bootstrap.py /opt/opamp-test/bootstrap.py
 COPY entrypoint.sh /opt/opamp-test/entrypoint.sh
 COPY defaults /opt/opamp-test/defaults
 
-RUN chmod +x /opt/opamp-test/bootstrap.py /opt/opamp-test/entrypoint.sh \
+RUN sed -i 's/\r$//' /opt/opamp-test/bootstrap.py /opt/opamp-test/entrypoint.sh \
+    && chmod +x /opt/opamp-test/bootstrap.py /opt/opamp-test/entrypoint.sh \
     && python -m pip install --no-cache-dir --upgrade pip setuptools wheel
 
 VOLUME ["/config", "/host-assets", "/host-output"]

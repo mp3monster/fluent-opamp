@@ -1,0 +1,24 @@
+{
+  "clients": {
+    "mock-client-01": "oops",
+    "mock-client-02": "test",
+    "mock-client-03": "test",
+    "mock-client-04": "test",
+    "mock-client-05": "test",
+    "mock-client-06": "test",
+    "mock-client-07": "test",
+    "mock-client-08": "test",
+    "mock-client-09": "test",
+    "mock-client-10": "test",
+    "mock-client-11": "test",
+    "mock-client-12": "test",
+    "mock-client-13": "test",
+    "mock-client-14": "test",
+    "mock-client-15": "test",
+    "mock-client-16": "test",
+    "mock-client-17": "test",
+    "mock-client-18": "test",
+    "mock-client-19": "test",
+    "mock-client-20": "test"
+  }
+}

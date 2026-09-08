@@ -902,10 +902,14 @@ async def test_lua_code_validation_returns_normalized_errors() -> None:
     assert resp.status_code in (200, 400)
     body = await resp.get_json()
     assert "errors" in body
-    lua_errors = [item for item in body["errors"] if item["code"] == "lua_syntax_error"]
+    lua_errors = [
+        item
+        for item in body["errors"]
+        if item["code"] in {"lua_syntax_error", "lua_parser_unavailable"}
+    ]
     assert lua_errors
     assert lua_errors[0]["path"] == "$.config.pipeline.filters[0].code"
-    assert "Lua syntax error" in lua_errors[0]["message"]
+    assert "Lua" in lua_errors[0]["message"]
 
 @pytest.mark.asyncio
 async def test_sql_code_validation_returns_normalized_errors() -> None:

@@ -61,6 +61,7 @@ from .security import run_component_security_checks, run_repo_security_checks
 from .versioning import set_repository_version
 
 INTERACTIVE_EXIT_MESSAGE = "Exiting developer CLI."
+INTERACTIVE_RETURN_TO_MAIN_MESSAGE = "Returning to main menu."
 INTERACTIVE_SUCCESS_MESSAGE = "Command complete. Returning to main menu."
 INTERACTIVE_ISSUES_MESSAGE = "Command completed with reported issues. Returning to main menu."
 INTERACTIVE_FAILURE_MESSAGE = "Command failed. Returning to main menu."
@@ -68,6 +69,9 @@ COMPONENT_BUILD_COMMANDS = frozenset({"artefact", "sbom", "secure"})
 SIMPLE_BUILD_COMMANDS = frozenset(
     {"ui-compaction", "js-complexity", "docs", "diagrams", "release-assets"}
 )
+INTERACTIVE_ACTION_RUN = "run"
+INTERACTIVE_ACTION_RETURN_TO_MAIN = "return-to-main"
+INTERACTIVE_ACTION_EXIT = "exit"
 
 
 def build_parser(default_repo_root: Path | None = None) -> argparse.ArgumentParser:
@@ -289,10 +293,13 @@ def _run_interactive_session(
 
     """
     while True:
-        command_tokens = _prompt_for_command_tokens(repo_root)
-        if not command_tokens:
+        action, command_tokens = _prompt_for_command_tokens(repo_root)
+        if action == INTERACTIVE_ACTION_EXIT:
             print(INTERACTIVE_EXIT_MESSAGE)
             return 0
+        if action == INTERACTIVE_ACTION_RETURN_TO_MAIN:
+            print(INTERACTIVE_RETURN_TO_MAIN_MESSAGE)
+            continue
         parser = build_parser(repo_root)
         args = parser.parse_args([*global_option_tokens, *command_tokens])
         exit_code = _run_parsed_command(args)
@@ -503,7 +510,7 @@ def _selected_component_name(args: argparse.Namespace) -> str | None:
     return getattr(args, "component", None)
 
 
-def _prompt_for_command_tokens(repo_root: Path) -> list[str]:
+def _prompt_for_command_tokens(repo_root: Path) -> tuple[str, list[str]]:
     """Prompt for one top-level command path in guided mode.
 
     Parameters
@@ -526,15 +533,19 @@ def _prompt_for_command_tokens(repo_root: Path) -> list[str]:
         ],
     )
     if command_group is None:
-        return []
+        return INTERACTIVE_ACTION_EXIT, []
     if command_group == "dev":
-        return _prompt_for_dev_tokens()
-    if command_group == "build":
-        return _prompt_for_build_tokens(available_components)
-    return _prompt_for_certificate_tokens()
+        command_tokens = _prompt_for_dev_tokens()
+    elif command_group == "build":
+        command_tokens = _prompt_for_build_tokens(available_components)
+    else:
+        command_tokens = _prompt_for_certificate_tokens()
+    if command_tokens is None:
+        return INTERACTIVE_ACTION_RETURN_TO_MAIN, []
+    return INTERACTIVE_ACTION_RUN, command_tokens
 
 
-def _prompt_for_dev_tokens() -> list[str]:
+def _prompt_for_dev_tokens() -> list[str] | None:
     """Prompt for one developer maintenance command token sequence."""
     command = _prompt_for_selection(
         "Dev commands",
@@ -546,7 +557,7 @@ def _prompt_for_dev_tokens() -> list[str]:
         ],
     )
     if command is None:
-        return []
+        return None
     if command == "validate-schemas":
         return ["dev", "validate-schemas"]
     if command == "set version":
@@ -556,7 +567,7 @@ def _prompt_for_dev_tokens() -> list[str]:
     return ["dev", "apply", "precommit-logic"]
 
 
-def _prompt_for_build_tokens(available_components: list[str]) -> list[str]:
+def _prompt_for_build_tokens(available_components: list[str]) -> list[str] | None:
     """Prompt for one build-oriented command token sequence.
 
     Parameters
@@ -582,7 +593,7 @@ def _prompt_for_build_tokens(available_components: list[str]) -> list[str]:
         ],
     )
     if command is None:
-        return []
+        return None
     if command in {"artefact", "sbom", "secure"}:
         return _prompt_for_named_or_all_tokens(
             command,
@@ -596,7 +607,7 @@ def _prompt_for_build_tokens(available_components: list[str]) -> list[str]:
     return _prompt_for_simple_build_tokens(command)
 
 
-def _prompt_for_test_tokens(available_components: list[str]) -> list[str]:
+def _prompt_for_test_tokens(available_components: list[str]) -> list[str] | None:
     """Prompt for one test command token sequence."""
     test_scope = _prompt_for_selection(
         "Test scope",
@@ -607,13 +618,13 @@ def _prompt_for_test_tokens(available_components: list[str]) -> list[str]:
         ],
     )
     if test_scope is None:
-        return []
+        return None
     tokens = ["build", "test", test_scope]
     if test_scope != "named":
         return tokens
     component = _prompt_for_component(available_components)
     if component is None:
-        return []
+        return None
     tokens.append(component)
     return tokens
 
@@ -651,7 +662,7 @@ def _prompt_for_js_complexity_tokens() -> list[str]:
     return tokens
 
 
-def _prompt_for_certificate_tokens() -> list[str]:
+def _prompt_for_certificate_tokens() -> list[str] | None:
     """Prompt for one certificate/auth helper command token sequence."""
     command = _prompt_for_selection(
         "Certificate commands",
@@ -662,7 +673,7 @@ def _prompt_for_certificate_tokens() -> list[str]:
         ],
     )
     if command is None:
-        return []
+        return None
     return ["certificate", command]
 
 
@@ -671,7 +682,7 @@ def _prompt_for_named_or_all_tokens(
     available_components: list[str],
     *,
     include_no_isolation: bool,
-) -> list[str]:
+) -> list[str] | None:
     """Prompt for an ``all`` or ``named`` build subcommand selection.
 
     Parameters
@@ -691,7 +702,7 @@ def _prompt_for_named_or_all_tokens(
         scope_options.insert(0, ("named", "Run against one component"))
     scope = _prompt_for_selection(f"{command} scope", scope_options)
     if scope is None:
-        return []
+        return None
     tokens = ["build", command]
     if include_no_isolation and _prompt_yes_no(
         "Pass --no-isolation to python -m build?",
@@ -702,7 +713,7 @@ def _prompt_for_named_or_all_tokens(
     if scope == "named":
         component = _prompt_for_component(available_components)
         if component is None:
-            return []
+            return None
         tokens.append(component)
     return tokens
 

@@ -39,13 +39,13 @@ The main implementation points are:
 - `consumer/src/opamp_consumer/client_supervisor_mixin.py`
 - `consumer/src/opamp_consumer/common_config_handler.py`
 - `consumer/src/opamp_consumer/client_server_message_mixin.py`
-- `consumer/src/opamp_consumer/fluentbit_client.py`
-- `consumer/src/opamp_consumer/fluentd_client.py`
+- `consumer/src/opamp_consumer/fluentbit/client.py`
+- `consumer/src/opamp_consumer/fluentd/client.py`
 
 The focused tests were added or extended in:
 
 - `consumer/tests/test_client_transport_and_disconnect.py`
-- `consumer/tests/test_fluentd_client.py`
+- `consumer/tests/fluentd/test_fluentd_client.py`
 - `consumer/tests/test_common_config_handler.py`
 - `consumer/tests/test_custom_handlers_chatops.py`
 - `consumer/tests/test_custom_handlers_registry.py`

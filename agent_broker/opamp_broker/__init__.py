@@ -10,6 +10,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pyright: reportUnsupportedDunderAll=false
+
 """Top-level package marker for the OpAMP conversation broker runtime.
 
 The package exports the broker entrypoint name via ``__all__`` so external

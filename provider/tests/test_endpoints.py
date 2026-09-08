@@ -10,6 +10,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import base64
 import json
 import logging
 import pathlib
@@ -64,6 +65,7 @@ def reset_store_state() -> None:
     STORE._pending_approvals.clear()
     STORE._blocked_agents.clear()
     STORE._pending_remote_configs.clear()
+    STORE._pending_connection_settings.clear()
     STORE._pending_instance_uid_replacements.clear()
     yield
     provider_auth.reload_auth_settings()
@@ -72,6 +74,7 @@ def reset_store_state() -> None:
     STORE._pending_approvals.clear()
     STORE._blocked_agents.clear()
     STORE._pending_remote_configs.clear()
+    STORE._pending_connection_settings.clear()
     STORE._pending_instance_uid_replacements.clear()
     app.config["DIAGNOSTIC_MODE"] = False
 
@@ -116,6 +119,11 @@ def _test_provider_config(
             graph_history_minutes=metrics_graph_history_minutes,
         ),
     )
+
+
+def _utf8_file_size(path: pathlib.Path) -> int:
+    """Return the actual byte size written on the current platform."""
+    return len(path.read_bytes())
 
 
 def _add_agent_description_attribute(
@@ -821,7 +829,9 @@ async def test_post_state_save_persists_snapshot_when_enabled(monkeypatch) -> No
     assert captured["reason"] == "manual_ui_trigger"
     assert captured["state_file_prefix"] == "runtime/opamp_server_state"
     assert payload["status"] == "saved"
-    assert payload["snapshot_path"] == "/tmp/opamp_server_state.20260409T103000Z.json"
+    assert payload["snapshot_path"] == str(
+        pathlib.Path("/tmp/opamp_server_state.20260409T103000Z.json")
+    )
     assert isinstance(payload["saved_at_utc"], str)
 
 
@@ -926,7 +936,7 @@ async def test_build_test_remote_config_queues_payload_and_http_consumes(
                 "source_path": str(source_path.resolve()),
                 "target_name": "configs/agent.yaml",
                 "content_type": "application/x-yaml",
-                "size_bytes": len(b"enabled: true\n"),
+                "size_bytes": _utf8_file_size(source_path),
             }
         ]
         assert isinstance(payload["config_hash"], str)
@@ -944,7 +954,7 @@ async def test_build_test_remote_config_queues_payload_and_http_consumes(
 
     assert server_msg.HasField("remote_config")
     config_file = server_msg.remote_config.config.config_map["configs/agent.yaml"]
-    assert config_file.body == b"enabled: true\n"
+    assert config_file.body == source_path.read_bytes()
     assert config_file.content_type == "application/x-yaml"
     assert server_msg.remote_config.config_hash.hex() == payload["config_hash"]
     record = STORE.get(client_id)
@@ -1130,13 +1140,13 @@ async def test_queue_remote_config_offer_validates_and_http_consumes(
                 "source_path": str(yaml_path.resolve()),
                 "target_name": "configs/agent.yaml",
                 "content_type": "application/x-yaml",
-                "size_bytes": len(b"enabled: true\n"),
+                "size_bytes": _utf8_file_size(yaml_path),
             },
             {
                 "source_path": str(text_path.resolve()),
                 "target_name": "notes.txt",
                 "content_type": "text/plain",
-                "size_bytes": len(b"plain text config\n"),
+                "size_bytes": _utf8_file_size(text_path),
             },
         ]
         assert payload["validation"] == [
@@ -1162,9 +1172,9 @@ async def test_queue_remote_config_offer_validates_and_http_consumes(
 
     yaml_config_file = server_msg.remote_config.config.config_map["configs/agent.yaml"]
     text_config_file = server_msg.remote_config.config.config_map["notes.txt"]
-    assert yaml_config_file.body == b"enabled: true\n"
+    assert yaml_config_file.body == yaml_path.read_bytes()
     assert yaml_config_file.content_type == "application/x-yaml"
-    assert text_config_file.body == b"plain text config\n"
+    assert text_config_file.body == text_path.read_bytes()
     assert text_config_file.content_type == "text/plain"
     assert server_msg.remote_config.config_hash.hex() == payload["config_hash"]
     assert STORE.get_pending_remote_config(client_id) is None
@@ -1173,6 +1183,94 @@ async def test_queue_remote_config_offer_validates_and_http_consumes(
     assert record.events
     assert any(
         event.event_description == "Queued 2 remote config files."
+        for event in record.events
+    )
+
+
+@pytest.mark.asyncio
+async def test_queue_connection_settings_offer_rejects_when_disabled() -> None:
+    """Verify the connection-settings queue endpoint is forbidden when provider support is off."""
+    provider_config.set_config(_test_provider_config(allow_connection_settings=False))
+    client_id = "30303030303030303030303030303030"
+    _seed_tool_agent_record(client_id=client_id)
+    payload = base64.b64encode(
+        opamp_pb2.ConnectionSettingsOffers(
+            opamp=opamp_pb2.OpAMPConnectionSettings(
+                destination_endpoint="https://collector.example"
+            )
+        ).SerializeToString()
+    ).decode("ascii")
+
+    async with app.test_client() as client:
+        resp = await client.post(
+            f"/api/clients/{client_id}/connection-settings",
+            json={
+                "connection_name": "shared",
+                "payload_base64": payload,
+            },
+        )
+
+    assert resp.status_code == 403
+    assert (await resp.get_json())["error"] == (
+        "connection settings are disabled by provider configuration"
+    )
+    assert STORE.get_pending_connection_settings(client_id) is None
+
+
+@pytest.mark.asyncio
+async def test_queue_connection_settings_offer_http_consumes() -> None:
+    """Verify the connection-settings queue endpoint stores payloads that are later delivered over OpAMP."""
+    provider_config.set_config(_test_provider_config(allow_connection_settings=True))
+    client_id = "40404040404040404040404040404040"
+    _seed_tool_agent_record(client_id=client_id)
+    offers = opamp_pb2.ConnectionSettingsOffers()
+    offers.hash = b"connection-settings-hash"
+    offers.opamp.destination_endpoint = "https://collector.example"
+    header = offers.opamp.headers.headers.add()
+    header.key = "Authorization"
+    header.value = "Bearer queued-secret"
+    payload = base64.b64encode(offers.SerializeToString()).decode("ascii")
+
+    async with app.test_client() as client:
+        resp = await client.post(
+            f"/api/clients/{client_id}/connection-settings",
+            json={
+                "connection_name": "shared",
+                "payload_base64": payload,
+            },
+        )
+        assert resp.status_code == 201
+        response_payload = await resp.get_json()
+        assert response_payload["client_id"] == client_id
+        assert response_payload["connection_name"] == "shared"
+        assert response_payload["queued_action"] == ACTION_CHANGE_CONNECTIONS
+        assert response_payload["payload_size_bytes"] > 0
+
+        agent_msg = opamp_pb2.AgentToServer(instance_uid=bytes.fromhex(client_id))
+        resp = await client.post(
+            "/v1/opamp",
+            data=agent_msg.SerializeToString(),
+            headers={"Content-Type": "application/x-protobuf"},
+        )
+        assert resp.status_code == 200
+        server_msg = opamp_pb2.ServerToAgent()
+        server_msg.ParseFromString(await resp.get_data())
+
+    assert server_msg.HasField("connection_settings")
+    assert (
+        server_msg.connection_settings.opamp.destination_endpoint
+        == "https://collector.example"
+    )
+    assert server_msg.connection_settings.opamp.headers.headers[0].key == "Authorization"
+    assert server_msg.connection_settings.opamp.headers.headers[0].value == (
+        "Bearer queued-secret"
+    )
+    assert STORE.get_pending_connection_settings(client_id) is None
+    record = STORE.get(client_id)
+    assert record is not None
+    assert record.next_actions is None
+    assert any(
+        event.event_description == "Queued connection settings for shared."
         for event in record.events
     )
 
@@ -1219,13 +1317,13 @@ async def test_queue_remote_config_offer_without_config_editor_falls_back_to_bas
             "source_path": str(yaml_path.resolve()),
             "target_name": "fluent-bit.yaml",
             "content_type": "application/x-yaml",
-            "size_bytes": len(b"pipeline:\n  inputs: []\n"),
+            "size_bytes": _utf8_file_size(yaml_path),
         },
         {
             "source_path": str(fluentd_path.resolve()),
             "target_name": "fluentd.conf",
             "content_type": "text/plain",
-            "size_bytes": len(b"<source>\n  @type tail\n</source>\n"),
+            "size_bytes": _utf8_file_size(fluentd_path),
         },
     ]
 
@@ -1423,7 +1521,7 @@ async def test_queue_remote_config_offer_uses_config_editor_validation_for_fluen
     assert calls["default_version_config_type"] == "fluentbit"
     assert calls["catalog"] == ("5.1.0", "fluentbit")
     assert calls["parser_definition"] == ("5.1.0", "fluentbit")
-    assert calls["fluentbit_parse"] == "pipeline:\n  inputs: []\n"
+    assert calls["fluentbit_parse"] == source_path.read_bytes().decode("utf-8")
     assert calls["validation"] == {
         "version": "5.1.0",
         "payload": {"config": {"pipeline": {"inputs": []}}},
@@ -1506,7 +1604,7 @@ async def test_queue_remote_config_offer_uses_config_editor_validation_for_fluen
             "source_path": str(source_path.resolve()),
             "target_name": "fluentd.conf",
             "content_type": "text/plain",
-            "size_bytes": len(b"<source>\n  @type tail\n</source>\n"),
+            "size_bytes": _utf8_file_size(source_path),
         }
     ]
     assert payload["validation"] == [
@@ -1517,7 +1615,7 @@ async def test_queue_remote_config_offer_uses_config_editor_validation_for_fluen
     ]
     assert calls["default_version_config_type"] == "fluentd"
     assert calls["catalog"] == ("1.16.0", "fluentd")
-    assert calls["fluentd_parse"] == "<source>\n  @type tail\n</source>\n"
+    assert calls["fluentd_parse"] == source_path.read_bytes().decode("utf-8")
     assert calls["validation"] == {
         "version": "1.16.0",
         "payload": {"config": {"pipeline": {"inputs": [{"name": "tail"}]}}},
@@ -1590,11 +1688,11 @@ async def test_queue_remote_config_offer_queues_large_file_payload(
             "source_path": str(source_path.resolve()),
             "target_name": "large-agent.yaml",
             "content_type": "application/x-yaml",
-            "size_bytes": len(large_body.encode("utf-8")),
+            "size_bytes": _utf8_file_size(source_path),
         }
     ]
     queued_file = server_msg.remote_config.config.config_map["large-agent.yaml"]
-    assert queued_file.body.decode("utf-8") == large_body
+    assert queued_file.body == source_path.read_bytes()
     assert payload["payload_size_bytes"] > 10000
 
 
@@ -1951,7 +2049,9 @@ async def test_put_comms_settings(monkeypatch) -> None:
     assert provider.get("human_in_loop_approval") is True
     persisted_state_cfg = provider.get("state_persistence", {})
     assert persisted_state_cfg.get("enabled") is True
-    assert persisted_state_cfg.get("state_file_prefix") == "runtime/opamp_server_state"
+    assert persisted_state_cfg.get("state_file_prefix") == str(
+        pathlib.Path("runtime/opamp_server_state")
+    )
     assert persisted_state_cfg.get("retention_count") == 7
     assert persisted_state_cfg.get("autosave_interval_seconds_since_change") == 600
 
@@ -2122,7 +2222,7 @@ async def test_put_comms_settings_triggers_purge_when_retention_below_current_co
         )
         assert resp.status_code == 200
 
-    assert captured["state_file_prefix"] == "runtime/opamp_server_state"
+    assert captured["state_file_prefix"] == str(pathlib.Path("runtime/opamp_server_state"))
     assert captured["retention_count"] == 1
 
 

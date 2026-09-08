@@ -1210,6 +1210,7 @@ register_client_routes(
     command_builders=COMMAND_BUILDERS,
     action_options=ACTION_OPTIONS,
     action_apply_config=ACTION_APPLY_CONFIG,
+    action_change_connections=ACTION_CHANGE_CONNECTIONS,
     client_remote_config_capability=CLIENT_REMOTE_CONFIG_CAPABILITY,
     remote_config_disabled_error=ERR_REMOTE_CONFIG_DISABLED,
     diagnostic_mode_enabled=_diagnostic_mode_enabled,

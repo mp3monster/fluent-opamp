@@ -74,6 +74,17 @@ class ServerToAgentResponseBuilder:
             "building next action payload: %s",
             self.action_change_connections,
         )
+        if client is not None:
+            pending_connection_settings = self.store.pop_pending_connection_settings(
+                client.client_id
+            )
+            if pending_connection_settings:
+                response.connection_settings.ParseFromString(pending_connection_settings)
+                self.logger.info(
+                    "loaded queued connection_settings payload for client_id=%s",
+                    client.client_id,
+                )
+                return response
         raw_interval = (
             getattr(client, "heartbeat_frequency", self.default_heartbeat_interval_seconds)
             if client is not None

@@ -36,6 +36,7 @@ class AIConnection(Protocol):
         Why this method exists:
         planner construction uses it as a fail-safe gate before enabling LLM mode.
         """
+        ...
 
     async def request_json_schema_completion(
         self,
@@ -52,6 +53,7 @@ class AIConnection(Protocol):
         Why schema-constrained output is required:
         graph execution consumes structured plans and must avoid free-text drift.
         """
+        ...
 
     async def verify_connection(self, *, model: str) -> dict[str, Any]:
         """Return provider connectivity/auth status for startup verification.
@@ -60,3 +62,4 @@ class AIConnection(Protocol):
         broker startup checks should validate provider health without invoking
         full planner execution paths.
         """
+        ...

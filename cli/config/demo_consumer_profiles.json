@@ -52,6 +52,52 @@
             "config_path": "tests/opamp-consumer-with-remote.json",
             "agent_config_path": "consumer/fluent-bit-replacable.yaml"
           }
+        },
+        {
+          "name": "Demo setup (Elastic Heartbeat supervisor to Logstash)",
+          "scenario_description": "Runs Elastic Heartbeat as a supervisor-managed consumer, monitors localhost and blog.mp3monster.org every 5 seconds, and sends events to a local Logstash container that writes a test evidence file.",
+          "elastic_heartbeat": {
+            "config_path": "tests/logstash/opamp-consumer-elastic-heartbeat-logstash-plugin.json",
+            "agent_config_path": "tests/logstash/heartbeat.yml"
+          },
+          "containers": [
+            {
+              "id": "logstash-heartbeat-local",
+              "label": "Logstash local heartbeat pipeline",
+              "container_name": "opamp-logstash-heartbeat",
+              "replace_existing": true,
+              "image_candidates": [
+                "docker.elastic.co/logstash/logstash:9.5.1",
+                "logstash:9.5.1"
+              ],
+              "ports": [
+                "127.0.0.1:5044:5044"
+              ],
+              "volumes": [
+                {
+                  "host_path": "tests/logstash/logstash-heartbeat.container.conf",
+                  "container_path": "/usr/share/logstash/pipeline/logstash.conf",
+                  "read_only": true
+                },
+                {
+                  "host_path": "tests/logstash/out",
+                  "container_path": "/usr/share/logstash/out"
+                }
+              ],
+              "ensure_dirs": [
+                "tests/logstash/out"
+              ],
+              "command": [
+                "logstash",
+                "-f",
+                "/usr/share/logstash/pipeline/logstash.conf"
+              ],
+              "aliases": [
+                "logstash-heartbeat",
+                "heartbeat logstash"
+              ]
+            }
+          ]
         }
   ]
 }

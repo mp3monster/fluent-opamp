@@ -1,0 +1,2 @@
+"""Fluentd consumer plugin package."""
+

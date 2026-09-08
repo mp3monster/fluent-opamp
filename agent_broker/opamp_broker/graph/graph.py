@@ -19,6 +19,7 @@ reviewed as topology updates instead of scattered registration calls.
 from __future__ import annotations
 
 from langgraph.graph import END, StateGraph
+
 from opamp_broker.graph.constants import (
     EDGE_CLASSIFY_TO_PLAN,
     EDGE_NORMALIZE_TO_CLASSIFY,
@@ -36,7 +37,7 @@ from opamp_broker.graph.nodes import (
     normalize_input,
     plan_action,
 )
-from opamp_broker.graph.state import BrokerState, STATE_KEY_AI_ENABLED
+from opamp_broker.graph.state import STATE_KEY_AI_ENABLED, BrokerState
 from opamp_broker.mcp.tools import MCPToolRegistry
 from opamp_broker.planner import create_planner
 from opamp_broker.planner.ai_svc_planner import AISvcPlanner
@@ -70,10 +71,13 @@ def build_graph(
         if isinstance(planner_cfg, dict)
         else None
     )
-    try:
-        max_execution_steps = int(max_execution_steps_raw)
-    except (TypeError, ValueError):
+    if max_execution_steps_raw is None:
         max_execution_steps = PLANNER_MAX_EXECUTION_STEPS_DEFAULT
+    else:
+        try:
+            max_execution_steps = int(max_execution_steps_raw)
+        except (TypeError, ValueError):
+            max_execution_steps = PLANNER_MAX_EXECUTION_STEPS_DEFAULT
     offline_message = (
         cfg.get("messages", {}).get("server_offline")
         if isinstance(cfg, dict)

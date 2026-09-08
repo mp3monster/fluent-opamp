@@ -1,6 +1,6 @@
 # OpAMP Consumer Deployment Test Container
 
-This container is intended for testing OpAMP consumer deployments from a wheel, with either Fluent Bit or Fluentd as the supervised agent.
+This container is intended for testing OpAMP consumer deployments from a wheel, with Fluent Bit, Fluentd, or Elastic Heartbeat as the supervised agent.
 It can also optionally download ELK stack component archives and a GitHub-hosted log generator.
 
 ## What It Does
@@ -10,7 +10,7 @@ At container startup it:
 1. Reads a simple `KEY=VALUE` config file.
 2. Unpacks the provided consumer wheel into `/work/runtime/wheel-unpacked`.
 3. Installs the wheel with dev extras (`[dev]`) and pulls dependencies.
-4. Installs Fluent Bit or Fluentd for the configured version.
+4. Installs Fluent Bit, Fluentd, or Elastic Heartbeat for the configured version.
 5. Stages agent and consumer config files into `/work/runtime/config` so they are writable/modifiable in-container.
 6. Rewrites consumer config runtime paths (`consumer.agent_config_path`) plus service type and server URL/transport.
 7. Optionally downloads ELK component archives into `/work/runtime/downloads/elk`.
@@ -34,24 +34,27 @@ KEY=value
 
 | Key | Required | Description | Example |
 |---|---|---|---|
-| `DEPLOYMENT_TYPE` | Yes | Agent type to launch. Allowed: `fluentbit`, `fluentd`. | `fluentbit` |
-| `AGENT_VERSION` | Yes | Version of Fluent Bit or Fluentd to install. | `5.0.3` |
-| `WHEEL_PATH` | Yes | Path (inside container) to consumer wheel from host mount. | `/host-assets/dist/consumer/opamp_consumer-0.4.0-py3-none-any.whl` |
+| `DEPLOYMENT_TYPE` | Yes | Agent type to launch. Allowed: `fluentbit`, `fluentd`, `elastic_heartbeat`. | `fluentbit` |
+| `AGENT_VERSION` | Yes | Version of Fluent Bit, Fluentd, or Elastic Heartbeat to install. | `5.0.3` |
+| `WHEEL_PATH` | Yes | Path (inside container) to a consumer wheel, a directory containing wheels, or a glob expression. Directory/glob values use the newest matching wheel. | `/host-assets/dist/consumer` |
 | `AGENT_CONFIG_PATH` | No | Path (inside container) to host agent config file. If empty, a default dummy input + file output config is generated. | `/host-assets/consumer/fluent-bit.yaml` |
 | `CONSUMER_CONFIG_PATH` | No | Path (inside container) to host consumer config JSON. If empty, a minimal config is generated. | `/host-assets/tests/opamp.json` |
 | `CONSUMER_TRANSPORT` | No | Transport mode written into consumer config. Allowed: `http`, `websocket`. Default: `http`. | `http` |
 | `OPAMP_HTTP_URL` | No | Provider URL used when transport is `http` (unless `SERVER_URL` is set). | `http://host.docker.internal:8080` |
 | `OPAMP_WEBSOCKET_URL` | No | Provider URL used when transport is `websocket` (unless `SERVER_URL` is set). | `ws://host.docker.internal:4320` |
 | `SERVER_URL` | No | Explicit server URL override for consumer config. | `http://host.docker.internal:8080` |
-| `AGENT_ONLY` | No | If `true`, run Fluent Bit/Fluentd without `opamp-consumer`. Default: `false`. | `false` |
+| `AGENT_ONLY` | No | If `true`, run the selected agent without `opamp-consumer`. Default: `false`. | `false` |
+| `SMOKE_ONLY` | No | If `true`, install the consumer wheel, verify plugin entry points, stage the selected agent/consumer config, then exit before launching long-running processes. Default: `false`. | `true` |
+| `SKIP_AGENT_INSTALL` | No | If `true`, skip agent installation. Intended for smoke-only regression runs that validate consumer packaging and config staging without external agent downloads. Default: `false`. | `true` |
 | `HOSTNAME_OVERRIDE` | No | Optional hostname label injected into staged agent config as `service_instance_id` comment. | `consumer-a-01` |
 | `SERVICE_NAME_OVERRIDE` | No | Optional override for `consumer.service_name`. | `Fluentbit` |
 | `SERVICE_NAMESPACE_OVERRIDE` | No | Optional override for `consumer.service_namespace`. | `ContainerTests` |
 | `OUTPUT_HOST_DIR` | No | Path (inside container) where log/output files are written. Default: `/host-output`. | `/host-output` |
 | `FLUENTBIT_DOWNLOAD_URL` | No | Explicit Fluent Bit tarball URL override if auto asset discovery is not sufficient. | `https://.../fluent-bit-<ver>-linux-amd64.tar.gz` |
+| `HEARTBEAT_DOWNLOAD_URL` | No | Explicit Heartbeat tarball URL override. | `https://artifacts.elastic.co/downloads/beats/heartbeat/heartbeat-9.3.3-linux-x86_64.tar.gz` |
 | `DOWNLOAD_ELK_COMPONENTS` | No | If `true`, download ELK component archives into runtime downloads folder. Default: `false`. | `true` |
 | `ELK_VERSION` | No | Version used for ELK artifact URLs. Defaults to `AGENT_VERSION` when unset. | `9.3.3` |
-| `ELK_COMPONENTS` | No | Comma-separated components to download. Supported: `elasticsearch`, `kibana`, `logstash`, `elastic-agent`, `fleet-server`. Default: `elasticsearch,kibana,logstash`. | `elasticsearch,kibana,logstash,elastic-agent` |
+| `ELK_COMPONENTS` | No | Comma-separated components to download. Supported: `elasticsearch`, `kibana`, `logstash`, `elastic-agent`, `fleet-server`, `heartbeat`. Default: `elasticsearch,kibana,logstash`. | `elasticsearch,kibana,logstash,elastic-agent` |
 | `EXTRACT_ELK_COMPONENTS` | No | If `true`, extract each downloaded ELK tarball under `/work/runtime/downloads/elk`. Default: `false`. | `true` |
 | `ELASTICSEARCH_DOWNLOAD_URL` | No | Optional explicit Elasticsearch artifact URL override. | `https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-9.3.3-linux-x86_64.tar.gz` |
 | `KIBANA_DOWNLOAD_URL` | No | Optional explicit Kibana artifact URL override. | `https://artifacts.elastic.co/downloads/kibana/kibana-9.3.3-linux-x86_64.tar.gz` |
@@ -79,6 +82,9 @@ docker build \
 See:
 
 - `tests/test-containers/opamp-consumer-deployment/examples/test-container.env`
+- `tests/test-containers/opamp-consumer-deployment/examples/regression-fluentbit.env`
+- `tests/test-containers/opamp-consumer-deployment/examples/regression-fluentd.env`
+- `tests/test-containers/opamp-consumer-deployment/examples/regression-elastic-heartbeat.env`
 
 ## Run Example
 
@@ -98,6 +104,15 @@ docker run --rm -it \
   --add-host host.docker.internal:host-gateway \
   -e TEST_CONTAINER_CONFIG=/config/test-container.env \
   opamp-consumer-deployment-test:latest
+```
+
+## Regression Pack
+
+The smoke-only Fluent Bit, Fluentd, and Elastic Heartbeat variants are included in the container
+regression pack:
+
+```bash
+python tests/test-containers/run_regression_pack.py --only opamp-consumer-deployment-smoke
 ```
 
 ## Host Connectivity Notes

@@ -21,8 +21,11 @@ fi
 
 LATEST_WHEEL="$(ls -1t "${WHEEL_DIR}"/*.whl | head -n1)"
 echo "Installing latest wheel: ${LATEST_WHEEL}"
-python3 -m pip install --upgrade pip
-python3 -m pip install --force-reinstall "${LATEST_WHEEL}"
+python3 -m venv /opt/config-service-venv
+. /opt/config-service-venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install --force-reinstall "${LATEST_WHEEL}"
+export PYTHONPATH="${OPAMP_REPO}:${PYTHONPATH:-}"
 
 if [ ! -d "${LOGS_REPO_DIR}/.git" ]; then
   echo "Cloning Fluent Bit sample repository into ${LOGS_REPO_DIR}"
@@ -41,7 +44,10 @@ if [ ! -f package-lock.json ]; then
   exit 1
 fi
 
-npm ci
+if ! npm ci; then
+  echo "npm ci failed; falling back to npm install because package-lock.json is not in sync."
+  npm install
+fi
 
 SERVER_LOG="${RESULTS_DIR}/config-service-server.log"
 RUN_LOG="${RESULTS_DIR}/batch-run.log"

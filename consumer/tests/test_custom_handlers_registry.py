@@ -17,7 +17,7 @@ from opamp_consumer.config import ConsumerConfig
 from opamp_consumer.config_metadata import ConfigMetadata
 from opamp_consumer.custom_handlers import create_handler, discover_handlers
 from opamp_consumer.exceptions import CommandException
-from opamp_consumer.fluentbit_client import OpAMPClientData
+from opamp_consumer.fluentbit.client import OpAMPClientData
 from opamp_consumer.opamp_client_interface import OpAMPClientInterface
 from opamp_consumer.proto import opamp_pb2
 

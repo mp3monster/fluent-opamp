@@ -237,7 +237,7 @@ def _build_entrypoint_command(entrypoint: str) -> list[str]:
     """Return python module command for supported simulator entrypoints."""
     lowered = entrypoint.strip().lower()
     if lowered == ENTRYPOINT_SIMULATOR:
-        return [sys.executable, "-m", "opamp_consumer.simulator_client"]
+        return [sys.executable, "-m", "opamp_consumer.simulator.client"]
     raise ValueError(
         f"unsupported entrypoint '{entrypoint}'; consumer-sim launcher supports "
         f"'{ENTRYPOINT_SIMULATOR}' only"
@@ -265,9 +265,9 @@ def _validate_simulator_command(*, command: list[str], instance_name: str) -> No
     if any(
         token in command_text
         for token in (
-            "opamp_consumer.simulator_client",
+            "opamp_consumer.simulator.client",
             "opamp-consumer-simulator",
-            "simulator_client.py",
+            "simulator/client.py",
         )
     ):
         return

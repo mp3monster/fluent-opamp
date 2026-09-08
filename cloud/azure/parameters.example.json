@@ -1,0 +1,39 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "value": "uksouth"
+    },
+    "namePrefix": {
+      "value": "opamp"
+    },
+    "adminUsername": {
+      "value": "azureuser"
+    },
+    "sshPublicKey": {
+      "value": "ssh-rsa REPLACE_WITH_YOUR_PUBLIC_KEY"
+    },
+    "adminSourceCidr": {
+      "value": "REPLACE_WITH_YOUR_PUBLIC_IP/32"
+    },
+    "artifactBaseUrl": {
+      "value": "https://REPLACE_STORAGE_ACCOUNT.blob.core.windows.net/opamp-cloud"
+    },
+    "wheelArtifactBaseUrl": {
+      "value": "https://REPLACE_STORAGE_ACCOUNT.blob.core.windows.net/opamp-cloud"
+    },
+    "sourceRepoUrl": {
+      "value": "https://github.com/mp3monster/fluent-opamp.git"
+    },
+    "sourceRef": {
+      "value": "main"
+    },
+    "keycloakAdminUser": {
+      "value": "admin"
+    },
+    "keycloakAdminPassword": {
+      "value": "REPLACE_WITH_A_LONG_PASSWORD"
+    }
+  }
+}

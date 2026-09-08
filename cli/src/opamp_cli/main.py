@@ -26,12 +26,13 @@ from __future__ import annotations
 
 import csv
 import importlib
+import importlib.util
 import json
 import logging
 import os
 import re
 import shlex
-import shutil
+import socket
 import subprocess
 import sys
 import time
@@ -49,6 +50,13 @@ try:
         _shell_quote,
         _slugify,
         _utc_timestamp,
+    )
+    from . import (
+        consumer_plugins,
+        container_management,
+        dev_commands,
+        process_tail,
+        setup_venv,
     )
     from .config_commands import (
         COMMAND_CONFIG_METADATA,
@@ -74,6 +82,10 @@ try:
         ACTION_KIND_SIMULATOR_START,
         ACTION_KIND_STOP_ALL_RECORDED,
         ACTION_KIND_STOP_RECORDED,
+        ACTION_KEY_LOG_NAME,
+        ACTION_KEY_METADATA,
+        ACTION_KEY_RECORD_NAME,
+        ARG_CONFIG_PATH,
         APP_ENABLE_DEV_FEATURES_ENV,
         CLI_COMPONENT_LOG_FILENAME,
         CLI_DEMO_CONFIG_PATH,
@@ -83,20 +95,33 @@ try:
         CLI_RUNTIME_DIRNAME,
         CLI_SETTING_ENABLE_PROCESS_TAIL,
         CLI_SETTINGS_FILENAME,
+        COMMAND_CLEAR_LOGS,
         COMMAND_CONFIG,
         COMMAND_DEMO,
+        COMMAND_DEV_CONTAINERS,
         COMMAND_DEV_FLB_CONFIG,
         COMMAND_DEV_MCP_CONFIG,
         COMMAND_DEV_PID_LOOKUP,
+        COMMAND_DEV_VERSION_BUMP,
         COMMAND_DISABLE_PROCESS_TAIL,
         COMMAND_ENABLE_PROCESS_TAIL,
+        COMMAND_EXITED_TEMPLATE,
         COMMAND_EXIT,
         COMMAND_HELP,
         COMMAND_LIST,
         COMMAND_QUIT,
+        COMMAND_SETUP_VENV,
         COMMAND_STATUS,
+        CONFIG_KEY_AGENT_CONFIG_PATH,
+        CONFIG_KEY_CONFIG_PATH,
         DEFAULT_CATALOG_WEB_PORT,
         DEFAULT_SERVER_PORT,
+        DEMO_CONSUMERS_SELECTION,
+        DEMO_CONSUMER_CLIENT_CONFIG_KEYS,
+        DEMO_PROFILE_KEY_ELASTIC_AGENT,
+        DEMO_PROFILE_KEY_ELASTIC_HEARTBEAT,
+        DEMO_PROFILE_KEY_FLUENTBIT,
+        DEMO_PROFILE_KEY_FLUENTD,
         ENABLED_FLAG_VALUE,
         GUIDED_ACTION_ALIASES,
         GUIDED_INTENTS,
@@ -104,6 +129,7 @@ try:
         GUIDED_STOP_ACTION_ORDER,
         HELP_TEXT,
         HTTP_READY_FAILURE_STATUS_THRESHOLD,
+        INTERACTIVE_PROMPT,
         INTENT_RESTART,
         INTENT_START,
         INTENT_STOP,
@@ -116,12 +142,14 @@ try:
         LABEL_FLUENTD_CLIENT,
         LABEL_SERVER,
         LABEL_SIMULATOR,
+        LOCALHOST_ADDRESS,
         PROCESS_READY_POLL_INTERVAL_SECONDS,
         PROCESS_READY_TIMEOUT_SECONDS,
         PROCESS_START_CHECK_DELAY_SECONDS,
         PROCESS_STOP_POLL_INTERVAL_SECONDS,
         PROCESS_STOP_TIMEOUT_SECONDS,
-        PROCESS_TAIL_INITIAL_LINES,
+        OPAMP_CONFIG_PATH_ENV,
+        PYTHONPATH_ENV,
         SCRIPT_KEYWORD,
         SIMULATOR_RECORD_PREFIX,
         STARTUP_FAILURE_MARKERS,
@@ -132,6 +160,7 @@ try:
         _split_script_directive,
         _write_script,
     )
+    from .version_bump import execute_dev_version_bump_workflow
 except ImportError:
     # Support direct execution: `python cli/src/opamp_cli/main.py`
     current_dir = Path(__file__).resolve().parent
@@ -145,6 +174,11 @@ except ImportError:
         _slugify,
         _utc_timestamp,
     )
+    import consumer_plugins  # type: ignore[no-redef]
+    import container_management  # type: ignore[no-redef]
+    import dev_commands  # type: ignore[no-redef]
+    import process_tail  # type: ignore[no-redef]
+    import setup_venv  # type: ignore[no-redef]
     from config_commands import (  # type: ignore[no-redef]
         COMMAND_CONFIG_METADATA,
         COMMAND_CONFIG_VALIDATE,
@@ -169,6 +203,10 @@ except ImportError:
         ACTION_KIND_SIMULATOR_START,
         ACTION_KIND_STOP_ALL_RECORDED,
         ACTION_KIND_STOP_RECORDED,
+        ACTION_KEY_LOG_NAME,
+        ACTION_KEY_METADATA,
+        ACTION_KEY_RECORD_NAME,
+        ARG_CONFIG_PATH,
         APP_ENABLE_DEV_FEATURES_ENV,
         CLI_COMPONENT_LOG_FILENAME,
         CLI_DEMO_CONFIG_PATH,
@@ -178,20 +216,33 @@ except ImportError:
         CLI_RUNTIME_DIRNAME,
         CLI_SETTING_ENABLE_PROCESS_TAIL,
         CLI_SETTINGS_FILENAME,
+        COMMAND_CLEAR_LOGS,
         COMMAND_CONFIG,
         COMMAND_DEMO,
+        COMMAND_DEV_CONTAINERS,
         COMMAND_DEV_FLB_CONFIG,
         COMMAND_DEV_MCP_CONFIG,
         COMMAND_DEV_PID_LOOKUP,
+        COMMAND_DEV_VERSION_BUMP,
         COMMAND_DISABLE_PROCESS_TAIL,
         COMMAND_ENABLE_PROCESS_TAIL,
+        COMMAND_EXITED_TEMPLATE,
         COMMAND_EXIT,
         COMMAND_HELP,
         COMMAND_LIST,
         COMMAND_QUIT,
+        COMMAND_SETUP_VENV,
         COMMAND_STATUS,
+        CONFIG_KEY_AGENT_CONFIG_PATH,
+        CONFIG_KEY_CONFIG_PATH,
         DEFAULT_CATALOG_WEB_PORT,
         DEFAULT_SERVER_PORT,
+        DEMO_CONSUMERS_SELECTION,
+        DEMO_CONSUMER_CLIENT_CONFIG_KEYS,
+        DEMO_PROFILE_KEY_ELASTIC_AGENT,
+        DEMO_PROFILE_KEY_ELASTIC_HEARTBEAT,
+        DEMO_PROFILE_KEY_FLUENTBIT,
+        DEMO_PROFILE_KEY_FLUENTD,
         ENABLED_FLAG_VALUE,
         GUIDED_ACTION_ALIASES,
         GUIDED_INTENTS,
@@ -199,6 +250,7 @@ except ImportError:
         GUIDED_STOP_ACTION_ORDER,
         HELP_TEXT,
         HTTP_READY_FAILURE_STATUS_THRESHOLD,
+        INTERACTIVE_PROMPT,
         INTENT_RESTART,
         INTENT_START,
         INTENT_STOP,
@@ -211,12 +263,14 @@ except ImportError:
         LABEL_FLUENTD_CLIENT,
         LABEL_SERVER,
         LABEL_SIMULATOR,
+        LOCALHOST_ADDRESS,
         PROCESS_READY_POLL_INTERVAL_SECONDS,
         PROCESS_READY_TIMEOUT_SECONDS,
         PROCESS_START_CHECK_DELAY_SECONDS,
         PROCESS_STOP_POLL_INTERVAL_SECONDS,
         PROCESS_STOP_TIMEOUT_SECONDS,
-        PROCESS_TAIL_INITIAL_LINES,
+        OPAMP_CONFIG_PATH_ENV,
+        PYTHONPATH_ENV,
         SCRIPT_KEYWORD,
         SIMULATOR_RECORD_PREFIX,
         STARTUP_FAILURE_MARKERS,
@@ -227,6 +281,7 @@ except ImportError:
         _split_script_directive,
         _write_script,
     )
+    from version_bump import execute_dev_version_bump_workflow  # type: ignore[no-redef]
 
 CLI_LOGGER_NAME = "opamp_cli"
 SIMULATOR_STATE_KEY_INSTANCES = "instances"
@@ -234,9 +289,13 @@ SIMULATOR_STATE_KEY_NAME = "name"
 SIMULATOR_STATE_KEY_PID = "pid"
 GUIDED_DESCRIPTION_COMMAND_PREFIX = "d"
 GUIDED_DESCRIPTION_LABEL = "scenario description"
+LABEL_ELASTIC_AGENT_CLIENT = consumer_plugins.LABEL_ELASTIC_AGENT_CLIENT
+LABEL_ELASTIC_HEARTBEAT_CLIENT = consumer_plugins.LABEL_ELASTIC_HEARTBEAT_CLIENT
+SUPERVISOR_SEMAPHORE_FILENAME = "OpAMPSupervisor.signal"
 PROCESS_INFO_KEY_PID = "pid"
 PROCESS_INFO_KEY_NAME = "name"
 PROCESS_INFO_KEY_COMMAND_LINE = "command_line"
+LOG_FILE_SUFFIXES = {".json", ".jsonl", ".log", ".ndjson"}
 WINDOWS_PROCESS_SNAPSHOT_COMMAND = [
     "powershell.exe",
     "-NoProfile",
@@ -252,6 +311,16 @@ _CLI_LOGGER_CACHE: dict[str, logging.Logger | Path | None] = {
     "logger": None,
     "path": None,
 }
+
+
+def _windows_no_console_kwargs() -> dict[str, Any]:
+    """Return subprocess kwargs that suppress transient console windows on Windows."""
+    if _is_windows() is not True:
+        return {}
+    creationflags = int(getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    if creationflags <= 0:
+        return {}
+    return {"creationflags": creationflags}
 
 
 def _dev_features_enabled() -> bool:
@@ -335,6 +404,20 @@ def _get_logger() -> logging.Logger:
     return logger
 
 
+def _close_cli_logger() -> None:
+    """Close the CLI file logger so its log file can be deleted on Windows."""
+    cached_logger = _CLI_LOGGER_CACHE.get("logger")
+    if isinstance(cached_logger, logging.Logger):
+        for handler in list(cached_logger.handlers):
+            cached_logger.removeHandler(handler)
+            try:
+                handler.close()
+            except Exception:
+                pass
+    _CLI_LOGGER_CACHE["logger"] = None
+    _CLI_LOGGER_CACHE["path"] = None
+
+
 def _execute_command(command_text: str) -> int:
     """Execute command text immediately in a shell."""
     logger = _get_logger()
@@ -401,6 +484,29 @@ def _command_text_from_args(args: list[str]) -> str:
     return " ".join(_shell_quote(arg) for arg in args)
 
 
+def _command_match_text(command_text: str) -> str:
+    """Return command text normalized for internal command matching."""
+    text = str(command_text or "").strip()
+    if not text:
+        return ""
+    try:
+        tokens = shlex.split(text, posix=True)
+    except ValueError:
+        tokens = text.split()
+    if not tokens:
+        return ""
+    return " ".join(str(token or "").strip().strip("\"'") for token in tokens)
+
+
+def _split_internal_command_args(command_text: str) -> list[str]:
+    """Split internal command text and trim paired shell quotes from tokens."""
+    try:
+        tokens = shlex.split(str(command_text or ""), posix=not _is_windows())
+    except ValueError:
+        tokens = str(command_text or "").split()
+    return [str(token or "").strip().strip("\"'") for token in tokens]
+
+
 def _script_mode_enabled(command_text: str) -> bool:
     """Return whether command begins with `script`."""
     stripped = command_text.lstrip()
@@ -418,7 +524,8 @@ def _handle_command(raw_command: str) -> int:  # noqa: PLR0911
         logger.info("ignored empty command input")
         return 0
 
-    lowered = command_text.lower()
+    match_text = _command_match_text(command_text)
+    lowered = match_text.lower()
     if lowered in {
         COMMAND_ENABLE_PROCESS_TAIL,
         "enable process-tail",
@@ -440,24 +547,104 @@ def _handle_command(raw_command: str) -> int:  # noqa: PLR0911
     if lowered == COMMAND_STATUS:
         logger.info("printing CLI status")
         return _print_status()
+    if lowered in {COMMAND_CLEAR_LOGS, "clear logs"}:
+        logger.info("clearing CLI-discovered logs")
+        return _clear_logs()
+    if lowered == COMMAND_SETUP_VENV or lowered.startswith(f"{COMMAND_SETUP_VENV} "):
+        logger.info("starting virtual environment setup workflow command=%s", command_text)
+        setup_args = _split_internal_command_args(command_text)
+        return setup_venv.execute_setup_venv_workflow(
+            setup_args[1:],
+            repo_root=_repo_root(),
+            is_windows=_is_windows(),
+            command_text_from_args=_command_text_from_args,
+            windows_no_console_kwargs=_windows_no_console_kwargs,
+            prompt_activation=lambda venv_dir: setup_venv.prompt_setup_venv_activation(
+                venv_dir,
+                prompt_text=_prompt_text,
+                parse_yes_no=lambda value, default: _parse_yes_no(value, default=default),
+                open_shell=lambda path: setup_venv.open_setup_venv_shell(
+                    path,
+                    repo_root=_repo_root(),
+                    is_windows=_is_windows(),
+                ),
+            ),
+        )
     if lowered == COMMAND_LIST:
         logger.info("printing CLI option hierarchy")
         return _print_option_hierarchy()
     if lowered == COMMAND_DEV_FLB_CONFIG:
         logger.info("starting dev fluent bit config workflow")
-        return _execute_dev_fluentbit_config_workflow()
+        return dev_commands.execute_dev_tool_workflow(
+            command_name=COMMAND_DEV_FLB_CONFIG,
+            tool_family_label="Fluent Bit",
+            specs=_fluentbit_dev_tool_specs(),
+            dev_features_enabled=_dev_features_enabled(),
+            prompt_text=_prompt_text,
+            parse_yes_no=lambda value, default: _parse_yes_no(value, default=default),
+            command_text_from_args=_command_text_from_args,
+            repo_root=_repo_root(),
+            build_exec_env=_build_exec_env,
+            logger=logger,
+        )
     if lowered == COMMAND_DEV_MCP_CONFIG:
         logger.info("starting dev mcp config workflow")
-        return _execute_dev_mcp_config_workflow()
+        return dev_commands.execute_dev_tool_workflow(
+            command_name=COMMAND_DEV_MCP_CONFIG,
+            tool_family_label="MCP",
+            specs=_mcp_dev_tool_specs(),
+            dev_features_enabled=_dev_features_enabled(),
+            prompt_text=_prompt_text,
+            parse_yes_no=lambda value, default: _parse_yes_no(value, default=default),
+            command_text_from_args=_command_text_from_args,
+            repo_root=_repo_root(),
+            build_exec_env=_build_exec_env,
+            logger=logger,
+        )
     if lowered == COMMAND_DEV_PID_LOOKUP:
         logger.info("starting dev pid lookup workflow")
-        return _execute_dev_pid_lookup_workflow()
+        return dev_commands.execute_dev_pid_lookup_workflow(
+            command_name=COMMAND_DEV_PID_LOOKUP,
+            dev_features_enabled=_dev_pid_lookup_available(),
+            prompt_text=_prompt_text,
+            running_process_entries=_running_process_entries,
+            process_entries_matching_pattern=lambda processes, pattern: _process_entries_matching_pattern(
+                processes,
+                pattern=pattern,
+            ),
+            print_pid_lookup_results=_print_pid_lookup_results,
+        )
+    if lowered == COMMAND_DEV_VERSION_BUMP or lowered.startswith(f"{COMMAND_DEV_VERSION_BUMP} "):
+        logger.info("starting dev version bump workflow command=%s", command_text)
+        version_args = _split_internal_command_args(command_text)
+        return execute_dev_version_bump_workflow(
+            version_args[1:],
+            repo_root_provider=_repo_root,
+            dev_features_enabled=_dev_features_enabled,
+        )
+    if lowered == COMMAND_DEV_CONTAINERS or lowered.startswith(f"{COMMAND_DEV_CONTAINERS} "):
+        logger.info("starting dev container workflow command=%s", command_text)
+        selection = match_text[len(COMMAND_DEV_CONTAINERS) :].strip()
+        return dev_commands.execute_dev_container_workflow(
+            command_name=COMMAND_DEV_CONTAINERS,
+            selection=selection,
+            container_runtime_executable=container_management.container_runtime_executable,
+            container_runtime_ready=lambda runtime: container_management.container_runtime_ready(
+                runtime,
+                windows_no_console_kwargs=_windows_no_console_kwargs,
+            ),
+            print_container_runtime_unavailable=container_management.print_container_runtime_unavailable,
+            configured_container_start_actions=_configured_container_start_actions,
+            action_matches_alias=_action_matches_alias,
+            select_guided_action=lambda intent, actions: _select_guided_action(
+                intent=intent,
+                actions=actions,
+            ),
+            launch_background_process=_launch_background_process,
+        )
     if lowered == COMMAND_CONFIG or lowered.startswith(f"{COMMAND_CONFIG} "):
         logger.info("starting config workflow command=%s", command_text)
-        try:
-            config_args = shlex.split(command_text, posix=not _is_windows())
-        except ValueError as exc:
-            raise ValueError(f"invalid config command syntax: {exc}") from exc
+        config_args = _split_internal_command_args(command_text)
         if not config_args:
             raise ValueError("config command is missing arguments")
         return execute_config_command(
@@ -466,8 +653,8 @@ def _handle_command(raw_command: str) -> int:  # noqa: PLR0911
             log_dir=_cli_log_dir(),
         )
 
-    if _script_mode_enabled(command_text):
-        output_name, script_command = _split_script_directive(command_text)
+    if _script_mode_enabled(match_text):
+        output_name, script_command = _split_script_directive(match_text)
         output_path = _resolve_script_path(output_name)
         _write_script(output_path, script_command)
         logger.info(
@@ -492,6 +679,8 @@ def _top_level_commands() -> list[str]:
         INTENT_RESTART,
         COMMAND_LIST,
         COMMAND_STATUS,
+        COMMAND_CLEAR_LOGS,
+        COMMAND_SETUP_VENV,
         COMMAND_ENABLE_PROCESS_TAIL,
         COMMAND_DISABLE_PROCESS_TAIL,
         COMMAND_EXIT,
@@ -513,6 +702,10 @@ def _top_level_commands() -> list[str]:
         commands.append(COMMAND_DEV_MCP_CONFIG)
     if _dev_pid_lookup_available():
         commands.append(COMMAND_DEV_PID_LOOKUP)
+    if _dev_version_bump_available():
+        commands.append(COMMAND_DEV_VERSION_BUMP)
+    if container_management.container_runtime_executable() and _configured_container_start_actions():
+        commands.append(COMMAND_DEV_CONTAINERS)
     return commands
 
 
@@ -587,44 +780,19 @@ def _fluentbit_dev_tool_script_paths() -> list[Path]:
     ]
 
 
-def _load_dev_tool_spec_from_script(script_path: Path) -> dict[str, Any] | None:
-    """Load one self-described CLI dev-tool spec from a Python script."""
-    if script_path.is_file() is not True:
-        return None
-    module_name = f"opamp_cli_dev_tool_{_slugify(script_path.stem)}"
-    module = _load_module_from_path(module_name=module_name, path=script_path)
-    if module is None:
-        return None
-
-    spec_payload: Any = None
-    spec_factory = getattr(module, "cli_dev_tool_spec", None)
-    if callable(spec_factory):
-        try:
-            spec_payload = spec_factory()
-        except Exception:
-            return None
-    elif isinstance(getattr(module, "CLI_DEV_TOOL_SPEC", None), dict):
-        spec_payload = dict(getattr(module, "CLI_DEV_TOOL_SPEC"))
-    if not isinstance(spec_payload, dict):
-        return None
-
-    spec = json.loads(json.dumps(spec_payload))
-    spec["script_path"] = str(script_path.resolve())
-    spec.setdefault("id", _slugify(str(spec.get("label") or script_path.stem)).replace("-", "_"))
-    spec.setdefault("label", script_path.stem)
-    spec.setdefault("description", "")
-    arguments = spec.get("arguments", [])
-    spec["arguments"] = arguments if isinstance(arguments, list) else []
-    return spec
-
-
 def _fluentbit_dev_tool_specs() -> list[dict[str, Any]]:
     """Return discovered Fluent Bit dev-tool specs when dev mode is enabled."""
     if _dev_features_enabled() is not True:
         return []
     specs: list[dict[str, Any]] = []
     for script_path in _fluentbit_dev_tool_script_paths():
-        spec = _load_dev_tool_spec_from_script(script_path)
+        spec = dev_commands.load_dev_tool_spec_from_script(
+            script_path,
+            load_module_from_path=lambda module_name, path: _load_module_from_path(
+                module_name=module_name,
+                path=path,
+            ),
+        )
         if isinstance(spec, dict):
             specs.append(spec)
     return specs
@@ -649,7 +817,13 @@ def _mcp_dev_tool_specs() -> list[dict[str, Any]]:
         return []
     specs: list[dict[str, Any]] = []
     for script_path in _mcp_dev_tool_script_paths():
-        spec = _load_dev_tool_spec_from_script(script_path)
+        spec = dev_commands.load_dev_tool_spec_from_script(
+            script_path,
+            load_module_from_path=lambda module_name, path: _load_module_from_path(
+                module_name=module_name,
+                path=path,
+            ),
+        )
         if isinstance(spec, dict):
             specs.append(spec)
     return specs
@@ -662,6 +836,11 @@ def _mcp_dev_tool_available() -> bool:
 
 def _dev_pid_lookup_available() -> bool:
     """Return whether the dev PID lookup workflow should be exposed."""
+    return _dev_features_enabled()
+
+
+def _dev_version_bump_available() -> bool:
+    """Return whether the dev version bump workflow should be exposed."""
     return _dev_features_enabled()
 
 
@@ -688,280 +867,6 @@ def _parse_yes_no(value: str, *, default: bool) -> bool | None:
     return None
 
 
-def _prompt_dev_tool_selection(
-    specs: list[dict[str, Any]],
-    *,
-    command_name: str,
-    tool_family_label: str,
-    input_reader: Callable[[str], str] | None = None,
-) -> list[dict[str, Any]] | None:
-    """Prompt for one or all dev-tool specs to run."""
-    if not specs:
-        return None
-    print(f"Choose a {tool_family_label} dev utility:")
-    for index, spec in enumerate(specs, start=1):
-        label = str(spec.get("label") or f"Tool {index}")
-        description = str(spec.get("description") or "").strip()
-        print(f"  {index}. {label}")
-        if description:
-            print(f"     {description}")
-    if len(specs) > 1:
-        print(f"  {len(specs) + 1}. Run all")
-    print("  0. cancel")
-
-    while True:
-        try:
-            selected = _prompt_text(f"{command_name}> ", input_reader=input_reader).strip()
-        except (EOFError, KeyboardInterrupt):
-            print()
-            return None
-        if selected in {"0", "", "cancel", "c"}:
-            return None
-        if selected.isdigit():
-            index = int(selected)
-            if 1 <= index <= len(specs):
-                return [specs[index - 1]]
-            if len(specs) > 1 and index == len(specs) + 1:
-                return list(specs)
-        normalized = _normalized_label(selected)
-        if normalized == _normalized_label("run all") and len(specs) > 1:
-            return list(specs)
-        for spec in specs:
-            label = str(spec.get("label") or "")
-            if _normalized_label(label) == normalized:
-                return [spec]
-        print("Please choose a valid number from the list.")
-
-
-def _prompt_dev_tool_arguments(
-    spec: dict[str, Any],
-    *,
-    input_reader: Callable[[str], str] | None = None,
-) -> dict[str, Any] | None:
-    """Prompt for one dev-tool spec argument set."""
-    answers: dict[str, Any] = {}
-    for field in spec.get("arguments", []):
-        if not isinstance(field, dict):
-            continue
-        name = str(field.get("name") or "").strip()
-        if not name:
-            continue
-        prompt_label = str(field.get("prompt") or name).strip()
-        default = field.get("default")
-        kind = str(field.get("kind") or "text").strip().lower()
-        choices = [str(item) for item in field.get("choices", []) if str(item).strip()]
-        required = bool(field.get("required"))
-        multiple = bool(field.get("multiple"))
-
-        while True:
-            default_suffix = ""
-            if kind == "bool":
-                default_suffix = " [Y/n]" if bool(default) else " [y/N]"
-            elif default not in {None, ""}:
-                default_suffix = f" [{default}]"
-            try:
-                raw_value = _prompt_text(f"{prompt_label}{default_suffix}: ", input_reader=input_reader)
-            except (EOFError, KeyboardInterrupt):
-                print()
-                return None
-            value = str(raw_value or "").strip()
-            if kind == "bool":
-                parsed_bool = _parse_yes_no(value, default=bool(default))
-                if parsed_bool is None:
-                    print("Please answer yes or no.")
-                    continue
-                answers[name] = parsed_bool
-                break
-            if not value:
-                value = str(default or "").strip()
-            if required and not value:
-                print("A value is required.")
-                continue
-            if choices and value:
-                matching = next((choice for choice in choices if choice.lower() == value.lower()), None)
-                if matching is None:
-                    print(f"Choose one of: {', '.join(choices)}")
-                    continue
-                answers[name] = matching
-                break
-            if multiple:
-                answers[name] = [item.strip() for item in value.split(",") if item.strip()]
-                if required and not answers[name]:
-                    print("At least one value is required.")
-                    continue
-                break
-            answers[name] = value
-            break
-    return answers
-
-
-def _dev_tool_argv(spec: dict[str, Any], answers: dict[str, Any]) -> list[str]:
-    """Build argv for one self-described dev tool."""
-    script_path = Path(str(spec.get("script_path") or "")).resolve()
-    argv = [sys.executable, str(script_path)]
-    argv.extend(str(item) for item in spec.get("fixed_args", []))
-    for field in spec.get("arguments", []):
-        if not isinstance(field, dict):
-            continue
-        name = str(field.get("name") or "").strip()
-        if not name:
-            continue
-        value = answers.get(name)
-        kind = str(field.get("kind") or "text").strip().lower()
-        if kind == "bool":
-            bool_value = bool(value)
-            argv.extend(str(item) for item in field.get("args_when_true" if bool_value else "args_when_false", []))
-            continue
-        flag = str(field.get("flag") or "").strip()
-        if not flag:
-            continue
-        if field.get("multiple"):
-            for item in value or []:
-                argv.extend([flag, str(item)])
-            continue
-        text_value = str(value or "").strip()
-        if text_value:
-            argv.extend([flag, text_value])
-    return argv
-
-
-def _run_dev_tool_spec(spec: dict[str, Any], answers: dict[str, Any]) -> int:
-    """Execute one configured dev-tool spec in the foreground."""
-    logger = _get_logger()
-    argv = _dev_tool_argv(spec, answers)
-    logger.info("executing dev tool label=%s argv=%s", spec.get("label"), argv)
-    print(f"Executing: {_command_text_from_args(argv)}")
-    completed = subprocess.run(
-        argv,
-        cwd=str(_repo_root()),
-        env=_build_exec_env(),
-        check=False,
-    )
-    return int(completed.returncode)
-
-
-def _execute_dev_fluentbit_config_workflow(
-    *,
-    input_reader: Callable[[str], str] | None = None,
-) -> int:
-    """Prompt for and run one or more dev-only Fluent Bit generation utilities."""
-    if _dev_features_enabled() is not True:
-        print(
-            f"{COMMAND_DEV_FLB_CONFIG} is only available when {APP_ENABLE_DEV_FEATURES_ENV}=true.",
-            file=sys.stderr,
-        )
-        return 1
-    specs = _fluentbit_dev_tool_specs()
-    if not specs:
-        print(
-            f"{COMMAND_DEV_FLB_CONFIG} is unavailable because the Fluent Bit dev tool scripts could not be located.",
-            file=sys.stderr,
-        )
-        return 1
-    selected_specs = _prompt_dev_tool_selection(
-        specs,
-        command_name=COMMAND_DEV_FLB_CONFIG,
-        tool_family_label="Fluent Bit",
-        input_reader=input_reader,
-    )
-    if not selected_specs:
-        return 0
-    for spec in selected_specs:
-        print(f"Configure: {spec.get('label')}")
-        answers = _prompt_dev_tool_arguments(spec, input_reader=input_reader)
-        if answers is None:
-            return 0
-        exit_code = _run_dev_tool_spec(spec, answers)
-        if exit_code != 0:
-            return exit_code
-    return 0
-
-
-def _execute_dev_mcp_config_workflow(
-    *,
-    input_reader: Callable[[str], str] | None = None,
-) -> int:
-    """Prompt for and run one or more dev-only MCP configuration utilities."""
-    if _dev_features_enabled() is not True:
-        print(
-            f"{COMMAND_DEV_MCP_CONFIG} is only available when {APP_ENABLE_DEV_FEATURES_ENV}=true.",
-            file=sys.stderr,
-        )
-        return 1
-    specs = _mcp_dev_tool_specs()
-    if not specs:
-        print(
-            f"{COMMAND_DEV_MCP_CONFIG} is unavailable because the MCP dev tool scripts could not be located.",
-            file=sys.stderr,
-        )
-        return 1
-    selected_specs = _prompt_dev_tool_selection(
-        specs,
-        command_name=COMMAND_DEV_MCP_CONFIG,
-        tool_family_label="MCP",
-        input_reader=input_reader,
-    )
-    if not selected_specs:
-        return 0
-    for spec in selected_specs:
-        print(f"Configure: {spec.get('label')}")
-        answers = _prompt_dev_tool_arguments(spec, input_reader=input_reader)
-        if answers is None:
-            return 0
-        exit_code = _run_dev_tool_spec(spec, answers)
-        if exit_code != 0:
-            return exit_code
-    return 0
-
-
-def _execute_dev_pid_lookup_workflow(
-    *,
-    input_reader: Callable[[str], str] | None = None,
-) -> int:
-    """Prompt for a regex and report running processes that match it."""
-    if _dev_pid_lookup_available() is not True:
-        print(
-            f"{COMMAND_DEV_PID_LOOKUP} is only available when {APP_ENABLE_DEV_FEATURES_ENV}=true.",
-            file=sys.stderr,
-        )
-        return 1
-    pattern_text = _prompt_pid_lookup_regex(input_reader=input_reader)
-    if pattern_text is None:
-        return 0
-    try:
-        pattern = re.compile(pattern_text, re.IGNORECASE)
-    except re.error as exc:
-        print(f"Invalid regular expression: {exc}", file=sys.stderr)
-        return 1
-    snapshot_ok, processes = _running_process_entries()
-    if snapshot_ok is not True:
-        print("Unable to collect the running process list.", file=sys.stderr)
-        return 1
-    matches = _process_entries_matching_pattern(processes, pattern=pattern)
-    _print_pid_lookup_results(pattern_text, matches)
-    return 0 if matches else 1
-
-
-def _prompt_pid_lookup_regex(
-    *,
-    input_reader: Callable[[str], str] | None = None,
-) -> str | None:
-    """Prompt for the regex used by the dev PID lookup workflow."""
-    while True:
-        try:
-            raw_value = _prompt_text(
-                "Process regular expression (blank to cancel): ",
-                input_reader=input_reader,
-            )
-        except (EOFError, KeyboardInterrupt):
-            print()
-            return None
-        pattern_text = str(raw_value or "").strip()
-        if pattern_text:
-            return pattern_text
-        return None
-
-
 def _running_process_entries() -> tuple[bool, list[dict[str, Any]]]:
     """Return a snapshot of running process details for the current platform."""
     if _is_windows():
@@ -977,6 +882,7 @@ def _windows_process_entries() -> tuple[bool, list[dict[str, Any]]]:
             check=False,
             capture_output=True,
             text=True,
+            **_windows_no_console_kwargs(),
         )
     except OSError:
         return False, []
@@ -1500,6 +1406,7 @@ def _is_process_running_windows(pid: int) -> bool:
             check=False,
             capture_output=True,
             text=True,
+            **_windows_no_console_kwargs(),
         )
     except OSError:
         return False
@@ -1625,7 +1532,7 @@ def _record_cli_process(  # noqa: PLR0913
             "cwd": str(cwd.resolve()),
             "log_file": str(log_file.resolve()) if log_file is not None else "",
             "started_at": _utc_timestamp(),
-            "metadata": metadata or {},
+            ACTION_KEY_METADATA: metadata or {},
         }
     )
     _save_cli_process_state(payload)
@@ -1651,89 +1558,6 @@ def _prepare_launch_log(*, label: str, command_text: str, cwd: Path, log_name: s
     return log_file
 
 
-def _powershell_single_quote(value: str) -> str:
-    """Return a PowerShell-safe single-quoted string literal."""
-    return "'" + str(value).replace("'", "''") + "'"
-
-
-def _launch_process_tail_shell(*, label: str, log_file: Path) -> bool:
-    """Open a new shell window tailing the provided log file."""
-    resolved_log = log_file.resolve()
-    if resolved_log.exists() is not True:
-        return False
-
-    if _is_windows():
-        command = (
-            f"Write-Host 'Tailing {label}'; "
-            f"Get-Content -Path {_powershell_single_quote(str(resolved_log))} "
-            f"-Wait -Tail {PROCESS_TAIL_INITIAL_LINES}"
-        )
-        subprocess.Popen(  # pylint: disable=consider-using-with
-            ["powershell.exe", "-NoExit", "-Command", command],
-            cwd=str(_repo_root()),
-            creationflags=getattr(subprocess, "CREATE_NEW_CONSOLE", 0),
-        )
-        return True
-
-    bash_path = shutil.which("bash") or "/bin/bash"
-    tail_command = (
-        f"printf 'Tailing {label}\\n'; "
-        f"tail -n {PROCESS_TAIL_INITIAL_LINES} -f {_shell_quote(str(resolved_log))}"
-    )
-    terminal_candidates = [
-        ["x-terminal-emulator", "-e", bash_path, "-lc", tail_command],
-        ["gnome-terminal", "--", bash_path, "-lc", tail_command],
-        ["konsole", "-e", bash_path, "-lc", tail_command],
-        ["xfce4-terminal", "--command", f"{bash_path} -lc {shlex.quote(tail_command)}"],
-        ["mate-terminal", "--", bash_path, "-lc", tail_command],
-        ["lxterminal", "-e", f"{bash_path} -lc {shlex.quote(tail_command)}"],
-        ["xterm", "-e", bash_path, "-lc", tail_command],
-    ]
-    for candidate in terminal_candidates:
-        executable = shutil.which(candidate[0])
-        if not executable:
-            continue
-        subprocess.Popen(  # pylint: disable=consider-using-with
-            [executable, *candidate[1:]],
-            cwd=str(_repo_root()),
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            start_new_session=True,
-        )
-        return True
-    return False
-
-
-def _open_process_tail_if_enabled(*, label: str, log_file: Path) -> None:
-    """Open a tail shell for a managed process log when the feature is enabled."""
-    logger = _get_logger()
-    if _process_tail_enabled() is not True:
-        logger.info("process tailing skipped because feature is disabled label=%s", label)
-        return
-    print(f"Process tailing enabled for {label}; log file: {log_file}")
-    try:
-        opened = _launch_process_tail_shell(label=label, log_file=log_file)
-    except Exception as exc:  # pragma: no cover - defensive shell-launch guard
-        logger.exception(
-            "failed to open process tail shell label=%s log_file=%s",
-            label,
-            log_file,
-            exc_info=exc,
-        )
-        print(f"Warning: failed to open process tail for {label}: {exc}", file=sys.stderr)
-        return
-    if opened:
-        logger.info("opened process tail shell label=%s log_file=%s", label, log_file)
-        print(f"Opened tail shell for {label}: {log_file}")
-        return
-    logger.warning("no terminal launcher available for process tail label=%s", label)
-    print(
-        f"Warning: no terminal launcher was available for process tailing {label}",
-        file=sys.stderr,
-    )
-
-
 def _terminate_process(pid: int) -> None:
     """Best-effort termination of one managed process ID."""
     if pid <= 0:
@@ -1745,6 +1569,7 @@ def _terminate_process(pid: int) -> None:
                 check=False,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
+                **_windows_no_console_kwargs(),
             )
         else:
             os.kill(pid, 15)
@@ -1813,15 +1638,34 @@ def _http_ready(url: str) -> bool:
         return False
 
 
+def _tcp_ready(endpoint: str) -> bool:
+    """Return whether a TCP endpoint accepts a connection."""
+    host, separator, port_text = endpoint.rpartition(":")
+    if not separator:
+        return False
+    host = host.strip("[]") or LOCALHOST_ADDRESS
+    try:
+        port = int(port_text)
+    except ValueError:
+        return False
+    try:
+        with socket.create_connection((host, port), timeout=1.0):
+            return True
+    except OSError:
+        return False
+
+
 def _wait_for_background_start(
     *,
     process: subprocess.Popen[Any],
     log_file: Path,
     readiness_url: str,
+    readiness_tcp: str = "",
 ) -> tuple[bool, str]:
     """Wait for early exit, startup failure markers, and optional readiness."""
     deadline = time.monotonic() + PROCESS_READY_TIMEOUT_SECONDS
     ready_seen = False
+    readiness_target = readiness_url or readiness_tcp
     while time.monotonic() < deadline:
         exit_code = process.poll()
         if exit_code is not None:
@@ -1832,13 +1676,18 @@ def _wait_for_background_start(
         if readiness_url:
             if _http_ready(readiness_url):
                 ready_seen = True
+        elif readiness_tcp:
+            if _tcp_ready(readiness_tcp):
+                ready_seen = True
         else:
             return True, ""
+        if ready_seen:
+            return True, ""
         time.sleep(PROCESS_READY_POLL_INTERVAL_SECONDS)
-    if readiness_url:
+    if readiness_target:
         if ready_seen and process.poll() is None and _log_has_startup_failure(log_file) is None:
             return True, ""
-        return False, f"readiness probe timed out for {readiness_url}"
+        return False, f"readiness probe timed out for {readiness_target}"
     return True, ""
 
 
@@ -1854,16 +1703,187 @@ def _remove_cli_process_records(names: Iterable[str]) -> None:
     _save_cli_process_state({"processes": kept})
 
 
+def _resolve_path_relative_to(raw_path: str, base_dir: Path) -> Path:
+    """Resolve one path relative to a config file directory."""
+    candidate = Path(str(raw_path or "").strip()).expanduser()
+    if candidate.is_absolute():
+        return candidate.resolve()
+    return (base_dir / candidate).resolve()
+
+
+def _strip_config_scalar(value: str) -> str:
+    """Return a simple YAML-ish scalar without wrapping quotes or comments."""
+    text = str(value or "").strip()
+    if "#" in text:
+        text = text.split("#", 1)[0].strip()
+    if len(text) >= 2 and text[0] == text[-1] and text[0] in {"'", '"'}:
+        return text[1:-1]
+    return text
+
+
+def _elastic_agent_log_dirs_from_config(config_path: Path) -> set[Path]:
+    """Return Elastic Agent or Beat log directories declared by one YAML config file."""
+    if config_path.is_file() is not True:
+        return set()
+    try:
+        lines = config_path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return set()
+
+    log_dirs: set[Path] = set()
+    in_logging_files = False
+    logging_indent = -1
+    for line in lines:
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        indent = len(line) - len(line.lstrip())
+        stripped = line.strip()
+        if stripped.startswith(("agent.logging.files:", "logging.files:")):
+            in_logging_files = True
+            logging_indent = indent
+            continue
+        if in_logging_files and indent <= logging_indent:
+            in_logging_files = False
+        if in_logging_files and stripped.startswith("path:"):
+            raw_value = _strip_config_scalar(stripped.split(":", 1)[1])
+            if raw_value:
+                log_dirs.add(_resolve_path_relative_to(raw_value, config_path.parent))
+    return log_dirs
+
+
+def _configured_agent_config_paths_from_opamp_config(config_path: Path) -> set[Path]:
+    """Return agent config paths referenced by one OpAMP JSON config."""
+    payload = _load_json_file(config_path)
+    consumer = payload.get("consumer", {})
+    if not isinstance(consumer, dict):
+        return set()
+    raw_path = str(consumer.get(CONFIG_KEY_AGENT_CONFIG_PATH) or "").strip()
+    if not raw_path:
+        return set()
+    return {_resolve_path_relative_to(raw_path, config_path.parent)}
+
+
+def _log_locations_from_demo_config() -> tuple[set[Path], set[Path]]:
+    """Return log directories and files discovered from demo profile config."""
+    log_dirs: set[Path] = set()
+    log_files: set[Path] = set()
+    for entry in container_management.configured_container_entries(
+        demo_config_path=_demo_consumer_config_path(),
+        demo_profiles=_load_demo_consumer_profiles(),
+    ):
+        volumes = [
+            dict(volume)
+            for volume in entry.get("volumes", [])
+            if isinstance(volume, dict)
+        ]
+        for raw_dir in entry.get("ensure_dirs", []):
+            if str(raw_dir or "").strip():
+                log_dirs.add(_resolve_path_from_repo(str(raw_dir)))
+        command = [str(item) for item in entry.get("command", [])]
+        for index, part in enumerate(command):
+            if part == "--path.logs" and index + 1 < len(command):
+                mapped_path = container_management.mapped_container_path_to_host_path(
+                    container_path=command[index + 1],
+                    volumes=volumes,
+                    resolve_path_from_repo=_resolve_path_from_repo,
+                )
+                if mapped_path is not None:
+                    log_dirs.add(mapped_path)
+
+    for profile in _load_demo_consumer_profiles():
+        for section_name in DEMO_CONSUMER_CLIENT_CONFIG_KEYS:
+            section = profile.get(section_name, {})
+            if not isinstance(section, dict):
+                continue
+            raw_config = str(section.get(CONFIG_KEY_CONFIG_PATH) or "").strip()
+            if raw_config:
+                agent_paths = _configured_agent_config_paths_from_opamp_config(
+                    _resolve_path_from_repo(raw_config)
+                )
+                for agent_path in agent_paths:
+                    log_dirs.update(_elastic_agent_log_dirs_from_config(agent_path))
+            raw_agent = str(section.get(CONFIG_KEY_AGENT_CONFIG_PATH) or "").strip()
+            if raw_agent:
+                log_dirs.update(
+                    _elastic_agent_log_dirs_from_config(_resolve_path_from_repo(raw_agent))
+                )
+    return log_dirs, log_files
+
+
+def _discover_log_locations() -> tuple[set[Path], set[Path]]:
+    """Return log directories and exact log files known to the CLI."""
+    log_dirs: set[Path] = {_cli_log_dir()}
+    log_files: set[Path] = {_cli_component_log_path()}
+
+    state_payload = _load_cli_process_state()
+    for record in state_payload.get("processes", []):
+        if not isinstance(record, dict):
+            continue
+        raw_log_file = str(record.get("log_file") or "").strip()
+        if raw_log_file:
+            log_files.add(Path(raw_log_file).expanduser().resolve())
+
+    opamp_config_path, _source = _effective_opamp_config_path()
+    for agent_path in _configured_agent_config_paths_from_opamp_config(opamp_config_path):
+        log_dirs.update(_elastic_agent_log_dirs_from_config(agent_path))
+
+    demo_dirs, demo_files = _log_locations_from_demo_config()
+    log_dirs.update(demo_dirs)
+    log_files.update(demo_files)
+    return log_dirs, log_files
+
+
+def _iter_log_files(directory: Path) -> Iterable[Path]:
+    """Yield log-like files beneath a directory."""
+    if directory.is_dir() is not True:
+        return
+    for path in directory.rglob("*"):
+        if path.is_file() and path.suffix.lower() in LOG_FILE_SUFFIXES:
+            yield path.resolve()
+
+
+def _clear_logs() -> int:
+    """Clear log files discovered from CLI defaults and configured paths."""
+    log_dirs, exact_log_files = _discover_log_locations()
+    _close_cli_logger()
+
+    candidates: set[Path] = set()
+    candidates.update(path for path in exact_log_files if path.exists())
+    for directory in log_dirs:
+        candidates.update(_iter_log_files(directory))
+
+    deleted = 0
+    errors: list[str] = []
+    for path in sorted(candidates, key=lambda item: str(item).lower()):
+        try:
+            if path.is_file():
+                path.unlink()
+                deleted += 1
+        except OSError as exc:
+            errors.append(f"{path}: {exc}")
+
+    print(f"Log directories checked: {len(log_dirs)}")
+    for directory in sorted(log_dirs, key=lambda item: str(item).lower()):
+        print(f"  {directory}")
+    print(f"Log files deleted: {deleted}")
+    if errors:
+        print("Log files not deleted:", file=sys.stderr)
+        for error in errors:
+            print(f"  {error}", file=sys.stderr)
+        return 1
+    return 0
+
+
 def _effective_opamp_config_path() -> tuple[Path, str]:
     """Return the effective OpAMP config path and where it was selected from."""
-    configured_path = str(os.environ.get("OPAMP_CONFIG_PATH") or "").strip()
+    configured_path = str(os.environ.get(OPAMP_CONFIG_PATH_ENV) or "").strip()
     if configured_path:
         path = Path(configured_path).expanduser()
         if not path.is_absolute():
             path = (_repo_root() / path).resolve()
         else:
             path = path.resolve()
-        return path, "OPAMP_CONFIG_PATH"
+        return path, OPAMP_CONFIG_PATH_ENV
     return (_repo_root() / "config" / "opamp.json").resolve(), "default"
 
 
@@ -1944,6 +1964,12 @@ def _print_option_hierarchy() -> int:
         print("  config:")
         print("    - validate <path>")
         print("    - metadata <path>")
+    container_actions = _configured_container_start_actions()
+    if container_actions:
+        print("")
+        print("Configured container starts:")
+        for label, _action in container_actions:
+            print(f"  - {label}")
     print("")
     print("Guided actions:")
     for intent in GUIDED_INTENTS:
@@ -2027,13 +2053,13 @@ def _python_module_command(
     module_command = " ".join(module_bits)
 
     extra_paths = [str(path.resolve()) for path in (python_paths or [])]
-    existing = os.environ.get("PYTHONPATH", "")
+    existing = os.environ.get(PYTHONPATH_ENV, "")
     all_paths = [*extra_paths]
     if existing.strip():
         all_paths.append(existing)
     merged_env = dict(env or {})
     if all_paths:
-        merged_env["PYTHONPATH"] = os.pathsep.join(all_paths)
+        merged_env[PYTHONPATH_ENV] = os.pathsep.join(all_paths)
     return _shell_command(command_text=module_command, env=merged_env, cwd=cwd)
 
 
@@ -2064,11 +2090,11 @@ def _build_exec_env(
     merged = dict(os.environ)
     merged.update(env or {})
     extra_paths = [str(path.resolve()) for path in (python_paths or [])]
-    existing = str(merged.get("PYTHONPATH", "")).strip()
+    existing = str(merged.get(PYTHONPATH_ENV, "")).strip()
     if existing:
         extra_paths.append(existing)
     if extra_paths:
-        merged["PYTHONPATH"] = os.pathsep.join(extra_paths)
+        merged[PYTHONPATH_ENV] = os.pathsep.join(extra_paths)
     merged.setdefault("PYTHONUNBUFFERED", "1")
     return merged
 
@@ -2112,19 +2138,37 @@ def _load_demo_consumer_profiles() -> list[dict[str, Any]]:
         name = str(entry.get("name") or "").strip()
         if not name:
             continue
-        fluentbit = entry.get("fluentbit", {})
-        fluentd = entry.get("fluentd", {})
+        fluentbit = entry.get(DEMO_PROFILE_KEY_FLUENTBIT, {})
+        fluentd = entry.get(DEMO_PROFILE_KEY_FLUENTD, {})
         simulator = entry.get("simulator", {})
-        if not isinstance(fluentbit, dict) or not isinstance(fluentd, dict) or not isinstance(simulator, dict):
+        elastic_agent = entry.get(DEMO_PROFILE_KEY_ELASTIC_AGENT, {})
+        elastic_heartbeat = entry.get(DEMO_PROFILE_KEY_ELASTIC_HEARTBEAT, {})
+        containers = entry.get("containers", [])
+        if (
+            not isinstance(fluentbit, dict)
+            or not isinstance(fluentd, dict)
+            or not isinstance(simulator, dict)
+            or not isinstance(elastic_agent, dict)
+            or not isinstance(elastic_heartbeat, dict)
+        ):
             continue
+        if not isinstance(containers, list):
+            containers = []
         profiles.append(
             {
                 "profile_index": index,
                 "name": name,
                 "scenario_description": _demo_profile_scenario_description(entry),
-                "fluentbit": dict(fluentbit),
-                "fluentd": dict(fluentd),
+                DEMO_PROFILE_KEY_FLUENTBIT: dict(fluentbit),
+                DEMO_PROFILE_KEY_FLUENTD: dict(fluentd),
                 "simulator": dict(simulator),
+                DEMO_PROFILE_KEY_ELASTIC_AGENT: dict(elastic_agent),
+                DEMO_PROFILE_KEY_ELASTIC_HEARTBEAT: dict(elastic_heartbeat),
+                "containers": [
+                    dict(container)
+                    for container in containers
+                    if isinstance(container, dict)
+                ],
             }
         )
     return profiles
@@ -2163,6 +2207,43 @@ def _demo_profile_label(profile: dict[str, Any]) -> str:
 def _demo_record_prefix(profile_name: str) -> str:
     """Return record-name prefix used for one demo profile."""
     return f"Demo:{profile_name}"
+
+
+def _configured_container_start_actions() -> list[tuple[str, dict[str, Any]]]:
+    """Return configured container start actions when a runtime is available."""
+    runtime = container_management.container_runtime_executable()
+    if not runtime:
+        return []
+    actions: list[tuple[str, dict[str, Any]]] = []
+    for entry in container_management.configured_container_entries(
+        demo_config_path=_demo_consumer_config_path(),
+        demo_profiles=_load_demo_consumer_profiles(),
+    ):
+        action = container_management.container_start_action_from_entry(
+            entry,
+            runtime=runtime,
+            repo_root=_repo_root(),
+            resolve_path_from_repo=_resolve_path_from_repo,
+            command_text_from_args=_command_text_from_args,
+            background_start_action=_background_start_action,
+            build_exec_env=_build_exec_env,
+            demo_record_prefix=_demo_record_prefix,
+        )
+        if action is None:
+            continue
+        actions.append((str(action.get("label") or ""), action))
+    return actions
+
+
+def _action_matches_alias(action: dict[str, Any], selection: str) -> bool:
+    """Return whether a free-form selection matches one standalone action."""
+    normalized = _normalized_label(selection)
+    if not normalized:
+        return False
+    for alias in _guided_action_aliases(action):
+        if _normalized_label(alias) == normalized:
+            return True
+    return False
 
 
 def _simulator_state_path_from_profile(profile: dict[str, Any]) -> Path:
@@ -2236,6 +2317,8 @@ def _background_start_action(  # noqa: PLR0913
     env: dict[str, str],
     launch_url: str | None = None,
     readiness_url: str | None = None,
+    readiness_tcp: str | None = None,
+    clear_supervisor_signal: bool = False,
 ) -> dict[str, Any]:
     """Create one background-launch guided action."""
     return {
@@ -2246,11 +2329,30 @@ def _background_start_action(  # noqa: PLR0913
         "argv": argv,
         "cwd": str(cwd.resolve()),
         "env": env,
-        "record_name": label,
-        "log_name": _slugify(label),
+        ACTION_KEY_RECORD_NAME: label,
+        ACTION_KEY_LOG_NAME: _slugify(label),
         "launch_url": str(launch_url or "").strip(),
         "readiness_url": str(readiness_url or "").strip(),
+        "readiness_tcp": str(readiness_tcp or "").strip(),
+        "clear_supervisor_signal": clear_supervisor_signal,
     }
+
+
+def _clear_stale_supervisor_signal(*, cwd: Path) -> None:
+    """Remove an old supervisor stop signal before launching a managed client."""
+    signal_path = cwd / SUPERVISOR_SEMAPHORE_FILENAME
+    if not signal_path.exists():
+        return
+    try:
+        signal_path.unlink()
+    except OSError as exc:
+        _get_logger().warning(
+            "failed to remove stale supervisor signal path=%s error=%s",
+            signal_path,
+            exc,
+        )
+        return
+    _get_logger().info("removed stale supervisor signal path=%s", signal_path)
 
 
 def _simulator_start_action(  # noqa: PLR0913
@@ -2304,10 +2406,18 @@ def _demo_consumer_start_action(profile: dict[str, Any]) -> dict[str, Any]:
         "profile_index": profile_index,
         "scenario_description": _action_scenario_description(profile),
         "aliases": [
-            f"demo consumers {profile_name}",
+            f"{DEMO_CONSUMERS_SELECTION} {profile_name}",
             f"demo {profile_name}",
             f"consumers {profile_name}",
-            *( [f"demo consumers {profile_index}", f"demo {profile_index}", f"consumers {profile_index}"] if profile_index > 0 else [] ),
+            *(
+                [
+                    f"{DEMO_CONSUMERS_SELECTION} {profile_index}",
+                    f"demo {profile_index}",
+                    f"consumers {profile_index}",
+                ]
+                if profile_index > 0
+                else []
+            ),
         ],
     }
 
@@ -2325,10 +2435,18 @@ def _demo_consumer_stop_action(profile: dict[str, Any]) -> dict[str, Any]:
         "profile_index": profile_index,
         "scenario_description": _action_scenario_description(profile),
         "aliases": [
-            f"demo consumers {profile_name}",
+            f"{DEMO_CONSUMERS_SELECTION} {profile_name}",
             f"demo {profile_name}",
             f"consumers {profile_name}",
-            *( [f"demo consumers {profile_index}", f"demo {profile_index}", f"consumers {profile_index}"] if profile_index > 0 else [] ),
+            *(
+                [
+                    f"{DEMO_CONSUMERS_SELECTION} {profile_index}",
+                    f"demo {profile_index}",
+                    f"consumers {profile_index}",
+                ]
+                if profile_index > 0
+                else []
+            ),
         ],
     }
 
@@ -2340,7 +2458,7 @@ def _start_actions() -> list[tuple[str, dict[str, Any]]]:  # noqa: PLR0915
     opamp_config_path = (repo_root / "config" / "opamp.json").resolve()
 
     server_args = ["--port", str(DEFAULT_SERVER_PORT)]
-    server_env = {"OPAMP_CONFIG_PATH": str(opamp_config_path)}
+    server_env = {OPAMP_CONFIG_PATH_ENV: str(opamp_config_path)}
     server_cmd = _python_module_command(
         module_name="opamp_provider.server",
         python_paths=[repo_root / "provider" / "src"],
@@ -2358,8 +2476,8 @@ def _start_actions() -> list[tuple[str, dict[str, Any]]]:  # noqa: PLR0915
             python_paths=[repo_root / "provider" / "src"],
             env=server_env,
         ),
-        launch_url=f"http://127.0.0.1:{DEFAULT_SERVER_PORT}/ui",
-        readiness_url=f"http://127.0.0.1:{DEFAULT_SERVER_PORT}/ui",
+        launch_url=f"http://{LOCALHOST_ADDRESS}:{DEFAULT_SERVER_PORT}/ui",
+        readiness_url=f"http://{LOCALHOST_ADDRESS}:{DEFAULT_SERVER_PORT}/ui",
     )
 
     catalog_service_config_path = (
@@ -2381,7 +2499,7 @@ def _start_actions() -> list[tuple[str, dict[str, Any]]]:  # noqa: PLR0915
             catalog_port = int(catalog_config.get("web_port") or DEFAULT_CATALOG_WEB_PORT)
         except (TypeError, ValueError):
             catalog_port = DEFAULT_CATALOG_WEB_PORT
-        catalog_args = ["--config-path", str(catalog_service_config_path)]
+        catalog_args = [ARG_CONFIG_PATH, str(catalog_service_config_path)]
         catalog_server_cmd = _python_module_command(
             module_name="catalog_service",
             python_paths=[repo_root / "catalog-service" / "src"],
@@ -2397,12 +2515,12 @@ def _start_actions() -> list[tuple[str, dict[str, Any]]]:  # noqa: PLR0915
             env=_build_exec_env(
                 python_paths=[repo_root / "catalog-service" / "src"],
             ),
-            launch_url=f"http://127.0.0.1:{catalog_port}{catalog_route_path}",
-            readiness_url=f"http://127.0.0.1:{catalog_port}{catalog_route_path}",
+            launch_url=f"http://{LOCALHOST_ADDRESS}:{catalog_port}{catalog_route_path}",
+            readiness_url=f"http://{LOCALHOST_ADDRESS}:{catalog_port}{catalog_route_path}",
         )
 
     config_service_args = [
-        "--config-path",
+        ARG_CONFIG_PATH,
         str(
             repo_root
             / "config-service"
@@ -2433,8 +2551,8 @@ def _start_actions() -> list[tuple[str, dict[str, Any]]]:  # noqa: PLR0915
                 repo_root / "provider" / "src",
             ],
         ),
-        launch_url="http://127.0.0.1:8080/config-service/ui",
-        readiness_url="http://127.0.0.1:8080/config-service/ui",
+        launch_url=f"http://{LOCALHOST_ADDRESS}:8080/config-service/ui",
+        readiness_url=f"http://{LOCALHOST_ADDRESS}:8080/config-service/ui",
     )
 
     broker_env = {
@@ -2482,73 +2600,21 @@ def _start_actions() -> list[tuple[str, dict[str, Any]]]:  # noqa: PLR0915
         state_file=simulator_state_file,
     )
 
-    fluentbit_config = _existing_path(
-        repo_root / "tests" / "opamp.json",
-        repo_root / "config" / "opamp.json",
+    action_map[ACTION_ID_FLUENTBIT_CLIENT] = consumer_plugins.default_fluentbit_start_action(
+        repo_root=repo_root,
+        existing_path=_existing_path,
+        python_module_command=_python_module_command,
+        python_module_argv=_python_module_argv,
+        background_start_action=_background_start_action,
+        build_exec_env=_build_exec_env,
     )
-    fluentbit_agent_config = _existing_path(
-        repo_root / "tests" / "fluent-bit.yaml",
-        repo_root / "consumer" / "fluent-bit.yaml",
-    )
-    fluentbit_args = [
-        "--config-path",
-        str(fluentbit_config) if fluentbit_config else str((repo_root / "config" / "opamp.json").resolve()),
-        "--agent-config-path",
-        str(fluentbit_agent_config) if fluentbit_agent_config else str((repo_root / "consumer" / "fluent-bit.yaml").resolve()),
-    ]
-    fluentbit_env = {
-        "OPAMP_CONFIG_PATH": str(fluentbit_config or (repo_root / "config" / "opamp.json").resolve())
-    }
-    fluentbit_cmd = _python_module_command(
-        module_name="opamp_consumer.fluentbit_client",
-        python_paths=[repo_root / "consumer" / "src"],
-        args=fluentbit_args,
-        env=fluentbit_env,
-        cwd=repo_root,
-    )
-    action_map[ACTION_ID_FLUENTBIT_CLIENT] = _background_start_action(
-        action_id=ACTION_ID_FLUENTBIT_CLIENT,
-        label=LABEL_FLUENTBIT_CLIENT,
-        command_text=fluentbit_cmd,
-        argv=_python_module_argv(module_name="opamp_consumer.fluentbit_client", args=fluentbit_args),
-        cwd=repo_root,
-        env=_build_exec_env(
-            python_paths=[repo_root / "consumer" / "src"],
-            env=fluentbit_env,
-        ),
-    )
-
-    fluentd_config = _existing_path(
-        repo_root / "consumer" / "opamp-fluentd.json",
-        repo_root / "tests" / "opamp.json",
-        repo_root / "config" / "opamp.json",
-    )
-    fluentd_args = [
-        "--config-path",
-        str(fluentd_config) if fluentd_config else str((repo_root / "config" / "opamp.json").resolve()),
-        "--agent-config-path",
-        str((repo_root / "consumer" / "fluentd.conf").resolve()),
-    ]
-    fluentd_env = {
-        "OPAMP_CONFIG_PATH": str(fluentd_config or (repo_root / "config" / "opamp.json").resolve())
-    }
-    fluentd_cmd = _python_module_command(
-        module_name="opamp_consumer.fluentd_client",
-        python_paths=[repo_root / "consumer" / "src"],
-        args=fluentd_args,
-        env=fluentd_env,
-        cwd=repo_root,
-    )
-    action_map[ACTION_ID_FLUENTD_CLIENT] = _background_start_action(
-        action_id=ACTION_ID_FLUENTD_CLIENT,
-        label=LABEL_FLUENTD_CLIENT,
-        command_text=fluentd_cmd,
-        argv=_python_module_argv(module_name="opamp_consumer.fluentd_client", args=fluentd_args),
-        cwd=repo_root,
-        env=_build_exec_env(
-            python_paths=[repo_root / "consumer" / "src"],
-            env=fluentd_env,
-        ),
+    action_map[ACTION_ID_FLUENTD_CLIENT] = consumer_plugins.default_fluentd_start_action(
+        repo_root=repo_root,
+        existing_path=_existing_path,
+        python_module_command=_python_module_command,
+        python_module_argv=_python_module_argv,
+        background_start_action=_background_start_action,
+        build_exec_env=_build_exec_env,
     )
 
     actions = _materialize_ordered_actions(
@@ -2573,7 +2639,7 @@ def _stop_actions() -> list[tuple[str, dict[str, Any]]]:
     repo_root = _repo_root()
 
     server_stop_cmd = (
-        f"curl -sS -X POST http://127.0.0.1:{DEFAULT_SERVER_PORT}/api/shutdown "
+        f"curl -sS -X POST http://{LOCALHOST_ADDRESS}:{DEFAULT_SERVER_PORT}/api/shutdown "
         "-H \"Content-Type: application/json\" -d \"{\\\"confirm\\\": true}\""
     )
     action_map[ACTION_ID_SERVER] = {
@@ -2630,7 +2696,7 @@ def _stop_actions() -> list[tuple[str, dict[str, Any]]]:
                 f"type nul > {_shell_quote(str(semaphore_path.resolve()))} "
                 "&& powershell -NoProfile -Command "
                 "\"Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match "
-                "'opamp_consumer\\.fluentbit_client|opamp_consumer\\.fluentd_client' } | "
+                "'opamp_consumer\\.fluentbit\\.client|opamp_consumer\\.fluentd\\.client|opamp_consumer\\.client' } | "
                 "ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }\""
             ),
             cwd=repo_root,
@@ -2639,8 +2705,9 @@ def _stop_actions() -> list[tuple[str, dict[str, Any]]]:
         client_stop_cmd = _shell_command(
             command_text=(
                 f"touch {_shell_quote(str(semaphore_path.resolve()))} "
-                "&& pkill -TERM -f 'opamp_consumer\\.fluentbit_client' || true "
-                "&& pkill -TERM -f 'opamp_consumer\\.fluentd_client' || true"
+                "&& pkill -TERM -f 'opamp_consumer\\.fluentbit\\.client' || true "
+                "&& pkill -TERM -f 'opamp_consumer\\.fluentd\\.client' || true "
+                "&& pkill -TERM -f 'opamp_consumer\\.client' || true"
             ),
             cwd=repo_root,
         )
@@ -2809,13 +2876,16 @@ def _split_guided_command(command_text: str) -> tuple[str, str] | None:
     if not stripped:
         return None
     try:
-        tokens = shlex.split(stripped, posix=not _is_windows())
+        tokens = shlex.split(stripped, posix=True)
     except ValueError:
         tokens = stripped.split()
     if tokens:
         intent = str(tokens[0] or "").strip().strip("\"'").lower()
         if intent in GUIDED_INTENTS:
-            selection = " ".join(str(token) for token in tokens[1:]).strip()
+            selection = " ".join(
+                str(token or "").strip().strip("\"'")
+                for token in tokens[1:]
+            ).strip()
             return intent, selection
     for intent in GUIDED_INTENTS:
         if stripped.lower() == intent:
@@ -2837,9 +2907,9 @@ def _split_demo_shorthand_command(command_text: str) -> tuple[str, str] | None:
         return None
     lowered = stripped.lower()
     if lowered == COMMAND_DEMO:
-        return INTENT_START, "demo consumers"
-    if lowered == "demo consumers":
-        return INTENT_START, "demo consumers"
+        return INTENT_START, DEMO_CONSUMERS_SELECTION
+    if lowered == DEMO_CONSUMERS_SELECTION:
+        return INTENT_START, DEMO_CONSUMERS_SELECTION
     if lowered.startswith(f"{COMMAND_DEMO} "):
         return INTENT_START, stripped
     return None
@@ -2851,6 +2921,11 @@ def _resolve_guided_action(intent: str, selection: str) -> dict[str, Any] | None
     for label, action in actions:
         if _matches_guided_label(selection, label):
             return action
+    selected = str(selection or "").strip()
+    if selected.isdigit():
+        index = int(selected)
+        if 1 <= index <= len(actions):
+            return actions[index - 1][1]
     return None
 
 
@@ -2922,7 +2997,7 @@ def _tracked_restart_pids(*, action_id: str, start_action: dict[str, Any], stop_
         for item in stop_action.get("record_names", [])
         if str(item).strip()
     }
-    start_record_name = str(start_action.get("record_name") or "").strip()
+    start_record_name = str(start_action.get(ACTION_KEY_RECORD_NAME) or "").strip()
     if start_record_name:
         tracked_names.add(start_record_name)
 
@@ -3128,18 +3203,33 @@ def _start_demo_consumers(action: dict[str, Any]) -> int:
         print(f"Demo profile not found: {profile_name}", file=sys.stderr)
         return 1
 
-    fluentbit = dict(profile.get("fluentbit", {}))
-    fluentd = dict(profile.get("fluentd", {}))
+    fluentbit = dict(profile.get(DEMO_PROFILE_KEY_FLUENTBIT, {}))
+    fluentd = dict(profile.get(DEMO_PROFILE_KEY_FLUENTD, {}))
     simulator = dict(profile.get("simulator", {}))
+    elastic_agent = dict(profile.get(DEMO_PROFILE_KEY_ELASTIC_AGENT, {}))
+    elastic_heartbeat = dict(profile.get(DEMO_PROFILE_KEY_ELASTIC_HEARTBEAT, {}))
+    containers = [
+        dict(item)
+        for item in profile.get("containers", [])
+        if isinstance(item, dict)
+    ]
 
-    fluentbit_config = _resolve_optional_path_from_repo(str(fluentbit.get("config_path") or ""))
-    fluentbit_agent = _resolve_optional_path_from_repo(str(fluentbit.get("agent_config_path") or ""))
-    fluentd_config = _resolve_optional_path_from_repo(str(fluentd.get("config_path") or ""))
-    fluentd_agent = _resolve_optional_path_from_repo(str(fluentd.get("agent_config_path") or ""))
+    fluentbit_config = _resolve_optional_path_from_repo(str(fluentbit.get(CONFIG_KEY_CONFIG_PATH) or ""))
+    fluentbit_agent = _resolve_optional_path_from_repo(str(fluentbit.get(CONFIG_KEY_AGENT_CONFIG_PATH) or ""))
+    fluentd_config = _resolve_optional_path_from_repo(str(fluentd.get(CONFIG_KEY_CONFIG_PATH) or ""))
+    fluentd_agent = _resolve_optional_path_from_repo(str(fluentd.get(CONFIG_KEY_AGENT_CONFIG_PATH) or ""))
     simulator_instances = _resolve_optional_path_from_repo(str(simulator.get("instances_path") or ""))
+    elastic_agent_config = _resolve_optional_path_from_repo(str(elastic_agent.get(CONFIG_KEY_CONFIG_PATH) or ""))
+    elastic_agent_agent = _resolve_optional_path_from_repo(str(elastic_agent.get(CONFIG_KEY_AGENT_CONFIG_PATH) or ""))
+    elastic_heartbeat_config = _resolve_optional_path_from_repo(str(elastic_heartbeat.get(CONFIG_KEY_CONFIG_PATH) or ""))
+    elastic_heartbeat_agent = _resolve_optional_path_from_repo(
+        str(elastic_heartbeat.get(CONFIG_KEY_AGENT_CONFIG_PATH) or "")
+    )
     simulator_state_file = _simulator_state_path_from_profile(profile)
 
     configured_components = 0
+    if containers:
+        configured_components += 1
     if fluentbit_config is not None or fluentbit_agent is not None:
         configured_components += 1
         if fluentbit_config is None or fluentbit_agent is None:
@@ -3155,6 +3245,24 @@ def _start_demo_consumers(action: dict[str, Any]) -> int:
             print(
                 "Demo profile Fluentd configuration is incomplete: both "
                 "`config_path` and `agent_config_path` are required when Fluentd is configured.",
+                file=sys.stderr,
+            )
+            return 1
+    if elastic_agent_config is not None or elastic_agent_agent is not None:
+        configured_components += 1
+        if elastic_agent_config is None:
+            print(
+                "Demo profile Elastic Agent configuration is incomplete: "
+                "`config_path` is required when Elastic Agent is configured.",
+                file=sys.stderr,
+            )
+            return 1
+    if elastic_heartbeat_config is not None or elastic_heartbeat_agent is not None:
+        configured_components += 1
+        if elastic_heartbeat_config is None or elastic_heartbeat_agent is None:
+            print(
+                "Demo profile Elastic Heartbeat configuration is incomplete: both "
+                "`config_path` and `agent_config_path` are required when Elastic Heartbeat is configured.",
                 file=sys.stderr,
             )
             return 1
@@ -3174,6 +3282,10 @@ def _start_demo_consumers(action: dict[str, Any]) -> int:
             fluentbit_agent,
             fluentd_config,
             fluentd_agent,
+            elastic_agent_config,
+            elastic_agent_agent,
+            elastic_heartbeat_config,
+            elastic_heartbeat_agent,
             simulator_instances,
         ]
         if path is not None
@@ -3191,6 +3303,42 @@ def _start_demo_consumers(action: dict[str, Any]) -> int:
     common_metadata = {"demo_profile": profile_name}
 
     sequence: list[dict[str, Any]] = []
+    if containers:
+        runtime = container_management.container_runtime_executable()
+        if not runtime:
+            print(
+                "Demo profile container starts require podman or docker, but neither runtime was found.",
+                file=sys.stderr,
+            )
+            return 1
+        runtime_ready, runtime_details = container_management.container_runtime_ready(
+            runtime,
+            windows_no_console_kwargs=_windows_no_console_kwargs,
+        )
+        if runtime_ready is not True:
+            container_management.print_container_runtime_unavailable(runtime, runtime_details)
+            return 1
+        for container_entry in containers:
+            container_action = container_management.container_start_action_from_entry(
+                container_entry,
+                runtime=runtime,
+                repo_root=_repo_root(),
+                profile_name=profile_name,
+                resolve_path_from_repo=_resolve_path_from_repo,
+                command_text_from_args=_command_text_from_args,
+                background_start_action=_background_start_action,
+                build_exec_env=_build_exec_env,
+                demo_record_prefix=_demo_record_prefix,
+            )
+            if container_action is None:
+                print(
+                    "Demo profile container start is incomplete: "
+                    f"{container_management.container_entry_id(container_entry)}",
+                    file=sys.stderr,
+                )
+                return 1
+            sequence.append(container_action)
+
     if simulator_instances is not None:
         simulator_action = _simulator_start_action(
             action_id=f"demo_simulator_{_slugify(profile_name)}",
@@ -3222,62 +3370,68 @@ def _start_demo_consumers(action: dict[str, Any]) -> int:
         sequence.append(simulator_action)
 
     if fluentbit_config is not None and fluentbit_agent is not None:
-        fluentbit_args = [
-            "--config-path",
-            str(fluentbit_config),
-            "--agent-config-path",
-            str(fluentbit_agent),
-        ]
-        fluentbit_action = _background_start_action(
-            action_id=f"demo_fluentbit_{_slugify(profile_name)}",
-            label=f"{LABEL_FLUENTBIT_CLIENT} ({profile_name})",
-            command_text=_python_module_command(
-                module_name="opamp_consumer.fluentbit_client",
-                python_paths=[repo_root / "consumer" / "src"],
-                args=fluentbit_args,
-                env={"OPAMP_CONFIG_PATH": str(fluentbit_config)},
-                cwd=repo_root,
-            ),
-            argv=_python_module_argv(module_name="opamp_consumer.fluentbit_client", args=fluentbit_args),
-            cwd=repo_root,
-            env=_build_exec_env(
-                python_paths=[repo_root / "consumer" / "src"],
-                env={"OPAMP_CONFIG_PATH": str(fluentbit_config)},
-            ),
+        sequence.append(
+            consumer_plugins.demo_fluentbit_start_action(
+                repo_root=repo_root,
+                profile_name=profile_name,
+                prefix=prefix,
+                config_path=fluentbit_config,
+                agent_config_path=fluentbit_agent,
+                common_metadata=common_metadata,
+                python_module_command=_python_module_command,
+                python_module_argv=_python_module_argv,
+                background_start_action=_background_start_action,
+                build_exec_env=_build_exec_env,
+            )
         )
-        fluentbit_action["record_name"] = f"{prefix}:{LABEL_FLUENTBIT_CLIENT}"
-        fluentbit_action["metadata"] = dict(common_metadata)
-        fluentbit_action["log_name"] = f"demo-{_slugify(profile_name)}-fluentbit-client"
-        sequence.append(fluentbit_action)
 
     if fluentd_config is not None and fluentd_agent is not None:
-        fluentd_args = [
-            "--config-path",
-            str(fluentd_config),
-            "--agent-config-path",
-            str(fluentd_agent),
-        ]
-        fluentd_action = _background_start_action(
-            action_id=f"demo_fluentd_{_slugify(profile_name)}",
-            label=f"{LABEL_FLUENTD_CLIENT} ({profile_name})",
-            command_text=_python_module_command(
-                module_name="opamp_consumer.fluentd_client",
-                python_paths=[repo_root / "consumer" / "src"],
-                args=fluentd_args,
-                env={"OPAMP_CONFIG_PATH": str(fluentd_config)},
-                cwd=repo_root,
-            ),
-            argv=_python_module_argv(module_name="opamp_consumer.fluentd_client", args=fluentd_args),
-            cwd=repo_root,
-            env=_build_exec_env(
-                python_paths=[repo_root / "consumer" / "src"],
-                env={"OPAMP_CONFIG_PATH": str(fluentd_config)},
-            ),
+        sequence.append(
+            consumer_plugins.demo_fluentd_start_action(
+                repo_root=repo_root,
+                profile_name=profile_name,
+                prefix=prefix,
+                config_path=fluentd_config,
+                agent_config_path=fluentd_agent,
+                common_metadata=common_metadata,
+                python_module_command=_python_module_command,
+                python_module_argv=_python_module_argv,
+                background_start_action=_background_start_action,
+                build_exec_env=_build_exec_env,
+            )
         )
-        fluentd_action["record_name"] = f"{prefix}:{LABEL_FLUENTD_CLIENT}"
-        fluentd_action["metadata"] = dict(common_metadata)
-        fluentd_action["log_name"] = f"demo-{_slugify(profile_name)}-fluentd-client"
-        sequence.append(fluentd_action)
+
+    if elastic_agent_config is not None:
+        sequence.append(
+            consumer_plugins.demo_elastic_agent_start_action(
+                repo_root=repo_root,
+                profile_name=profile_name,
+                prefix=prefix,
+                config_path=elastic_agent_config,
+                agent_config_path=elastic_agent_agent,
+                common_metadata=common_metadata,
+                python_module_command=_python_module_command,
+                python_module_argv=_python_module_argv,
+                background_start_action=_background_start_action,
+                build_exec_env=_build_exec_env,
+            )
+        )
+
+    if elastic_heartbeat_config is not None and elastic_heartbeat_agent is not None:
+        sequence.append(
+            consumer_plugins.demo_elastic_heartbeat_start_action(
+                repo_root=repo_root,
+                profile_name=profile_name,
+                prefix=prefix,
+                config_path=elastic_heartbeat_config,
+                agent_config_path=elastic_heartbeat_agent,
+                common_metadata=common_metadata,
+                python_module_command=_python_module_command,
+                python_module_argv=_python_module_argv,
+                background_start_action=_background_start_action,
+                build_exec_env=_build_exec_env,
+            )
+        )
     for sub_action in sequence:
         sub_kind = str(sub_action.get("kind") or "").strip()
         if sub_kind == ACTION_KIND_SIMULATOR_START:
@@ -3318,7 +3472,13 @@ def _launch_background_process(action: dict[str, Any]) -> int:
         str(key): str(value)
         for key, value in dict(action.get("env", {})).items()
     }
-    log_name = str(action.get("log_name") or _slugify(label))
+    if bool(action.get("clear_supervisor_signal", False)):
+        _clear_stale_supervisor_signal(cwd=cwd)
+    for raw_path in action.get("ensure_dirs", []):
+        directory = Path(str(raw_path or "")).expanduser()
+        if str(directory):
+            directory.mkdir(parents=True, exist_ok=True)
+    log_name = str(action.get(ACTION_KEY_LOG_NAME) or _slugify(label))
     log_file = _prepare_launch_log(
         label=label,
         command_text=str(action.get("command_text") or ""),
@@ -3338,6 +3498,7 @@ def _launch_background_process(action: dict[str, Any]) -> int:
         creationflags = 0
         creationflags |= getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
         creationflags |= getattr(subprocess, "DETACHED_PROCESS", 0)
+        creationflags |= getattr(subprocess, "CREATE_NO_WINDOW", 0)
         if creationflags:
             popen_kwargs["creationflags"] = creationflags
     else:
@@ -3386,10 +3547,12 @@ def _launch_background_process(action: dict[str, Any]) -> int:
         return int(exit_code) if int(exit_code) != 0 else 1
 
     readiness_url = str(action.get("readiness_url") or "").strip()
+    readiness_tcp = str(action.get("readiness_tcp") or "").strip()
     ready, reason = _wait_for_background_start(
         process=process,
         log_file=log_file,
         readiness_url=readiness_url,
+        readiness_tcp=readiness_tcp,
     )
     if ready is not True:
         _append_log_line(log_file, f"[{_utc_timestamp()}] startup_check_failed={reason}")
@@ -3405,21 +3568,21 @@ def _launch_background_process(action: dict[str, Any]) -> int:
         return 1
 
     _record_cli_process(
-        name=str(action.get("record_name") or label),
+        name=str(action.get(ACTION_KEY_RECORD_NAME) or label),
         pid=process.pid,
         command_text=str(action.get("command_text") or ""),
         cwd=cwd,
         log_file=log_file,
         metadata={
             str(key): value
-            for key, value in dict(action.get("metadata", {})).items()
+            for key, value in dict(action.get(ACTION_KEY_METADATA, {})).items()
         },
     )
     _append_log_line(log_file, f"[{_utc_timestamp()}] pid={process.pid}")
     logger.info(
         "background process recorded label=%s record_name=%s pid=%s readiness_url=%s log_file=%s",
         label,
-        str(action.get("record_name") or label),
+        str(action.get(ACTION_KEY_RECORD_NAME) or label),
         process.pid,
         readiness_url,
         log_file,
@@ -3428,7 +3591,15 @@ def _launch_background_process(action: dict[str, Any]) -> int:
     launch_url = str(action.get("launch_url") or "").strip()
     if launch_url:
         print(f"Open: {launch_url}")
-    _open_process_tail_if_enabled(label=label, log_file=log_file)
+    process_tail.open_process_tail_if_enabled(
+        label=label,
+        log_file=log_file,
+        enabled=_process_tail_enabled(),
+        logger=logger,
+        repo_root=_repo_root(),
+        is_windows=_is_windows(),
+        shell_quote=_shell_quote,
+    )
     return 0
 
 
@@ -3473,6 +3644,7 @@ def _record_simulator_batch(action: dict[str, Any]) -> int:
             check=False,
             stdout=log_handle,
             stderr=subprocess.STDOUT,
+            **_windows_no_console_kwargs(),
         )
     if int(completed.returncode) != 0:
         logger.warning(
@@ -3559,9 +3731,14 @@ def _record_simulator_batch(action: dict[str, Any]) -> int:
         log_file,
     )
     print(f"Started Simulator batch with {recorded} recorded process(es)")
-    _open_process_tail_if_enabled(
+    process_tail.open_process_tail_if_enabled(
         label=str(action.get("label") or LABEL_SIMULATOR),
         log_file=log_file,
+        enabled=_process_tail_enabled(),
+        logger=logger,
+        repo_root=_repo_root(),
+        is_windows=_is_windows(),
+        shell_quote=_shell_quote,
     )
     return 0
 
@@ -3584,6 +3761,14 @@ def _stop_recorded_processes(record_names: list[str]) -> int:
     for record in matches:
         pid = int(record.get("pid", 0) or 0)
         name = str(record.get("name") or "process")
+        if container_management.stop_recorded_container(
+            record,
+            logger=logger,
+            windows_no_console_kwargs=_windows_no_console_kwargs,
+        ):
+            logger.info("stopped recorded process name=%s pid=%s", name, pid)
+            print(f"Stopped {name} pid={pid}")
+            continue
         if pid <= 0:
             continue
         try:
@@ -3593,6 +3778,7 @@ def _stop_recorded_processes(record_names: list[str]) -> int:
                     check=False,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
+                    **_windows_no_console_kwargs(),
                 )
             else:
                 os.kill(pid, 15)
@@ -3640,8 +3826,9 @@ def _interactive_loop() -> int:  # noqa: PLR0912,PLR0915
     print("Prompt CLI ready. Prefix with 'script' to generate a script file.")
     print(
         "Example: script demo-start-clients "
-        "python -m opamp_consumer.fluentbit_client"
+        "python -m opamp_consumer.fluentbit.client"
     )
+    print(f"Use '{COMMAND_LIST}' to see all available commands.")
     print("You can type `start server`, `stop config editor`, or `restart server` directly.")
     if _fluentbit_dev_tool_available():
         print(f"Use `{COMMAND_DEV_FLB_CONFIG}` for the Fluent Bit dev generator workflow.")
@@ -3649,6 +3836,9 @@ def _interactive_loop() -> int:  # noqa: PLR0912,PLR0915
         print(f"Use `{COMMAND_DEV_MCP_CONFIG}` for the MCP client configuration workflow.")
     if _dev_pid_lookup_available():
         print(f"Use `{COMMAND_DEV_PID_LOOKUP}` to find running process IDs by regex.")
+    if _dev_version_bump_available():
+        print(f"Use `{COMMAND_DEV_VERSION_BUMP}` to bump configured component versions.")
+    print(f"Use `{COMMAND_SETUP_VENV}` to create/update the repository virtual environment.")
     print("Use `enable-process-tail` to tail managed process logs in a new shell.")
     detected_flags = _detected_behavior_flags()
     if detected_flags:
@@ -3661,9 +3851,9 @@ def _interactive_loop() -> int:  # noqa: PLR0912,PLR0915
     while True:
         try:
             if input_reader is not None:
-                raw = input_reader("opamp> ")
+                raw = input_reader(INTERACTIVE_PROMPT)
             else:
-                raw = input("opamp> ")
+                raw = input(INTERACTIVE_PROMPT)
         except EOFError:
             logger.info("interactive CLI loop exited via EOF")
             print()
@@ -3686,21 +3876,64 @@ def _interactive_loop() -> int:  # noqa: PLR0912,PLR0915
             continue
         if raw.strip().lower() == COMMAND_DEV_FLB_CONFIG:
             logger.info("interactive dev fluent bit config requested")
-            code = _execute_dev_fluentbit_config_workflow(input_reader=input_reader)
+            code = dev_commands.execute_dev_tool_workflow(
+                command_name=COMMAND_DEV_FLB_CONFIG,
+                tool_family_label="Fluent Bit",
+                specs=_fluentbit_dev_tool_specs(),
+                dev_features_enabled=_dev_features_enabled(),
+                prompt_text=lambda prompt: _prompt_text(prompt, input_reader=input_reader),
+                parse_yes_no=lambda value, default: _parse_yes_no(value, default=default),
+                command_text_from_args=_command_text_from_args,
+                repo_root=_repo_root(),
+                build_exec_env=_build_exec_env,
+                logger=logger,
+            )
             if code != 0:
-                print(f"Command exited with code {code}")
+                print(COMMAND_EXITED_TEMPLATE.format(code=code))
             continue
         if raw.strip().lower() == COMMAND_DEV_MCP_CONFIG:
             logger.info("interactive dev mcp config requested")
-            code = _execute_dev_mcp_config_workflow(input_reader=input_reader)
+            code = dev_commands.execute_dev_tool_workflow(
+                command_name=COMMAND_DEV_MCP_CONFIG,
+                tool_family_label="MCP",
+                specs=_mcp_dev_tool_specs(),
+                dev_features_enabled=_dev_features_enabled(),
+                prompt_text=lambda prompt: _prompt_text(prompt, input_reader=input_reader),
+                parse_yes_no=lambda value, default: _parse_yes_no(value, default=default),
+                command_text_from_args=_command_text_from_args,
+                repo_root=_repo_root(),
+                build_exec_env=_build_exec_env,
+                logger=logger,
+            )
             if code != 0:
-                print(f"Command exited with code {code}")
+                print(COMMAND_EXITED_TEMPLATE.format(code=code))
             continue
         if raw.strip().lower() == COMMAND_DEV_PID_LOOKUP:
             logger.info("interactive dev pid lookup requested")
-            code = _execute_dev_pid_lookup_workflow(input_reader=input_reader)
+            code = dev_commands.execute_dev_pid_lookup_workflow(
+                command_name=COMMAND_DEV_PID_LOOKUP,
+                dev_features_enabled=_dev_pid_lookup_available(),
+                prompt_text=lambda prompt: _prompt_text(prompt, input_reader=input_reader),
+                running_process_entries=_running_process_entries,
+                process_entries_matching_pattern=lambda processes, pattern: _process_entries_matching_pattern(
+                    processes,
+                    pattern=pattern,
+                ),
+                print_pid_lookup_results=_print_pid_lookup_results,
+            )
             if code != 0:
-                print(f"Command exited with code {code}")
+                print(COMMAND_EXITED_TEMPLATE.format(code=code))
+            continue
+        if raw.strip().lower() == COMMAND_DEV_VERSION_BUMP or raw.strip().lower().startswith(f"{COMMAND_DEV_VERSION_BUMP} "):
+            logger.info("interactive dev version bump requested")
+            version_args = _split_internal_command_args(raw)
+            code = execute_dev_version_bump_workflow(
+                version_args[1:],
+                repo_root_provider=_repo_root,
+                dev_features_enabled=_dev_features_enabled,
+            )
+            if code != 0:
+                print(COMMAND_EXITED_TEMPLATE.format(code=code))
             continue
         guided = _split_guided_command(raw)
         if guided is not None:
@@ -3721,7 +3954,7 @@ def _interactive_loop() -> int:  # noqa: PLR0912,PLR0915
                 print(f"Error: {exc}", file=sys.stderr)
                 code = 1
             if code != 0:
-                print(f"Command exited with code {code}")
+                print(COMMAND_EXITED_TEMPLATE.format(code=code))
             continue
 
         try:
@@ -3732,7 +3965,7 @@ def _interactive_loop() -> int:  # noqa: PLR0912,PLR0915
             code = 1
 
         if code != 0:
-            print(f"Command exited with code {code}")
+            print(COMMAND_EXITED_TEMPLATE.format(code=code))
 
 
 def main(argv: list[str] | None = None) -> int:

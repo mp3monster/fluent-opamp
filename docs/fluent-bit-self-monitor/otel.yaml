@@ -1,0 +1,36 @@
+
+includes: 
+  - otel-config.yaml
+
+env:
+  http_server: on
+  http_listen: 0.0.0.0
+  http_port: 2020
+  log_file: ${own-log-file}
+
+pipeline:
+  inputs:
+  - name: fluentbit_metrics
+    tag: fb.metrics
+
+  - name: tail
+    path: ${own-log-file}
+    tag: ${own-log-file}
+
+  outputs:
+  - name: opentelemetry
+    match: "*"
+    host: ${otel-host}
+    port: 443
+    http_user: ${otel-user}
+    http_passwd: ${otel-password}
+    logs_uri: ${own-otel-logs}
+    metrics_uri: ${otel-metrics}
+    traces_uri: ${otel-traces}
+    tls: on
+    tls.verify: off
+    log_response_payload: true
+    logs_body_key: message
+    add_label:
+      - environment dev
+      - destination grafana-cloud

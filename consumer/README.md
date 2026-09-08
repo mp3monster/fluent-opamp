@@ -23,6 +23,7 @@ This document consolidates all consumer configuration options and their CLI over
   - [CLI Example](#cli-example)
   - [Running As A Service/Daemon](#running-as-a-servicedaemon)
   - [Installed CLI Commands](#installed-cli-commands)
+  - [Elastic Heartbeat Consumer](#elastic-heartbeat-consumer)
   - [Fluentd Consumer](#fluentd-consumer)
     - [Required Fluentd Monitor Source](#required-fluentd-monitor-source)
   - [Simulator Consumer](#simulator-consumer)
@@ -216,7 +217,7 @@ That guide includes:
 | `consumer.heartbeat_frequency` | integer | Yes (`--heartbeat-frequency`) | Heartbeat interval in seconds. | `30` |
 | `consumer.full_update_controller` | object | Yes (`--full-update-controller`, JSON string) | Full update controller settings. `fullResendAfter` controls when all reporting flags are reset to `true`. | `{"fullResendAfter":1}` |
 | `consumer.full_update_controller_type` | string | No | Full update controller implementation name (`SentCount`, `AlwaysSend`, `TimeSend`). | `"SentCount"` |
-| `consumer.service_type` | string | No | Concrete consumer implementation (`fluentbit`, `fluentd`, `simulator`). Default `fluentbit`. | `"fluentbit"` |
+| `consumer.service_type` | string | No | Concrete consumer implementation (`fluentbit`, `fluentd`, `elastic_agent`, `elastic_heartbeat`, `simulator`) or a configured plugin key. Default `fluentbit`. | `"fluentbit"` |
 | `consumer.simulator_responses_path` | string | No | Required when `service_type=simulator`; path to simulator scripted server-request response JSON. | `"./consumer/simulator-responses.example.json"` |
 | `consumer.log_level` | string | Yes (`--log-level`) | Consumer log level name (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`). Resolved via Python `logging` names. | `"debug"` |
 | `consumer.transport` | string | No | OpAMP transport mode (`http` or `websocket`). | `"http"` |
@@ -278,7 +279,7 @@ The `consumer.agent_capabilities` setting accepts any `AgentCapabilities` name f
 Current built-in consumer support:
 
 - All built-in consumer types support `ReportsStatus`, `AcceptsRestartCommand`, and `ReportsHealth`.
-- Current built-in consumer types (`fluentbit`, `fluentd`, and `simulator`) also support `AcceptsRemoteConfig` and `ReportsHeartbeat`.
+- Current built-in consumer types (`fluentbit`, `fluentd`, `elastic_agent`, `elastic_heartbeat`, and `simulator`) support the mandatory capabilities. Fluent Bit, Fluentd, Elastic Heartbeat, and simulator also support `ReportsHeartbeat`; Fluent Bit, Fluentd, and simulator also support `AcceptsRemoteConfig`.
 - Other names in the table below are valid OpAMP capability names, but current built-in consumer clients do not enable them because they are not in their supported-capability lists.
 
 | Capability | Mask | Meaning | Current built-in consumer support |
@@ -344,7 +345,7 @@ Example:
 ## CLI Example
 
 ```bash
-python -m opamp_consumer.fluentbit_client \
+python -m opamp_consumer.fluentbit.client \
   --config-path ./opamp.json \
   --server-url http://localhost:4320 \
   --server-port 4320 \
@@ -366,17 +367,27 @@ For Linux `systemd` and Windows service examples (including required permissions
 When installed as a package, console scripts are available:
 
 - `opamp-consumer` -> `opamp_consumer.client:main` (routes by `consumer.service_type`)
-- `opamp-consumer-fluentd` -> `opamp_consumer.fluentd_client:main`
-- `opamp-consumer-simulator` -> `opamp_consumer.simulator_client:main`
+- `opamp-consumer-elastic-heartbeat` -> `opamp_consumer.elastic_heartbeat.client:main`
+- `opamp-consumer-fluentd` -> `opamp_consumer.fluentd.client:main`
+- `opamp-consumer-simulator` -> `opamp_consumer.simulator.client:main`
 
 Each consumer `--help` response prints JSON config/help content and includes
 `component_version` (git commit/date derived version metadata).
+
+## Elastic Heartbeat Consumer
+
+The `elastic_heartbeat` plugin supervises Elastic Heartbeat with
+`heartbeat -e -c <config>`, reads the Beat HTTP monitoring API, and can be used
+as the reference implementation for other Elastic Beat monitor plugins.
+
+See [consumer/docs/plugins/elastic-heartbeat.md](docs/plugins/elastic-heartbeat.md)
+for config keys, demo files, and container regression coverage.
 
 ## Fluentd Consumer
 
 An alternate concrete consumer implementation is available for Fluentd use cases.
 
-- Module entrypoint: `python -m opamp_consumer.fluentd_client`
+- Module entrypoint: `python -m opamp_consumer.fluentd.client`
 
 ### Required Fluentd Monitor Source
 
@@ -398,7 +409,7 @@ If `monitor_agent` is not configured, the consumer cannot poll Fluentd runtime s
 Example:
 
 ```bash
-python -m opamp_consumer.fluentd_client \
+python -m opamp_consumer.fluentd.client \
   --config-path ./opamp.json \
   --agent-config-path ./fluentd.conf \
   --server-url http://localhost:4320

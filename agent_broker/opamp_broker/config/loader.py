@@ -22,20 +22,21 @@ import json
 import os
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 from urllib.parse import SplitResult, urlsplit, urlunsplit
+
+from shared.observability import CFG_OTLP_ENDPOINTS
 
 from opamp_broker.planner.constants import (
     SLACK_FORMAT_SYSTEM_PROMPT_KEY,
     SYSTEM_PROMPT_KEY,
     VERIFICATION_PROMPT_KEY,
 )
-from shared.observability import CFG_OTLP_ENDPOINTS
 
 _PROMPT_TEXT_FIELD = "text"
 _PROMPT_DESCRIPTION_FIELD = "description"
 
-DEFAULTS: Dict[str, Any] = {
+DEFAULTS: dict[str, Any] = {
     "broker": {
         "name": "opamp-conversation-broker",
         "log_level": "INFO",
@@ -146,9 +147,9 @@ def _parse_prompt_entry(
 
 def _load_planner_prompts(
     *,
-    prompts_config: Dict[str, Any],
+    prompts_config: dict[str, Any],
     prompts_config_path: Path,
-) -> tuple[Dict[str, str], Dict[str, str]]:
+) -> tuple[dict[str, str], dict[str, str]]:
     """Load required planner prompts and their descriptions from config.
 
     Why this helper exists:
@@ -160,8 +161,8 @@ def _load_planner_prompts(
         VERIFICATION_PROMPT_KEY,
         SLACK_FORMAT_SYSTEM_PROMPT_KEY,
     )
-    prompt_texts: Dict[str, str] = {}
-    prompt_descriptions: Dict[str, str] = {}
+    prompt_texts: dict[str, str] = {}
+    prompt_descriptions: dict[str, str] = {}
     for prompt_name in required_prompts:
         if prompt_name not in prompts_config:
             raise ValueError(
@@ -178,7 +179,7 @@ def _load_planner_prompts(
     return prompt_texts, prompt_descriptions
 
 
-def _deep_merge(base: Dict[str, Any], overlay: Dict[str, Any]) -> Dict[str, Any]:
+def _deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:
     """Recursively merge a partial config overlay into a base dictionary.
 
     Why this approach:
@@ -201,7 +202,7 @@ def _deep_merge(base: Dict[str, Any], overlay: Dict[str, Any]) -> Dict[str, Any]
     return merged
 
 
-def _load_json_if_exists(path: Path) -> Dict[str, Any]:
+def _load_json_if_exists(path: Path) -> dict[str, Any]:
     """Load JSON from disk when present, otherwise return an empty mapping.
 
     Why this approach:
@@ -266,7 +267,7 @@ def get_effective_config_path(config_path: str | None = None) -> Path:
     ).resolve()
 
 
-def load_runtime_config(config_path: str | None = None) -> Dict[str, Any]:
+def load_runtime_config(config_path: str | None = None) -> dict[str, Any]:
     """Build the effective broker configuration used at runtime.
 
     Why this approach:

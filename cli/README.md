@@ -75,6 +75,7 @@ Both shortcuts run the compatibility entrypoint:
 ## Documentation
 
 - [docs/README.md](/mnt/d/dev/opamp/cli/docs/README.md)
+- [docs/CLI_CONFIGURATION.md](/mnt/d/dev/opamp/cli/docs/CLI_CONFIGURATION.md)
 - [docs/CLI_EXTENSION_GUIDE.md](/mnt/d/dev/opamp/cli/docs/CLI_EXTENSION_GUIDE.md)
 - [docs/CLI_REBUILD_PROMPT.md](/mnt/d/dev/opamp/cli/docs/CLI_REBUILD_PROMPT.md)
 
@@ -89,6 +90,10 @@ Both shortcuts run the compatibility entrypoint:
   - You can also run guided actions directly on one line, for example `start server`, `stop config editor`, or `restart server`.
   - Type `status` in interactive mode to list the effective OpAMP config file,
     config load status, managed processes, PID liveness, and log paths.
+  - Type `clear-logs` to remove CLI-managed log files plus log files discovered
+    from the effective OpAMP config and demo profile defaults.
+  - Type `setup-venv` to create or update the repository-level `.venv`, install
+    Python dependencies and editable dev extras, and install Node tooling.
   - Type `list` in interactive mode to display the current command hierarchy, guided options, and available `config` subcommands when config-service support is present.
   - Type `enable-process-tail` to open a separate tail shell for each future managed start log.
   - Type `disable-process-tail` to turn that behavior off again.
@@ -114,16 +119,21 @@ Both shortcuts run the compatibility entrypoint:
 Examples:
 
 ```text
-script demo-start-clients python -m opamp_consumer.fluentbit_client
+script demo-start-clients python -m opamp_consumer.fluentbit.client
 python -m pytest -s
 cli/main.py --help
 opamp-cli status
 opamp-cli list
 opamp-cli config validate ./example/fluent-bit.yaml
 opamp-cli config metadata ./example/configs
+opamp-cli setup-venv --dry-run
+opamp-cli setup-venv
 opamp-cli enable-process-tail
 APP_ENABLE_DEV_FEATURES=true opamp-cli dev-flb-config
 APP_ENABLE_DEV_FEATURES=true opamp-cli dev-pid-lookup
+APP_ENABLE_DEV_FEATURES=true opamp-cli dev-version-bump
+APP_ENABLE_DEV_FEATURES=true opamp-cli dev-version-bump 0.5.0
+opamp-cli dev-containers
 ```
 
 Guided examples:
@@ -148,7 +158,12 @@ Demo consumer mode:
   - simulator instances file
   - Fluent Bit OpAMP config + agent config
   - Fluentd OpAMP config + agent config
+  - Elastic Agent OpAMP config + agent config
+  - Elastic Heartbeat OpAMP config + agent config
+  - optional container start commands
 - CLI records profile-scoped PIDs in `cli/runtime/managed_processes.json`, so `stop` can terminate one demo profile independently.
+- The `Demo setup (Elastic Agent self-monitoring to Logstash)` profile starts the configured Logstash container first, then starts the plugin-driven `opamp_consumer.client` Elastic Agent consumer with `tests/logstash/opamp-consumer-elastic-agent-logstash-plugin.json`.
+- The `Demo setup (Elastic Heartbeat supervisor to Logstash)` profile starts a Logstash container first, then starts the plugin-driven `opamp_consumer.client` Elastic Heartbeat consumer with `tests/logstash/opamp-consumer-elastic-heartbeat-logstash-plugin.json`.
 
 Example:
 
@@ -158,6 +173,32 @@ d1
 OPAMP_DEMO=true opamp-cli demo
 OPAMP_DEMO=true opamp-cli stop "demo consumers script-defaults"
 ```
+
+Development container starts:
+
+- `opamp-cli dev-containers` appears when `podman` or `docker` is available and the CLI profile config contains container start commands.
+- Container starts are loaded from `cli/config/demo_consumer_profiles.json`.
+- The profile and container-entry schema is documented in [docs/CLI_CONFIGURATION.md](/mnt/d/dev/opamp/cli/docs/CLI_CONFIGURATION.md).
+- The Logstash entry mirrors `tests/logstash/run-logstash.bat`: it runs Logstash on host port `5044`, mounts the pipeline config, and writes output under `tests/logstash/out`.
+- You can launch it directly with `opamp-cli dev-containers logstash`.
+- Set `OPAMP_CONTAINER_RUNTIME` to choose a specific runtime executable; otherwise the CLI prefers `podman`, then `docker`.
+
+Repository virtual environment setup:
+
+- `opamp-cli setup-venv` creates or updates `.venv` at the repository root.
+- It upgrades `pip`, `setuptools>=82`, `wheel`, `build`, and `hatchling>=1.25`.
+- It installs root `requirements.txt`.
+- It installs local Python components editable with their `dev` extras:
+  `cli`, `provider`, `consumer`, `consumer-sim`, `config-service`,
+  `catalog-service`, `agent_broker`, `mcp`, `dev-tools`,
+  `svr-credentials-mgr/plaintext-keyring`, and `svr-credentials-mgr`.
+- It runs `npm install` in checked-in Node tooling directories:
+  `catalog-service`, `config-service`, `config-service/frontend`,
+  `svr-credentials-mgr`, and `tools/mermaid`.
+- In an interactive terminal, it prompts to open a shell with the virtual
+  environment activated. Type `exit` in that shell to return.
+- Use `--dry-run` to preview commands, `--venv <path>` to choose a different
+  environment path, or `--skip-node` to skip Node tooling.
 
 Type `exit` or `quit` to leave interactive mode.
 Type `help` (or `-h` / `--help`) to print CLI usage and examples.

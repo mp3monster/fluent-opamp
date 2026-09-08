@@ -23,8 +23,9 @@ import asyncio
 import json
 import logging
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any, Protocol
 
 from quart import Quart, Response, current_app, request
 
@@ -46,6 +47,24 @@ JSONRPC_ERROR_INTERNAL = -32603
 JSONRPC_ERROR_SESSION_REQUIRED = -32001
 JSONRPC_ERROR_UPSTREAM = -32002
 APP_CONFIG_KEY_PROXY = "opamp_broker.mcp_proxy"
+
+
+class MCPProxyClient(Protocol):
+    """Client surface required by the stateful MCP proxy."""
+
+    async def initialize(
+        self,
+        *,
+        protocol_version: str | None = None,
+        client_info: dict[str, Any] | None = None,
+        capabilities: dict[str, Any] | None = None,
+    ) -> dict[str, Any]: ...
+
+    async def list_tools(self) -> dict[str, Any]: ...
+
+    async def call_tool(self, name: str, arguments: dict[str, Any]) -> dict[str, Any]: ...
+
+    async def close(self) -> None: ...
 
 
 def _jsonrpc_result(request_id: Any, result: dict[str, Any]) -> dict[str, Any]:
@@ -72,7 +91,7 @@ class MCPProxySession:
     """One broker-side MCP session bound to one upstream provider client."""
 
     broker_session_id: str
-    client: MCPClient
+    client: MCPProxyClient
 
 
 class MCPProxyService:
@@ -85,7 +104,7 @@ class MCPProxyService:
         timeout_seconds: int,
         connection_mode: str,
         protocol_version_attempts: tuple[str, ...],
-        client_factory: Callable[..., MCPClient] = MCPClient,
+        client_factory: Callable[..., MCPProxyClient] = MCPClient,
     ) -> None:
         self._mcp_url = mcp_url
         self._timeout_seconds = timeout_seconds
@@ -103,7 +122,7 @@ class MCPProxyService:
         for session in sessions:
             await session.client.close()
 
-    def _build_client(self) -> MCPClient:
+    def _build_client(self) -> MCPProxyClient:
         """Create one upstream client using the proxy's configured transport."""
         return self._client_factory(
             self._mcp_url,

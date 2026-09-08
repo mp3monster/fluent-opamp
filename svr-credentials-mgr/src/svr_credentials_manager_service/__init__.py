@@ -1,0 +1,10 @@
+# Copyright 2026 mp3monster.org
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
+
+"""Credential manager service package."""
+
+from .app import create_app
+
+__all__ = ["create_app"]

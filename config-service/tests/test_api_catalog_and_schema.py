@@ -29,6 +29,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from config_service.app import create_app
 from config_service.json_artifacts import load_json_artifact, load_json_schema_artifact
 
+CONFIG_SERVICE_ROOT = Path(__file__).resolve().parents[1] / "src" / "config_service"
+
 YAML_KEYWORD_LITERALS = {
     "null",
     "Null",
@@ -180,7 +182,7 @@ async def test_health_and_versions() -> None:
     assert "missing_match_selector" in issue_body["codes"]
 
 def test_fluent_bit_catalogs_have_no_other_yaml_keyword_plugin_name_conflicts() -> None:
-    base = Path(__file__).resolve().parents[1] / "json-definitions"
+    base = CONFIG_SERVICE_ROOT / "json-definitions"
     conflicts: list[tuple[str, str, str]] = []
     for path in sorted(base.glob("fluent-bit-*-all-plugins-catalog.json")):
         body = load_json_artifact(path)
@@ -196,7 +198,7 @@ def test_fluent_bit_catalogs_have_no_other_yaml_keyword_plugin_name_conflicts() 
     ]
 
 def test_fluent_bit_catalogs_include_router_fields_for_all_plugins() -> None:
-    base = Path(__file__).resolve().parents[1] / "json-definitions"
+    base = CONFIG_SERVICE_ROOT / "json-definitions"
     missing: list[tuple[str, str, str, str]] = []
     for path in sorted(base.glob("fluent-bit-*-all-plugins-catalog.json")):
         payload = load_json_artifact(path)
@@ -217,7 +219,7 @@ def test_fluent_bit_catalogs_include_router_fields_for_all_plugins() -> None:
 
 def test_nginx_metrics_catalog_uses_duration_validation_rule() -> None:
     payload = load_json_artifact(
-        Path(__file__).resolve().parents[1]
+        CONFIG_SERVICE_ROOT
         / "json-definitions"
         / "fluent-bit"
         / "5.0.4"
@@ -231,7 +233,7 @@ def test_nginx_metrics_catalog_uses_duration_validation_rule() -> None:
     assert scrape_interval["validation_rule"] == {"kind": "duration"}
 
 def test_fluent_bit_older_catalogs_require_tag_for_inputs_except_known_legacy_exceptions() -> None:
-    base = Path(__file__).resolve().parents[1] / "json-definitions"
+    base = CONFIG_SERVICE_ROOT / "json-definitions"
     missing_required: list[tuple[str, str]] = []
     for version in ("3.2.10", "4.2.4"):
         path = base / f"fluent-bit-{version}-all-plugins-catalog.json"
@@ -248,7 +250,7 @@ def test_fluent_bit_older_catalogs_require_tag_for_inputs_except_known_legacy_ex
     assert missing_required == []
 
 def test_fluentd_catalogs_expose_match_directive_argument_for_filters_and_outputs() -> None:
-    base = Path(__file__).resolve().parents[1] / "json-definitions"
+    base = CONFIG_SERVICE_ROOT / "json-definitions"
     mismatches: list[tuple[str, str, str, str]] = []
     for path in sorted(base.glob("fluentd-*-all-plugins-catalog.json")):
         payload = load_json_artifact(path)
@@ -269,7 +271,7 @@ def test_fluentd_catalogs_expose_match_directive_argument_for_filters_and_output
 
 
 def test_fluentbit_schema_plugin_shards_can_reference_shared_processors() -> None:
-    base = Path(__file__).resolve().parents[1] / "json-schemas" / "fluentbit" / "3.2.10"
+    base = CONFIG_SERVICE_ROOT / "json-schemas" / "fluentbit" / "3.2.10"
     plugin_path = base / "inputs" / "tail.json"
     raw_payload = json.loads(plugin_path.read_text(encoding="utf-8"))
     processors_ref = raw_payload.get("properties", {}).get("processors", {}).get("$ref")

@@ -38,3 +38,4 @@ class Planner(Protocol):
         deterministic planners ignore it, while AI planners can use it for
         safer multi-turn planning decisions.
         """
+        ...

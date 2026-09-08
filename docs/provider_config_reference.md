@@ -161,6 +161,7 @@ For the provider metrics endpoints and scrape examples, see:
 The repository also includes provider-oriented config variants:
 
 - `config/opamp.provider-with-editor-service.json`
+- `config/opamp.provider-with-editor-and-credentials-service.json`
 - `config/opamp.provider-with-editor-and-catalog-services.json`
 
 Those are introduced in:

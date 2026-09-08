@@ -3,6 +3,27 @@
     ".yaml",
     ".yml"
   ],
+  "excludePathPatterns": [
+    "^chapter2/fluentbit/hello-world-2B\\.yaml$",
+    "^chapter4/helm-charts/",
+    "^chapter4/kubernetes/",
+    "^chapter4/prometheus/",
+    "^chapter5/docker-compose/",
+    "^chapter5/prometheus/",
+    "^chapter6/fluentbit/apache-log-parser\\.yaml$",
+    "^chapter7/fluentbit/grep-examples\\.yaml$",
+    "^chapter7/fluentbit/ip-checklist-modifying-filter-expected\\.yaml$",
+    "^chapter7/fluentbit/ip-checklisted-modified-routed-filter\\.yaml$",
+    "^chapter7/fluentbit/lua-filter-types-embedded-answer\\.yaml$",
+    "^chapter7/fluentbit/nest-example\\.yaml$",
+    "^chapter7/fluentbit/throttle-demo\\.yaml$",
+    "^chapter8/fluentbit/query-streamer-1\\.yaml$",
+    "^chapter8/fluentbit/query-streamer\\.yaml$",
+    "^chapter8/fluentbit/simple-streamer\\.yaml$",
+    "^chapter9/compose\\.yaml$",
+    "^extras/FluentBit-3_2-Additional-YAML-Configs/chapter6/ltsv-parser\\.yaml$",
+    "^extras/FluentBit-3_2-Additional-YAML-Configs/chapter6/multilineparser\\.yaml$"
+  ],
   "saveSuffix": "-ui-validated",
   "additionalPluginAttribute": {
     "pluginName": "tail",

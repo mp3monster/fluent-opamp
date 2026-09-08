@@ -30,6 +30,7 @@ dependencies = [
   "grpcio-tools>=1.60",
   "fastmcp>=2.0",
   "PyJWT>=2.8",
+  "defusedxml>=0.7.1",
   "lark>=1.2.2",
   "luaparser>=4.0.0",
   "opentelemetry-api",

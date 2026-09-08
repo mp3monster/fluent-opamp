@@ -24,7 +24,7 @@ The simulator uses the existing consumer architecture with a dedicated
 `service_type=simulator` client implementation.
 
 Key components:
-- `consumer/src/opamp_consumer/simulator_client.py`
+- `consumer/src/opamp_consumer/simulator/client.py`
 - `consumer-sim/src/consumer_sim_launcher.py`
 - `consumer-sim/config/consumer_instances.json`
 

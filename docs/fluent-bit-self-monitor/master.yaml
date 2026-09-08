@@ -1,0 +1,27 @@
+
+includes: 
+  - otel.yaml
+
+service:
+  flush: 1
+  log_level: debug
+  http_server: ${http_server}
+  http_listen: ${http_listen}
+  http_port: ${http_port}
+  log_file: ${log-file}
+
+pipeline:
+  inputs:
+    - name: dummy
+      tag: dummy.activity
+      dummy: '{"message":{"msg":"grafana-cloud test event","service":"fluent-bit","source":"dummy"}}'
+
+
+  outputs:
+    - name: stdout
+      match: "*"
+      format: json_lines
+
+    - name: file
+      match: "dummy.*"
+      file: dummy.log

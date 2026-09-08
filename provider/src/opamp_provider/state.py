@@ -362,6 +362,7 @@ class ClientStore:
         self._blocked_agents: dict[str, dict[str, Any]] = {}
         self._pending_instance_uid_replacements: dict[str, str] = {}
         self._pending_remote_configs: dict[str, bytes] = {}
+        self._pending_connection_settings: dict[str, bytes] = {}
         self._default_heartbeat_frequency = DEFAULT_HEARTBEAT_FREQUENCY
 
     def get(self, client_id: str) -> Optional[ClientRecord]:
@@ -962,12 +963,39 @@ class ClientStore:
         with self._lock:
             return self._pending_remote_configs.pop(client_id, None)
 
+    def set_pending_connection_settings(
+        self, client_id: str, connection_settings_bytes: bytes
+    ) -> ClientRecord:
+        """Store one serialized ConnectionSettingsOffers payload for a client."""
+        with self._lock:
+            record = self._clients.get(client_id)
+            if record is None:
+                record = ClientRecord(
+                    client_id=client_id,
+                    heartbeat_frequency=self._default_heartbeat_frequency,
+                )
+                self._clients[client_id] = record
+            self._pending_connection_settings[client_id] = connection_settings_bytes
+        self._capture_metrics_snapshot()
+        return record
+
+    def get_pending_connection_settings(self, client_id: str) -> Optional[bytes]:
+        """Return one serialized ConnectionSettingsOffers payload without consuming it."""
+        with self._lock:
+            return self._pending_connection_settings.get(client_id)
+
+    def pop_pending_connection_settings(self, client_id: str) -> Optional[bytes]:
+        """Return and remove one serialized ConnectionSettingsOffers payload."""
+        with self._lock:
+            return self._pending_connection_settings.pop(client_id, None)
+
     def remove_client(self, client_id: str) -> Optional[ClientRecord]:
         """Remove and return a client record by ID if it exists."""
         with self._lock:
             record = self._clients.pop(client_id, None)
             self._pending_approvals.pop(client_id, None)
             self._pending_remote_configs.pop(client_id, None)
+            self._pending_connection_settings.pop(client_id, None)
             pending_targets = [
                 target_id
                 for target_id, source_id in self._pending_instance_uid_replacements.items()

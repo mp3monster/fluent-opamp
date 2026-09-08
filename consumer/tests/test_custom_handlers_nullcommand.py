@@ -12,12 +12,13 @@
 
 import json
 import logging
+from pathlib import Path
 from typing import cast
 
 from opamp_consumer.config import ConsumerConfig
 from opamp_consumer.custom_handlers import build_factory_lookup
 from opamp_consumer.custom_handlers.nullcommand import NullCommand
-from opamp_consumer.fluentbit_client import OpAMPClientData
+from opamp_consumer.fluentbit.client import OpAMPClientData
 from opamp_consumer.opamp_client_interface import OpAMPClientInterface
 from opamp_consumer.proto import opamp_pb2
 
@@ -40,8 +41,9 @@ def _make_client_data() -> OpAMPClientData:
 
 def test_nullcommand_factory_discovery_includes_fqdn() -> None:
     """Factory lookup should discover the built-in nullcommand handler."""
+    handlers_dir = Path(__file__).resolve().parents[1] / "src" / "opamp_consumer" / "custom_handlers"
     lookup = build_factory_lookup(
-        "consumer/src/opamp_consumer/custom_handlers",
+        str(handlers_dir),
         client_data=_make_client_data(),
         allow_custom_capabilities=True,
     )

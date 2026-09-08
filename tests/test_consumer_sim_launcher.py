@@ -53,7 +53,7 @@ def test_build_instance_command_with_entrypoint_and_overrides(tmp_path: pathlib.
     )
 
     assert name == "alpha"
-    assert command[:3] == [sys.executable, "-m", "opamp_consumer.simulator_client"]
+    assert command[:3] == [sys.executable, "-m", "opamp_consumer.simulator.client"]
     assert "--config-path" in command
     assert str(consumer_config.resolve()) in command
     assert "--agent-config-path" in command
@@ -172,17 +172,17 @@ def test_is_process_running_uses_tasklist_on_windows(monkeypatch) -> None:
 
 def test_normalize_custom_command_string() -> None:
     """Verify custom command strings are shell-split into argv tokens."""
-    assert launcher._normalize_command("python -m opamp_consumer.fluentd_client") == [
+    assert launcher._normalize_command("python -m opamp_consumer.fluentd.client") == [
         "python",
         "-m",
-        "opamp_consumer.fluentd_client",
+        "opamp_consumer.fluentd.client",
     ]
 
 
 def test_build_entrypoint_command_supports_simulator() -> None:
     """Verify simulator entrypoint builds python module command."""
     command = launcher._build_entrypoint_command("simulator")
-    assert command == [sys.executable, "-m", "opamp_consumer.simulator_client"]
+    assert command == [sys.executable, "-m", "opamp_consumer.simulator.client"]
 
 
 def test_build_parser_includes_component_version(monkeypatch) -> None:
@@ -209,7 +209,7 @@ def test_build_instance_command_rejects_non_simulator_custom_command(
     consumer_config.write_text("{}", encoding="utf-8")
     instance = {
         "name": "alpha",
-        "command": "python -m opamp_consumer.fluentd_client",
+        "command": "python -m opamp_consumer.fluentd.client",
         "config_path": "configs/consumer.json",
     }
 

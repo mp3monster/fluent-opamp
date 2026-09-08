@@ -1,0 +1,174 @@
+<!-- Copyright 2026 mp3monster.org; Licensed under the Apache License, Version 2.0. -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Server Credentials Manager Help</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1b1f24;
+      --muted: #4c5563;
+      --panel: #ffffff;
+      --accent: #425cc7;
+      --bg: #f5f7fb;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Space Grotesk", "Trebuchet MS", sans-serif;
+      background: radial-gradient(circle at top left, #e8efff 0%, #f5f7fb 55%, #fff4d8 100%);
+      color: var(--ink);
+    }
+
+    main {
+      max-width: 880px;
+      margin: 48px auto;
+      padding: 32px;
+      background: var(--panel);
+      border: 2px solid #d7deee;
+      border-radius: 18px;
+      box-shadow: 0 20px 60px rgba(36, 58, 120, 0.12);
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: 2rem;
+    }
+
+    p {
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    ul {
+      padding-left: 18px;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: #e3e8ff;
+      color: #2f3f8f;
+      font-size: 0.85rem;
+    }
+
+    .info-section {
+      margin-top: 22px;
+      padding: 14px;
+      border: 1px solid #d7deee;
+      border-radius: 14px;
+      background: #f7f9ff;
+    }
+
+    .info-section h2 {
+      margin: 0 0 8px;
+      font-size: 1.2rem;
+    }
+
+    .detail-list {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .detail-list li {
+      margin-bottom: 8px;
+    }
+
+    .detail-list strong {
+      color: #2f3f8f;
+    }
+
+    footer.footer {
+      text-align: center;
+      color: var(--muted);
+      padding: 18px 0 28px;
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <main>
+    <span class="tag">Server Credentials Manager UI</span>
+    <h1>Help</h1>
+    <p>
+      This page explains how to define named connection credentials, assign them to client nodes,
+      and populate the OpAMP <code>ServerToAgent</code> connection settings payload.
+    </p>
+
+    <section class="info-section">
+      <h2>Connection Definition Panel</h2>
+      <ul class="detail-list">
+        <li><strong>Name:</strong> Enter the named connection definition that will be stored and reused.</li>
+        <li><strong>Save:</strong> Persists the current definition and validates the payload before it is stored.</li>
+        <li><strong>Defined connections table:</strong> Shows every saved connection definition.</li>
+        <li><strong>Row selection:</strong> Selecting any row loads that definition into the Connection settings panel.</li>
+        <li><strong>Apply:</strong> Queues the selected connection for every assigned client node, or writes a fallback JSON log when the provider endpoint is unavailable.</li>
+        <li><strong>Remove:</strong> Use the minus button on a row to delete a connection definition when it is not assigned to any clients.</li>
+        <li><strong>Assign:</strong> Opens the assignment dialog for the selected connection definition.</li>
+      </ul>
+    </section>
+
+    <section class="info-section">
+      <h2>Defined Connections Filters</h2>
+      <p>
+        The defined connections table includes an inline filter row directly beneath the column headings.
+      </p>
+      <ul class="detail-list">
+        <li><strong>Connection name filter:</strong> Uses case-insensitive substring matching against the saved connection name.</li>
+        <li><strong>Assigned client nodes filter:</strong> Shows any connection assigned to a client node whose name contains the entered text.</li>
+        <li><strong>Combined filtering:</strong> When both filters are populated, a row must match both conditions to remain visible.</li>
+        <li><strong>Immediate updates:</strong> Filtering updates the table immediately with no separate apply action.</li>
+      </ul>
+    </section>
+
+    <section class="info-section">
+      <h2>Connection Settings Panel</h2>
+      <ul class="detail-list">
+        <li><strong>Connection tabs:</strong> Use the tabs to switch between <code>opamp</code>, <code>own_metrics</code>, <code>own_traces</code>, <code>own_logs</code>, and <code>other</code> connection sections.</li>
+        <li><strong>Per-tab values:</strong> Each tab keeps its own values, and switching tabs restores the values previously entered for that section.</li>
+        <li><strong>Other connection name:</strong> The extra connection name field is only used on the <strong>Other connection</strong> tab.</li>
+        <li><strong>Enable this connection:</strong> Controls the <code>enabled</code> flag for the currently selected connection section.</li>
+        <li><strong>Copy from:</strong> Copies the field values from another named tab into the current tab.</li>
+      </ul>
+    </section>
+
+    <section class="info-section">
+      <h2>Certificates, Keys, and TLS</h2>
+      <ul class="detail-list">
+        <li><strong>File selectors:</strong> Use the file picker controls to upload certificate, key, and CA files.</li>
+        <li><strong>Stored references:</strong> After upload, the UI stores and shows the backend file reference rather than the browser-local file path.</li>
+        <li><strong>TLS versions:</strong> Minimum and maximum TLS values come from the configured TLS versions document used by the backend.</li>
+        <li><strong>File picker reset:</strong> Changing tabs or connection definitions resets the browser file selectors while preserving the saved backend references shown in the text fields.</li>
+      </ul>
+    </section>
+
+    <section class="info-section">
+      <h2>Assignment Dialog</h2>
+      <ul class="detail-list">
+        <li><strong>Available client nodes:</strong> The left list shows nodes that can be assigned to the current connection.</li>
+        <li><strong>Assigned client nodes:</strong> The right list shows nodes already assigned to the current connection.</li>
+        <li><strong>Arrow buttons:</strong> Move selected client nodes into or out of the assigned list.</li>
+        <li><strong>Save:</strong> Writes the many-to-one client-to-connection mapping document.</li>
+        <li><strong>Add Test Clients:</strong> Seeds 20 mock clients for standalone testing when a provider client list is not available.</li>
+      </ul>
+    </section>
+
+    <section class="info-section">
+      <h2>Validation Rules on Save</h2>
+      <ul class="detail-list">
+        <li><strong>Endpoints:</strong> <code>destination_endpoint</code> and <code>proxy.url</code> must be valid absolute <code>http://</code> or <code>https://</code> addresses when provided.</li>
+        <li><strong>JSON fields:</strong> <code>headers</code>, <code>other_settings</code>, and <code>proxy.connect_headers</code> must be valid JSON objects.</li>
+        <li><strong>Connection names:</strong> Connection names and <code>other_connections</code> keys must not be blank.</li>
+        <li><strong>User feedback:</strong> Validation failures are returned during save so incorrect payloads can be corrected before storage.</li>
+      </ul>
+    </section>
+
+  </main>
+  <footer class="footer">
+    <div>Licensed under Apache 2.0 • Attribution: mp3monster.org</div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,11 @@
+# Licensed under the Apache License, Version 2.0.
+# Copyright 2026 mp3monster.org
+#
+# The simulator reads these metadata comments into its effective agent
+# description. The verifier searches for the service_instance_id to prove the
+# provider recorded the expected ST-002 HTTP client.
+# agent_description: ST002 HTTP simulator baseline
+# config_version: st002-http-agent
+# service_instance_id: st002-simulator-http
+simulator:
+  mode: http

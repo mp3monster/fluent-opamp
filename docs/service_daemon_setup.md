@@ -133,7 +133,7 @@ nssm start OpAMPProvider
 ### 3. Consumer service example (Fluent Bit)
 
 ```powershell
-nssm install OpAMPConsumerFluentBit "D:\dev\opamp\.venv\Scripts\python.exe" "-m opamp_consumer.fluentbit_client --config-path D:\dev\opamp\config\opamp.json --agent-config-path D:\dev\opamp\consumer\fluent-bit.yaml"
+nssm install OpAMPConsumerFluentBit "D:\dev\opamp\.venv\Scripts\python.exe" "-m opamp_consumer.fluentbit.client --config-path D:\dev\opamp\config\opamp.json --agent-config-path D:\dev\opamp\consumer\fluent-bit.yaml"
 nssm set OpAMPConsumerFluentBit AppDirectory "D:\dev\opamp"
 nssm set OpAMPConsumerFluentBit AppEnvironmentExtra "OPAMP_CONFIG_PATH=D:\dev\opamp\config\opamp.json"
 nssm start OpAMPConsumerFluentBit
@@ -142,7 +142,7 @@ nssm start OpAMPConsumerFluentBit
 ### 4. Consumer service example (Fluentd)
 
 ```powershell
-nssm install OpAMPConsumerFluentd "D:\dev\opamp\.venv\Scripts\python.exe" "-m opamp_consumer.fluentd_client --config-path D:\dev\opamp\config\opamp.json --agent-config-path D:\dev\opamp\consumer\fluentd.conf"
+nssm install OpAMPConsumerFluentd "D:\dev\opamp\.venv\Scripts\python.exe" "-m opamp_consumer.fluentd.client --config-path D:\dev\opamp\config\opamp.json --agent-config-path D:\dev\opamp\consumer\fluentd.conf"
 nssm set OpAMPConsumerFluentd AppDirectory "D:\dev\opamp"
 nssm set OpAMPConsumerFluentd AppEnvironmentExtra "OPAMP_CONFIG_PATH=D:\dev\opamp\config\opamp.json"
 nssm start OpAMPConsumerFluentd

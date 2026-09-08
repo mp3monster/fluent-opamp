@@ -120,6 +120,65 @@ def test_service_type_defaults_to_fluentbit_when_missing(tmp_path, monkeypatch) 
     assert loaded.service_type == consumer_config.SERVICE_TYPE_FLUENTBIT
 
 
+def test_service_type_preserves_custom_plugin_key(tmp_path, monkeypatch) -> None:
+    """Custom plugin service_type values should survive config loading."""
+    raw = _base_consumer_config()
+    raw["consumer"]["service_type"] = "custom_agent"
+    raw["consumer"]["plugins"] = [
+        {
+            "service_type": "custom_agent",
+            "entry_point": "example_plugin:main",
+            "enabled": True,
+        }
+    ]
+    config_path = tmp_path / "opamp.json"
+    config_path.write_text(json.dumps(raw, indent=2), encoding="utf-8")
+    monkeypatch.setenv(consumer_config.ENV_OPAMP_CONFIG_PATH, str(config_path))
+
+    loaded = consumer_config.load_config()
+
+    assert loaded.service_type == "custom_agent"
+    assert loaded.consumer_plugins == raw["consumer"]["plugins"]
+
+
+def test_elastic_agent_plugin_config_section_loads_fields(tmp_path) -> None:
+    """Plugin-owned config blocks should enrich the shared ConsumerConfig."""
+    agent_config_path = tmp_path / "elastic-agent.yml"
+    agent_config_path.write_text("inputs: []\n", encoding="utf-8")
+    home_path = tmp_path / "elastic-home"
+    raw = _base_consumer_config()
+    raw["consumer"]["service_type"] = "elastic_agent"
+    raw["consumer"]["agent_config_path"] = str(agent_config_path)
+    raw["consumer"]["elastic_agent"] = {
+        "executable_path": "elastic-agent",
+        "home_path": "elastic-home",
+        "api_host": "127.0.0.1",
+        "api_port": 6792,
+        "api_failon": "failed",
+        "status_timeout_seconds": 2,
+    }
+    config_path = tmp_path / "opamp.json"
+    config_path.write_text(json.dumps(raw, indent=2), encoding="utf-8")
+
+    loaded = consumer_config.load_config_with_overrides(
+        config_path=config_path,
+        server_url=None,
+        server_port=None,
+        agent_config_path=None,
+        agent_additional_params=None,
+        heartbeat_frequency=None,
+        log_level=None,
+        full_update_controller=None,
+    )
+
+    assert loaded.elastic_agent_executable_path == "elastic-agent"
+    assert loaded.elastic_agent_home_path == str(home_path)
+    assert loaded.elastic_agent_api_host == "127.0.0.1"
+    assert loaded.elastic_agent_api_port == 6792
+    assert loaded.elastic_agent_api_failon == "failed"
+    assert loaded.elastic_agent_status_timeout_seconds == 2
+
+
 def test_process_tracking_defaults_to_supervisor_when_missing(
     tmp_path, monkeypatch
 ) -> None:
@@ -432,10 +491,11 @@ def test_fluentd_test_config_loads_successfully() -> None:
     assert loaded.service_type == consumer_config.SERVICE_TYPE_FLUENTD
 
 
-def test_simulator_test_config_loads_successfully() -> None:
+def test_simulator_test_config_loads_successfully(monkeypatch: pytest.MonkeyPatch) -> None:
     """Ensure simulator example config file is valid for consumer config loading."""
     repo_root = Path(__file__).resolve().parents[2]
     config_path = repo_root / "consumer" / "opamp-simulator.json"
+    monkeypatch.chdir(repo_root)
 
     loaded = consumer_config.load_config_with_overrides(
         config_path=config_path,

@@ -27,9 +27,9 @@ from opamp_broker.slack.client import (
 from opamp_broker.slack.handlers import register_handlers
 from opamp_broker.social_collaboration.base import SocialCollaborationAdapter
 
-ENV_SLACK_BOT_TOKEN = "SLACK_BOT_TOKEN"
-ENV_SLACK_SIGNING_SECRET = "SLACK_SIGNING_SECRET"
-ENV_SLACK_APP_TOKEN = "SLACK_APP_TOKEN"
+ENV_SLACK_BOT_TOKEN = "SLACK_BOT_TOKEN"  # noqa: S105
+ENV_SLACK_SIGNING_SECRET = "SLACK_SIGNING_SECRET"  # noqa: S105
+ENV_SLACK_APP_TOKEN = "SLACK_APP_TOKEN"  # noqa: S105
 logger = logging.getLogger(__name__)
 
 
@@ -41,7 +41,7 @@ class SlackSocialCollaborationAdapter(SocialCollaborationAdapter):
         self._app_token = app_token
 
     @classmethod
-    def from_environment(cls) -> "SlackSocialCollaborationAdapter":
+    def from_environment(cls) -> SlackSocialCollaborationAdapter:
         """Create a Slack adapter using required runtime environment variables."""
         return cls(
             bot_token=os.environ[ENV_SLACK_BOT_TOKEN],

@@ -273,7 +273,7 @@ class ServerMessageHandlingMixin:
             logger.error(
                 "remote config payload received but remote config is not allowed for "
                 "this client; filenames=%s",
-                filenames,
+                ", ".join(filenames),
             )
             return
         CommonConfigHandler.apply_remote_config(remote_config, cast("OpAMPClientInterface", self))

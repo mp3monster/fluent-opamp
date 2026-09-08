@@ -15,6 +15,7 @@ RUN apt-get update \
 WORKDIR /workspace
 
 COPY tests/test-containers/config-service-ui-playwright-batch/entrypoint.sh /usr/local/bin/run-config-service-playwright-batch
-RUN chmod +x /usr/local/bin/run-config-service-playwright-batch
+RUN sed -i 's/\r$//' /usr/local/bin/run-config-service-playwright-batch \
+    && chmod +x /usr/local/bin/run-config-service-playwright-batch
 
 ENTRYPOINT ["/usr/local/bin/run-config-service-playwright-batch"]

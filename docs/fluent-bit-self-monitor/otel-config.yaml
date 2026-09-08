@@ -1,0 +1,8 @@
+env: 
+  otel-user: '-my Grafana Cloud User Id-'
+  otel-password: '-my Grafana Cloud Token-'
+  otel-logs: '/otlp/v1/logs'
+  otel-metrics: '/otlp/v1/metrics'
+  otel-traces: '/otlp/v1/traces'
+  own-log-file: 'flb.log'
+  otel-host: 'otlp-gateway-prod-gb-south-1.grafana.net'

@@ -32,8 +32,13 @@ def _cli_entrypoint() -> Path:
     return (_repo_root() / "cli" / "main.py").resolve()
 
 
-def _run_cli(*args: str, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+def _run_cli(
+    *args: str,
+    cwd: Path | None = None,
+    extra_env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
     env = dict(os.environ)
+    env.update(extra_env or {})
     return subprocess.run(
         [sys.executable, str(_cli_entrypoint()), *args],
         cwd=str(cwd or _repo_root()),
@@ -84,6 +89,9 @@ def test_help_command_prints_usage() -> None:
     assert completed.returncode == 0
     assert "Usage:" in completed.stdout
     assert "opamp-cli start server" in completed.stdout
+    assert "opamp-cli setup-venv" in completed.stdout
+    assert "opamp-cli dev-containers" in completed.stdout
+    assert "opamp-cli dev-version-bump" in completed.stdout
 
 
 def test_status_command_reports_runtime_paths() -> None:
@@ -108,6 +116,20 @@ def test_list_command_reports_option_hierarchy() -> None:
     assert "    - validate <path>" in completed.stdout
     assert "    - metadata <path>" in completed.stdout
     assert "Guided actions:" in completed.stdout
+
+
+def test_dev_version_bump_is_recognized_as_dev_command() -> None:
+    completed = _run_cli("dev-version-bump", "9.9.9", "--config", "missing.json")
+
+    assert completed.returncode == 1
+    assert "dev-version-bump is only available when APP_ENABLE_DEV_FEATURES=true" in completed.stderr
+
+
+def test_list_command_reports_dev_version_bump_when_developer_features_enabled() -> None:
+    completed = _run_cli("list", extra_env={"APP_ENABLE_DEV_FEATURES": "true"})
+
+    assert completed.returncode == 0
+    assert "  - dev-version-bump" in completed.stdout
 
 
 def test_direct_execution_runs_python_command() -> None:
