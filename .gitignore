@@ -18,30 +18,47 @@ venv/
 .mypy_cache/
 .coverage
 htmlcov/
+.flake8
+coverage.xml
+
+tools
+
+/catalog-service/node_modules/
+config-service/frontend/node_modules/
+/config-service/node_modules/
+/svr-credentials-mgr/node_modules/
+/provider/node_modules/
+
 
 # Editors / OS
 .vscode/
 .idea/
 .DS_Store
+*.code-workspace
 
 agent.md
 
+#Test artefacts
 consumer/test.txt
-
-proto/anyvalue.proto
-
-proto/opamp.proto
-
-*.code-workspace
-
-test.txt
-
-*.log
-
-.flake8
-
 OpAMPSupervisor.signal
+*.pem
+*.pub
+*.key
+test.txt
+server-state/
+*.log
+dev-tools/runtime/
+stopclaude.bat
+svr-credentials-mgr/*.jsonl
+svr-credentials-mgr/test-results/
+agent_broker/.env
 
+
+# Documentation
 docs/screenshots/
+dev-notes/
+*.backup*
 
-tools
+# definitions
+proto/anyvalue.proto
+proto/opamp.proto
