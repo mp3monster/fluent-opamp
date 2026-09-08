@@ -22,6 +22,10 @@ from pathlib import Path
 TRUE_VALUES = {"1", "true", "yes", "on"}
 ENABLED_FLAG_VALUE = "true"
 SCRIPT_KEYWORD = "script"
+LOCALHOST_ADDRESS = "127.0.0.1"
+INTERACTIVE_PROMPT = "opamp> "
+COMMAND_EXITED_TEMPLATE = "Command exited with code {code}"
+DEMO_CONSUMERS_SELECTION = "demo consumers"
 DEFAULT_OUTPUT_DIR = Path("scripts")
 CLI_RUNTIME_DIRNAME = "runtime"
 CLI_LOG_DIRNAME = "logs"
@@ -31,8 +35,12 @@ CLI_COMPONENT_LOG_FILENAME = "opamp_cli.log"
 CLI_SETTING_ENABLE_PROCESS_TAIL = "enable_process_tail"
 CLI_DEMO_FLAG_ENV = "OPAMP_DEMO"
 APP_ENABLE_DEV_FEATURES_ENV = "APP_ENABLE_DEV_FEATURES"
+OPAMP_CONFIG_PATH_ENV = "OPAMP_CONFIG_PATH"
+PYTHONPATH_ENV = "PYTHONPATH"
 CLI_DEMO_CONFIG_PATH = Path("cli/config/demo_consumer_profiles.json")
 CLI_VERSION_TARGETS_CONFIG_PATH = Path("cli/config/version_targets.json")
+ARG_CONFIG_PATH = "--config-path"
+ARG_AGENT_CONFIG_PATH = "--agent-config-path"
 DEFAULT_SERVER_PORT = 8080
 DEFAULT_CATALOG_WEB_PORT = 8090
 PROCESS_START_CHECK_DELAY_SECONDS = 1.0
@@ -76,6 +84,11 @@ ACTION_KIND_STOP_ALL_RECORDED = "stop_all_recorded"
 ACTION_KIND_DEMO_CONSUMERS_STOP = "demo_consumers_stop"
 ACTION_KIND_RESTART = "restart"
 ACTION_KIND_SHELL = "shell"
+ACTION_KEY_RECORD_NAME = "record_name"
+ACTION_KEY_METADATA = "metadata"
+ACTION_KEY_LOG_NAME = "log_name"
+CONFIG_KEY_CONFIG_PATH = "config_path"
+CONFIG_KEY_AGENT_CONFIG_PATH = "agent_config_path"
 ACTION_ID_SERVER = "server"
 ACTION_ID_CATALOG_UI = "catalog_ui"
 ACTION_ID_CONFIG_SERVICE = "config_service"
@@ -95,6 +108,16 @@ LABEL_FLUENTD_CLIENT = "Fluentd client"
 LABEL_ALL_CLIENTS = "All clients"
 LABEL_ALL_MANAGED_PROCESSES = "All managed processes"
 SIMULATOR_RECORD_PREFIX = "Simulator"
+DEMO_PROFILE_KEY_FLUENTBIT = "fluentbit"
+DEMO_PROFILE_KEY_FLUENTD = "fluentd"
+DEMO_PROFILE_KEY_ELASTIC_AGENT = "elastic_agent"
+DEMO_PROFILE_KEY_ELASTIC_HEARTBEAT = "elastic_heartbeat"
+DEMO_CONSUMER_CLIENT_CONFIG_KEYS = (
+    DEMO_PROFILE_KEY_FLUENTBIT,
+    DEMO_PROFILE_KEY_FLUENTD,
+    DEMO_PROFILE_KEY_ELASTIC_AGENT,
+    DEMO_PROFILE_KEY_ELASTIC_HEARTBEAT,
+)
 
 # The order of these identifiers is user-visible and position-sensitive.
 # It defines:

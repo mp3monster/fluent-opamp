@@ -28,6 +28,10 @@ from typing import Any
 import pytest
 
 cli_main = importlib.import_module("opamp_cli.main")
+container_management = importlib.import_module("opamp_cli.container_management")
+dev_commands = importlib.import_module("opamp_cli.dev_commands")
+setup_venv = importlib.import_module("opamp_cli.setup_venv")
+version_bump = importlib.import_module("opamp_cli.version_bump")
 
 
 def _sample_fluentbit_config() -> str:
@@ -208,7 +212,7 @@ def test_background_start_suppresses_windows_console(tmp_path: Path, monkeypatch
     )
     monkeypatch.setattr(cli_main, "_wait_for_background_start", lambda **_kwargs: (True, ""))
     monkeypatch.setattr(cli_main, "_record_cli_process", lambda **_kwargs: None)
-    monkeypatch.setattr(cli_main, "_open_process_tail_if_enabled", lambda **_kwargs: None)
+    monkeypatch.setattr(cli_main.process_tail, "open_process_tail_if_enabled", lambda **_kwargs: None)
     monkeypatch.setattr(cli_main, "_cli_log_dir", lambda: tmp_path / "logs")
 
     exit_code = cli_main._launch_background_process(  # type: ignore[attr-defined]
@@ -487,7 +491,7 @@ def test_top_level_commands_include_setup_venv(monkeypatch) -> None:
     monkeypatch.setattr(cli_main, "_fluentbit_dev_tool_available", lambda: False)
     monkeypatch.setattr(cli_main, "_mcp_dev_tool_available", lambda: False)
     monkeypatch.setattr(cli_main, "_dev_pid_lookup_available", lambda: False)
-    monkeypatch.setattr(cli_main, "_container_runtime_executable", lambda: None)
+    monkeypatch.setattr(container_management, "container_runtime_executable", lambda: None)
 
     commands = cli_main._top_level_commands()  # type: ignore[attr-defined]
 
@@ -497,10 +501,9 @@ def test_top_level_commands_include_setup_venv(monkeypatch) -> None:
 def test_parse_setup_venv_args_supports_options(tmp_path: Path, monkeypatch) -> None:
     repo_root = tmp_path / "repo"
     repo_root.mkdir()
-    monkeypatch.setattr(cli_main, "_repo_root", lambda: repo_root)
-
-    options = cli_main._parse_setup_venv_args(  # type: ignore[attr-defined]
-        ["--venv", "envs/opamp", "--dry-run", "--skip-node"]
+    options = setup_venv.parse_setup_venv_args(
+        ["--venv", "envs/opamp", "--dry-run", "--skip-node"],
+        repo_root=repo_root,
     )
 
     assert options["venv_dir"] == (repo_root / "envs" / "opamp").resolve()
@@ -521,7 +524,7 @@ def test_setup_venv_dry_run_lists_python_and_node_steps(
     (repo_root / "requirements.txt").write_text("prompt_toolkit>=3.0\n")
     monkeypatch.setattr(cli_main, "_repo_root", lambda: repo_root)
     monkeypatch.setattr(cli_main, "_is_windows", lambda: False)
-    monkeypatch.setattr(cli_main.shutil, "which", lambda name: f"/usr/bin/{name}")
+    monkeypatch.setattr(setup_venv.shutil, "which", lambda name: f"/usr/bin/{name}")
 
     exit_code = cli_main.main(["setup-venv", "--dry-run"])
     output = capsys.readouterr().out
@@ -559,11 +562,18 @@ def test_prompt_setup_venv_activation_opens_shell_when_accepted(
     monkeypatch.setattr(cli_main, "_repo_root", lambda: repo_root)
     monkeypatch.setattr(cli_main, "_is_windows", lambda: False)
     monkeypatch.setenv("SHELL", "/bin/bash")
-    monkeypatch.setattr(cli_main.subprocess, "run", fake_run)
+    monkeypatch.setattr(setup_venv.subprocess, "run", fake_run)
 
-    code = cli_main._prompt_setup_venv_activation(  # type: ignore[attr-defined]
+    code = setup_venv.prompt_setup_venv_activation(
         venv_dir,
         input_reader=lambda _prompt: "y",
+        prompt_text=lambda prompt: "y",
+        parse_yes_no=lambda value, default: cli_main._parse_yes_no(value, default=default),  # type: ignore[attr-defined]
+        open_shell=lambda path: setup_venv.open_setup_venv_shell(
+            path,
+            repo_root=repo_root,
+            is_windows=False,
+        ),
     )
 
     assert code == 0
@@ -583,11 +593,12 @@ def test_prompt_setup_venv_activation_can_be_declined(
     def fail_open_shell(_venv_dir: Path) -> int:
         raise AssertionError("activation shell should not open")
 
-    monkeypatch.setattr(cli_main, "_open_setup_venv_shell", fail_open_shell)
-
-    code = cli_main._prompt_setup_venv_activation(  # type: ignore[attr-defined]
+    code = setup_venv.prompt_setup_venv_activation(
         venv_dir,
         input_reader=lambda _prompt: "n",
+        prompt_text=lambda prompt: "n",
+        parse_yes_no=lambda value, default: cli_main._parse_yes_no(value, default=default),  # type: ignore[attr-defined]
+        open_shell=fail_open_shell,
     )
     output = capsys.readouterr().out
 
@@ -605,11 +616,13 @@ def test_prompt_setup_venv_activation_skips_prompt_without_tty(
     def fail_open_shell(_venv_dir: Path) -> int:
         raise AssertionError("activation shell should not open")
 
-    monkeypatch.setattr(cli_main.sys.stdin, "isatty", lambda: False)
-    monkeypatch.setattr(cli_main.sys.stdout, "isatty", lambda: False)
-    monkeypatch.setattr(cli_main, "_open_setup_venv_shell", fail_open_shell)
-
-    code = cli_main._prompt_setup_venv_activation(venv_dir)  # type: ignore[attr-defined]
+    code = setup_venv.prompt_setup_venv_activation(
+        venv_dir,
+        prompt_text=lambda prompt: "",
+        parse_yes_no=lambda value, default: cli_main._parse_yes_no(value, default=default),  # type: ignore[attr-defined]
+        open_shell=fail_open_shell,
+        activation_prompt_available=lambda: False,
+    )
     output = capsys.readouterr().out
 
     assert code == 0
@@ -1399,10 +1412,7 @@ def test_container_start_action_uses_configured_runtime_command(
         "input {}\n",
         encoding="utf-8",
     )
-    monkeypatch.setattr(cli_main, "_repo_root", lambda: repo_root)
-    monkeypatch.setattr(cli_main, "_container_runtime_executable", lambda: "/usr/bin/podman")
-
-    action = cli_main._container_start_action_from_entry(  # type: ignore[attr-defined]
+    action = container_management.container_start_action_from_entry(
         {
             "id": "logstash-local",
             "label": "Logstash local pipeline",
@@ -1419,7 +1429,14 @@ def test_container_start_action_uses_configured_runtime_command(
             ],
             "ensure_dirs": ["tests/logstash/out"],
             "command": ["logstash", "-f", "/usr/share/logstash/pipeline/logstash.conf"],
-        }
+        },
+        runtime="/usr/bin/podman",
+        repo_root=repo_root,
+        resolve_path_from_repo=lambda raw_path: (repo_root / raw_path).resolve(),
+        command_text_from_args=cli_main._command_text_from_args,  # type: ignore[attr-defined]
+        background_start_action=cli_main._background_start_action,  # type: ignore[attr-defined]
+        build_exec_env=cli_main._build_exec_env,  # type: ignore[attr-defined]
+        demo_record_prefix=cli_main._demo_record_prefix,  # type: ignore[attr-defined]
     )
 
     assert action is not None
@@ -1446,17 +1463,21 @@ def test_container_start_action_omits_replace_for_docker(
     tmp_path: Path,
 ) -> None:
     repo_root = tmp_path
-    monkeypatch.setattr(cli_main, "_repo_root", lambda: repo_root)
-    monkeypatch.setattr(cli_main, "_container_runtime_executable", lambda: "/usr/bin/docker")
-
-    action = cli_main._container_start_action_from_entry(  # type: ignore[attr-defined]
+    action = container_management.container_start_action_from_entry(
         {
             "id": "logstash-local",
             "label": "Logstash local pipeline",
             "container_name": "opamp-logstash",
             "replace_existing": True,
             "image": "logstash:9.5.1",
-        }
+        },
+        runtime="/usr/bin/docker",
+        repo_root=repo_root,
+        resolve_path_from_repo=lambda raw_path: (repo_root / raw_path).resolve(),
+        command_text_from_args=cli_main._command_text_from_args,  # type: ignore[attr-defined]
+        background_start_action=cli_main._background_start_action,  # type: ignore[attr-defined]
+        build_exec_env=cli_main._build_exec_env,  # type: ignore[attr-defined]
+        demo_record_prefix=cli_main._demo_record_prefix,  # type: ignore[attr-defined]
     )
 
     assert action is not None
@@ -1472,7 +1493,7 @@ def test_container_start_action_omits_replace_for_docker(
 
 
 def test_container_readiness_tcp_supports_host_qualified_port() -> None:
-    endpoint = cli_main._container_readiness_tcp(["127.0.0.1:15044:5044"])  # type: ignore[attr-defined]
+    endpoint = container_management.container_readiness_tcp(["127.0.0.1:15044:5044"])
 
     assert endpoint == "127.0.0.1:15044"
 
@@ -1507,7 +1528,7 @@ def test_wait_for_background_start_waits_for_tcp_readiness(
 def test_dev_containers_command_is_listed_when_runtime_and_actions_available(
     monkeypatch,
 ) -> None:
-    monkeypatch.setattr(cli_main, "_container_runtime_executable", lambda: "/usr/bin/podman")
+    monkeypatch.setattr(container_management, "container_runtime_executable", lambda: "/usr/bin/podman")
     monkeypatch.setattr(
         cli_main,
         "_configured_container_start_actions",
@@ -1525,8 +1546,8 @@ def test_execute_dev_container_workflow_launches_selected_action(monkeypatch) ->
         "label": "Logstash local pipeline",
         "aliases": ["logstash"],
     }
-    monkeypatch.setattr(cli_main, "_container_runtime_executable", lambda: "/usr/bin/podman")
-    monkeypatch.setattr(cli_main, "_container_runtime_ready", lambda _runtime: (True, ""))
+    monkeypatch.setattr(container_management, "container_runtime_executable", lambda: "/usr/bin/podman")
+    monkeypatch.setattr(container_management, "container_runtime_ready", lambda _runtime, **_kwargs: (True, ""))
     monkeypatch.setattr(
         cli_main,
         "_configured_container_start_actions",
@@ -1538,7 +1559,20 @@ def test_execute_dev_container_workflow_launches_selected_action(monkeypatch) ->
         lambda selected: launched.append(selected["label"]) or 0,
     )
 
-    code = cli_main._execute_dev_container_workflow(selection="logstash")  # type: ignore[attr-defined]
+    code = dev_commands.execute_dev_container_workflow(
+        command_name="dev-containers",
+        selection="logstash",
+        container_runtime_executable=container_management.container_runtime_executable,
+        container_runtime_ready=lambda runtime: container_management.container_runtime_ready(
+            runtime,
+            windows_no_console_kwargs=cli_main._windows_no_console_kwargs,  # type: ignore[attr-defined]
+        ),
+        print_container_runtime_unavailable=container_management.print_container_runtime_unavailable,
+        configured_container_start_actions=cli_main._configured_container_start_actions,  # type: ignore[attr-defined]
+        action_matches_alias=cli_main._action_matches_alias,  # type: ignore[attr-defined]
+        select_guided_action=lambda _intent, _actions: None,
+        launch_background_process=cli_main._launch_background_process,  # type: ignore[attr-defined]
+    )
 
     assert code == 0
     assert launched == ["Logstash local pipeline"]
@@ -1548,14 +1582,27 @@ def test_execute_dev_container_workflow_rejects_unready_runtime(
     monkeypatch,
     capsys,
 ) -> None:
-    monkeypatch.setattr(cli_main, "_container_runtime_executable", lambda: "/usr/bin/podman")
+    monkeypatch.setattr(container_management, "container_runtime_executable", lambda: "/usr/bin/podman")
     monkeypatch.setattr(
-        cli_main,
-        "_container_runtime_ready",
-        lambda _runtime: (False, "unable to connect to Podman socket"),
+        container_management,
+        "container_runtime_ready",
+        lambda _runtime, **_kwargs: (False, "unable to connect to Podman socket"),
     )
 
-    code = cli_main._execute_dev_container_workflow(selection="logstash")  # type: ignore[attr-defined]
+    code = dev_commands.execute_dev_container_workflow(
+        command_name="dev-containers",
+        selection="logstash",
+        container_runtime_executable=container_management.container_runtime_executable,
+        container_runtime_ready=lambda runtime: container_management.container_runtime_ready(
+            runtime,
+            windows_no_console_kwargs=cli_main._windows_no_console_kwargs,  # type: ignore[attr-defined]
+        ),
+        print_container_runtime_unavailable=container_management.print_container_runtime_unavailable,
+        configured_container_start_actions=cli_main._configured_container_start_actions,  # type: ignore[attr-defined]
+        action_matches_alias=cli_main._action_matches_alias,  # type: ignore[attr-defined]
+        select_guided_action=lambda _intent, _actions: None,
+        launch_background_process=cli_main._launch_background_process,  # type: ignore[attr-defined]
+    )
 
     assert code == 1
     captured = capsys.readouterr()
@@ -1578,8 +1625,8 @@ def test_start_demo_consumers_runs_container_then_elastic_agent_client(
     agent_path.write_text("outputs: {}\n", encoding="utf-8")
     pipeline_path.write_text("input {}\n", encoding="utf-8")
     monkeypatch.setattr(cli_main, "_repo_root", lambda: repo_root)
-    monkeypatch.setattr(cli_main, "_container_runtime_executable", lambda: "/usr/bin/podman")
-    monkeypatch.setattr(cli_main, "_container_runtime_ready", lambda _runtime: (True, ""))
+    monkeypatch.setattr(container_management, "container_runtime_executable", lambda: "/usr/bin/podman")
+    monkeypatch.setattr(container_management, "container_runtime_ready", lambda _runtime, **_kwargs: (True, ""))
     monkeypatch.setattr(
         cli_main,
         "_demo_profile_by_name",
@@ -1645,11 +1692,11 @@ def test_start_demo_consumers_rejects_unready_container_runtime(
     agent_path.write_text("outputs: {}\n", encoding="utf-8")
     pipeline_path.write_text("input {}\n", encoding="utf-8")
     monkeypatch.setattr(cli_main, "_repo_root", lambda: repo_root)
-    monkeypatch.setattr(cli_main, "_container_runtime_executable", lambda: "/usr/bin/podman")
+    monkeypatch.setattr(container_management, "container_runtime_executable", lambda: "/usr/bin/podman")
     monkeypatch.setattr(
-        cli_main,
-        "_container_runtime_ready",
-        lambda _runtime: (False, "Cannot connect to Podman"),
+        container_management,
+        "container_runtime_ready",
+        lambda _runtime, **_kwargs: (False, "Cannot connect to Podman"),
     )
     monkeypatch.setattr(
         cli_main,
@@ -1808,7 +1855,7 @@ def test_stop_recorded_processes_uses_container_runtime_stop(
             "/usr/bin/podman",
             "stop",
             "--time",
-            str(cli_main.CONTAINER_STOP_TIMEOUT_SECONDS),
+            str(container_management.CONTAINER_STOP_TIMEOUT_SECONDS),
             "opamp-logstash",
         ]
     ]
@@ -2002,12 +2049,12 @@ def test_top_level_commands_include_dev_pid_lookup_only_when_available(monkeypat
 def test_handle_command_routes_dev_flb_config_to_workflow(monkeypatch) -> None:
     called: dict[str, int] = {"count": 0}
 
-    def fake_workflow(*, input_reader=None):  # type: ignore[no-untyped-def]
-        assert input_reader is None
+    def fake_workflow(**kwargs):  # type: ignore[no-untyped-def]
+        assert kwargs["command_name"] == "dev-flb-config"
         called["count"] += 1
         return 0
 
-    monkeypatch.setattr(cli_main, "_execute_dev_fluentbit_config_workflow", fake_workflow)
+    monkeypatch.setattr(dev_commands, "execute_dev_tool_workflow", fake_workflow)
 
     code = cli_main._handle_command("dev-flb-config")  # type: ignore[attr-defined]
 
@@ -2018,12 +2065,12 @@ def test_handle_command_routes_dev_flb_config_to_workflow(monkeypatch) -> None:
 def test_handle_command_routes_dev_mcp_config_to_workflow(monkeypatch) -> None:
     called: dict[str, int] = {"count": 0}
 
-    def fake_workflow(*, input_reader=None):  # type: ignore[no-untyped-def]
-        assert input_reader is None
+    def fake_workflow(**kwargs):  # type: ignore[no-untyped-def]
+        assert kwargs["command_name"] == "dev-mcp-config"
         called["count"] += 1
         return 0
 
-    monkeypatch.setattr(cli_main, "_execute_dev_mcp_config_workflow", fake_workflow)
+    monkeypatch.setattr(dev_commands, "execute_dev_tool_workflow", fake_workflow)
 
     code = cli_main._handle_command("dev-mcp-config")  # type: ignore[attr-defined]
 
@@ -2034,12 +2081,12 @@ def test_handle_command_routes_dev_mcp_config_to_workflow(monkeypatch) -> None:
 def test_handle_command_routes_dev_pid_lookup_to_workflow(monkeypatch) -> None:
     called: dict[str, int] = {"count": 0}
 
-    def fake_workflow(*, input_reader=None):  # type: ignore[no-untyped-def]
-        assert input_reader is None
+    def fake_workflow(**kwargs):  # type: ignore[no-untyped-def]
+        assert kwargs["command_name"] == "dev-pid-lookup"
         called["count"] += 1
         return 0
 
-    monkeypatch.setattr(cli_main, "_execute_dev_pid_lookup_workflow", fake_workflow)
+    monkeypatch.setattr(dev_commands, "execute_dev_pid_lookup_workflow", fake_workflow)
 
     code = cli_main._handle_command("dev-pid-lookup")  # type: ignore[attr-defined]
 
@@ -2048,36 +2095,31 @@ def test_handle_command_routes_dev_pid_lookup_to_workflow(monkeypatch) -> None:
 
 
 def test_execute_dev_fluentbit_config_workflow_prompts_and_runs_selected_tool(monkeypatch) -> None:
-    monkeypatch.setattr(cli_main, "_dev_features_enabled", lambda: True)
-    monkeypatch.setattr(
-        cli_main,
-        "_fluentbit_dev_tool_specs",
-        lambda: [
-            {
-                "id": "fluentbit_assets",
-                "label": "Generate Fluent Bit assets",
-                "description": "Generate catalog artifacts.",
-                "script_path": "/tmp/generate_fluentbit_assets.py",
-                "arguments": [
-                    {
-                        "name": "versions",
-                        "flag": "--version",
-                        "prompt": "Version",
-                        "required": True,
-                        "multiple": True,
-                        "default": "5.0.7",
-                    },
-                    {
-                        "name": "generate_schemas",
-                        "prompt": "Generate schemas",
-                        "kind": "bool",
-                        "default": True,
-                        "args_when_false": ["--no-schemas"],
-                    },
-                ],
-            }
-        ],
-    )
+    specs = [
+        {
+            "id": "fluentbit_assets",
+            "label": "Generate Fluent Bit assets",
+            "description": "Generate catalog artifacts.",
+            "script_path": "/tmp/generate_fluentbit_assets.py",
+            "arguments": [
+                {
+                    "name": "versions",
+                    "flag": "--version",
+                    "prompt": "Version",
+                    "required": True,
+                    "multiple": True,
+                    "default": "5.0.7",
+                },
+                {
+                    "name": "generate_schemas",
+                    "prompt": "Generate schemas",
+                    "kind": "bool",
+                    "default": True,
+                    "args_when_false": ["--no-schemas"],
+                },
+            ],
+        }
+    ]
 
     prompts = iter(["1", "5.0.7,5.0.8", "n"])
     captured: dict[str, list[str]] = {"argv": []}
@@ -2089,10 +2131,19 @@ def test_execute_dev_fluentbit_config_workflow_prompts_and_runs_selected_tool(mo
         captured["argv"] = list(argv)
         return subprocess.CompletedProcess(args=argv, returncode=0)
 
-    monkeypatch.setattr(cli_main.subprocess, "run", fake_run)
+    monkeypatch.setattr(dev_commands.subprocess, "run", fake_run)
 
-    code = cli_main._execute_dev_fluentbit_config_workflow(  # type: ignore[attr-defined]
-        input_reader=fake_reader
+    code = dev_commands.execute_dev_tool_workflow(
+        command_name="dev-flb-config",
+        tool_family_label="Fluent Bit",
+        specs=specs,
+        dev_features_enabled=True,
+        prompt_text=fake_reader,
+        parse_yes_no=lambda value, default: cli_main._parse_yes_no(value, default=default),  # type: ignore[attr-defined]
+        command_text_from_args=cli_main._command_text_from_args,  # type: ignore[attr-defined]
+        repo_root=Path.cwd(),
+        build_exec_env=cli_main._build_exec_env,  # type: ignore[attr-defined]
+        logger=cli_main._get_logger(),  # type: ignore[attr-defined]
     )
 
     assert code == 0
@@ -2108,42 +2159,37 @@ def test_execute_dev_fluentbit_config_workflow_prompts_and_runs_selected_tool(mo
 
 
 def test_execute_dev_mcp_config_workflow_prompts_and_runs_selected_tool(monkeypatch) -> None:
-    monkeypatch.setattr(cli_main, "_dev_features_enabled", lambda: True)
-    monkeypatch.setattr(
-        cli_main,
-        "_mcp_dev_tool_specs",
-        lambda: [
-            {
-                "id": "mcp_client_config",
-                "label": "Configure MCP clients",
-                "description": "Update MCP client settings.",
-                "script_path": "/tmp/configure_mcp_clients.py",
-                "fixed_args": ["--yes"],
-                "arguments": [
-                    {
-                        "name": "clients",
-                        "flag": "--clients",
-                        "prompt": "Enabled clients",
-                        "required": True,
-                        "default": "claude,codex,vscode",
-                    },
-                    {
-                        "name": "server_host",
-                        "flag": "--server-host",
-                        "prompt": "Server host",
-                        "default": "localhost",
-                    },
-                    {
-                        "name": "preview",
-                        "prompt": "Preview only",
-                        "kind": "bool",
-                        "default": False,
-                        "args_when_true": ["--preview"],
-                    },
-                ],
-            }
-        ],
-    )
+    specs = [
+        {
+            "id": "mcp_client_config",
+            "label": "Configure MCP clients",
+            "description": "Update MCP client settings.",
+            "script_path": "/tmp/configure_mcp_clients.py",
+            "fixed_args": ["--yes"],
+            "arguments": [
+                {
+                    "name": "clients",
+                    "flag": "--clients",
+                    "prompt": "Enabled clients",
+                    "required": True,
+                    "default": "claude,codex,vscode",
+                },
+                {
+                    "name": "server_host",
+                    "flag": "--server-host",
+                    "prompt": "Server host",
+                    "default": "localhost",
+                },
+                {
+                    "name": "preview",
+                    "prompt": "Preview only",
+                    "kind": "bool",
+                    "default": False,
+                    "args_when_true": ["--preview"],
+                },
+            ],
+        }
+    ]
 
     prompts = iter(["1", "claude,codex", "broker.local", "y"])
     captured: dict[str, list[str]] = {"argv": []}
@@ -2155,10 +2201,19 @@ def test_execute_dev_mcp_config_workflow_prompts_and_runs_selected_tool(monkeypa
         captured["argv"] = list(argv)
         return subprocess.CompletedProcess(args=argv, returncode=0)
 
-    monkeypatch.setattr(cli_main.subprocess, "run", fake_run)
+    monkeypatch.setattr(dev_commands.subprocess, "run", fake_run)
 
-    code = cli_main._execute_dev_mcp_config_workflow(  # type: ignore[attr-defined]
-        input_reader=fake_reader
+    code = dev_commands.execute_dev_tool_workflow(
+        command_name="dev-mcp-config",
+        tool_family_label="MCP",
+        specs=specs,
+        dev_features_enabled=True,
+        prompt_text=fake_reader,
+        parse_yes_no=lambda value, default: cli_main._parse_yes_no(value, default=default),  # type: ignore[attr-defined]
+        command_text_from_args=cli_main._command_text_from_args,  # type: ignore[attr-defined]
+        repo_root=Path.cwd(),
+        build_exec_env=cli_main._build_exec_env,  # type: ignore[attr-defined]
+        logger=cli_main._get_logger(),  # type: ignore[attr-defined]
     )
 
     assert code == 0
@@ -2249,21 +2304,23 @@ def test_default_version_targets_config_matches_repo() -> None:
     repo_root = Path(__file__).resolve().parents[2]
     config_path = repo_root / "cli" / "config" / "version_targets.json"
 
-    config = cli_main._read_dev_version_config(config_path)  # type: ignore[attr-defined]
-    components = cli_main._version_config_components(config)  # type: ignore[attr-defined]
+    config = version_bump._read_dev_version_config(config_path)  # type: ignore[attr-defined]
+    components = version_bump._version_config_components(config)  # type: ignore[attr-defined]
 
     assert len(components) > 1
     for component in components:
-        current_version = cli_main._read_version_from_config_source(  # type: ignore[attr-defined]
+        current_version = version_bump._read_version_from_config_source(  # type: ignore[attr-defined]
             repo_root,
             component["currentVersionSource"],
         )
         assert re.fullmatch(r"\d+\.\d+\.\d+", current_version)
         for target in component["targets"]:
-            target_path = cli_main._resolve_repo_path(  # type: ignore[attr-defined]
+            target_path = version_bump._resolve_repo_path(  # type: ignore[attr-defined]
                 repo_root,
                 target["path"],
             )
+            if version_bump._version_target_optional(target) and not target_path.exists():  # type: ignore[attr-defined]
+                continue
             assert target_path.exists(), f"missing version target: {target['path']}"
             target_text = target_path.read_text(encoding="utf-8")
             assert re.search(
@@ -2276,7 +2333,11 @@ def test_default_version_targets_config_matches_repo() -> None:
 def test_dev_version_bump_requires_developer_features(monkeypatch, capsys) -> None:
     monkeypatch.setattr(cli_main, "_dev_features_enabled", lambda: False)
 
-    code = cli_main._execute_dev_version_bump_workflow([])  # type: ignore[attr-defined]
+    code = version_bump.execute_dev_version_bump_workflow(
+        [],
+        repo_root_provider=cli_main._repo_root,  # type: ignore[attr-defined]
+        dev_features_enabled=cli_main._dev_features_enabled,  # type: ignore[attr-defined]
+    )
     captured = capsys.readouterr()
 
     assert code == 1
@@ -2285,16 +2346,14 @@ def test_dev_version_bump_requires_developer_features(monkeypatch, capsys) -> No
 
 def test_dev_version_bump_defaults_to_next_minor_version(
     tmp_path: Path,
-    monkeypatch,
     capsys,
 ) -> None:
     repo_root = tmp_path / "repo"
     config_path = _write_version_bump_fixture(repo_root)
-    monkeypatch.setattr(cli_main, "_repo_root", lambda: repo_root)
-    monkeypatch.setattr(cli_main, "_dev_features_enabled", lambda: True)
-
-    code = cli_main._execute_dev_version_bump_workflow(  # type: ignore[attr-defined]
-        ["--config", str(config_path)]
+    code = version_bump.execute_dev_version_bump_workflow(
+        ["--config", str(config_path)],
+        repo_root_provider=lambda: repo_root,
+        dev_features_enabled=lambda: True,
     )
     output = capsys.readouterr().out
 
@@ -2308,17 +2367,59 @@ def test_dev_version_bump_defaults_to_next_minor_version(
     assert '"version": "3.4.5"' in package_lock_text
 
 
-def test_dev_version_bump_accepts_explicit_greater_version(
+def test_dev_version_bump_skips_optional_missing_target(
     tmp_path: Path,
-    monkeypatch,
+    capsys,
 ) -> None:
     repo_root = tmp_path / "repo"
     config_path = _write_version_bump_fixture(repo_root)
-    monkeypatch.setattr(cli_main, "_repo_root", lambda: repo_root)
-    monkeypatch.setattr(cli_main, "_dev_features_enabled", lambda: True)
+    (repo_root / "component" / "package-lock.json").unlink()
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    config["components"][1]["targets"][1]["optional"] = True
+    config_path.write_text(json.dumps(config), encoding="utf-8")
+    code = version_bump.execute_dev_version_bump_workflow(
+        ["--config", str(config_path)],
+        repo_root_provider=lambda: repo_root,
+        dev_features_enabled=lambda: True,
+    )
+    output = capsys.readouterr().out
 
-    code = cli_main._execute_dev_version_bump_workflow(  # type: ignore[attr-defined]
-        ["2.0.0", "--config", str(config_path)]
+    assert code == 0
+    assert "Skipped optional missing target" in output
+    assert "Optional missing targets skipped: 1" in output
+    assert 'version = "1.3.0"' in (repo_root / "cli" / "pyproject.toml").read_text(encoding="utf-8")
+    assert 'version = "0.10.0"' in (repo_root / "component" / "pyproject.toml").read_text(encoding="utf-8")
+
+
+def test_dev_version_bump_missing_required_target_aborts_before_writes(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    repo_root = tmp_path / "repo"
+    config_path = _write_version_bump_fixture(repo_root)
+    (repo_root / "component" / "package-lock.json").unlink()
+    code = version_bump.execute_dev_version_bump_workflow(
+        ["--config", str(config_path)],
+        repo_root_provider=lambda: repo_root,
+        dev_features_enabled=lambda: True,
+    )
+    captured = capsys.readouterr()
+
+    assert code == 1
+    assert "version target not found:" in captured.err
+    assert 'version = "1.2.3"' in (repo_root / "cli" / "pyproject.toml").read_text(encoding="utf-8")
+    assert 'version = "0.9.0"' in (repo_root / "component" / "pyproject.toml").read_text(encoding="utf-8")
+
+
+def test_dev_version_bump_accepts_explicit_greater_version(
+    tmp_path: Path,
+) -> None:
+    repo_root = tmp_path / "repo"
+    config_path = _write_version_bump_fixture(repo_root)
+    code = version_bump.execute_dev_version_bump_workflow(
+        ["2.0.0", "--config", str(config_path)],
+        repo_root_provider=lambda: repo_root,
+        dev_features_enabled=lambda: True,
     )
 
     assert code == 0
@@ -2328,16 +2429,14 @@ def test_dev_version_bump_accepts_explicit_greater_version(
 
 def test_dev_version_bump_rejects_non_greater_explicit_version(
     tmp_path: Path,
-    monkeypatch,
     capsys,
 ) -> None:
     repo_root = tmp_path / "repo"
     config_path = _write_version_bump_fixture(repo_root)
-    monkeypatch.setattr(cli_main, "_repo_root", lambda: repo_root)
-    monkeypatch.setattr(cli_main, "_dev_features_enabled", lambda: True)
-
-    code = cli_main._execute_dev_version_bump_workflow(  # type: ignore[attr-defined]
-        ["1.2.3", "--config", str(config_path)]
+    code = version_bump.execute_dev_version_bump_workflow(
+        ["1.2.3", "--config", str(config_path)],
+        repo_root_provider=lambda: repo_root,
+        dev_features_enabled=lambda: True,
     )
     captured = capsys.readouterr()
 
@@ -2349,16 +2448,14 @@ def test_dev_version_bump_rejects_non_greater_explicit_version(
 
 def test_dev_version_bump_rejects_invalid_semantic_version(
     tmp_path: Path,
-    monkeypatch,
     capsys,
 ) -> None:
     repo_root = tmp_path / "repo"
     config_path = _write_version_bump_fixture(repo_root)
-    monkeypatch.setattr(cli_main, "_repo_root", lambda: repo_root)
-    monkeypatch.setattr(cli_main, "_dev_features_enabled", lambda: True)
-
-    code = cli_main._execute_dev_version_bump_workflow(  # type: ignore[attr-defined]
-        ["1.3", "--config", str(config_path)]
+    code = version_bump.execute_dev_version_bump_workflow(
+        ["1.3", "--config", str(config_path)],
+        repo_root_provider=lambda: repo_root,
+        dev_features_enabled=lambda: True,
     )
     captured = capsys.readouterr()
 
@@ -2369,11 +2466,11 @@ def test_dev_version_bump_rejects_invalid_semantic_version(
 def test_handle_command_routes_dev_version_bump_to_workflow(monkeypatch) -> None:
     called: dict[str, list[str]] = {"args": []}
 
-    def fake_workflow(args):  # type: ignore[no-untyped-def]
+    def fake_workflow(args, **_kwargs):  # type: ignore[no-untyped-def]
         called["args"] = list(args)
         return 0
 
-    monkeypatch.setattr(cli_main, "_execute_dev_version_bump_workflow", fake_workflow)
+    monkeypatch.setattr(cli_main, "execute_dev_version_bump_workflow", fake_workflow)
 
     code = cli_main._handle_command("dev-version-bump 1.4.0 --config custom.json")  # type: ignore[attr-defined]
 
@@ -2386,7 +2483,7 @@ def test_top_level_commands_include_dev_version_bump_only_when_enabled(monkeypat
     monkeypatch.setattr(cli_main, "_fluentbit_dev_tool_available", lambda: False)
     monkeypatch.setattr(cli_main, "_mcp_dev_tool_available", lambda: False)
     monkeypatch.setattr(cli_main, "_dev_pid_lookup_available", lambda: False)
-    monkeypatch.setattr(cli_main, "_container_runtime_executable", lambda: None)
+    monkeypatch.setattr(container_management, "container_runtime_executable", lambda: None)
     monkeypatch.setattr(cli_main, "_dev_version_bump_available", lambda: True)
 
     commands = cli_main._top_level_commands()  # type: ignore[attr-defined]
@@ -2478,11 +2575,11 @@ def test_prompt_toolkit_reader_offers_config_subcommands_and_paths(monkeypatch) 
 
 
 def test_execute_dev_pid_lookup_workflow_reports_matches(monkeypatch, capsys) -> None:
-    monkeypatch.setattr(cli_main, "_dev_pid_lookup_available", lambda: True)
-    monkeypatch.setattr(
-        cli_main,
-        "_running_process_entries",
-        lambda: (
+    code = dev_commands.execute_dev_pid_lookup_workflow(
+        command_name="dev-pid-lookup",
+        dev_features_enabled=True,
+        prompt_text=lambda _prompt: "consumer_sim_launcher",
+        running_process_entries=lambda: (
             True,
             [
                 {
@@ -2497,10 +2594,11 @@ def test_execute_dev_pid_lookup_workflow_reports_matches(monkeypatch, capsys) ->
                 },
             ],
         ),
-    )
-
-    code = cli_main._execute_dev_pid_lookup_workflow(  # type: ignore[attr-defined]
-        input_reader=lambda _prompt: "consumer_sim_launcher"
+        process_entries_matching_pattern=lambda processes, pattern: cli_main._process_entries_matching_pattern(  # type: ignore[attr-defined]
+            processes,
+            pattern=pattern,
+        ),
+        print_pid_lookup_results=cli_main._print_pid_lookup_results,  # type: ignore[attr-defined]
     )
     output = capsys.readouterr().out
 
@@ -2512,11 +2610,11 @@ def test_execute_dev_pid_lookup_workflow_reports_matches(monkeypatch, capsys) ->
 
 
 def test_execute_dev_pid_lookup_workflow_reports_no_matches(monkeypatch, capsys) -> None:
-    monkeypatch.setattr(cli_main, "_dev_pid_lookup_available", lambda: True)
-    monkeypatch.setattr(
-        cli_main,
-        "_running_process_entries",
-        lambda: (
+    code = dev_commands.execute_dev_pid_lookup_workflow(
+        command_name="dev-pid-lookup",
+        dev_features_enabled=True,
+        prompt_text=lambda _prompt: "fluentd",
+        running_process_entries=lambda: (
             True,
             [
                 {
@@ -2526,10 +2624,11 @@ def test_execute_dev_pid_lookup_workflow_reports_no_matches(monkeypatch, capsys)
                 }
             ],
         ),
-    )
-
-    code = cli_main._execute_dev_pid_lookup_workflow(  # type: ignore[attr-defined]
-        input_reader=lambda _prompt: "fluentd"
+        process_entries_matching_pattern=lambda processes, pattern: cli_main._process_entries_matching_pattern(  # type: ignore[attr-defined]
+            processes,
+            pattern=pattern,
+        ),
+        print_pid_lookup_results=cli_main._print_pid_lookup_results,  # type: ignore[attr-defined]
     )
     output = capsys.readouterr().out
 
