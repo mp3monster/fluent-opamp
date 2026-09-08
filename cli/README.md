@@ -159,9 +159,11 @@ Demo consumer mode:
   - Fluent Bit OpAMP config + agent config
   - Fluentd OpAMP config + agent config
   - Elastic Agent OpAMP config + agent config
+  - Elastic Heartbeat OpAMP config + agent config
   - optional container start commands
 - CLI records profile-scoped PIDs in `cli/runtime/managed_processes.json`, so `stop` can terminate one demo profile independently.
 - The `Demo setup (Elastic Agent self-monitoring to Logstash)` profile starts the configured Logstash container first, then starts the plugin-driven `opamp_consumer.client` Elastic Agent consumer with `tests/logstash/opamp-consumer-elastic-agent-logstash-plugin.json`.
+- The `Demo setup (Elastic Heartbeat supervisor to Logstash)` profile starts a Logstash container first, then starts the plugin-driven `opamp_consumer.client` Elastic Heartbeat consumer with `tests/logstash/opamp-consumer-elastic-heartbeat-logstash-plugin.json`.
 
 Example:
 
