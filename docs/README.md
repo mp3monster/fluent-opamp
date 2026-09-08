@@ -70,7 +70,7 @@ Everything else in this repository is optional, supportive, or internal.
 | Component | Role | Required | Deployment notes |
 | --- | --- | --- | --- |
 | `provider` | OpAMP server, Web UI, HTTP API, MCP endpoints | Yes | Primary control-plane component |
-| `consumer` | OpAMP client/supervisor for Fluent Bit, Fluentd, and simulator flows | Yes for end-to-end OpAMP | At least one consumer is needed to exercise provider-to-agent behavior |
+| `consumer` | OpAMP client/supervisor for Fluent Bit, Fluentd, Elastic Agent, Elastic Heartbeat, and simulator flows | Yes for end-to-end OpAMP | At least one consumer is needed to exercise provider-to-agent behavior |
 | `cli` | Local operator launcher/orchestration utility | Optional | Convenience tool for start/stop/status workflows |
 | `config-service` | Configuration editor, validation API, Python-served UI | Optional | Can run standalone or be registered into the provider environment |
 | `catalog-service` | Configuration catalog backend and UI | Optional | Can run standalone or be registered into the provider environment |

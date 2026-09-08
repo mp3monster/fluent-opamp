@@ -1,0 +1,30 @@
+name: opamp-heartbeat-demo
+
+heartbeat.monitors:
+  - type: http
+    id: localhost-http
+    name: localhost
+    urls: ["http://localhost"]
+    schedule: "@every 5s"
+
+  - type: http
+    id: mp3monster-blog
+    name: blog.mp3monster.org
+    urls: ["https://blog.mp3monster.org"]
+    schedule: "@every 5s"
+
+http.enabled: true
+http.host: 127.0.0.1
+http.port: 5066
+
+queue.mem:
+  flush.timeout: 60s
+
+output.logstash:
+  hosts: ["${env.OPAMP_LOGSTASH_HOST|'127.0.0.1'}:5044"]
+
+logging.to_files: true
+logging.files:
+  path: tests/logstash/out/heartbeat-logs
+  name: heartbeat
+  keepfiles: 3
