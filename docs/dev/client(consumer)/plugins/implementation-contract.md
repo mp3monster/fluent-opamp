@@ -81,7 +81,9 @@ Depending on the agent, you may also override:
   or validation.
 
 Fluentd and Elastic Agent are useful examples because they override more of
-the default behavior than Fluent Bit.
+the default behavior than Fluent Bit. Elastic Heartbeat is the reference
+example for Elastic Beat-style plugins that launch a Beat process, parse Beat
+YAML for HTTP monitoring settings, and use Logstash output preflight checks.
 
 ## Supervisor Mode
 
@@ -154,7 +156,8 @@ That keeps `processTracking` behavior consistent across plugins.
 Override lifecycle methods directly only when the agent cannot fit the common
 command-and-config-file model. Elastic Agent is the example: it has its own CLI
 daemon/status behavior, so `ElasticAgentOpAMPClient` delegates to a specialized
-`ElasticAgentCliLifecycle`.
+`ElasticAgentCliLifecycle`. Elastic Heartbeat shows the lighter Beat pattern for
+a foreground `<beat> -e -c <config>` process.
 
 If you override lifecycle directly, document the reason in the plugin docs and
 add tests for both launch and shutdown behavior.
