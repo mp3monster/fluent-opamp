@@ -51,6 +51,7 @@ dev = [
 
 [project.scripts]
 opamp-consumer = "opamp_consumer.client:main"
+opamp-consumer-elastic-heartbeat = "opamp_consumer.elastic_heartbeat.client:main"
 opamp-consumer-fluentd = "opamp_consumer.fluentd.client:main"
 opamp-consumer-simulator = "opamp_consumer.simulator.client:main"
 
@@ -58,6 +59,7 @@ opamp-consumer-simulator = "opamp_consumer.simulator.client:main"
 fluentbit = "opamp_consumer.fluentbit.client:main"
 fluentd = "opamp_consumer.fluentd.client:main"
 elastic_agent = "opamp_consumer.elastic_agent.client:main"
+elastic_heartbeat = "opamp_consumer.elastic_heartbeat.client:main"
 simulator = "opamp_consumer.simulator.client:main"
 
 [project.urls]
